@@ -72,6 +72,7 @@ public partial class MainWindow : Window
         SourceInitialized += MainWindow_SourceInitialized;
         Closed += MainWindow_Closed;
         _settings = new RegistrySettingsService(_profileStore);
+        SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
         var desktopPreferences = _preferences.Load();
         _taskbarEdge = desktopPreferences.TaskbarEdge;
         _taskbarSize = desktopPreferences.TaskbarSize;
@@ -124,12 +125,21 @@ public partial class MainWindow : Window
 
     private void RenderOverview()
     {
-        PageContent.Children.Add(new TextBlock { Text = "Make Windows feel like yours.", FontSize = 30, FontWeight = FontWeights.SemiBold, Foreground = Brush("#172033") });
-        PageContent.Children.Add(new TextBlock { Text = "Tune the Start menu, taskbar, and File Explorer in one place. Changes are per-user and reversible.", FontSize = 14, Foreground = Brush("#697386"), Margin = new Thickness(0, 8, 0, 24) });
+        var title = ThemedText("Make Windows feel like yours.", "DesktopPrimaryTextBrush");
+        title.FontSize = 30;
+        title.FontWeight = FontWeights.SemiBold;
+        PageContent.Children.Add(title);
+        var subtitle = ThemedText("Tune the Start menu, taskbar, and File Explorer in one place. Changes are per-user and reversible.", "DesktopMutedTextBrush");
+        subtitle.FontSize = 14;
+        subtitle.Margin = new Thickness(0, 8, 0, 24);
+        PageContent.Children.Add(subtitle);
 
         var hero = new Border { Background = Brush("#232A3D"), CornerRadius = new CornerRadius(14), Padding = new Thickness(24), Margin = new Thickness(0, 0, 0, 22) };
         var heroStack = new StackPanel();
-        heroStack.Children.Add(new TextBlock { Text = "YOUR WINDOWS, RECLAIMED", FontSize = 11, FontWeight = FontWeights.Bold, Foreground = Brush("#B9B4FF") });
+        var heroLabel = ThemedText("YOUR WINDOWS, RECLAIMED", "DesktopAccentTextBrush");
+        heroLabel.FontSize = 11;
+        heroLabel.FontWeight = FontWeights.Bold;
+        heroStack.Children.Add(heroLabel);
         heroStack.Children.Add(new TextBlock { Text = "A calmer desktop starts with the details.", FontSize = 21, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, Margin = new Thickness(0, 9, 0, 4) });
         heroStack.Children.Add(new TextBlock { Text = "Choose the settings that fit your workflow, save them as a profile, and bring them back whenever you need.", FontSize = 13, Foreground = Brush("#C1C8D7"), TextWrapping = TextWrapping.Wrap });
         hero.Child = heroStack;
@@ -144,7 +154,11 @@ public partial class MainWindow : Window
         var note = Card();
         var noteStack = new StackPanel();
         noteStack.Children.Add(new TextBlock { Text = "A note about compatibility", FontWeight = FontWeights.SemiBold, FontSize = 14 });
-        noteStack.Children.Add(new TextBlock { Text = "Windows can change shell behavior between releases. Taskbar controls are marked experimental and may need an Explorer restart or sign-out on some builds. This app never injects code into Explorer.", Foreground = Brush("#697386"), FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) });
+        var noteDescription = ThemedText("Windows can change shell behavior between releases. Taskbar controls are marked experimental and may need an Explorer restart or sign-out on some builds. This app never injects code into Explorer.", "DesktopMutedTextBrush");
+        noteDescription.FontSize = 12;
+        noteDescription.TextWrapping = TextWrapping.Wrap;
+        noteDescription.Margin = new Thickness(0, 6, 0, 0);
+        noteStack.Children.Add(noteDescription);
         note.Child = noteStack;
         PageContent.Children.Add(note);
     }
@@ -154,9 +168,16 @@ public partial class MainWindow : Window
         var card = Card();
         card.Margin = new Thickness(0, 0, 12, 0);
         var stack = new StackPanel();
-        stack.Children.Add(new TextBlock { Text = number, FontSize = 11, FontWeight = FontWeights.Bold, Foreground = Brush("#6258D9") });
+        var numberText = ThemedText(number, "DesktopAccentTextBrush");
+        numberText.FontSize = 11;
+        numberText.FontWeight = FontWeights.Bold;
+        stack.Children.Add(numberText);
         stack.Children.Add(new TextBlock { Text = title, FontSize = 17, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 9, 0, 5) });
-        stack.Children.Add(new TextBlock { Text = description, FontSize = 12, Foreground = Brush("#697386"), TextWrapping = TextWrapping.Wrap, MinHeight = 48 });
+        var descriptionText = ThemedText(description, "DesktopMutedTextBrush");
+        descriptionText.FontSize = 12;
+        descriptionText.TextWrapping = TextWrapping.Wrap;
+        descriptionText.MinHeight = 48;
+        stack.Children.Add(descriptionText);
         var button = new Button { Content = "Customize  →", Tag = page, Style = (Style)FindResource("SecondaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 15, 0, 0), Padding = new Thickness(12, 8, 12, 8) };
         button.Click += Navigate_Click;
         stack.Children.Add(button);
@@ -413,7 +434,11 @@ public partial class MainWindow : Window
             layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(230) });
             var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 16, 0) };
             text.Children.Add(new TextBlock { Text = setting.Name, FontSize = 14, FontWeight = FontWeights.SemiBold });
-            text.Children.Add(new TextBlock { Text = setting.Description, FontSize = 12, Foreground = Brush("#697386"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) });
+            var settingDescription = ThemedText(setting.Description, "DesktopMutedTextBrush");
+            settingDescription.FontSize = 12;
+            settingDescription.TextWrapping = TextWrapping.Wrap;
+            settingDescription.Margin = new Thickness(0, 4, 0, 0);
+            text.Children.Add(settingDescription);
             Grid.SetColumn(text, 0);
             layout.Children.Add(text);
 
@@ -447,7 +472,11 @@ public partial class MainWindow : Window
         actions.Margin = new Thickness(0, 14, 0, 14);
         var stack = new StackPanel();
         stack.Children.Add(new TextBlock { Text = "Profile files", FontSize = 16, FontWeight = FontWeights.SemiBold });
-        stack.Children.Add(new TextBlock { Text = "Profiles are JSON files that contain only the app's known setting choices. Importing a file selects its values; it does not apply them automatically.", FontSize = 12, Foreground = Brush("#697386"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 16) });
+        var profileDescription = ThemedText("Profiles are JSON files that contain only the app's known setting choices. Importing a file selects its values; it does not apply them automatically.", "DesktopMutedTextBrush");
+        profileDescription.FontSize = 12;
+        profileDescription.TextWrapping = TextWrapping.Wrap;
+        profileDescription.Margin = new Thickness(0, 6, 0, 16);
+        stack.Children.Add(profileDescription);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal };
         var export = new Button { Content = "Export current choices", Style = (Style)FindResource("SecondaryButton"), Margin = new Thickness(0, 0, 10, 0) };
         export.Click += ExportProfile_Click;
@@ -462,7 +491,11 @@ public partial class MainWindow : Window
         var restore = Card();
         var restoreStack = new StackPanel();
         restoreStack.Children.Add(new TextBlock { Text = "Restore your Windows settings", FontSize = 16, FontWeight = FontWeights.SemiBold });
-        restoreStack.Children.Add(new TextBlock { Text = "Undo last apply uses the snapshot from immediately before the last successful apply. It restores missing registry values to their original absent state as well.", FontSize = 12, Foreground = Brush("#697386"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) });
+        var restoreDescription = ThemedText("Undo last apply uses the snapshot from immediately before the last successful apply. It restores missing registry values to their original absent state as well.", "DesktopMutedTextBrush");
+        restoreDescription.FontSize = 12;
+        restoreDescription.TextWrapping = TextWrapping.Wrap;
+        restoreDescription.Margin = new Thickness(0, 6, 0, 0);
+        restoreStack.Children.Add(restoreDescription);
         restore.Child = restoreStack;
         PageContent.Children.Add(restore);
     }
@@ -470,23 +503,47 @@ public partial class MainWindow : Window
     private void AddPageHeading(string title, string subtitle)
     {
         PageContent.Children.Add(new TextBlock { Text = title, FontSize = 28, FontWeight = FontWeights.SemiBold });
-        PageContent.Children.Add(new TextBlock { Text = subtitle, FontSize = 14, Foreground = Brush("#697386"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 7, 0, 23) });
+        var subtitleText = ThemedText(subtitle, "DesktopMutedTextBrush");
+        subtitleText.FontSize = 14;
+        subtitleText.TextWrapping = TextWrapping.Wrap;
+        subtitleText.Margin = new Thickness(0, 7, 0, 23);
+        PageContent.Children.Add(subtitleText);
     }
 
     private Border InfoCard(string title, string description)
     {
         var stack = new StackPanel();
-        stack.Children.Add(new TextBlock { Text = title, FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = Brush("#4943A2") });
-        stack.Children.Add(new TextBlock { Text = description, FontSize = 12, Foreground = Brush("#545F73"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 0) });
+        var titleText = ThemedText(title, "DesktopAccentTextBrush");
+        titleText.FontSize = 13;
+        titleText.FontWeight = FontWeights.SemiBold;
+        stack.Children.Add(titleText);
+        var descriptionText = ThemedText(description, "DesktopMutedTextBrush");
+        descriptionText.FontSize = 12;
+        descriptionText.TextWrapping = TextWrapping.Wrap;
+        descriptionText.Margin = new Thickness(0, 5, 0, 0);
+        stack.Children.Add(descriptionText);
         var card = Card();
-        card.Background = Brush("#F0EFFF");
-        card.BorderBrush = Brush("#DDD9FF");
+        card.SetResourceReference(Border.BackgroundProperty, "DesktopAccentTintBrush");
+        card.SetResourceReference(Border.BorderBrushProperty, "DesktopAccentTintBrush");
         card.Margin = new Thickness(0, 0, 0, 15);
         card.Child = stack;
         return card;
     }
 
-    private static Border Card() => new() { Background = Brushes.White, BorderBrush = Brush("#E7EAF0"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(18) };
+    private static Border Card()
+    {
+        var card = new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(18) };
+        card.SetResourceReference(Border.BackgroundProperty, "DesktopSurfaceBrush");
+        card.SetResourceReference(Border.BorderBrushProperty, "DesktopBorderBrush");
+        return card;
+    }
+
+    private static TextBlock ThemedText(string text, string brushKey)
+    {
+        var textBlock = new TextBlock { Text = text };
+        textBlock.SetResourceReference(TextBlock.ForegroundProperty, brushKey);
+        return textBlock;
+    }
     private static SolidColorBrush Brush(string color) => new((Color)ColorConverter.ConvertFromString(color));
 
     private void Apply_Click(object sender, RoutedEventArgs e)
@@ -610,6 +667,7 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closed(object? sender, EventArgs e)
     {
+        SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
         CloseTaskbars();
         _nativeTaskbarWatchTimer.Stop();
         _nativeTaskbarVisibility.Restore();
@@ -619,6 +677,16 @@ public partial class MainWindow : Window
         _windowSource?.RemoveHook(WindowMessageHook);
         _windowsKeyHook?.Dispose();
         _windowsKeyHook = null;
+    }
+
+    private void SystemEvents_UserPreferenceChanged(object? sender, UserPreferenceChangedEventArgs e)
+    {
+        _ = Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (!IsLoaded) return;
+            var dark = _settings.Read(SettingsCatalog.ById("explorer-app-mode")) == 0;
+            DesktopTheme.Apply(dark);
+        }));
     }
 
     private IntPtr WindowMessageHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
