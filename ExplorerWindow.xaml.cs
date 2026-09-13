@@ -34,6 +34,11 @@ public partial class ExplorerWindow : Window
     private bool _sortExplicitly;
     private double _detailsPaneHeight = 160;
 
+    private void Window_SourceInitialized(object? sender, EventArgs e)
+    {
+        SystemBackdropService.TryApplyMica(this);
+    }
+
     public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true)
     {
         InitializeComponent();
