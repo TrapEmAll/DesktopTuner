@@ -263,6 +263,13 @@ try
     Check(true, File.Exists(renamedFile), "rename a file within its current folder");
     Throws<IOException>(() => ExplorerFileOperationService.Rename(renamedFile, "New folder"), "reject a rename that would replace a folder");
     Throws<ArgumentException>(() => ExplorerFileOperationService.ValidateName("invalid/name"), "reject file names containing reserved characters");
+    var nestedExplorerFolder = Path.Combine(firstCreatedFolder, "Nested");
+    Directory.CreateDirectory(nestedExplorerFolder);
+    var nestedMatchPath = Path.Combine(nestedExplorerFolder, "meeting-notes.txt");
+    File.WriteAllText(nestedMatchPath, "notes");
+    var recursiveSearchResults = ExplorerSearchService.SearchAsync(explorerTestDirectory, "NOTES").GetAwaiter().GetResult();
+    Check(2, recursiveSearchResults.Entries.Count, "search case-insensitively through nested folders");
+    Check(true, recursiveSearchResults.Entries.Any(entry => entry.FullPath == nestedMatchPath), "return full paths for nested search results");
 
     var freshPreferencesStore = new DesktopPreferencesStore(Path.Combine(temporaryPreferencesDirectory, "new-install.json"));
     Check(true, freshPreferencesStore.Load().TaskbarOnAllDisplays, "enable all displays by default for a new installation");

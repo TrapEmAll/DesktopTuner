@@ -22,7 +22,7 @@
                     <Button x:Name="UpButton" Content="↑" ToolTip="Up one level" Width="38" Height="36" Margin="0,0,12,0" Click="Up_Click" />
                 </StackPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
-                    <TextBox x:Name="SearchBox" Width="230" Height="36" VerticalContentAlignment="Center" Padding="10,0" ToolTip="Search this folder" TextChanged="SearchBox_TextChanged" KeyDown="SearchBox_KeyDown" />
+                    <TextBox x:Name="SearchBox" Width="230" Height="36" VerticalContentAlignment="Center" Padding="10,0" ToolTip="Search this folder and its subfolders" KeyDown="SearchBox_KeyDown" />
                     <Button Content="Search" Margin="6,0,0,0" Padding="14,0" Click="Search_Click" />
                 </StackPanel>
                 <DockPanel>
@@ -34,7 +34,7 @@
         </Border>
         <Border Grid.Row="2" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="8">
             <StackPanel Orientation="Horizontal">
-                <Button Content="New folder" Padding="14,7" Margin="0,0,8,0" Click="NewFolder_Click" />
+                <Button x:Name="NewFolderButton" Content="New folder" Padding="14,7" Margin="0,0,8,0" Click="NewFolder_Click" />
                 <Button x:Name="RenameButton" Content="Rename" Padding="14,7" Margin="0,0,8,0" IsEnabled="False" Click="Rename_Click" />
                 <Button x:Name="DeleteButton" Content="Delete" Padding="14,7" Margin="0,0,8,0" IsEnabled="False" Click="Delete_Click" />
                 <Button Content="Refresh" Padding="14,7" Click="Refresh_Click" />

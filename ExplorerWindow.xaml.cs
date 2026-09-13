@@ -9,24 +9,21 @@ namespace DesktopTuner;
 
 public partial class ExplorerWindow : Window
 {
-    private sealed record ExplorerLocation(string? Path, bool IsDriveList = false);
-    private sealed record ExplorerEntry(string Name, string FullPath, bool IsDirectory, bool IsDrive, long? Length, DateTime Modified)
-    {
-        public string Type => IsDrive ? "Local drive" : IsDirectory ? "File folder" : System.IO.Path.GetExtension(Name) is { Length: > 1 } extension ? $"{extension[1..].ToUpperInvariant()} file" : "File";
-        public string SizeText => Length is long length ? FormatSize(length) : "";
-        public string ModifiedText => Modified == DateTime.MinValue ? "" : Modified.ToString("g");
-    }
+    private sealed record ExplorerLocation(string? Path, bool IsDriveList = false, string? SearchQuery = null);
 
     private readonly List<ExplorerLocation> _back = [];
     private readonly List<ExplorerLocation> _forward = [];
     private ExplorerLocation _location;
     private IReadOnlyList<ExplorerEntry> _entries = [];
+    private CancellationTokenSource? _searchCancellation;
+    private bool _isSearchView;
 
     public ExplorerWindow(string? initialPath = null)
     {
         InitializeComponent();
         var startPath = string.IsNullOrWhiteSpace(initialPath) ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) : initialPath;
         _location = Directory.Exists(startPath) ? new ExplorerLocation(Path.GetFullPath(startPath)) : new ExplorerLocation(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        Closed += (_, _) => CancelSearch();
         RefreshLocation();
     }
 
@@ -40,16 +37,29 @@ public partial class ExplorerWindow : Window
 
         if (addHistory)
         {
-            _back.Add(_location);
+            _back.Add(CurrentHistoryLocation());
             _forward.Clear();
         }
-        _location = target.IsDriveList ? target : new ExplorerLocation(Path.GetFullPath(target.Path!));
-        RefreshLocation();
+        CancelSearch();
+        _isSearchView = false;
+        _location = target.IsDriveList ? target : new ExplorerLocation(Path.GetFullPath(target.Path!), SearchQuery: target.SearchQuery);
+        SearchBox.Text = target.SearchQuery ?? "";
+        if (string.IsNullOrWhiteSpace(target.SearchQuery)) RefreshLocation();
+        else _ = SearchCurrentFolderAsync(target.SearchQuery);
+    }
+
+    private ExplorerLocation CurrentHistoryLocation() => _location with { SearchQuery = _isSearchView ? SearchBox.Text.Trim() : null };
+
+    private void CancelSearch()
+    {
+        if (_searchCancellation is null) return;
+        _searchCancellation.Cancel();
+        _searchCancellation.Dispose();
+        _searchCancellation = null;
     }
 
     private void RefreshLocation()
     {
-        var query = SearchBox.Text.Trim();
         IReadOnlyList<ExplorerEntry> entries;
         string? loadError = null;
         try
@@ -63,10 +73,7 @@ public partial class ExplorerWindow : Window
         }
 
         _entries = entries;
-        var visible = string.IsNullOrEmpty(query)
-            ? entries
-            : entries.Where(entry => entry.Name.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
-        EntriesList.ItemsSource = visible;
+        EntriesList.ItemsSource = entries;
         EntriesList.SelectedItem = null;
         var title = _location.IsDriveList ? "This PC" : Path.GetFileName(_location.Path!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         if (string.IsNullOrEmpty(title)) title = _location.Path ?? "Home";
@@ -76,12 +83,11 @@ public partial class ExplorerWindow : Window
         BackButton.IsEnabled = _back.Count > 0;
         ForwardButton.IsEnabled = _forward.Count > 0;
         UpButton.IsEnabled = !_location.IsDriveList && Directory.GetParent(_location.Path!) is not null;
-        EmptyMessage.Text = string.IsNullOrEmpty(query) ? "This folder is empty." : $"No items match “{query}”.";
-        EmptyMessage.Visibility = visible.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        SetFolderDetails(visible.Count);
+        EmptyMessage.Text = "This folder is empty.";
+        EmptyMessage.Visibility = entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        SetFolderDetails(entries.Count);
         if (loadError is not null) SetStatus(loadError);
-        else if (string.IsNullOrEmpty(query)) SetStatus(FormatItemCount(entries.Count));
-        else SetStatus($"{visible.Count} of {FormatItemCount(entries.Count)} match “{query}”.");
+        else SetStatus(FormatItemCount(entries.Count));
     }
 
     private static IReadOnlyList<ExplorerEntry> ReadDrives() => DriveInfo.GetDrives()
@@ -111,7 +117,7 @@ public partial class ExplorerWindow : Window
     private void Back_Click(object sender, RoutedEventArgs e)
     {
         if (_back.Count == 0) return;
-        _forward.Add(_location);
+        _forward.Add(CurrentHistoryLocation());
         var target = _back[^1];
         _back.RemoveAt(_back.Count - 1);
         Navigate(target, addHistory: false);
@@ -120,7 +126,7 @@ public partial class ExplorerWindow : Window
     private void Forward_Click(object sender, RoutedEventArgs e)
     {
         if (_forward.Count == 0) return;
-        _back.Add(_location);
+        _back.Add(CurrentHistoryLocation());
         var target = _forward[^1];
         _forward.RemoveAt(_forward.Count - 1);
         Navigate(target, addHistory: false);
@@ -164,9 +170,87 @@ public partial class ExplorerWindow : Window
         Navigate(new ExplorerLocation(path));
     }
 
-    private void Search_Click(object sender, RoutedEventArgs e) => RefreshLocation();
-    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) { if (IsLoaded) RefreshLocation(); }
-    private void SearchBox_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) RefreshLocation(); }
+    private void Search_Click(object sender, RoutedEventArgs e) => _ = SearchCurrentFolderAsync(SearchBox.Text);
+    private void SearchBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        _ = SearchCurrentFolderAsync(SearchBox.Text);
+        e.Handled = true;
+    }
+
+    private async Task SearchCurrentFolderAsync(string query)
+    {
+        var searchTerm = query.Trim();
+        CancelSearch();
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            _isSearchView = false;
+            _location = _location with { SearchQuery = null };
+            RefreshLocation();
+            return;
+        }
+        if (_location.IsDriveList || string.IsNullOrWhiteSpace(_location.Path))
+        {
+            SetStatus("Open a folder before searching its contents.");
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        _searchCancellation = cancellation;
+        _isSearchView = true;
+        _location = _location with { SearchQuery = searchTerm };
+        EntriesList.ItemsSource = null;
+        EntriesList.SelectedItem = null;
+        NewFolderButton.IsEnabled = false;
+        LocationTitle.Text = $"Search results for “{searchTerm}”";
+        LocationSubtitle.Text = $"Searching this folder and its subfolders in {_location.Path}";
+        EmptyMessage.Visibility = Visibility.Collapsed;
+        SetFolderDetails(0);
+        SetStatus("Searching…");
+
+        try
+        {
+            var result = await ExplorerSearchService.SearchAsync(_location.Path, searchTerm, cancellation.Token);
+            if (!ReferenceEquals(_searchCancellation, cancellation)) return;
+            _entries = result.Entries;
+            EntriesList.ItemsSource = _entries;
+            LocationSubtitle.Text = $"Search in {_location.Path}";
+            EmptyMessage.Text = $"No items match “{searchTerm}”.";
+            EmptyMessage.Visibility = _entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            SetFolderDetails(_entries.Count);
+            SetStatus(result.SkippedItems == 0
+                ? $"{FormatItemCount(_entries.Count)} found."
+                : $"{FormatItemCount(_entries.Count)} found; {result.SkippedItems} inaccessible item(s) or folder(s) skipped.");
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            if (ReferenceEquals(_searchCancellation, cancellation))
+            {
+                _entries = [];
+                EntriesList.ItemsSource = _entries;
+                EmptyMessage.Text = "Search could not complete.";
+                EmptyMessage.Visibility = Visibility.Visible;
+                LocationSubtitle.Text = $"Search in {_location.Path}";
+                SetFolderDetails(0);
+                SetStatus($"Search failed: {ex.Message}");
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(_searchCancellation, cancellation))
+            {
+                _searchCancellation.Dispose();
+                _searchCancellation = null;
+            }
+        }
+    }
+
+    private void RefreshCurrentView()
+    {
+        if (_isSearchView) _ = SearchCurrentFolderAsync(SearchBox.Text);
+        else RefreshLocation();
+    }
 
     private void EntriesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -237,7 +321,7 @@ public partial class ExplorerWindow : Window
         }
         else if (e.Key == Key.F5)
         {
-            RefreshLocation();
+            RefreshCurrentView();
             e.Handled = true;
         }
         else if (e.Key == Key.N && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift) && !_location.IsDriveList)
@@ -260,14 +344,15 @@ public partial class ExplorerWindow : Window
         DeleteMenuItem.IsEnabled = hasSelection;
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open")) is { } openItem)
             openItem.IsEnabled = EntriesList.SelectedItem is ExplorerEntry;
+        NewFolderButton.IsEnabled = !_location.IsDriveList && !_isSearchView;
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "New folder")) is { } newFolderItem)
-            newFolderItem.IsEnabled = !_location.IsDriveList;
+            newFolderItem.IsEnabled = !_location.IsDriveList && !_isSearchView;
     }
 
     private void NewFolder_Click(object sender, RoutedEventArgs e) => CreateFolder();
     private void Rename_Click(object sender, RoutedEventArgs e) => RenameSelected();
     private void Delete_Click(object sender, RoutedEventArgs e) => DeleteSelected();
-    private void Refresh_Click(object sender, RoutedEventArgs e) => RefreshLocation();
+    private void Refresh_Click(object sender, RoutedEventArgs e) => RefreshCurrentView();
 
     private void OpenSelected_Click(object sender, RoutedEventArgs e)
     {
@@ -276,7 +361,7 @@ public partial class ExplorerWindow : Window
 
     private void CreateFolder()
     {
-        if (_location.IsDriveList) return;
+        if (_location.IsDriveList || _isSearchView) return;
         try
         {
             var createdPath = ExplorerFileOperationService.CreateFolder(_location.Path!);
@@ -299,8 +384,8 @@ public partial class ExplorerWindow : Window
         try
         {
             var renamedPath = ExplorerFileOperationService.Rename(entry.FullPath, newName);
-            RefreshLocation();
-            EntriesList.SelectedItem = EntriesList.Items.Cast<ExplorerEntry>().FirstOrDefault(item => string.Equals(item.FullPath, renamedPath, StringComparison.OrdinalIgnoreCase));
+            RefreshCurrentView();
+            if (!_isSearchView) EntriesList.SelectedItem = EntriesList.Items.Cast<ExplorerEntry>().FirstOrDefault(item => string.Equals(item.FullPath, renamedPath, StringComparison.OrdinalIgnoreCase));
             SetStatus($"Renamed to {Path.GetFileName(renamedPath)}.");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
@@ -318,7 +403,7 @@ public partial class ExplorerWindow : Window
         {
             if (entry.IsDirectory) FileSystem.DeleteDirectory(entry.FullPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
             else FileSystem.DeleteFile(entry.FullPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
-            RefreshLocation();
+            RefreshCurrentView();
             SetStatus($"Sent {entry.Name} to the Recycle Bin.");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
@@ -361,6 +446,15 @@ public partial class ExplorerWindow : Window
 
     private void SetFolderDetails(int itemCount)
     {
+        if (_isSearchView)
+        {
+            DetailsName.Text = "Search results";
+            DetailsType.Text = "File search";
+            DetailsLocation.Text = _location.Path;
+            DetailsSize.Text = FormatItemCount(itemCount);
+            DetailsModified.Text = $"Name contains “{SearchBox.Text.Trim()}”.";
+            return;
+        }
         DetailsName.Text = _location.IsDriveList ? "This PC" : Path.GetFileName(_location.Path!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         if (string.IsNullOrEmpty(DetailsName.Text)) DetailsName.Text = _location.Path ?? "Home";
         DetailsType.Text = _location.IsDriveList ? "Computer" : "Folder";
@@ -370,13 +464,5 @@ public partial class ExplorerWindow : Window
     }
 
     private static string FormatItemCount(int count) => $"{count:N0} item{(count == 1 ? "" : "s")}";
-    private static string FormatSize(long bytes)
-    {
-        string[] units = ["B", "KB", "MB", "GB", "TB"];
-        double size = bytes;
-        var unit = 0;
-        while (size >= 1024 && unit < units.Length - 1) { size /= 1024; unit++; }
-        return unit == 0 ? $"{bytes:N0} B" : $"{size:N1} {units[unit]}";
-    }
     private void SetStatus(string message) => StatusText.Text = message;
 }
