@@ -15,11 +15,12 @@ public partial class StartMenuWindow : Window
     private IReadOnlyList<AppEntry> _apps = [];
     private IReadOnlyList<AppEntry> _pinnedApps = [];
     private StartMenuStyle _style = StartMenuStyle.Modern;
+    private bool _catalogLoaded;
+    private string? _catalogLoadError;
 
     public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null)
     {
         InitializeComponent();
-        _apps = _catalog.FindStartMenuApps();
         _pinnedApps = StartPinCatalog.Normalize(pinnedApps);
         _savePinnedApps = savePinnedApps;
         SetStyle(style);
@@ -172,11 +173,48 @@ public partial class StartMenuWindow : Window
 
     private static System.Windows.Media.SolidColorBrush Brush(string color) => new((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
 
-    private void Window_Loaded(object sender, RoutedEventArgs e)
+    private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
         SearchBox.Focus();
         Keyboard.Focus(SearchBox);
         SearchBox.SelectAll();
+        RefreshApps();
+        try
+        {
+            _apps = await LoadAppCatalogOnStaThreadAsync();
+        }
+        catch (Exception ex)
+        {
+            _catalogLoadError = $"Could not load installed apps: {ex.Message}";
+        }
+        finally
+        {
+            _catalogLoaded = true;
+            if (IsLoaded) RefreshApps();
+        }
+    }
+
+    private Task<IReadOnlyList<AppEntry>> LoadAppCatalogOnStaThreadAsync()
+    {
+        var completion = new TaskCompletionSource<IReadOnlyList<AppEntry>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                completion.SetResult(_catalog.FindStartMenuApps());
+            }
+            catch (Exception ex)
+            {
+                completion.SetException(ex);
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "Desktop Tuner Start app catalog"
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        return completion.Task;
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => RefreshApps();
@@ -184,18 +222,35 @@ public partial class StartMenuWindow : Window
     private void RefreshApps()
     {
         var query = SearchBox?.Text.Trim() ?? string.Empty;
-        var results = AppCatalogService.Search(_apps, query);
+        PinnedStartItems.ItemsSource = _pinnedApps;
+        PinnedStartPanel.Visibility = query.Length == 0 && _pinnedApps.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (!_catalogLoaded)
+        {
+            AppTree.ItemsSource = null;
+            AppTree.Visibility = Visibility.Collapsed;
+            AppList.ItemsSource = null;
+            AppList.Visibility = Visibility.Collapsed;
+            ResultsHeading.Text = query.Length == 0 ? "Loading apps" : "Searching apps";
+            SearchActionPanel.Visibility = query.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+            ResultCount.Text = "…";
+            EmptyMessage.Text = query.Length == 0 ? "Loading installed apps…" : "Searching installed apps…";
+            EmptyMessage.Visibility = Visibility.Visible;
+            return;
+        }
+
+        var results = _catalogLoadError is null ? AppCatalogService.Search(_apps, query) : Array.Empty<AppEntry>();
         var showFolders = _style == StartMenuStyle.Classic && query.Length == 0;
         AppTree.ItemsSource = showFolders ? AppCatalogService.BuildTree(_apps) : null;
         AppTree.Visibility = showFolders ? Visibility.Visible : Visibility.Collapsed;
         AppList.Visibility = showFolders ? Visibility.Collapsed : Visibility.Visible;
         AppList.ItemsSource = showFolders ? null : results;
         AppList.SelectedIndex = showFolders || results.Count == 0 ? -1 : 0;
-        PinnedStartItems.ItemsSource = _pinnedApps;
-        PinnedStartPanel.Visibility = query.Length == 0 && _pinnedApps.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         ResultsHeading.Text = query.Length > 0 ? "Search results" : showFolders ? "Programs" : "All apps";
         SearchActionPanel.Visibility = query.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         ResultCount.Text = results.Count.ToString();
+        EmptyMessage.Text = _catalogLoadError ?? (query.Length > 0
+            ? "No matching apps. Try a different search."
+            : "No installed apps were found.");
         EmptyMessage.Visibility = results.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -208,6 +263,11 @@ public partial class StartMenuWindow : Window
         }
         else if (e.Key == Key.Enter)
         {
+            if (!_catalogLoaded)
+            {
+                e.Handled = true;
+                return;
+            }
             if (AppTree.SelectedItem is null && AppList.SelectedItem is null && !string.IsNullOrWhiteSpace(SearchBox.Text))
                 OpenSearch(StartSearchTargetBuilder.WindowsSearch(SearchBox.Text), "Windows Search");
             else
