@@ -112,6 +112,7 @@ public partial class TaskbarWindow : Window
         QuickSettingsButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         if (integratedBounds is { } trayIntegratedBounds) bounds = trayIntegratedBounds;
         SettingsButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
+        NetworkButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         TrayButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         VolumeButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         ClockButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
@@ -1010,6 +1011,12 @@ public partial class TaskbarWindow : Window
     {
         try { Process.Start(new ProcessStartInfo("ms-settings:sound") { UseShellExecute = true }); }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open Sound settings", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void NetworkSettings_Click(object sender, RoutedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo(SystemFlyoutService.NetworkSettingsUri) { UseShellExecute = true }); }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open Network settings", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     private void AudioOutputContextMenu_Opened(object sender, RoutedEventArgs e)

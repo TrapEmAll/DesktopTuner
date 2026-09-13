@@ -7,6 +7,7 @@ public readonly record struct KeyboardKeyEvent(ushort VirtualKey, bool KeyUp);
 
 public static class SystemFlyoutService
 {
+    public const string NetworkSettingsUri = "ms-settings:network-wifi";
     private const ushort VK_LWIN = 0x5B;
     private const ushort VK_RWIN = 0x5C;
     private const ushort VK_A = 0x41;
