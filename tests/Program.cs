@@ -5,6 +5,29 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 var count = 0;
+var navigationTestRoot = Path.Combine(Path.GetTempPath(), $"desktop-tuner-navigation-{Guid.NewGuid():N}");
+try
+{
+    var nestedPath = Path.Combine(navigationTestRoot, "Alpha");
+    var hiddenPath = Path.Combine(navigationTestRoot, "Hidden");
+    Directory.CreateDirectory(nestedPath);
+    Directory.CreateDirectory(hiddenPath);
+    File.SetAttributes(hiddenPath, FileAttributes.Hidden);
+    Check("Alpha", string.Join(',', ExplorerNavigationService.ReadDirectories(navigationTestRoot, showHiddenItems: false).Directories.Select(directory => directory.Name)), "hide hidden folders in Explorer navigation when Windows hidden items are off");
+    Check("Alpha,Hidden", string.Join(',', ExplorerNavigationService.ReadDirectories(navigationTestRoot, showHiddenItems: true).Directories.Select(directory => directory.Name)), "include hidden folders in Explorer navigation when enabled");
+    CheckTrue(ExplorerNavigationService.ReadDirectories(Path.Combine(navigationTestRoot, "Missing"), showHiddenItems: false).Error is not null, "report unavailable folders in the Explorer navigation tree");
+    using var canceledNavigation = new CancellationTokenSource();
+    canceledNavigation.Cancel();
+    Throws<OperationCanceledException>(() => ExplorerNavigationService.ReadDirectories(navigationTestRoot, showHiddenItems: false, canceledNavigation.Token), "cancel Explorer navigation enumeration before it reads a folder");
+    var driveRoots = ExplorerNavigationService.ReadDriveRoots().Directories;
+    CheckTrue(driveRoots.Count > 0, "list available drive roots in Explorer This PC navigation");
+    CheckTrue(driveRoots.All(drive => !string.IsNullOrWhiteSpace(drive.Path)), "provide navigable paths for Explorer This PC drive roots");
+}
+finally
+{
+    if (Directory.Exists(navigationTestRoot)) Directory.Delete(navigationTestRoot, recursive: true);
+}
+
 Check(false, SystemBackdropService.TryApplyTransientBackdrop(IntPtr.Zero), "leave unsupported menu handles on the solid background");
 Check(false, SystemBackdropService.TryApplySmallRoundedCorners(IntPtr.Zero), "leave unsupported menu handles with system-default corners");
 Check(false, new DesktopPreferences(TaskbarEdge.Bottom).TaskbarOnAllDisplays, "preserve the primary-display behavior for older preference data");

@@ -15,6 +15,7 @@ public partial class ExplorerWindow : Window
 {
     private const string ExplorerTabDragFormat = "DesktopTuner.ExplorerTabState";
     private const string QuickAccessPinDragFormat = "DesktopTuner.ExplorerQuickAccessPin";
+    private readonly CancellationTokenSource _navigationLoadCancellation = new();
     private readonly List<ExplorerTabState> _tabs = [];
     private readonly List<ExplorerTabState> _closedTabs = [];
     private readonly HashSet<string> _cutPaths = new(StringComparer.OrdinalIgnoreCase);
@@ -54,6 +55,7 @@ public partial class ExplorerWindow : Window
     public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null)
     {
         InitializeComponent();
+        NavigationTree.ItemsSource = CreateNavigationRoots();
         _showHiddenItems = showHiddenItems;
         _hideFileExtensions = hideFileExtensions;
         _showRecentItems = showRecentItems;
@@ -70,7 +72,12 @@ public partial class ExplorerWindow : Window
         UpdateSortPresentation();
         ApplyExplorerViewMode(ActiveTab.ViewMode);
         SyncExplorerTabs();
-        Closed += (_, _) => { foreach (var tab in _tabs) CancelSearch(tab); };
+        Closed += (_, _) =>
+        {
+            _navigationLoadCancellation.Cancel();
+            _navigationLoadCancellation.Dispose();
+            foreach (var tab in _tabs) CancelSearch(tab);
+        };
         RefreshLocation();
     }
 
@@ -588,6 +595,53 @@ public partial class ExplorerWindow : Window
         .OrderBy(entry => entry.DriveGroupOrder)
         .ThenBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase)
         .ToList();
+
+    private static IReadOnlyList<ExplorerNavigationNode> CreateNavigationRoots()
+    {
+        var userFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var roots = new List<ExplorerNavigationNode>();
+        if (!string.IsNullOrWhiteSpace(userFolder)) roots.Add(new("User folder", userFolder));
+        roots.Add(new("This PC", isThisPc: true));
+        return roots;
+    }
+
+    private async void NavigationTreeItem_Expanded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TreeViewItem { DataContext: ExplorerNavigationNode node }
+            || node.IsPlaceholder || node.IsLoaded || node.IsLoading)
+            return;
+
+        node.IsLoading = true;
+        node.Children.Clear();
+        node.Children.Add(new("Loading...", isPlaceholder: true));
+        try
+        {
+            var cancellationToken = _navigationLoadCancellation.Token;
+            var result = await Task.Run(() => node.IsThisPc
+                ? ExplorerNavigationService.ReadDriveRoots()
+                : ExplorerNavigationService.ReadDirectories(node.Path!, _showHiddenItems, cancellationToken), cancellationToken);
+            node.Children.Clear();
+            foreach (var directory in result.Directories)
+                node.Children.Add(new(directory.Name, directory.Path));
+            node.IsLoaded = true;
+            if (result.Error is not null) SetStatus($"Could not load navigation folders: {result.Error}");
+        }
+        catch (OperationCanceledException) when (_navigationLoadCancellation.IsCancellationRequested)
+        {
+            node.Children.Clear();
+        }
+        finally
+        {
+            node.IsLoading = false;
+        }
+    }
+
+    private void NavigationTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (e.NewValue is not ExplorerNavigationNode node || node.IsPlaceholder) return;
+        if (node.IsThisPc) Navigate(new ExplorerLocation(null, IsDriveList: true));
+        else if (node.Path is { } path) Navigate(new ExplorerLocation(path));
+    }
 
     private static ExplorerEntry? ReadDrive(DriveInfo drive)
     {
