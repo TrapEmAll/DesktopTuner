@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace DesktopTuner;
 
@@ -24,6 +25,9 @@ public partial class ExplorerWindow : Window
     private bool _updatingSortControls;
     private bool _updatingViewModeControl;
     private bool _updatingDriveGroupingControl;
+    private bool _restoringFolderColumnWidths;
+    private bool _hasCompletedInitialLayout;
+    private int _columnWidthRestoreGeneration;
     private TabItem? _tabDragCandidate;
     private Point _tabDragStart;
     private ExplorerEntry? _entryDragCandidate;
@@ -77,6 +81,7 @@ public partial class ExplorerWindow : Window
     public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null, ExplorerFolderViewStore? folderViewStore = null, ExplorerSessionStore? sessionStore = null)
     {
         InitializeComponent();
+        Loaded += (_, _) => _hasCompletedInitialLayout = true;
         _navigationRoots = CreateNavigationRoots();
         NavigationTree.ItemsSource = _navigationRoots;
         _showHiddenItems = showHiddenItems;
@@ -125,6 +130,7 @@ public partial class ExplorerWindow : Window
             DetailsPaneToggle.IsChecked = restoreSession.DetailsPaneVisible;
             SetDetailsPaneVisibility(restoreSession.DetailsPaneVisible, captureCurrentHeight: false);
         }
+        RestoreColumnWidths(ActiveTab.Location.Path);
         UpdateSortPresentation();
         ApplyExplorerViewMode(ActiveTab.ViewMode);
         SyncExplorerTabs();
@@ -244,6 +250,7 @@ public partial class ExplorerWindow : Window
     private void ShowActiveTab()
     {
         SearchBox.Text = _location.SearchQuery ?? string.Empty;
+        RestoreColumnWidths(_location.Path);
         UpdateSortPresentation();
         ApplyExplorerViewMode(ActiveTab.ViewMode);
         if (_isSearchView && !string.IsNullOrWhiteSpace(_location.SearchQuery))
@@ -1455,18 +1462,67 @@ public partial class ExplorerWindow : Window
 
     private void RestoreFolderViewPreferences(ExplorerTabState tab)
     {
-        if (tab.Location.Path is not { } path || _folderViewStore.Load(path) is not { } preference) return;
+        if (tab.Location.Path is not { } path)
+        {
+            RestoreColumnWidths(null);
+            return;
+        }
+        if (_folderViewStore.Load(path) is not { } preference)
+        {
+            RestoreColumnWidths(path);
+            return;
+        }
         tab.ViewMode = preference.ViewMode;
         tab.SortColumn = preference.SortColumn;
         tab.SortAscending = preference.SortAscending;
+        RestoreColumnWidths(path);
     }
 
     private void SaveActiveFolderViewPreferences()
     {
         if (_location.Path is not { } path) return;
         _folderViewStore.Save(path, new ExplorerFolderViewPreference(
-            ActiveTab.ViewMode, ActiveTab.SortColumn, ActiveTab.SortAscending));
+            ActiveTab.ViewMode, ActiveTab.SortColumn, ActiveTab.SortAscending, GetColumnWidths()));
     }
+
+    private void DetailsColumnHeader_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.WidthChanged && _hasCompletedInitialLayout && !_restoringFolderColumnWidths) SaveActiveFolderViewPreferences();
+    }
+
+    private void RestoreColumnWidths(string? folderPath)
+    {
+        var widths = folderPath is null
+            ? null
+            : _folderViewStore.Load(folderPath)?.ColumnWidths;
+        SetColumnWidths(widths ?? new ExplorerColumnWidths());
+    }
+
+    private void SetColumnWidths(ExplorerColumnWidths widths)
+    {
+        _restoringFolderColumnWidths = true;
+        var generation = ++_columnWidthRestoreGeneration;
+        try
+        {
+            ExplorerDetailsGridView.Columns[0].Width = widths.Name;
+            ExplorerDetailsGridView.Columns[1].Width = widths.DateModified;
+            ExplorerDetailsGridView.Columns[2].Width = widths.Type;
+            ExplorerDetailsGridView.Columns[3].Width = widths.Size;
+        }
+        finally
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
+            {
+                if (generation == _columnWidthRestoreGeneration) _restoringFolderColumnWidths = false;
+            }));
+        }
+    }
+
+    private ExplorerColumnWidths GetColumnWidths() => new(
+        ExplorerDetailsGridView.Columns[0].Width,
+        ExplorerDetailsGridView.Columns[1].Width,
+        ExplorerDetailsGridView.Columns[2].Width,
+        ExplorerDetailsGridView.Columns[3].Width);
 
     private void UpdateSortPresentation()
     {

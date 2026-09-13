@@ -278,7 +278,7 @@
                         <ListView.View>
                             <GridView x:Name="ExplorerDetailsGridView">
                                 <GridViewColumn Width="360">
-                                    <GridViewColumn.Header><GridViewColumnHeader x:Name="NameColumnHeader" Tag="Name" Click="SortColumn_Click">Name</GridViewColumnHeader></GridViewColumn.Header>
+                                    <GridViewColumn.Header><GridViewColumnHeader x:Name="NameColumnHeader" Tag="Name" Click="SortColumn_Click" SizeChanged="DetailsColumnHeader_SizeChanged">Name</GridViewColumnHeader></GridViewColumn.Header>
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -293,13 +293,13 @@
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
                                 <GridViewColumn Width="155" DisplayMemberBinding="{Binding ModifiedText}">
-                                    <GridViewColumn.Header><GridViewColumnHeader x:Name="DateModifiedColumnHeader" Tag="DateModified" Click="SortColumn_Click">Date modified</GridViewColumnHeader></GridViewColumn.Header>
+                                    <GridViewColumn.Header><GridViewColumnHeader x:Name="DateModifiedColumnHeader" Tag="DateModified" Click="SortColumn_Click" SizeChanged="DetailsColumnHeader_SizeChanged">Date modified</GridViewColumnHeader></GridViewColumn.Header>
                                 </GridViewColumn>
                                 <GridViewColumn Width="130" DisplayMemberBinding="{Binding Type}">
-                                    <GridViewColumn.Header><GridViewColumnHeader x:Name="TypeColumnHeader" Tag="Type" Click="SortColumn_Click">Type</GridViewColumnHeader></GridViewColumn.Header>
+                                    <GridViewColumn.Header><GridViewColumnHeader x:Name="TypeColumnHeader" Tag="Type" Click="SortColumn_Click" SizeChanged="DetailsColumnHeader_SizeChanged">Type</GridViewColumnHeader></GridViewColumn.Header>
                                 </GridViewColumn>
                                 <GridViewColumn Width="105" DisplayMemberBinding="{Binding SizeText}">
-                                    <GridViewColumn.Header><GridViewColumnHeader x:Name="SizeColumnHeader" Tag="Size" Click="SortColumn_Click">Size</GridViewColumnHeader></GridViewColumn.Header>
+                                    <GridViewColumn.Header><GridViewColumnHeader x:Name="SizeColumnHeader" Tag="Size" Click="SortColumn_Click" SizeChanged="DetailsColumnHeader_SizeChanged">Size</GridViewColumnHeader></GridViewColumn.Header>
                                 </GridViewColumn>
                             </GridView>
                         </ListView.View>
