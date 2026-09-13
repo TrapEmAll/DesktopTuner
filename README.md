@@ -5,7 +5,7 @@ A native Windows 11 desktop-personalization starter focused on the Start menu, t
 ## What works in this build
 
 - Opens a searchable Start-style app launcher from Ctrl+Alt+Space or the Start settings page. It indexes the user's and shared Start menu shortcuts and can open Documents, Downloads, and Windows Settings.
-- Opens a primary-monitor taskbar overlay with live top-level window switching, minimize commands, a clock, and a shortcut to the companion Start menu.
+- Opens a primary-monitor taskbar overlay on any edge with live top-level window switching, minimize commands, a clock, and a shortcut to the companion Start menu. The chosen edge persists between app launches.
 - Adjusts eight per-user Windows settings across Start, taskbar, and File Explorer, including an experimental classic context-menu switch.
 - Saves and imports portable JSON profiles. Import loads choices for review and never applies them automatically.
 - Captures the exact prior registry values before applying and provides one-step undo for the last successful apply.

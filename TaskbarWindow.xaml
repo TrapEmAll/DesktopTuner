@@ -6,6 +6,8 @@
         Foreground="#F4F6FA" FontFamily="Segoe UI Variable Text, Segoe UI"
         Loaded="Window_Loaded" Closed="Window_Closed">
     <Window.Resources>
+        <ItemsPanelTemplate x:Key="HorizontalWindowPanel"><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="VerticalWindowPanel"><StackPanel Orientation="Vertical" /></ItemsPanelTemplate>
         <Style x:Key="TaskButton" TargetType="Button">
             <Setter Property="Foreground" Value="#E5E9F2" />
             <Setter Property="Background" Value="Transparent" />
@@ -28,15 +30,12 @@
             </Setter>
         </Style>
     </Window.Resources>
-    <Border Background="#F2171D2A" BorderBrush="#405064" BorderThickness="0,1,0,0" Padding="10,4">
-        <Grid>
+    <Border x:Name="RootBorder" Background="#F2171D2A" BorderBrush="#405064" BorderThickness="0,1,0,0" Padding="10,4">
+        <Grid x:Name="LayoutGrid">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Content="D" Width="38" Height="38" Style="{StaticResource TaskButton}" Background="#6258D9" FontWeight="Bold" FontSize="18" Click="Start_Click" ToolTip="Open Desktop Tuner Start menu" />
-            <Grid Grid.Column="1" Margin="10,0">
-                <ItemsControl x:Name="WindowItems" VerticalAlignment="Center">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
+            <Button x:Name="StartButton" Grid.Column="0" Content="D" Width="38" Height="38" Style="{StaticResource TaskButton}" Background="#6258D9" FontWeight="Bold" FontSize="18" Click="Start_Click" ToolTip="Open Desktop Tuner Start menu" />
+            <ScrollViewer x:Name="WindowScroller" Grid.Column="1" Margin="10,0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <ItemsControl x:Name="WindowItems" VerticalAlignment="Center" ItemsPanel="{StaticResource HorizontalWindowPanel}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Button Style="{StaticResource TaskButton}" Tag="{Binding}" Click="WindowButton_Click" ToolTip="{Binding Title}">
@@ -54,9 +53,9 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+            </ScrollViewer>
                 <TextBlock x:Name="EmptyText" Text="No open app windows" Foreground="#8993A7" FontSize="11" VerticalAlignment="Center" Margin="6,0" />
-            </Grid>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+            <StackPanel x:Name="RightControls" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                 <Button Content="Settings" Style="{StaticResource TaskButton}" Click="Settings_Click" FontSize="11" />
                 <Border Background="#30394D" CornerRadius="8" Padding="10,6" Margin="3,0,8,0">
                     <TextBlock x:Name="ClockText" FontSize="12" FontWeight="SemiBold" />
