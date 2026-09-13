@@ -38,8 +38,10 @@ public static class TaskbarLayoutCalculator
         {
             TaskbarEdge.Top => taskbar.Top + taskbar.Height + gapY,
             TaskbarEdge.Bottom => taskbar.Top - height - gapY,
-            _ => display.Top + gapY
+            _ => preferences.TaskbarLayout == TaskbarStyle.Floating ? taskbar.Top + gapY : display.Top + gapY
         };
+        if (preferences.TaskbarLayout == TaskbarStyle.Floating && preferences.TaskbarEdge is TaskbarEdge.Top or TaskbarEdge.Bottom)
+            left = taskbar.Left + gapX;
 
         var minLeft = display.Left + 8 * display.ScaleX;
         var minTop = display.Top + 8 * display.ScaleY;
@@ -56,6 +58,7 @@ public static class TaskbarLayoutCalculator
         ArgumentNullException.ThrowIfNull(preferences);
 
         var vertical = preferences.TaskbarEdge is TaskbarEdge.Left or TaskbarEdge.Right;
+        TaskbarBounds bounds;
         if (vertical)
         {
             var width = collapsed ? 4 : preferences.TaskbarSize switch
@@ -65,17 +68,30 @@ public static class TaskbarLayoutCalculator
                 TaskbarSize.Large => 204,
                 _ => throw new ArgumentOutOfRangeException(nameof(preferences), "Unknown taskbar size.")
             };
-            return new TaskbarBounds(preferences.TaskbarEdge == TaskbarEdge.Left ? 0 : screenWidth - width, 0, width, screenHeight);
+            var height = preferences.TaskbarLayout == TaskbarStyle.Floating ? screenHeight * 0.7 : screenHeight;
+            var top = (screenHeight - height) / 2;
+            var left = preferences.TaskbarEdge == TaskbarEdge.Left ? 0 : screenWidth - width;
+            if (preferences.TaskbarLayout == TaskbarStyle.Floating && !collapsed)
+                left += preferences.TaskbarEdge == TaskbarEdge.Left ? 12 : -12;
+            bounds = new TaskbarBounds(left, top, width, height);
         }
-
-        var height = collapsed ? 4 : preferences.TaskbarSize switch
+        else
         {
-            TaskbarSize.Small => 46,
-            TaskbarSize.Standard => 54,
-            TaskbarSize.Large => 68,
-            _ => throw new ArgumentOutOfRangeException(nameof(preferences), "Unknown taskbar size.")
-        };
-        return new TaskbarBounds(0, preferences.TaskbarEdge == TaskbarEdge.Top ? 0 : screenHeight - height, screenWidth, height);
+            var height = collapsed ? 4 : preferences.TaskbarSize switch
+            {
+                TaskbarSize.Small => 46,
+                TaskbarSize.Standard => 54,
+                TaskbarSize.Large => 68,
+                _ => throw new ArgumentOutOfRangeException(nameof(preferences), "Unknown taskbar size.")
+            };
+            var width = preferences.TaskbarLayout == TaskbarStyle.Floating ? screenWidth * 0.7 : screenWidth;
+            var left = (screenWidth - width) / 2;
+            var top = preferences.TaskbarEdge == TaskbarEdge.Top ? 0 : screenHeight - height;
+            if (preferences.TaskbarLayout == TaskbarStyle.Floating && !collapsed)
+                top += preferences.TaskbarEdge == TaskbarEdge.Top ? 12 : -12;
+            bounds = new TaskbarBounds(left, top, width, height);
+        }
+        return bounds;
     }
 }
 

@@ -5,9 +5,10 @@ namespace DesktopTuner;
 
 public enum TaskbarEdge { Bottom, Top, Left, Right }
 public enum TaskbarSize { Small, Standard, Large }
+public enum TaskbarStyle { EdgeToEdge, Floating }
 public enum StartMenuStyle { Modern, Classic, Compact }
 public sealed record PinnedTaskbarApp(string Name, string ExecutablePath, bool IsDirectory = false);
-public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern, bool TaskbarOnAllDisplays = false);
+public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern, bool TaskbarOnAllDisplays = false, TaskbarStyle TaskbarLayout = TaskbarStyle.EdgeToEdge);
 
 public sealed class DesktopPreferencesStore
 {
@@ -24,7 +25,7 @@ public sealed class DesktopPreferencesStore
         try
         {
             var value = JsonSerializer.Deserialize<DesktopPreferences>(File.ReadAllText(_path));
-            if (value is null || !Enum.IsDefined(value.TaskbarEdge) || !Enum.IsDefined(value.TaskbarSize) || !Enum.IsDefined(value.StartMenuStyle))
+            if (value is null || !Enum.IsDefined(value.TaskbarEdge) || !Enum.IsDefined(value.TaskbarSize) || !Enum.IsDefined(value.StartMenuStyle) || !Enum.IsDefined(value.TaskbarLayout))
                 return new DesktopPreferences(TaskbarEdge.Bottom);
             var pins = (value.PinnedApps ?? [])
                 .Where(app => app is not null && !string.IsNullOrWhiteSpace(app.Name) && !string.IsNullOrWhiteSpace(app.ExecutablePath) &&

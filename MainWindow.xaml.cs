@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     private WindowsKeyStartHook? _windowsKeyHook;
     private TaskbarEdge _taskbarEdge = TaskbarEdge.Bottom;
     private TaskbarSize _taskbarSize = TaskbarSize.Standard;
+    private TaskbarStyle _taskbarLayout = TaskbarStyle.EdgeToEdge;
     private bool _taskbarAutoHide;
     private List<PinnedTaskbarApp> _pinnedApps = [];
     private bool _replaceWindowsKey;
@@ -49,6 +50,7 @@ public partial class MainWindow : Window
         var desktopPreferences = _preferences.Load();
         _taskbarEdge = desktopPreferences.TaskbarEdge;
         _taskbarSize = desktopPreferences.TaskbarSize;
+        _taskbarLayout = desktopPreferences.TaskbarLayout;
         _taskbarAutoHide = desktopPreferences.AutoHide;
         _pinnedApps = desktopPreferences.PinnedApps ?? [];
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
@@ -196,6 +198,21 @@ public partial class MainWindow : Window
             densityRow.Children.Add(sizeSelector);
             PageContent.Children.Add(densityRow);
 
+            var styleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            styleRow.Children.Add(new TextBlock { Text = "Taskbar style", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+            var styleSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
+            styleSelector.Items.Add(new ComboBoxItem { Content = "Full edge", Tag = TaskbarStyle.EdgeToEdge });
+            styleSelector.Items.Add(new ComboBoxItem { Content = "Floating", Tag = TaskbarStyle.Floating });
+            styleSelector.SelectedIndex = (int)_taskbarLayout;
+            styleSelector.SelectionChanged += (_, _) =>
+            {
+                if (styleSelector.SelectedItem is not ComboBoxItem { Tag: TaskbarStyle style }) return;
+                _taskbarLayout = style;
+                SaveDesktopPreferences();
+            };
+            styleRow.Children.Add(styleSelector);
+            PageContent.Children.Add(styleRow);
+
             var autoHide = new CheckBox { Content = "Automatically hide the custom taskbar", IsChecked = _taskbarAutoHide, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
             autoHide.Checked += (_, _) => { _taskbarAutoHide = true; SaveDesktopPreferences(); };
             autoHide.Unchecked += (_, _) => { _taskbarAutoHide = false; SaveDesktopPreferences(); };
@@ -207,7 +224,7 @@ public partial class MainWindow : Window
             var launchButton = new Button { Content = "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowTaskbar();
             PageContent.Children.Add(launchButton);
-            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, size, and optional auto-hide behavior. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and shows the clock. It covers the Windows taskbar visually while running; closing it reveals the native taskbar again. System tray integration remains parity work.");
+            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, size, full-edge or floating style, and optional auto-hide behavior. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and shows the clock. It covers the Windows taskbar visually while running; closing it reveals the native taskbar again. System tray integration remains parity work.");
             PageContent.Children.Add(overlayInfo);
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);
@@ -462,7 +479,7 @@ public partial class MainWindow : Window
         if (display is not null)
         {
             var bounds = TaskbarLayoutCalculator.CalculateStartMenu(display, _startMenuWindow.Width, _startMenuWindow.Height,
-                new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide));
+                new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, TaskbarLayout: _taskbarLayout));
             if (!TaskbarDisplayService.PositionWindow(_startMenuWindow, bounds))
                 System.Diagnostics.Trace.TraceError($"Could not place Start menu on display {display.DeviceName}.");
             return;
@@ -538,7 +555,7 @@ public partial class MainWindow : Window
         finally { _closingTaskbars = false; }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout);
 
     private void SaveDesktopPreferences()
     {

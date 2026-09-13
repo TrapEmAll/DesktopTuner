@@ -60,7 +60,8 @@ public partial class TaskbarWindow : Window
 
     private void ApplyLayout()
     {
-        var bounds = TaskbarLayoutCalculator.Calculate(Display, new DesktopPreferences(_edge, _size, _autoHide), _collapsed);
+        var layoutPreferences = _preferences with { TaskbarEdge = _edge, TaskbarSize = _size, AutoHide = _autoHide };
+        var bounds = TaskbarLayoutCalculator.Calculate(Display, layoutPreferences, _collapsed);
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         Width = bounds.Width / Display.ScaleX;
         Height = bounds.Height / Display.ScaleY;
@@ -121,6 +122,23 @@ public partial class TaskbarWindow : Window
             PinDivider.Width = 1;
             PinDivider.Height = 24;
             PinDivider.Margin = new Thickness(5, 0, 5, 0);
+        }
+
+        if (_preferences.TaskbarLayout == TaskbarStyle.Floating)
+        {
+            RootBorder.CornerRadius = new CornerRadius(14);
+            RootBorder.Background = Brush("#E6171D2A");
+            RootBorder.BorderBrush = Brush("#66708D");
+            RootBorder.BorderThickness = new Thickness(1);
+        }
+        else
+        {
+            RootBorder.CornerRadius = new CornerRadius(0);
+            RootBorder.Background = Brush("#F2171D2A");
+            RootBorder.BorderBrush = Brush("#405064");
+            RootBorder.BorderThickness = vertical
+                ? (_edge == TaskbarEdge.Left ? new Thickness(0, 0, 1, 0) : new Thickness(1, 0, 0, 0))
+                : (_edge == TaskbarEdge.Top ? new Thickness(0, 0, 0, 1) : new Thickness(0, 1, 0, 0));
         }
     }
 
