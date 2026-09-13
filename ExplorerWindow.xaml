@@ -19,14 +19,6 @@
             <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource DesktopBorderBrush}" />
         </Style>
-        <Style TargetType="ContextMenu">
-            <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource DesktopBorderBrush}" />
-        </Style>
-        <Style TargetType="MenuItem">
-            <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
-        </Style>
         <Style TargetType="ListViewItem">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCut}" Value="True"><Setter Property="Opacity" Value="0.55" /></DataTrigger>
