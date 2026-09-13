@@ -57,6 +57,8 @@ public static class ExplorerDriveCatalog
                 ? grouped.ThenBy(entry => entry.Type, StringComparer.CurrentCultureIgnoreCase)
                 : grouped.ThenByDescending(entry => entry.Type, StringComparer.CurrentCultureIgnoreCase),
             ExplorerSortColumn.Size => ascending ? grouped.ThenBy(entry => entry.Length) : grouped.ThenByDescending(entry => entry.Length),
+            ExplorerSortColumn.DateCreated => ascending ? grouped.ThenBy(entry => entry.Created) : grouped.ThenByDescending(entry => entry.Created),
+            ExplorerSortColumn.DateAccessed => ascending ? grouped.ThenBy(entry => entry.Accessed) : grouped.ThenByDescending(entry => entry.Accessed),
             _ => throw new ArgumentOutOfRangeException(nameof(column))
         };
         return grouped.ThenBy(entry => entry.DisplayName, StringComparer.CurrentCultureIgnoreCase)

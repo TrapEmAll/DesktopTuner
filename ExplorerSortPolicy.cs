@@ -5,7 +5,9 @@ public enum ExplorerSortColumn
     Name,
     DateModified,
     Type,
-    Size
+    Size,
+    DateCreated,
+    DateAccessed
 }
 
 public static class ExplorerSortPolicy
@@ -34,6 +36,12 @@ public static class ExplorerSortPolicy
                 ExplorerSortColumn.Size => ascending
                     ? group.OrderBy(entry => entry.Length)
                     : group.OrderByDescending(entry => entry.Length),
+                ExplorerSortColumn.DateCreated => ascending
+                    ? group.OrderBy(entry => entry.Created)
+                    : group.OrderByDescending(entry => entry.Created),
+                ExplorerSortColumn.DateAccessed => ascending
+                    ? group.OrderBy(entry => entry.Accessed)
+                    : group.OrderByDescending(entry => entry.Accessed),
                 _ => throw new ArgumentOutOfRangeException(nameof(column), column, "Unknown Explorer sort column.")
             };
             result.AddRange(ordered.ThenBy(entry => entry.DisplayName, StringComparer.CurrentCultureIgnoreCase)

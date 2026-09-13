@@ -65,7 +65,9 @@ public static class ExplorerHomeService
                     {
                         IsHidden = (attributes & FileAttributes.Hidden) != 0,
                         IsSystem = (attributes & FileAttributes.System) != 0,
-                        RecentAccessed = shortcut.Modified
+                        RecentAccessed = shortcut.Modified,
+                        Created = info.CreationTime,
+                        Accessed = info.LastAccessTime
                     };
                     if (!entry.IsSystem && (showHiddenItems || !entry.IsHidden)) recentEntries.Add(entry);
                 }

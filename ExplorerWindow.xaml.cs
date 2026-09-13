@@ -934,15 +934,18 @@ public partial class ExplorerWindow : Window
     {
         var attributes = File.GetAttributes(path);
         var isDirectory = (attributes & FileAttributes.Directory) != 0;
-        var modified = File.GetLastWriteTime(path);
+        FileSystemInfo fileSystemInfo = isDirectory ? new DirectoryInfo(path) : new FileInfo(path);
+        var modified = fileSystemInfo.LastWriteTime;
         var entry = isDirectory
             ? new ExplorerEntry(Path.GetFileName(path), path, true, false, null, modified)
-            : new ExplorerEntry(Path.GetFileName(path), path, false, false, new FileInfo(path).Length, modified);
+            : new ExplorerEntry(Path.GetFileName(path), path, false, false, ((FileInfo)fileSystemInfo).Length, modified);
         return entry with
         {
             IsReparsePoint = (attributes & FileAttributes.ReparsePoint) != 0,
             IsHidden = (attributes & FileAttributes.Hidden) != 0,
-            IsSystem = (attributes & FileAttributes.System) != 0
+            IsSystem = (attributes & FileAttributes.System) != 0,
+            Created = fileSystemInfo.CreationTime,
+            Accessed = fileSystemInfo.LastAccessTime
         };
     }
 
@@ -1508,6 +1511,8 @@ public partial class ExplorerWindow : Window
             ExplorerDetailsGridView.Columns[1].Width = widths.DateModified;
             ExplorerDetailsGridView.Columns[2].Width = widths.Type;
             ExplorerDetailsGridView.Columns[3].Width = widths.Size;
+            ExplorerDetailsGridView.Columns[4].Width = widths.DateCreated;
+            ExplorerDetailsGridView.Columns[5].Width = widths.DateAccessed;
         }
         finally
         {
@@ -1522,7 +1527,9 @@ public partial class ExplorerWindow : Window
         ExplorerDetailsGridView.Columns[0].Width,
         ExplorerDetailsGridView.Columns[1].Width,
         ExplorerDetailsGridView.Columns[2].Width,
-        ExplorerDetailsGridView.Columns[3].Width);
+        ExplorerDetailsGridView.Columns[3].Width,
+        ExplorerDetailsGridView.Columns[4].Width,
+        ExplorerDetailsGridView.Columns[5].Width);
 
     private void UpdateSortPresentation()
     {
@@ -1538,6 +1545,8 @@ public partial class ExplorerWindow : Window
         DateModifiedColumnHeader.Content = HeaderLabel("DateModified", _sortColumn == ExplorerSortColumn.DateModified, _sortAscending);
         TypeColumnHeader.Content = HeaderLabel("Type", _sortColumn == ExplorerSortColumn.Type, _sortAscending);
         SizeColumnHeader.Content = HeaderLabel("Size", _sortColumn == ExplorerSortColumn.Size, _sortAscending);
+        DateCreatedColumnHeader.Content = HeaderLabel("DateCreated", _sortColumn == ExplorerSortColumn.DateCreated, _sortAscending);
+        DateAccessedColumnHeader.Content = HeaderLabel("DateAccessed", _sortColumn == ExplorerSortColumn.DateAccessed, _sortAscending);
     }
 
     private static string HeaderLabel(string key, bool sorted, bool ascending)
@@ -1548,6 +1557,8 @@ public partial class ExplorerWindow : Window
             "DateModified" => "Date modified",
             "Type" => "Type",
             "Size" => "Size",
+            "DateCreated" => "Date created",
+            "DateAccessed" => "Date accessed",
             _ => key
         };
         return sorted ? $"{label} {(ascending ? "↑" : "↓")}" : label;

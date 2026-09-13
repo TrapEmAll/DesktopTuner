@@ -198,6 +198,8 @@
                             <ComboBoxItem Content="Date modified" Tag="DateModified" />
                             <ComboBoxItem Content="Type" Tag="Type" />
                             <ComboBoxItem Content="Size" Tag="Size" />
+                            <ComboBoxItem Content="Date created" Tag="DateCreated" />
+                            <ComboBoxItem Content="Date accessed" Tag="DateAccessed" />
                         </ComboBox>
                         <Button x:Name="SortDirectionButton" Content="Ascending ↑" Margin="6,0,14,0" Padding="12,6" Click="SortDirectionButton_Click" />
                         <CheckBox x:Name="GroupDrivesToggle" Content="Group drives by type" VerticalAlignment="Center" Margin="0,0,14,0" Click="GroupDrivesToggle_Click" />
@@ -300,6 +302,12 @@
                                 </GridViewColumn>
                                 <GridViewColumn Width="105" DisplayMemberBinding="{Binding SizeText}">
                                     <GridViewColumn.Header><GridViewColumnHeader x:Name="SizeColumnHeader" Tag="Size" Click="SortColumn_Click" SizeChanged="DetailsColumnHeader_SizeChanged">Size</GridViewColumnHeader></GridViewColumn.Header>
+                                </GridViewColumn>
+                                <GridViewColumn Width="155" DisplayMemberBinding="{Binding CreatedText}">
+                                    <GridViewColumn.Header><GridViewColumnHeader x:Name="DateCreatedColumnHeader" Tag="DateCreated" Click="SortColumn_Click" SizeChanged="DetailsColumnHeader_SizeChanged">Date created</GridViewColumnHeader></GridViewColumn.Header>
+                                </GridViewColumn>
+                                <GridViewColumn Width="155" DisplayMemberBinding="{Binding AccessedText}">
+                                    <GridViewColumn.Header><GridViewColumnHeader x:Name="DateAccessedColumnHeader" Tag="DateAccessed" Click="SortColumn_Click" SizeChanged="DetailsColumnHeader_SizeChanged">Date accessed</GridViewColumnHeader></GridViewColumn.Header>
                                 </GridViewColumn>
                             </GridView>
                         </ListView.View>

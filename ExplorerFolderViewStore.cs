@@ -14,7 +14,9 @@ public sealed record ExplorerColumnWidths(
     double Name = 360,
     double DateModified = 155,
     double Type = 130,
-    double Size = 105);
+    double Size = 105,
+    double DateCreated = 155,
+    double DateAccessed = 155);
 
 public sealed class ExplorerFolderViewStore
 {
@@ -102,7 +104,8 @@ public sealed class ExplorerFolderViewStore
         && (preference.ColumnWidths is null || IsValid(preference.ColumnWidths));
 
     private static bool IsValid(ExplorerColumnWidths widths) =>
-        IsValid(widths.Name) && IsValid(widths.DateModified) && IsValid(widths.Type) && IsValid(widths.Size);
+        IsValid(widths.Name) && IsValid(widths.DateModified) && IsValid(widths.Type) && IsValid(widths.Size)
+        && IsValid(widths.DateCreated) && IsValid(widths.DateAccessed);
 
     private static bool IsValid(double width) => double.IsFinite(width) && width is >= 48 and <= 4096;
 

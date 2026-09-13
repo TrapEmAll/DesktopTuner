@@ -670,7 +670,7 @@ try
     Check(true, quickAccessStore.Remove(explorerTestDirectory), "remove a folder from quick access");
     Check("SecondQuickAccess", string.Join(',', quickAccessStore.Load().Select(pin => pin.Name)), "persist quick access removals without disturbing other pins");
     var folderViewStore = new ExplorerFolderViewStore(Path.Combine(temporaryPreferencesDirectory, "explorer-folder-views.json"));
-    var folderColumnWidths = new ExplorerColumnWidths(420, 180, 140, 115);
+    var folderColumnWidths = new ExplorerColumnWidths(420, 180, 140, 115, 160, 165);
     var folderViewPreference = new ExplorerFolderViewPreference(ExplorerViewMode.LargeIcons, ExplorerSortColumn.DateModified, false, folderColumnWidths);
     Check(true, folderViewStore.Save(explorerTestDirectory, folderViewPreference), "save a folder's Explorer view preferences");
     Check(folderViewPreference, folderViewStore.Load(explorerTestDirectory), "restore saved Explorer view preferences");
@@ -682,6 +682,11 @@ try
     var legacyFolderViewPath = Path.Combine(temporaryPreferencesDirectory, "legacy-folder-views.json");
     File.WriteAllText(legacyFolderViewPath, $"{{\"{explorerTestDirectory.Replace("\\", "\\\\")}\":{{\"ViewMode\":0,\"SortColumn\":0,\"SortAscending\":true}}}}");
     Check(null, new ExplorerFolderViewStore(legacyFolderViewPath).Load(explorerTestDirectory)!.ColumnWidths, "load older folder view preferences without column widths");
+    var legacyColumnWidthsPath = Path.Combine(temporaryPreferencesDirectory, "legacy-column-widths.json");
+    File.WriteAllText(legacyColumnWidthsPath, $"{{\"{explorerTestDirectory.Replace("\\", "\\\\")}\":{{\"ViewMode\":0,\"SortColumn\":0,\"SortAscending\":true,\"ColumnWidths\":{{\"Name\":400,\"DateModified\":170,\"Type\":125,\"Size\":100}}}}}}");
+    var migratedColumnWidths = new ExplorerFolderViewStore(legacyColumnWidthsPath).Load(explorerTestDirectory)!.ColumnWidths;
+    Check(155d, migratedColumnWidths!.DateCreated, "default new Date created column width when loading an older folder view");
+    Check(155d, migratedColumnWidths.DateAccessed, "default new Date accessed column width when loading an older folder view");
     var corruptFolderViewPath = Path.Combine(temporaryPreferencesDirectory, "corrupt-folder-views.json");
     File.WriteAllText(corruptFolderViewPath, "invalid-json");
     Check(null, new ExplorerFolderViewStore(corruptFolderViewPath).Load(explorerTestDirectory), "recover from corrupt saved Explorer folder views");
@@ -891,15 +896,17 @@ try
     Throws<ArgumentException>(() => ExplorerSelectionSummaryService.Resolve([]), "reject an empty Explorer selection summary");
     var explorerSortEntries = new[]
     {
-        new ExplorerEntry("z-folder", @"C:\items\z-folder", true, false, null, new DateTime(2024, 1, 1)),
-        new ExplorerEntry("a.txt", @"C:\items\a.txt", false, false, 20, new DateTime(2024, 1, 2)),
-        new ExplorerEntry("b-folder", @"C:\items\b-folder", true, false, null, new DateTime(2024, 1, 3)),
-        new ExplorerEntry("b.log", @"C:\items\b.log", false, false, 5, new DateTime(2024, 1, 4))
+        new ExplorerEntry("z-folder", @"C:\items\z-folder", true, false, null, new DateTime(2024, 1, 1)) { Created = new DateTime(2024, 1, 4), Accessed = new DateTime(2024, 1, 1) },
+        new ExplorerEntry("a.txt", @"C:\items\a.txt", false, false, 20, new DateTime(2024, 1, 2)) { Created = new DateTime(2024, 1, 2), Accessed = new DateTime(2024, 1, 2) },
+        new ExplorerEntry("b-folder", @"C:\items\b-folder", true, false, null, new DateTime(2024, 1, 3)) { Created = new DateTime(2024, 1, 1), Accessed = new DateTime(2024, 1, 4) },
+        new ExplorerEntry("b.log", @"C:\items\b.log", false, false, 5, new DateTime(2024, 1, 4)) { Created = new DateTime(2024, 1, 3), Accessed = new DateTime(2024, 1, 3) }
     };
     Check("z-folder,b-folder,b.log,a.txt", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.Name, ascending: false).Select(entry => entry.Name)), "sort names descending while keeping folders grouped first");
     Check("b-folder,z-folder,b.log,a.txt", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.DateModified, ascending: false).Select(entry => entry.Name)), "sort by modification date with directory grouping");
     Check("b-folder,z-folder,a.txt,b.log", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.Type, ascending: false).Select(entry => entry.Name)), "sort by type with folders grouped first");
     Check("b-folder,z-folder,a.txt,b.log", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.Size, ascending: false).Select(entry => entry.Name)), "sort files by numeric size instead of formatted size text");
+    Check("b-folder,z-folder,a.txt,b.log", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.DateCreated, ascending: true).Select(entry => entry.Name)), "sort by creation date while keeping folders grouped first");
+    Check("b-folder,z-folder,b.log,a.txt", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.DateAccessed, ascending: false).Select(entry => entry.Name)), "sort by last-access date descending while keeping folders grouped first");
 
     var driveEntries = new[]
     {
@@ -917,6 +924,7 @@ try
     Check("100 B free of 100 B", ExplorerDriveCatalog.GetSpaceSummary(100, 200), "clamp reported free space to the drive capacity");
     Check("0 B free of 100 B", ExplorerDriveCatalog.GetSpaceSummary(100, -1), "clamp invalid negative free space to zero");
     Check("Alpha (C:),Zeta (Z:),USB (E:),Share (N:)", string.Join(',', ExplorerDriveCatalog.Sort(driveEntries, ExplorerSortColumn.Name, ascending: true).Select(entry => entry.Name)), "sort drives within stable drive-type groups");
+    Check("Alpha (C:),Zeta (Z:),USB (E:),Share (N:)", string.Join(',', ExplorerDriveCatalog.Sort(driveEntries, ExplorerSortColumn.DateCreated, ascending: true).Select(entry => entry.Name)), "support creation-date sorting for grouped This PC drives");
 
     var firstExplorerTab = new ExplorerTabState(new ExplorerLocation(explorerTestDirectory));
     Check(true, firstExplorerTab.GroupDrives, "enable This PC drive grouping by default per Explorer tab");
