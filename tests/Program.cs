@@ -1,5 +1,6 @@
 using DesktopTuner;
 using System.Windows;
+using System.Windows.Media;
 
 var count = 0;
 Check(false, new DesktopPreferences(TaskbarEdge.Bottom).TaskbarOnAllDisplays, "preserve the primary-display behavior for older preference data");
@@ -295,6 +296,9 @@ var alignmentSetting = SettingsCatalog.ById("taskbar-alignment");
 Check(SettingsCatalog.Personalize, appModeSetting.RegistryPath, "use shared Windows personalization registry location for app color mode");
 Check("AppsUseLightTheme", appModeSetting.ValueName, "target Windows app color mode value");
 Check("SystemUsesLightTheme", systemModeSetting.ValueName, "target Windows system color mode value");
+Check("#1B2434", TaskbarTheme.Resolve(dark: false).Foreground, "use dark taskbar text in Windows light system mode");
+Check("#F4F6FA", TaskbarTheme.Resolve(dark: true).Foreground, "use light taskbar text in Windows dark system mode");
+Check((byte)77, ((SolidColorBrush)TaskbarTheme.CreateBackground(dark: false, 70)).Color.A, "apply the selected transparency to the light taskbar surface");
 Check("EnableTransparency", transparencySetting.ValueName, "target Windows transparency setting");
 Check(SettingsCatalog.ExplorerCabinetState, fullPathSetting.RegistryPath, "use Windows Explorer's cabinet-state registry location");
 Check("FullPath", fullPathSetting.ValueName, "target the documented full-path title-bar preference");

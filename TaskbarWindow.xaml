@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Desktop Tuner Taskbar" Height="54" WindowStyle="None" ResizeMode="NoResize"
         ShowInTaskbar="False" ShowActivated="False" Topmost="True" Background="Transparent" AllowsTransparency="True"
-        Foreground="#F4F6FA" FontFamily="Segoe UI Variable Text, Segoe UI"
+        Foreground="{DynamicResource TaskbarForegroundBrush}" FontFamily="Segoe UI Variable Text, Segoe UI"
         AllowDrop="True" DragOver="Window_DragOver" DragLeave="Window_DragLeave" Drop="Window_Drop"
         Loaded="Window_Loaded" Closed="Window_Closed" MouseEnter="Window_MouseEnter" MouseLeave="Window_MouseLeave">
     <Window.ContextMenu>
@@ -20,8 +20,16 @@
     <Window.Resources>
         <ItemsPanelTemplate x:Key="HorizontalWindowPanel"><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
         <ItemsPanelTemplate x:Key="VerticalWindowPanel"><StackPanel Orientation="Vertical" /></ItemsPanelTemplate>
+        <Style TargetType="ContextMenu">
+            <Setter Property="Background" Value="{DynamicResource TaskbarPreviewCardBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TaskbarForegroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TaskbarPreviewBorderBrush}" />
+        </Style>
+        <Style TargetType="MenuItem">
+            <Setter Property="Foreground" Value="{DynamicResource TaskbarForegroundBrush}" />
+        </Style>
         <Style x:Key="TaskButton" TargetType="Button">
-            <Setter Property="Foreground" Value="#E5E9F2" />
+            <Setter Property="Foreground" Value="{DynamicResource TaskbarForegroundBrush}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="12,7" />
@@ -32,14 +40,13 @@
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="ButtonBorder" CornerRadius="8" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
                             <Grid>
-                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                <ContentPresenter Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Center" />
-                                <Border x:Name="RunningIndicator" Grid.Row="1" Width="16" Height="2" Margin="0,3,0,0" HorizontalAlignment="Center" Background="#8D86FF" CornerRadius="1" Visibility="Collapsed" />
+                                <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                <Border x:Name="RunningIndicator" Width="16" Height="2" Margin="0,0,0,2" VerticalAlignment="Bottom" HorizontalAlignment="Center" Background="{DynamicResource TaskbarAccentFallbackBrush}" CornerRadius="1" Visibility="Collapsed" />
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="#30394D" /></Trigger>
-                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="#494F70" /></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource TaskbarHoverBrush}" /></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource TaskbarPressedBrush}" /></Trigger>
                             <DataTrigger Binding="{Binding IsRunning}" Value="True"><Setter TargetName="RunningIndicator" Property="Visibility" Value="Visible" /></DataTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -47,11 +54,11 @@
             </Setter>
         </Style>
     </Window.Resources>
-    <Border x:Name="RootBorder" Background="#F2171D2A" BorderBrush="#405064" BorderThickness="0,1,0,0" Padding="10,4">
+    <Border x:Name="RootBorder" Background="{DynamicResource TaskbarBackgroundBrush}" BorderBrush="{DynamicResource TaskbarBorderBrush}" BorderThickness="0,1,0,0" Padding="10,4">
         <Grid x:Name="LayoutGrid">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <Border x:Name="StartSegment" Grid.Column="0">
-                <Button x:Name="StartButton" Content="D" Width="38" Height="38" Style="{StaticResource TaskButton}" Background="#6258D9" FontWeight="Bold" FontSize="18" Click="Start_Click" ToolTip="Open Desktop Tuner Start menu" />
+                <Button x:Name="StartButton" Content="D" Width="38" Height="38" Style="{StaticResource TaskButton}" Background="{DynamicResource TaskbarAccentBrush}" FontWeight="Bold" FontSize="18" Click="Start_Click" ToolTip="Open Desktop Tuner Start menu" />
             </Border>
             <Border x:Name="AppsSegment" Grid.Column="1">
                 <Grid>
@@ -67,7 +74,7 @@
                                 <StackPanel Orientation="Horizontal" MaxWidth="190">
                                     <Grid Width="{Binding IconPixels}" Height="{Binding IconPixels}" VerticalAlignment="Center" Margin="{Binding IconMargin}">
                                         <Image Source="{Binding Icon}" Width="{Binding IconPixels}" Height="{Binding IconPixels}" />
-                                        <Border CornerRadius="6" Background="#6258D9">
+                                        <Border CornerRadius="6" Background="{DynamicResource TaskbarAccentBrush}">
                                             <Border.Style>
                                                 <Style TargetType="Border">
                                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -94,7 +101,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Border x:Name="PinDivider" Width="1" Height="24" Background="#405064" Margin="5,0" VerticalAlignment="Center" />
+                <Border x:Name="PinDivider" Width="1" Height="24" Background="{DynamicResource TaskbarBorderBrush}" Margin="5,0" VerticalAlignment="Center" />
                 <ItemsControl x:Name="WindowItems" VerticalAlignment="Center" ItemsPanel="{StaticResource HorizontalWindowPanel}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -111,7 +118,7 @@
                                                 </Style>
                                             </Image.Style>
                                         </Image>
-                                        <Border CornerRadius="4" Background="#8D86FF">
+                                        <Border CornerRadius="4" Background="{DynamicResource TaskbarAccentFallbackBrush}">
                                             <Border.Style>
                                                 <Style TargetType="Border">
                                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -143,7 +150,7 @@
                 </ItemsControl>
                         </StackPanel>
                     </ScrollViewer>
-                    <TextBlock x:Name="EmptyText" Text="No open app windows" Foreground="#8993A7" FontSize="11" VerticalAlignment="Center" Margin="6,0" />
+                    <TextBlock x:Name="EmptyText" Text="No open app windows" Foreground="{DynamicResource TaskbarEmptyTextBrush}" FontSize="11" VerticalAlignment="Center" Margin="6,0" />
                 </Grid>
             </Border>
             <Border x:Name="SystemSegment" Grid.Column="2">
@@ -157,10 +164,10 @@
                 </Button>
                 <Button x:Name="WidgetsButton" Content="Widgets" Style="{StaticResource TaskButton}" Click="Widgets_Click" FontSize="11" ToolTip="Open the Windows Widgets board" />
                 <Button x:Name="ClockButton" Style="{StaticResource TaskButton}" Click="Clock_Click" ToolTip="Open notifications and calendar" Padding="7,4" Margin="3,0,8,0">
-                    <Border Background="#30394D" CornerRadius="8" Padding="10,5">
+                    <Border Background="{DynamicResource TaskbarClockSurfaceBrush}" CornerRadius="8" Padding="10,5">
                         <StackPanel HorizontalAlignment="Center">
                             <TextBlock x:Name="ClockText" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                            <TextBlock x:Name="DateText" FontSize="9" Foreground="#B9C2D5" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="DateText" FontSize="9" Foreground="{DynamicResource TaskbarDateTextBrush}" HorizontalAlignment="Center" />
                         </StackPanel>
                     </Border>
                 </Button>

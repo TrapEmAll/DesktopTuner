@@ -6,6 +6,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Microsoft.Win32;
 
 namespace DesktopTuner;
 
@@ -34,6 +35,7 @@ public partial class TaskbarWindow : Window
     private bool _collapsed;
     private bool _nativeReady;
     private bool _nativeTrayExposed;
+    private bool _isDark;
     private PinnedTaskbarApp? _pinDragCandidate;
     private Point _pinDragStart;
     private TaskbarWindowGroup? _windowDragCandidate;
@@ -47,6 +49,9 @@ public partial class TaskbarWindow : Window
     public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication)
     {
         InitializeComponent();
+        _isDark = TaskbarTheme.ReadSystemDarkMode();
+        TaskbarTheme.Apply(_isDark);
+        SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
         Display = display;
         _showStartMenu = showStartMenu;
         _isStartMenuVisible = isStartMenuVisible;
@@ -87,7 +92,8 @@ public partial class TaskbarWindow : Window
     private void ApplyLayout()
     {
         var layoutPreferences = _preferences with { TaskbarEdge = _edge, TaskbarSize = _size, AutoHide = _autoHide };
-        RootBorder.Background = new SolidColorBrush(Color.FromArgb(TaskbarTransparencyPolicy.GetAlpha(_preferences.TaskbarTransparency), 0x17, 0x1D, 0x2A));
+        RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, _preferences.TaskbarTransparency);
+        RootBorder.BorderBrush = TaskbarTheme.GetBrush("TaskbarBorderBrush");
         var bounds = TaskbarLayoutCalculator.Calculate(Display, layoutPreferences, _collapsed);
         var trayBounds = NativeTaskbarTrayService.FindTrayBounds(Display);
         var integratedBounds = TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(Display, layoutPreferences, trayBounds, _collapsed);
@@ -167,8 +173,7 @@ public partial class TaskbarWindow : Window
         if (_preferences.TaskbarLayout == TaskbarStyle.Floating)
         {
             RootBorder.CornerRadius = new CornerRadius(14);
-            RootBorder.Background = Brush("#E6171D2A");
-            RootBorder.BorderBrush = Brush("#66708D");
+            RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, _preferences.TaskbarTransparency);
             RootBorder.BorderThickness = new Thickness(1);
             ResetSegments();
         }
@@ -185,8 +190,8 @@ public partial class TaskbarWindow : Window
         else
         {
             RootBorder.CornerRadius = new CornerRadius(0);
-            RootBorder.Background = Brush("#F2171D2A");
-            RootBorder.BorderBrush = Brush("#405064");
+            RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, _preferences.TaskbarTransparency);
+            RootBorder.BorderBrush = TaskbarTheme.GetBrush("TaskbarBorderBrush");
             RootBorder.BorderThickness = vertical
                 ? (_edge == TaskbarEdge.Left ? new Thickness(0, 0, 1, 0) : new Thickness(1, 0, 0, 0))
                 : (_edge == TaskbarEdge.Top ? new Thickness(0, 0, 0, 1) : new Thickness(0, 1, 0, 0));
@@ -207,10 +212,10 @@ public partial class TaskbarWindow : Window
         }
     }
 
-    private static void StyleSegment(Border segment, bool vertical)
+    private void StyleSegment(Border segment, bool vertical)
     {
-        segment.Background = Brush("#E6171D2A");
-        segment.BorderBrush = Brush("#46516A");
+        segment.Background = TaskbarTheme.CreateBackground(_isDark, _preferences.TaskbarTransparency);
+        segment.BorderBrush = TaskbarTheme.GetBrush("TaskbarSegmentBorderBrush");
         segment.BorderThickness = new Thickness(1);
         segment.CornerRadius = new CornerRadius(11);
         segment.Margin = vertical ? new Thickness(3, 3, 3, 0) : new Thickness(3, 0, 3, 0);
@@ -230,11 +235,24 @@ public partial class TaskbarWindow : Window
 
     private void Window_Closed(object? sender, EventArgs e)
     {
+        SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
         _refreshTimer.Stop();
         _autoHideTimer.Stop();
         _previewOpenTimer.Stop();
         _previewCloseTimer.Stop();
         _previewWindow?.Close();
+    }
+
+    private void SystemEvents_UserPreferenceChanged(object? sender, UserPreferenceChangedEventArgs e)
+    {
+        var isDark = TaskbarTheme.ReadSystemDarkMode();
+        _ = Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_isDark == isDark) return;
+            _isDark = isDark;
+            TaskbarTheme.Apply(_isDark);
+            ApplyLayout();
+        }));
     }
 
     private void RefreshWindows()
@@ -316,8 +334,8 @@ public partial class TaskbarWindow : Window
         var canPin = GetDroppableItems(e.Data).Any();
         e.Effects = canPin ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
-        RootBorder.BorderBrush = canPin ? Brush("#8D86FF") : Brush("#405064");
-        RootBorder.Background = canPin ? Brush("#302C49") : Brush("#F2171D2A");
+        RootBorder.BorderBrush = canPin ? TaskbarTheme.GetBrush("TaskbarAccentFallbackBrush") : TaskbarTheme.GetBrush("TaskbarBorderBrush");
+        RootBorder.Background = canPin ? TaskbarTheme.GetBrush("TaskbarHoverBrush") : TaskbarTheme.CreateBackground(_isDark, _preferences.TaskbarTransparency);
     }
 
     private void Window_DragLeave(object sender, DragEventArgs e) => ResetDropHighlight();
@@ -347,8 +365,16 @@ public partial class TaskbarWindow : Window
 
     private void ResetDropHighlight()
     {
-        RootBorder.BorderBrush = Brush("#405064");
-        RootBorder.Background = Brush("#F2171D2A");
+        if (_preferences.TaskbarLayout == TaskbarStyle.Segmented)
+        {
+            RootBorder.BorderBrush = Brushes.Transparent;
+            RootBorder.Background = Brushes.Transparent;
+        }
+        else
+        {
+            RootBorder.BorderBrush = TaskbarTheme.GetBrush("TaskbarBorderBrush");
+            RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, _preferences.TaskbarTransparency);
+        }
     }
 
     private void PinnedButton_DragOver(object sender, DragEventArgs e)
@@ -357,7 +383,7 @@ public partial class TaskbarWindow : Window
             e.Data.GetDataPresent(PinnedAppDragFormat) && e.Data.GetData(PinnedAppDragFormat) is string sourcePath)
         {
             var canReorder = !string.Equals(sourcePath, targetApp.ExecutablePath, StringComparison.OrdinalIgnoreCase);
-            button.Background = canReorder ? Brush("#494F70") : Brushes.Transparent;
+            button.Background = canReorder ? TaskbarTheme.GetBrush("TaskbarPressedBrush") : Brushes.Transparent;
             e.Effects = canReorder ? DragDropEffects.Move : DragDropEffects.None;
             e.Handled = true;
             return;
@@ -366,7 +392,7 @@ public partial class TaskbarWindow : Window
         if (sender is Button { Tag: PinnedTaskbarApp app } && !app.IsDirectory &&
             File.Exists(app.ExecutablePath) && GetDroppedDocuments(e.Data).Any())
         {
-            ((Button)sender).Background = Brush("#494F70");
+            ((Button)sender).Background = TaskbarTheme.GetBrush("TaskbarPressedBrush");
             e.Effects = DragDropEffects.Link;
             e.Handled = true;
             return;
@@ -532,7 +558,7 @@ public partial class TaskbarWindow : Window
             e.Data.GetDataPresent(WindowGroupDragFormat) && e.Data.GetData(WindowGroupDragFormat) is TaskbarWindowGroup source &&
             !source.Windows.Select(window => window.Handle).Intersect(target.Windows.Select(window => window.Handle)).Any())
         {
-            button.Background = Brush("#494F70");
+            button.Background = TaskbarTheme.GetBrush("TaskbarPressedBrush");
             e.Effects = DragDropEffects.Move;
             e.Handled = true;
             return;
@@ -561,8 +587,6 @@ public partial class TaskbarWindow : Window
         if (!data.GetDataPresent(DataFormats.FileDrop) || data.GetData(DataFormats.FileDrop) is not string[] paths) return [];
         return paths.Where(File.Exists).Where(path => !string.Equals(Path.GetExtension(path), ".exe", StringComparison.OrdinalIgnoreCase));
     }
-
-    private static SolidColorBrush Brush(string color) => new((Color)ColorConverter.ConvertFromString(color));
 
     private void AutoHideTimer_Tick()
     {

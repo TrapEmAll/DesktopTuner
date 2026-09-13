@@ -37,21 +37,21 @@ public partial class TaskbarPreviewWindow : Window
             {
                 Width = 220,
                 Height = 132,
-                Background = new SolidColorBrush(Color.FromRgb(36, 42, 55)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(82, 94, 116)),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(7),
                 ClipToBounds = true
             };
+            surface.SetResourceReference(Border.BackgroundProperty, "TaskbarPreviewCardBrush");
+            surface.SetResourceReference(Border.BorderBrushProperty, "TaskbarPreviewBorderBrush");
             var title = new TextBlock
             {
                 Text = window.Title,
-                Foreground = Brushes.White,
                 FontSize = 12,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(6, 0, 4, 0)
             };
+            title.SetResourceReference(TextBlock.ForegroundProperty, "TaskbarForegroundBrush");
             var previewButton = new Button
             {
                 Tag = window,
