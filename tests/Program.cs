@@ -7,6 +7,7 @@ var count = 0;
 Check(false, SystemBackdropService.TryApplyTransientBackdrop(IntPtr.Zero), "leave unsupported menu handles on the solid background");
 Check(false, SystemBackdropService.TryApplySmallRoundedCorners(IntPtr.Zero), "leave unsupported menu handles with system-default corners");
 Check(false, new DesktopPreferences(TaskbarEdge.Bottom).TaskbarOnAllDisplays, "preserve the primary-display behavior for older preference data");
+Check(false, new DesktopPreferences(TaskbarEdge.Bottom).ReplaceNativeTaskbar, "leave native taskbar replacement disabled by default");
 Check(new TaskbarBounds(0, 1026, 1920, 54), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom), false), "bottom, standard");
 Check(new TaskbarBounds(0, 0, 1920, 46), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Top, TaskbarSize.Small), false), "top, small");
 Check(new TaskbarBounds(0, 0, 204, 1080), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Left, TaskbarSize.Large), false), "left, large");
@@ -28,6 +29,8 @@ Check<TaskbarBounds?>(null, TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(
 Check<TaskbarBounds?>(null, TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Bottom), new(1500, 700, 420, 50)), "keep shortcut fallback when tray is not at the bottom edge");
 var secondaryDisplay = new TaskbarDisplay("DISPLAY2", -1920, -200, 1920, 1080, false, 1.5, 1.5);
 Check(new TaskbarBounds(-1920, 799, 1320, 81), TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(secondaryDisplay, new(TaskbarEdge.Bottom), new(-600, 835, 600, 45)), "preserve native tray geometry on a scaled secondary display");
+CheckTrue(TaskbarDisplayService.Overlaps(nativeTray, trayDisplay), "match native taskbar windows to their display bounds");
+CheckTrue(!TaskbarDisplayService.Overlaps(nativeTray, secondaryDisplay), "keep native taskbars scoped to selected displays");
 var maximizedOnSecondary = new RunningWindow((nint)4, "Document", "Editor", @"C:\Apps\editor.exe", false)
 {
     IsMaximized = true,
@@ -505,7 +508,7 @@ try
     var preferencesStore = new DesktopPreferencesStore(preferencesPath);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk")]);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk")], ReplaceNativeTaskbar: true);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
@@ -514,6 +517,7 @@ try
     Check("Editor", loadedPreferences.PinnedStartApps!.Single().Name, "persist pinned Start apps");
     Check(expectedPreferences.TaskbarOnAllDisplays, loadedPreferences.TaskbarOnAllDisplays, "persist taskbar display coverage");
     Check(expectedPreferences.TaskbarLayout, loadedPreferences.TaskbarLayout, "persist floating taskbar style");
+    Check(true, loadedPreferences.ReplaceNativeTaskbar, "persist native taskbar replacement mode");
     Check(expectedPreferences.TaskbarGrouping, loadedPreferences.TaskbarGrouping, "persist taskbar grouping mode");
     Check(expectedPreferences.TaskbarButtonAlignment, loadedPreferences.TaskbarButtonAlignment, "persist taskbar button alignment");
     preferencesStore.Save(expectedPreferences with { StartWithWindows = true });
@@ -539,6 +543,7 @@ try
     File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"PinnedApps":[{"Name":"Legacy app","ExecutablePath":"C:\\Apps\\Editor.exe"}]}""");
     Check(StartMenuStyle.Modern, preferencesStore.Load().StartMenuStyle, "default legacy preferences to the Modern Start menu");
     Check(false, preferencesStore.Load().TaskbarOnAllDisplays, "keep legacy taskbar preferences on the primary display");
+    Check(false, preferencesStore.Load().ReplaceNativeTaskbar, "keep native taskbar replacement disabled for legacy preferences");
     Check(false, preferencesStore.Load().StartWithWindows, "disable sign-in startup for older preference files");
     Check(5, preferencesStore.Load().TaskbarTransparency, "default taskbar transparency for older preference files");
     Check(TaskbarStyle.EdgeToEdge, preferencesStore.Load().TaskbarLayout, "default legacy preferences to a full-edge taskbar");

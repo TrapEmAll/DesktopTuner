@@ -98,7 +98,7 @@ public partial class TaskbarWindow : Window
         RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, _preferences.TaskbarTransparency);
         RootBorder.BorderBrush = TaskbarTheme.GetBrush("TaskbarBorderBrush");
         var bounds = TaskbarLayoutCalculator.Calculate(Display, layoutPreferences, _collapsed);
-        var trayBounds = NativeTaskbarTrayService.FindTrayBounds(Display);
+        var trayBounds = _preferences.ReplaceNativeTaskbar ? null : NativeTaskbarTrayService.FindTrayBounds(Display);
         var integratedBounds = TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(Display, layoutPreferences, trayBounds, _collapsed);
         _nativeTrayExposed = integratedBounds is not null;
         if (integratedBounds is { } trayIntegratedBounds) bounds = trayIntegratedBounds;

@@ -27,7 +27,7 @@ public static class NativeTaskbarTrayService
                     if (!GetWindowRect(child, out var rect)) return true;
 
                     var bounds = new TaskbarBounds(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
-                    if (OverlapsDisplay(bounds, display)) result = bounds;
+                    if (TaskbarDisplayService.Overlaps(bounds, display)) result = bounds;
                     return true;
                 }, IntPtr.Zero);
                 return true;
@@ -41,11 +41,6 @@ public static class NativeTaskbarTrayService
 
         return result;
     }
-
-    private static bool OverlapsDisplay(TaskbarBounds bounds, TaskbarDisplay display) =>
-        bounds.Width > 0 && bounds.Height > 0 &&
-        bounds.Left < display.Left + display.Width && bounds.Left + bounds.Width > display.Left &&
-        bounds.Top < display.Top + display.Height && bounds.Top + bounds.Height > display.Top;
 
     private static string GetClassName(IntPtr window)
     {

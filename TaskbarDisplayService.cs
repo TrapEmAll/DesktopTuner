@@ -70,6 +70,11 @@ public static class TaskbarDisplayService
         return [displays.FirstOrDefault(display => display.IsPrimary) ?? displays[0]];
     }
 
+    public static bool Overlaps(TaskbarBounds bounds, TaskbarDisplay display) =>
+        bounds.Width > 0 && bounds.Height > 0 &&
+        bounds.Left < display.Left + display.Width && bounds.Left + bounds.Width > display.Left &&
+        bounds.Top < display.Top + display.Height && bounds.Top + bounds.Height > display.Top;
+
     public static bool PositionWindow(Window window, TaskbarBounds bounds)
     {
         var handle = new WindowInteropHelper(window).Handle;

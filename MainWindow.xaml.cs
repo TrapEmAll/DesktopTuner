@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Runtime.InteropServices;
+using System.Windows.Threading;
 
 namespace DesktopTuner;
 
@@ -37,6 +38,8 @@ public partial class MainWindow : Window
     private TaskbarDisplay? _startMenuDisplay;
     private readonly List<TaskbarWindow> _taskbarWindows = [];
     private readonly TaskbarWindowOrder _taskbarWindowOrder = new();
+    private readonly NativeTaskbarVisibilityService _nativeTaskbarVisibility = new();
+    private readonly DispatcherTimer _nativeTaskbarWatchTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private WindowsKeyStartHook? _windowsKeyHook;
     private TaskbarEdge _taskbarEdge = TaskbarEdge.Bottom;
     private TaskbarSize _taskbarSize = TaskbarSize.Standard;
@@ -54,6 +57,7 @@ public partial class MainWindow : Window
     private bool _replaceWindowsKey;
     private StartMenuStyle _startMenuStyle = StartMenuStyle.Modern;
     private bool _taskbarOnAllDisplays = true;
+    private bool _replaceNativeTaskbar;
     private bool _startWithWindows;
     private readonly bool _startInBackground;
     private bool _closingTaskbars;
@@ -81,6 +85,8 @@ public partial class MainWindow : Window
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
         _startMenuStyle = desktopPreferences.StartMenuStyle;
         _taskbarOnAllDisplays = desktopPreferences.TaskbarOnAllDisplays;
+        _replaceNativeTaskbar = desktopPreferences.ReplaceNativeTaskbar;
+        _nativeTaskbarWatchTimer.Tick += (_, _) => MaintainNativeTaskbars();
         _startWithWindows = desktopPreferences.StartWithWindows;
         foreach (var setting in SettingsCatalog.All)
         {
@@ -315,14 +321,39 @@ public partial class MainWindow : Window
             allDisplays.Checked += (_, _) => { _taskbarOnAllDisplays = true; SaveDesktopPreferences(); };
             allDisplays.Unchecked += (_, _) => { _taskbarOnAllDisplays = false; SaveDesktopPreferences(); };
             PageContent.Children.Add(allDisplays);
+            var replaceNativeTaskbar = new CheckBox
+            {
+                Content = "Replace the Windows taskbar while Desktop Tuner is running (experimental)",
+                IsChecked = _replaceNativeTaskbar,
+                Margin = new Thickness(0, 0, 0, 8),
+                FontSize = 13
+            };
+            replaceNativeTaskbar.Checked += (_, _) =>
+            {
+                _replaceNativeTaskbar = true;
+                SaveDesktopPreferences();
+            };
+            replaceNativeTaskbar.Unchecked += (_, _) =>
+            {
+                _replaceNativeTaskbar = false;
+                SaveDesktopPreferences();
+            };
+            PageContent.Children.Add(replaceNativeTaskbar);
+            PageContent.Children.Add(new TextBlock
+            {
+                Text = "Hides the built-in taskbar on displays covered by Desktop Tuner and restores it when the app exits. If Desktop Tuner crashes, restart Windows Explorer or sign out to restore the built-in taskbar.",
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = (Brush)FindResource("DesktopMutedTextBrush"),
+                Margin = new Thickness(0, 0, 0, 16)
+            });
             var startWithWindows = new CheckBox { Content = "Start the taskbar automatically when I sign in", IsChecked = _startWithWindows, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
             startWithWindows.Checked += (_, _) => SetStartWithWindows(startWithWindows, true);
             startWithWindows.Unchecked += (_, _) => SetStartWithWindows(startWithWindows, false);
             PageContent.Children.Add(startWithWindows);
-            var launchButton = new Button { Content = "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
+            var launchButton = new Button { Content = _replaceNativeTaskbar ? "Start replacement taskbar" : "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowTaskbar();
             PageContent.Children.Add(launchButton);
-            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, bar size and style, transparency, app button labels, icon size, spacing, and optional auto-hide. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and opens the native Widgets board. Enable sign-in startup to keep the taskbar running in the background; right-click the bar to reopen Desktop Tuner settings or exit. When Windows' native notification area is detected on a bottom full-edge or segmented layout, the overlay stops before it; other layouts keep Tray and Clock shortcuts.");
+            var overlayInfo = InfoCard(_replaceNativeTaskbar ? "Experimental taskbar replacement" : "Live taskbar overlay", "Choose an edge, bar size and style, transparency, app button labels, icon size, spacing, and optional auto-hide. The custom taskbar lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and opens the native Widgets board. Enable sign-in startup to keep the taskbar running in the background; right-click the bar to reopen Desktop Tuner settings or exit. In replacement mode, the built-in taskbar is hidden only on displays covered by Desktop Tuner and restored when its windows close. Otherwise, the overlay can leave Windows' native notification area visible on supported bottom layouts.");
             PageContent.Children.Add(overlayInfo);
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);
@@ -543,6 +574,8 @@ public partial class MainWindow : Window
     private void MainWindow_Closed(object? sender, EventArgs e)
     {
         CloseTaskbars();
+        _nativeTaskbarWatchTimer.Stop();
+        _nativeTaskbarVisibility.Restore();
         var handle = new WindowInteropHelper(this).Handle;
         UnregisterHotKey(handle, StartMenuHotkeyId);
         UnregisterHotKey(handle, TaskbarAutoHideHotkeyId);
@@ -567,7 +600,7 @@ public partial class MainWindow : Window
             Dispatcher.BeginInvoke(new Action(() =>
             {
                 _displayRefreshPending = false;
-                if (!IsVisible || !_taskbarWindows.Any(window => window.IsVisible)) return;
+                if (!_taskbarWindows.Any(window => window.IsVisible)) return;
                 CloseTaskbars();
                 ShowTaskbar();
             }));
@@ -690,14 +723,33 @@ public partial class MainWindow : Window
                 _taskbarWindows.Add(taskbar);
                 taskbar.Show();
             }
+            if (_replaceNativeTaskbar)
+            {
+                var displays = TaskbarDisplayService.Select(_taskbarOnAllDisplays);
+                if (!_nativeTaskbarVisibility.HideForDisplays(displays))
+                {
+                    throw new InvalidOperationException("Windows did not expose a taskbar on the selected displays, so replacement mode could not start.");
+                }
+                _nativeTaskbarWatchTimer.Start();
+            }
             SetStatus(_taskbarOnAllDisplays
-                ? "Desktop Tuner taskbar overlays are running on all displays. Close one to reveal the Windows taskbar everywhere."
-                : "Desktop Tuner taskbar overlay is running on the primary display. Close it to reveal the Windows taskbar.");
+                ? _replaceNativeTaskbar
+                    ? "Desktop Tuner taskbar replacement is running on all displays. Close it to restore Windows taskbars."
+                    : "Desktop Tuner taskbar overlays are running on all displays. Close one to reveal the Windows taskbar everywhere."
+                : _replaceNativeTaskbar
+                    ? "Desktop Tuner taskbar replacement is running on the primary display. Close it to restore the Windows taskbar."
+                    : "Desktop Tuner taskbar overlay is running on the primary display. Close it to reveal the Windows taskbar.");
         }
         catch (Exception ex)
         {
             CloseTaskbars();
-            MessageBox.Show(this, ex.Message, "Could not show taskbar overlays", MessageBoxButton.OK, MessageBoxImage.Error);
+            if (_replaceNativeTaskbar)
+            {
+                _replaceNativeTaskbar = false;
+                try { _preferences.Save(CreateDesktopPreferences()); }
+                catch (Exception saveException) { System.Diagnostics.Trace.TraceError($"Could not disable taskbar replacement after startup failed: {saveException}"); }
+            }
+            MessageBox.Show(this, ex.Message, "Could not start the custom taskbar", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -707,14 +759,35 @@ public partial class MainWindow : Window
         _closingTaskbars = true;
         try
         {
+            _nativeTaskbarWatchTimer.Stop();
             foreach (var taskbar in _taskbarWindows.ToArray())
                 if (taskbar.IsVisible) taskbar.Close();
             _taskbarWindows.Clear();
+            _nativeTaskbarVisibility.Restore();
         }
         finally { _closingTaskbars = false; }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList());
+    private void MaintainNativeTaskbars()
+    {
+        if (!_replaceNativeTaskbar || !_taskbarWindows.Any(window => window.IsVisible))
+        {
+            _nativeTaskbarWatchTimer.Stop();
+            _nativeTaskbarVisibility.Restore();
+            return;
+        }
+
+        try
+        {
+            _nativeTaskbarVisibility.HideForDisplays(TaskbarDisplayService.Select(_taskbarOnAllDisplays));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.TraceError($"Could not keep native taskbars hidden during replacement mode: {ex}");
+        }
+    }
+
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar);
 
     private bool SavePinnedStartApps(IReadOnlyList<AppEntry> apps)
     {
@@ -753,6 +826,7 @@ public partial class MainWindow : Window
         try
         {
             var displayModeChanged = _taskbarOnAllDisplays != preferences.TaskbarOnAllDisplays;
+            var replacementModeChanged = _replaceNativeTaskbar != preferences.ReplaceNativeTaskbar;
             _preferences.Save(preferences);
             _taskbarEdge = preferences.TaskbarEdge;
             _taskbarSize = preferences.TaskbarSize;
@@ -771,7 +845,8 @@ public partial class MainWindow : Window
             _taskbarIconSize = preferences.TaskbarIconSize;
             _taskbarButtonSpacing = preferences.TaskbarButtonSpacing;
             _startWithWindows = preferences.StartWithWindows;
-            if (displayModeChanged && _taskbarWindows.Any(window => window.IsVisible))
+            _replaceNativeTaskbar = preferences.ReplaceNativeTaskbar;
+            if ((displayModeChanged || replacementModeChanged) && _taskbarWindows.Any(window => window.IsVisible))
             {
                 CloseTaskbars();
                 ShowTaskbar();
