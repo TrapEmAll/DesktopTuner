@@ -497,36 +497,16 @@ public partial class TaskbarWindow : Window
 
     private void WindowButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button { Tag: TaskbarWindowGroup group }) return;
+        if (sender is not Button { Tag: TaskbarWindowGroup group } button) return;
         if (group.Windows.Count == 1)
         {
             RunningWindowService.Activate(group.Windows[0]);
             return;
         }
 
-        var menu = new ContextMenu
-        {
-            PlacementTarget = (UIElement)sender,
-            Placement = _edge switch
-            {
-                TaskbarEdge.Top => PlacementMode.Bottom,
-                TaskbarEdge.Left => PlacementMode.Right,
-                TaskbarEdge.Right => PlacementMode.Left,
-                _ => PlacementMode.Top
-            }
-        };
-        foreach (var window in group.Windows)
-        {
-            var item = new MenuItem { Header = window.Title, Tag = window, ToolTip = window.ExecutablePath };
-            item.Click += GroupWindow_Click;
-            menu.Items.Add(item);
-        }
-        menu.IsOpen = true;
-    }
-
-    private static void GroupWindow_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem { Tag: RunningWindow window }) RunningWindowService.Activate(window);
+        var preview = new TaskbarPreviewWindow(group.Windows, Display, _edge, button);
+        preview.Show();
+        preview.Activate();
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e)

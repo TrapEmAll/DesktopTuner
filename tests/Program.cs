@@ -42,6 +42,10 @@ Check(-1920d, secondaryBar.Left, "place taskbar on a monitor with negative deskt
 Check(799d, secondaryBar.Top, "scale taskbar thickness for a high-DPI display");
 Check(1920d, secondaryBar.Width, "span the taskbar across the selected monitor only");
 Check(81d, secondaryBar.Height, "scale the taskbar height in physical pixels");
+Check(new TaskbarBounds(570, 786, 760, 232), TaskbarPreviewLayoutPolicy.Calculate(trayDisplay, TaskbarEdge.Bottom, new(900, 1026, 100, 54), 760, 232), "position window thumbnails above a bottom taskbar button");
+Check(new TaskbarBounds(570, 54, 760, 232), TaskbarPreviewLayoutPolicy.Calculate(trayDisplay, TaskbarEdge.Top, new(900, 0, 100, 46), 760, 232), "position window thumbnails below a top taskbar button");
+Check(new TaskbarBounds(62, 234, 760, 232), TaskbarPreviewLayoutPolicy.Calculate(trayDisplay, TaskbarEdge.Left, new(0, 300, 54, 100), 760, 232), "position window thumbnails to the right of a left taskbar button");
+Check(new TaskbarBounds(976, 234, 760, 232), TaskbarPreviewLayoutPolicy.Calculate(trayDisplay, TaskbarEdge.Right, new(1744, 300, 176, 100), 760, 232), "position window thumbnails to the left of a right taskbar button");
 var secondaryStart = TaskbarLayoutCalculator.CalculateStartMenu(secondaryDisplay, 470, 650, new(TaskbarEdge.Bottom));
 Check(-1902d, secondaryStart.Left, "anchor Start menu to the selected secondary display");
 Check(-188d, secondaryStart.Top, "keep Start menu within display bounds above its taskbar");
