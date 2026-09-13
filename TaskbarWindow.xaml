@@ -193,6 +193,7 @@
                 <StackPanel x:Name="RightControls" Orientation="Horizontal" VerticalAlignment="Center">
                 <Button x:Name="SettingsButton" Content="Settings" Style="{StaticResource TaskButton}" Click="Settings_Click" FontSize="11" />
                 <Button x:Name="TrayButton" Content="Tray" Style="{StaticResource TaskButton}" Click="Tray_Click" FontSize="11" ToolTip="Focus the Windows notification area" />
+                <Button x:Name="QuickSettingsButton" Content="Quick" Style="{StaticResource TaskButton}" Click="QuickSettings_Click" FontSize="11" ToolTip="Open Windows Quick Settings (Win+A)" AutomationProperties.Name="Quick Settings" />
                 <Button x:Name="VolumeButton" Content="🔊" Style="{StaticResource TaskButton}" Click="SoundSettings_Click" PreviewMouseDown="VolumeButton_PreviewMouseDown" PreviewMouseWheel="VolumeButton_PreviewMouseWheel" FontSize="16" Padding="8,4" ToolTip="Scroll to adjust volume, middle-click to mute, right-click to choose an output device, click for Sound settings">
                     <Button.ContextMenu>
                         <ContextMenu x:Name="AudioOutputContextMenu" Opened="AudioOutputContextMenu_Opened" />

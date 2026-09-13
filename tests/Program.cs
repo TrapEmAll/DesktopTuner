@@ -390,6 +390,13 @@ CheckTrue(SystemFlyoutService.GetNotificationCenterSequence().SequenceEqual(
     new KeyboardKeyEvent((ushort)'N', true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+N notification-center shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetQuickSettingsSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'A', false),
+    new KeyboardKeyEvent((ushort)'A', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+A Quick Settings shortcut in balanced key order");
 CheckTrue(SystemFlyoutService.GetNotificationAreaSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),

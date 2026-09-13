@@ -9,6 +9,7 @@ public static class SystemFlyoutService
 {
     private const ushort VK_LWIN = 0x5B;
     private const ushort VK_RWIN = 0x5C;
+    private const ushort VK_A = 0x41;
     private const ushort VK_B = 0x42;
     private const ushort VK_D = 0x44;
     private const ushort VK_N = 0x4E;
@@ -21,6 +22,13 @@ public static class SystemFlyoutService
         new(VK_LWIN, false),
         new(VK_N, false),
         new(VK_N, true),
+        new(VK_LWIN, true)
+    ]);
+    private static readonly IReadOnlyList<KeyboardKeyEvent> QuickSettingsSequence = Array.AsReadOnly<KeyboardKeyEvent>(
+    [
+        new(VK_LWIN, false),
+        new(VK_A, false),
+        new(VK_A, true),
         new(VK_LWIN, true)
     ]);
     private static readonly IReadOnlyList<KeyboardKeyEvent> NotificationAreaSequence = Array.AsReadOnly<KeyboardKeyEvent>(
@@ -53,12 +61,15 @@ public static class SystemFlyoutService
     ]);
 
     public static IReadOnlyList<KeyboardKeyEvent> GetNotificationCenterSequence() => NotificationCenterSequence;
+    public static IReadOnlyList<KeyboardKeyEvent> GetQuickSettingsSequence() => QuickSettingsSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetNotificationAreaSequence() => NotificationAreaSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetWidgetsSequence() => WidgetsSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetRunDialogSequence() => RunDialogSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetShowDesktopSequence() => ShowDesktopSequence;
 
     public static bool OpenNotificationCenter() => SendWindowsShortcut(VK_N, NotificationCenterSequence, "notification center");
+
+    public static bool OpenQuickSettings() => SendWindowsShortcut(VK_A, QuickSettingsSequence, "Quick Settings");
 
     public static bool FocusNotificationArea() => SendWindowsShortcut(VK_B, NotificationAreaSequence, "notification area");
 

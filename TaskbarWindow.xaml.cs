@@ -106,6 +106,7 @@ public partial class TaskbarWindow : Window
         var integratedBounds = TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(Display, layoutPreferences, trayBounds, _collapsed);
         _nativeTrayExposed = integratedBounds is not null;
         BatteryButton.Visibility = _preferences.ReplaceNativeTaskbar && _batteryStatus is not null ? Visibility.Visible : Visibility.Collapsed;
+        QuickSettingsButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         if (integratedBounds is { } trayIntegratedBounds) bounds = trayIntegratedBounds;
         SettingsButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         TrayButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
@@ -330,6 +331,7 @@ public partial class TaskbarWindow : Window
         var reservedControlsLength = vertical
             ? (_nativeTrayExposed ? 170 : 210) + 60
             : (_nativeTrayExposed ? 250 : 290) + 60;
+        if (!_nativeTrayExposed) reservedControlsLength += 56;
         if (_preferences.ReplaceNativeTaskbar && _batteryStatus is not null) reservedControlsLength += 56;
         var reservedLength = reservedControlsLength + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
         return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / buttonSpan));
@@ -1009,6 +1011,8 @@ public partial class TaskbarWindow : Window
     private void ShowDesktop_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.ShowDesktop();
 
     private void Tray_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.FocusNotificationArea();
+
+    private void QuickSettings_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenQuickSettings();
 
     private void Widgets_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWidgets();
 
