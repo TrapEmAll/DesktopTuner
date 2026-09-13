@@ -45,6 +45,20 @@ public static class TaskbarPinCatalog
     public static List<PinnedTaskbarApp> Remove(IEnumerable<PinnedTaskbarApp> current, string itemPath) =>
         current.Where(app => !string.Equals(app.ExecutablePath, itemPath, StringComparison.OrdinalIgnoreCase)).ToList();
 
+    public static List<PinnedTaskbarApp> Move(IEnumerable<PinnedTaskbarApp> current, string sourcePath, string targetPath)
+    {
+        var pins = current.ToList();
+        var sourceIndex = pins.FindIndex(app => string.Equals(app.ExecutablePath, sourcePath, StringComparison.OrdinalIgnoreCase));
+        var targetIndex = pins.FindIndex(app => string.Equals(app.ExecutablePath, targetPath, StringComparison.OrdinalIgnoreCase));
+        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex == targetIndex) return pins;
+
+        var source = pins[sourceIndex];
+        pins.RemoveAt(sourceIndex);
+        if (sourceIndex < targetIndex) targetIndex--;
+        pins.Insert(targetIndex, source);
+        return pins;
+    }
+
     private static bool IsLaunchableExtension(string extension) =>
         string.Equals(extension, ".exe", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(extension, ".lnk", StringComparison.OrdinalIgnoreCase);

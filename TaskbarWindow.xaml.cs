@@ -11,6 +11,7 @@ namespace DesktopTuner;
 
 public partial class TaskbarWindow : Window
 {
+    private const string PinnedAppDragFormat = "DesktopTuner.PinnedTaskbarApp";
     private readonly RunningWindowService _windows = new();
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
     private readonly DispatcherTimer _autoHideTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
@@ -24,6 +25,8 @@ public partial class TaskbarWindow : Window
     private bool _autoHide;
     private bool _collapsed;
     private bool _nativeReady;
+    private PinnedTaskbarApp? _pinDragCandidate;
+    private Point _pinDragStart;
 
     public TaskbarDisplay Display { get; private set; }
 
@@ -293,10 +296,20 @@ public partial class TaskbarWindow : Window
 
     private void PinnedButton_DragOver(object sender, DragEventArgs e)
     {
-        if (sender is Button { Tag: PinnedTaskbarApp app } button && !app.IsDirectory &&
+        if (sender is Button { Tag: PinnedTaskbarApp targetApp } button &&
+            e.Data.GetDataPresent(PinnedAppDragFormat) && e.Data.GetData(PinnedAppDragFormat) is string sourcePath)
+        {
+            var canReorder = !string.Equals(sourcePath, targetApp.ExecutablePath, StringComparison.OrdinalIgnoreCase);
+            button.Background = canReorder ? Brush("#494F70") : Brushes.Transparent;
+            e.Effects = canReorder ? DragDropEffects.Move : DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        if (sender is Button { Tag: PinnedTaskbarApp app } && !app.IsDirectory &&
             File.Exists(app.ExecutablePath) && GetDroppedDocuments(e.Data).Any())
         {
-            button.Background = Brush("#494F70");
+            ((Button)sender).Background = Brush("#494F70");
             e.Effects = DragDropEffects.Link;
             e.Handled = true;
             return;
@@ -314,8 +327,23 @@ public partial class TaskbarWindow : Window
     private void PinnedButton_Drop(object sender, DragEventArgs e)
     {
         if (sender is not Button button) return;
-        if (button.Tag is not PinnedTaskbarApp app || app.IsDirectory || !File.Exists(app.ExecutablePath)) return;
+        if (button.Tag is not PinnedTaskbarApp app) return;
         button.Background = Brushes.Transparent;
+
+        if (e.Data.GetDataPresent(PinnedAppDragFormat) && e.Data.GetData(PinnedAppDragFormat) is string sourcePath)
+        {
+            var currentPins = _preferences.PinnedApps ?? [];
+            var pins = TaskbarPinCatalog.Move(currentPins, sourcePath, app.ExecutablePath);
+            if (pins.Select(pin => pin.ExecutablePath).SequenceEqual(currentPins.Select(pin => pin.ExecutablePath), StringComparer.OrdinalIgnoreCase)) return;
+            _preferences = _preferences with { PinnedApps = pins };
+            _persistPreferences(_preferences);
+            RefreshWindows();
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+            return;
+        }
+
+        if (app.IsDirectory || !File.Exists(app.ExecutablePath)) return;
         var documents = GetDroppedDocuments(e.Data).ToArray();
         if (documents.Length == 0) return;
         try
@@ -327,6 +355,27 @@ public partial class TaskbarWindow : Window
             e.Handled = true;
         }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open dropped items", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void PinnedButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not Button { Tag: PinnedTaskbarApp app }) return;
+        _pinDragCandidate = app;
+        _pinDragStart = e.GetPosition(this);
+    }
+
+    private void PinnedButton_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) => _pinDragCandidate = null;
+
+    private void PinnedButton_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_pinDragCandidate is null || e.LeftButton != MouseButtonState.Pressed || sender is not Button button) return;
+        var position = e.GetPosition(this);
+        if (Math.Abs(position.X - _pinDragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(position.Y - _pinDragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+        var data = new DataObject(PinnedAppDragFormat, _pinDragCandidate.ExecutablePath);
+        try { DragDrop.DoDragDrop(button, data, DragDropEffects.Move); }
+        finally { _pinDragCandidate = null; }
     }
 
     private static IEnumerable<string> GetDroppedDocuments(IDataObject data)

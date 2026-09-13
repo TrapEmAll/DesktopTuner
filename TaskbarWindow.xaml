@@ -46,7 +46,8 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Button Style="{StaticResource TaskButton}" Margin="{Binding ButtonMargin}" Tag="{Binding Target}" Click="PinnedButton_Click" ToolTip="{Binding ToolTip}"
-                                    AllowDrop="True" DragOver="PinnedButton_DragOver" DragLeave="PinnedButton_DragLeave" Drop="PinnedButton_Drop">
+                                    AllowDrop="True" PreviewMouseLeftButtonDown="PinnedButton_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="PinnedButton_PreviewMouseLeftButtonUp" PreviewMouseMove="PinnedButton_PreviewMouseMove"
+                                    DragOver="PinnedButton_DragOver" DragLeave="PinnedButton_DragLeave" Drop="PinnedButton_Drop">
                                 <StackPanel Orientation="Horizontal" MaxWidth="190">
                                     <Grid Width="{Binding IconPixels}" Height="{Binding IconPixels}" VerticalAlignment="Center" Margin="{Binding IconMargin}">
                                         <Image Source="{Binding Icon}" Width="{Binding IconPixels}" Height="{Binding IconPixels}" />

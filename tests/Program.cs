@@ -36,6 +36,18 @@ Check(1, firstPin.Count, "pin a running app executable");
 Check(1, TaskbarPinCatalog.Add(firstPin, "Editor", @"C:\Program Files\Editor\editor.exe").Count, "avoid duplicate pins");
 Check(1, TaskbarPinCatalog.Add(firstPin, "Script", @"C:\Tools\script.cmd").Count, "reject non-executable pin paths");
 Check(0, TaskbarPinCatalog.Remove(firstPin, @"C:\Program Files\Editor\editor.exe").Count, "unpin an app executable");
+var orderedPins = new[]
+{
+    new PinnedTaskbarApp("Editor", @"C:\Apps\editor.exe"),
+    new PinnedTaskbarApp("Browser", @"C:\Apps\browser.exe"),
+    new PinnedTaskbarApp("Mail", @"C:\Apps\mail.exe")
+};
+CheckTrue(TaskbarPinCatalog.Move(orderedPins, @"C:\Apps\editor.exe", @"C:\Apps\mail.exe")
+    .Select(pin => pin.Name).SequenceEqual(["Browser", "Editor", "Mail"]), "move a pinned app before its drop target");
+CheckTrue(TaskbarPinCatalog.Move(orderedPins, @"C:\Apps\mail.exe", @"C:\Apps\editor.exe")
+    .Select(pin => pin.Name).SequenceEqual(["Mail", "Editor", "Browser"]), "move a pinned app toward the start of the taskbar");
+CheckTrue(TaskbarPinCatalog.Move(orderedPins, @"C:\Apps\missing.exe", @"C:\Apps\editor.exe")
+    .Select(pin => pin.Name).SequenceEqual(["Editor", "Browser", "Mail"]), "leave pins unchanged for an unknown drag source");
 var droppedPaths = new[]
 {
     @"C:\Apps\Editor.exe",
