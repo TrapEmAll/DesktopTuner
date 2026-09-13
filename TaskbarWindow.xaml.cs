@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -39,6 +40,8 @@ public partial class TaskbarWindow : Window
     private bool _nativeReady;
     private bool _nativeTrayExposed;
     private bool _isDark;
+    private bool _keyboardFocusActive;
+    private nint _previousForegroundWindow;
     private TaskbarBatteryStatus? _batteryStatus;
     private PinnedTaskbarApp? _pinDragCandidate;
     private Point _pinDragStart;
@@ -870,6 +873,85 @@ public partial class TaskbarWindow : Window
         ActivatePinnedApp(_preferences.PinnedApps![oneBasedIndex - 1], showPreview: false, toggleMinimizeOnActive: false);
         return true;
     }
+
+    public void FocusTaskbar()
+    {
+        if (!_nativeReady) return;
+        _autoHideTimer.Stop();
+        if (!_keyboardFocusActive) _previousForegroundWindow = GetForegroundWindow();
+        if (_collapsed)
+        {
+            _collapsed = false;
+            ApplyLayout();
+        }
+        Activate();
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            var buttons = FindVisualChildren<Button>(LayoutGrid).Where(button => button.IsVisible && button.IsEnabled && button.Focusable).ToList();
+            var currentIndex = buttons.FindIndex(button => button.IsKeyboardFocused);
+            var target = _keyboardFocusActive && currentIndex >= 0
+                ? buttons[TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(currentIndex, buttons.Count, forward: true)!.Value]
+                : FindVisualChildren<Button>(PinnedItems).FirstOrDefault(button => button.IsVisible && button.IsEnabled)
+                    ?? FindVisualChildren<Button>(WindowItems).FirstOrDefault(button => button.IsVisible && button.IsEnabled)
+                    ?? StartButton;
+            _keyboardFocusActive = true;
+            target.Focus();
+            Keyboard.Focus(target);
+        }), DispatcherPriority.Input);
+    }
+
+    private void Taskbar_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (!_keyboardFocusActive) return;
+        if (e.Key == Key.Escape)
+        {
+            _keyboardFocusActive = false;
+            if (_previousForegroundWindow != 0) SetForegroundWindow(_previousForegroundWindow);
+            _previousForegroundWindow = 0;
+            e.Handled = true;
+            return;
+        }
+
+        var isVertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
+        var forwardKey = isVertical ? Key.Down : Key.Right;
+        var backwardKey = isVertical ? Key.Up : Key.Left;
+        var buttons = FindVisualChildren<Button>(LayoutGrid).Where(button => button.IsVisible && button.IsEnabled && button.Focusable).ToList();
+        if (buttons.Count == 0) return;
+        var currentIndex = buttons.FindIndex(button => button.IsKeyboardFocused);
+        int targetIndex;
+        if (e.Key == forwardKey) targetIndex = TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(currentIndex, buttons.Count, forward: true)!.Value;
+        else if (e.Key == backwardKey) targetIndex = TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(currentIndex, buttons.Count, forward: false)!.Value;
+        else if (e.Key == Key.Home) targetIndex = 0;
+        else if (e.Key == Key.End) targetIndex = buttons.Count - 1;
+        else return;
+        buttons[targetIndex].Focus();
+        e.Handled = true;
+    }
+
+    private void Taskbar_Deactivated(object? sender, EventArgs e)
+    {
+        _keyboardFocusActive = false;
+        _previousForegroundWindow = 0;
+        if (_autoHide || _autoHideWhenMaximized) _autoHideTimer.Start();
+    }
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+    {
+        if (parent is not Visual and not System.Windows.Media.Media3D.Visual3D) yield break;
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match) yield return match;
+            foreach (var descendant in FindVisualChildren<T>(child)) yield return descendant;
+        }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(nint window);
 
     private void ActivatePinnedApp(PinnedTaskbarApp app, Button? sourceButton = null, bool showPreview = true, bool toggleMinimizeOnActive = true)
     {

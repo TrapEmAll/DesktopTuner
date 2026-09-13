@@ -7,7 +7,8 @@ public enum WindowsKeyAction
     ForwardWindowsDownThenPass,
     ForwardWindowsUpThenSuppress,
     OpenStartMenu,
-    ActivateTaskbarPin
+    ActivateTaskbarPin,
+    FocusTaskbar
 }
 
 public sealed class WindowsKeyGesture
@@ -17,12 +18,12 @@ public sealed class WindowsKeyGesture
     private uint? _heldWindowsKey;
     private bool _forwarded;
     private bool _taskbarShortcutConsumed;
-    private readonly HashSet<uint> _suppressedTaskbarDigits = [];
+    private readonly HashSet<uint> _suppressedTaskbarKeys = [];
     public int? TaskbarPinIndex { get; private set; }
 
     public uint? HeldWindowsKey => _heldWindowsKey;
 
-    public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null)
+    public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null, Func<bool>? canFocusTaskbar = null)
     {
         if (key is VK_LWIN or VK_RWIN)
         {
@@ -43,12 +44,18 @@ public sealed class WindowsKeyGesture
 
         if (_heldWindowsKey is not null && !_forwarded)
         {
-            if (_suppressedTaskbarDigits.Contains(key)) return WindowsKeyAction.Suppress;
+            if (_suppressedTaskbarKeys.Contains(key)) return WindowsKeyAction.Suppress;
+            if (key == (uint)'T' && canFocusTaskbar?.Invoke() == true)
+            {
+                _taskbarShortcutConsumed = true;
+                _suppressedTaskbarKeys.Add(key);
+                return WindowsKeyAction.FocusTaskbar;
+            }
             if (TaskbarShortcutCatalog.GetOneBasedPinIndex(key) is { } pinIndex && canActivateTaskbarPin?.Invoke(pinIndex) == true)
             {
                 _taskbarShortcutConsumed = true;
                 TaskbarPinIndex = pinIndex;
-                _suppressedTaskbarDigits.Add(key);
+                _suppressedTaskbarKeys.Add(key);
                 return WindowsKeyAction.ActivateTaskbarPin;
             }
             _forwarded = true;
@@ -59,7 +66,7 @@ public sealed class WindowsKeyGesture
 
     public WindowsKeyAction KeyUp(uint key)
     {
-        if (_suppressedTaskbarDigits.Remove(key)) return WindowsKeyAction.Suppress;
+        if (_suppressedTaskbarKeys.Remove(key)) return WindowsKeyAction.Suppress;
         if (_heldWindowsKey != key) return WindowsKeyAction.PassThrough;
         var action = _forwarded
             ? WindowsKeyAction.ForwardWindowsUpThenSuppress
@@ -77,7 +84,7 @@ public sealed class WindowsKeyGesture
         _heldWindowsKey = null;
         _forwarded = false;
         _taskbarShortcutConsumed = false;
-        _suppressedTaskbarDigits.Clear();
+        _suppressedTaskbarKeys.Clear();
         TaskbarPinIndex = null;
         return forwardedKey;
     }

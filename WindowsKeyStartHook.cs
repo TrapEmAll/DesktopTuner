@@ -25,15 +25,19 @@ public sealed class WindowsKeyStartHook : IDisposable
     private readonly Action _showStartMenu;
     private readonly Func<int, bool> _canActivateTaskbarPin;
     private readonly Action<int> _activateTaskbarPin;
+    private readonly Func<bool> _canFocusTaskbar;
+    private readonly Action _focusTaskbar;
     private readonly HookProc _callback;
     private readonly WindowsKeyGesture _gesture = new();
     private nint _hook;
 
-    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null)
+    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Action? focusTaskbar = null)
     {
         _showStartMenu = showStartMenu;
         _canActivateTaskbarPin = canActivateTaskbarPin ?? (_ => false);
         _activateTaskbarPin = activateTaskbarPin ?? (_ => { });
+        _canFocusTaskbar = canFocusTaskbar ?? (() => false);
+        _focusTaskbar = focusTaskbar ?? (() => { });
         _callback = KeyboardCallback;
     }
 
@@ -60,9 +64,12 @@ public sealed class WindowsKeyStartHook : IDisposable
             var canActivateTaskbarPin = !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_MENU)
                 ? _canActivateTaskbarPin
                 : static _ => false;
+            var canFocusTaskbar = !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_MENU)
+                ? _canFocusTaskbar
+                : static () => false;
             var action = message switch
             {
-                WM_KEYDOWN or WM_SYSKEYDOWN => _gesture.KeyDown(data.VirtualKey, canActivateTaskbarPin),
+                WM_KEYDOWN or WM_SYSKEYDOWN => _gesture.KeyDown(data.VirtualKey, canActivateTaskbarPin, canFocusTaskbar),
                 WM_KEYUP or WM_SYSKEYUP => _gesture.KeyUp(data.VirtualKey),
                 _ => WindowsKeyAction.PassThrough
             };
@@ -81,6 +88,9 @@ public sealed class WindowsKeyStartHook : IDisposable
                 case WindowsKeyAction.ActivateTaskbarPin:
                     if (_gesture.TaskbarPinIndex is { } pinIndex)
                         Application.Current?.Dispatcher.BeginInvoke(() => _activateTaskbarPin(pinIndex), DispatcherPriority.Input);
+                    return new nint(1);
+                case WindowsKeyAction.FocusTaskbar:
+                    Application.Current?.Dispatcher.BeginInvoke(_focusTaskbar, DispatcherPriority.Input);
                     return new nint(1);
             }
         }

@@ -970,7 +970,7 @@ public partial class MainWindow : Window
     private bool EnableWindowsKeyHook()
     {
         if (_windowsKeyHook?.IsInstalled == true) return true;
-        var hook = new WindowsKeyStartHook(ShowStartMenu, CanActivateTaskbarPinShortcut, ActivateTaskbarPinShortcut);
+        var hook = new WindowsKeyStartHook(ShowStartMenu, CanActivateTaskbarPinShortcut, ActivateTaskbarPinShortcut, CanFocusTaskbar, FocusTaskbar);
         if (!hook.TryInstall(out var error))
         {
             hook.Dispose();
@@ -989,6 +989,16 @@ public partial class MainWindow : Window
         var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
             ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
         taskbar?.TryActivatePinnedApp(oneBasedIndex);
+    }
+
+    private bool CanFocusTaskbar() => _taskbarWindows.Any(window => window.IsVisible);
+
+    private void FocusTaskbar()
+    {
+        if (_startMenuWindow?.IsVisible == true) _startMenuWindow.Close();
+        var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
+            ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
+        taskbar?.FocusTaskbar();
     }
 
     [DllImport("user32.dll", SetLastError = true)]

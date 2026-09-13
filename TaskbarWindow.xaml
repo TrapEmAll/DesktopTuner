@@ -6,7 +6,7 @@
         ShowInTaskbar="False" ShowActivated="False" Topmost="True" Background="Transparent" AllowsTransparency="True"
         Foreground="{DynamicResource TaskbarForegroundBrush}" FontFamily="Segoe UI Variable Text, Segoe UI"
         AllowDrop="True" DragOver="Window_DragOver" DragLeave="Window_DragLeave" Drop="Window_Drop"
-        Loaded="Window_Loaded" Closed="Window_Closed" MouseEnter="Window_MouseEnter" MouseLeave="Window_MouseLeave">
+        Loaded="Window_Loaded" Closed="Window_Closed" Deactivated="Taskbar_Deactivated" PreviewKeyDown="Taskbar_PreviewKeyDown" MouseEnter="Window_MouseEnter" MouseLeave="Window_MouseLeave">
     <Window.ContextMenu>
         <ContextMenu Opened="TaskbarContextMenu_Opened">
             <MenuItem Header="Open Windows Settings" Click="Settings_Click" />
