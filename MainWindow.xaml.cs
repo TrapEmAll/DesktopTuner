@@ -59,6 +59,7 @@ public partial class MainWindow : Window
     private StartMenuPlacePreferences _startMenuPlaces = StartMenuPlaceCatalog.Normalize(null);
     private bool _replaceWindowsKey;
     private StartMenuStyle _startMenuStyle = StartMenuStyle.Modern;
+    private int _startRecentAppCount = 4;
     private bool _taskbarOnAllDisplays = true;
     private bool _replaceNativeTaskbar;
     private bool _startWithWindows;
@@ -91,6 +92,7 @@ public partial class MainWindow : Window
         _startMenuPlaces = StartMenuPlaceCatalog.Normalize(desktopPreferences.StartMenuPlaces);
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
         _startMenuStyle = desktopPreferences.StartMenuStyle;
+        _startRecentAppCount = desktopPreferences.StartRecentAppCount;
         _taskbarOnAllDisplays = desktopPreferences.TaskbarOnAllDisplays;
         _replaceNativeTaskbar = desktopPreferences.ReplaceNativeTaskbar;
         _nativeTaskbarWatchTimer.Tick += (_, _) => MaintainNativeTaskbars();
@@ -221,6 +223,21 @@ public partial class MainWindow : Window
             };
             menuStyleRow.Children.Add(menuStyleSelector);
             PageContent.Children.Add(menuStyleRow);
+            var recentAppsRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            recentAppsRow.Children.Add(new TextBlock { Text = "Recent apps", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+            var recentAppsSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
+            foreach (var count in Enumerable.Range(0, StartRecentAppsStore.MaximumEntries + 1))
+                recentAppsSelector.Items.Add(new ComboBoxItem { Content = count == 0 ? "Off" : $"{count} app{(count == 1 ? "" : "s")}", Tag = count });
+            recentAppsSelector.SelectedItem = recentAppsSelector.Items.Cast<ComboBoxItem>().First(item => (int)item.Tag == _startRecentAppCount);
+            recentAppsSelector.SelectionChanged += (_, _) =>
+            {
+                if (recentAppsSelector.SelectedItem is not ComboBoxItem { Tag: int count }) return;
+                _startRecentAppCount = count;
+                SaveDesktopPreferences();
+                _startMenuWindow?.SetRecentAppCount(count);
+            };
+            recentAppsRow.Children.Add(recentAppsSelector);
+            PageContent.Children.Add(recentAppsRow);
             var replaceStart = new CheckBox { Content = "Use Desktop Tuner Start and taskbar shortcuts for the Windows key while this app is running", IsChecked = _replaceWindowsKey, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
             replaceStart.Checked += (_, _) => ToggleWindowsKeyReplacement(replaceStart, true);
             replaceStart.Unchecked += (_, _) => ToggleWindowsKeyReplacement(replaceStart, false);
@@ -797,7 +814,7 @@ public partial class MainWindow : Window
             return;
         }
         _startMenuWindow = new StartMenuWindow(_startMenuStyle, _pinnedStartApps, SavePinnedStartApps,
-            startPlaces: _startMenuPlaces);
+            startPlaces: _startMenuPlaces, recentAppCount: _startRecentAppCount);
         _startMenuDisplay = display;
         _startMenuWindow.Closed += (_, _) => { _startMenuWindow = null; _startMenuDisplay = null; };
         if (display is not null)
@@ -931,7 +948,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount);
 
     private void SavePlaceVisibility(string placeId, bool isVisible, Action refresh)
     {
@@ -1016,6 +1033,7 @@ public partial class MainWindow : Window
             _startMenuPlaces = StartMenuPlaceCatalog.Normalize(preferences.StartMenuPlaces);
             _replaceWindowsKey = preferences.ReplaceWindowsKey;
             _startMenuStyle = preferences.StartMenuStyle;
+            _startRecentAppCount = preferences.StartRecentAppCount;
             _taskbarOnAllDisplays = preferences.TaskbarOnAllDisplays;
             _taskbarLayout = preferences.TaskbarLayout;
             _taskbarGrouping = preferences.TaskbarGrouping;
@@ -1036,6 +1054,7 @@ public partial class MainWindow : Window
                 foreach (var taskbar in _taskbarWindows.ToArray()) taskbar.SetPreferences(preferences);
             }
             _startMenuWindow?.SetStyle(_startMenuStyle);
+            _startMenuWindow?.SetRecentAppCount(_startRecentAppCount);
             _startMenuWindow?.SetStartPlaces(_startMenuPlaces);
             SetStatus("Desktop preferences saved.");
         }

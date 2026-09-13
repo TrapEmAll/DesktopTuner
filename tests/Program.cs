@@ -974,7 +974,7 @@ try
     var savedStartPlaces = StartMenuPlaceCatalog.Normalize(new StartMenuPlacePreferences(["run", "documents"], ["documents", "run"]));
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
@@ -985,6 +985,15 @@ try
     Check("Dev", loadedPreferences.PinnedStartApps!.Single().GroupName, "persist a pinned Start tile's group");
     Check(string.Join(',', savedStartPlaces.Order!), string.Join(',', loadedPreferences.StartMenuPlaces!.Order!), "persist custom Start system-place order");
     Check(string.Join(',', savedStartPlaces.Visible!), string.Join(',', loadedPreferences.StartMenuPlaces.Visible!), "persist custom Start system-place visibility");
+    Check(8, loadedPreferences.StartRecentAppCount, "persist the configured Start recent-app count");
+    preferencesStore.Save(expectedPreferences with { StartRecentAppCount = 0 });
+    Check(0, preferencesStore.Load().StartRecentAppCount, "allow disabling the Start recent-app section");
+    preferencesStore.Save(expectedPreferences with { StartRecentAppCount = StartRecentAppsStore.MaximumEntries });
+    Check(StartRecentAppsStore.MaximumEntries, preferencesStore.Load().StartRecentAppCount, "allow the maximum Start recent-app count");
+    preferencesStore.Save(expectedPreferences with { StartRecentAppCount = StartRecentAppsStore.MaximumEntries + 1 });
+    Check(StartRecentAppsStore.MaximumEntries, preferencesStore.Load().StartRecentAppCount, "clamp excessive Start recent-app counts");
+    preferencesStore.Save(expectedPreferences with { StartRecentAppCount = -1 });
+    Check(0, preferencesStore.Load().StartRecentAppCount, "clamp negative Start recent-app counts");
     Check(expectedPreferences.TaskbarOnAllDisplays, loadedPreferences.TaskbarOnAllDisplays, "persist taskbar display coverage");
     Check(expectedPreferences.TaskbarLayout, loadedPreferences.TaskbarLayout, "persist floating taskbar style");
     Check(true, loadedPreferences.ReplaceNativeTaskbar, "persist native taskbar replacement mode");
@@ -1023,6 +1032,7 @@ try
     Check(false, preferencesStore.Load().TaskbarOnAllDisplays, "keep legacy taskbar preferences on the primary display");
     Check(false, preferencesStore.Load().ReplaceNativeTaskbar, "keep native taskbar replacement disabled for legacy preferences");
     Check(false, preferencesStore.Load().StartWithWindows, "disable sign-in startup for older preference files");
+    Check(4, preferencesStore.Load().StartRecentAppCount, "default older preferences to four recent Start apps");
     Check(5, preferencesStore.Load().TaskbarTransparency, "default taskbar transparency for older preference files");
     Check(false, preferencesStore.Load().TaskbarDynamicTransparency, "disable adaptive transparency for older preference files");
     Check(TaskbarButtonEffect.Accent, preferencesStore.Load().TaskbarButtonEffect, "default older preference files to the Windows accent button effect");

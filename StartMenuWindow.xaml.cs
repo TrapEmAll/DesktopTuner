@@ -20,6 +20,7 @@ public partial class StartMenuWindow : Window
     private IReadOnlyList<AppEntry> _apps = [];
     private IReadOnlyList<AppEntry> _pinnedApps = [];
     private StartMenuStyle _style = StartMenuStyle.Modern;
+    private int _recentAppCount;
     private bool _catalogLoaded;
     private string? _catalogLoadError;
     private string? _pinnedStartDragCandidate;
@@ -28,17 +29,24 @@ public partial class StartMenuWindow : Window
     private Point _pinnedStartDrag;
     private bool _suppressPinnedStartClick;
 
-    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null)
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4)
     {
         InitializeComponent();
         _pinnedApps = StartPinCatalog.Normalize(pinnedApps);
         _savePinnedApps = savePinnedApps;
         _recentAppsStore = recentAppsStore ?? new StartRecentAppsStore();
         _startPlaces = StartMenuPlaceCatalog.Normalize(startPlaces);
+        _recentAppCount = Math.Clamp(recentAppCount, 0, StartRecentAppsStore.MaximumEntries);
         SetStyle(style);
     }
 
     public void SetStartPlaces(StartMenuPlacePreferences preferences) => _startPlaces = StartMenuPlaceCatalog.Normalize(preferences);
+
+    public void SetRecentAppCount(int count)
+    {
+        _recentAppCount = Math.Clamp(count, 0, StartRecentAppsStore.MaximumEntries);
+        RefreshApps();
+    }
 
     public void SetStyle(StartMenuStyle style)
     {
@@ -340,7 +348,7 @@ public partial class StartMenuWindow : Window
         var recentApps = query.Length == 0
             ? _recentAppsStore.Resolve(_apps)
                 .Where(app => !_pinnedApps.Any(pinned => string.Equals(pinned.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase)))
-                .Take(4)
+                .Take(_recentAppCount)
                 .ToList()
             : [];
         RecentStartItems.ItemsSource = recentApps;

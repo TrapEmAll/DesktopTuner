@@ -19,7 +19,7 @@ public sealed record PinnedTaskbarApp(string Name, string ExecutablePath, bool I
     [JsonIgnore]
     public bool CanOpenLocation => TaskbarPinCatalog.CanOpenLocation(this);
 }
-public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern, bool TaskbarOnAllDisplays = false, TaskbarStyle TaskbarLayout = TaskbarStyle.EdgeToEdge, TaskbarGroupingMode TaskbarGrouping = TaskbarGroupingMode.Always, TaskbarButtonAlignment TaskbarButtonAlignment = TaskbarButtonAlignment.Center, bool TaskbarShowLabels = true, TaskbarIconSize TaskbarIconSize = TaskbarIconSize.Standard, TaskbarButtonSpacing TaskbarButtonSpacing = TaskbarButtonSpacing.Standard, bool StartWithWindows = false, bool AutoHideWhenMaximized = false, int TaskbarTransparency = 5, List<AppEntry>? PinnedStartApps = null, bool ReplaceNativeTaskbar = false, bool TaskbarDynamicTransparency = false, TaskbarButtonEffect TaskbarButtonEffect = TaskbarButtonEffect.Accent, StartMenuPlacePreferences? StartMenuPlaces = null);
+public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern, bool TaskbarOnAllDisplays = false, TaskbarStyle TaskbarLayout = TaskbarStyle.EdgeToEdge, TaskbarGroupingMode TaskbarGrouping = TaskbarGroupingMode.Always, TaskbarButtonAlignment TaskbarButtonAlignment = TaskbarButtonAlignment.Center, bool TaskbarShowLabels = true, TaskbarIconSize TaskbarIconSize = TaskbarIconSize.Standard, TaskbarButtonSpacing TaskbarButtonSpacing = TaskbarButtonSpacing.Standard, bool StartWithWindows = false, bool AutoHideWhenMaximized = false, int TaskbarTransparency = 5, List<AppEntry>? PinnedStartApps = null, bool ReplaceNativeTaskbar = false, bool TaskbarDynamicTransparency = false, TaskbarButtonEffect TaskbarButtonEffect = TaskbarButtonEffect.Accent, StartMenuPlacePreferences? StartMenuPlaces = null, int StartRecentAppCount = 4);
 
 public sealed class DesktopPreferencesStore
 {
@@ -46,7 +46,7 @@ public sealed class DesktopPreferencesStore
                 .ToList();
             var startPins = StartPinCatalog.Normalize(value.PinnedStartApps).ToList();
             var startPlaces = StartMenuPlaceCatalog.Normalize(value.StartMenuPlaces);
-            return value with { PinnedApps = pins, PinnedStartApps = startPins, StartMenuPlaces = startPlaces, TaskbarTransparency = TaskbarTransparencyPolicy.Clamp(value.TaskbarTransparency) };
+            return value with { PinnedApps = pins, PinnedStartApps = startPins, StartMenuPlaces = startPlaces, TaskbarTransparency = TaskbarTransparencyPolicy.Clamp(value.TaskbarTransparency), StartRecentAppCount = Math.Clamp(value.StartRecentAppCount, 0, StartRecentAppsStore.MaximumEntries) };
         }
         catch (JsonException) { return new DesktopPreferences(TaskbarEdge.Bottom); }
         catch (IOException) { return new DesktopPreferences(TaskbarEdge.Bottom); }
