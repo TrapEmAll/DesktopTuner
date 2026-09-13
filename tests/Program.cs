@@ -459,6 +459,26 @@ try
     var pinnedFolder = new PinnedTaskbarApp("ExplorerOperations", explorerTestDirectory, IsDirectory: true);
     CheckTrue(pinnedFolder.CanOpenLocation, "offer the folder itself for an existing taskbar folder pin");
     Check(explorerTestDirectory, TaskbarPinCatalog.BuildLocationLaunchInfo(pinnedFolder).FileName, "open a pinned folder directly in File Explorer");
+    var pinnedFolderMenuDirectory = Path.Combine(temporaryPreferencesDirectory, "PinnedFolderMenu");
+    var pinnedFolderMenuSubdirectory = Path.Combine(pinnedFolderMenuDirectory, "AlphaFolder");
+    Directory.CreateDirectory(pinnedFolderMenuSubdirectory);
+    File.WriteAllText(Path.Combine(pinnedFolderMenuSubdirectory, "Nested.txt"), "nested fixture");
+    File.WriteAllText(Path.Combine(pinnedFolderMenuDirectory, "Zebra.txt"), "file fixture");
+    for (var index = 0; index < TaskbarFolderMenuCatalog.MaximumVisibleEntries + 5; index++)
+        File.WriteAllText(Path.Combine(pinnedFolderMenuDirectory, $"File {index:D2}.txt"), "bounded menu fixture");
+    var hiddenPinnedFolderItem = Path.Combine(pinnedFolderMenuDirectory, "Hidden.txt");
+    File.WriteAllText(hiddenPinnedFolderItem, "hidden fixture");
+    File.SetAttributes(hiddenPinnedFolderItem, FileAttributes.Hidden);
+    var pinnedFolderMenuEntries = TaskbarFolderMenuCatalog.ReadChildren(pinnedFolderMenuDirectory);
+    Check("AlphaFolder", pinnedFolderMenuEntries[0].Name, "list folders before files in pinned taskbar folder menus");
+    CheckTrue(pinnedFolderMenuEntries[0].IsDirectory, "identify folders in pinned taskbar folder menus");
+    Check(TaskbarFolderMenuCatalog.MaximumVisibleEntries, pinnedFolderMenuEntries.Count, "bound the default number of visible pinned folder menu entries");
+    Check(false, pinnedFolderMenuEntries.Any(entry => entry.Name == "Hidden.txt"), "hide hidden files from pinned folder menus");
+    Check(1, TaskbarFolderMenuCatalog.ReadChildren(pinnedFolderMenuDirectory, maximum: 1).Count, "honor a smaller pinned folder menu entry bound");
+    Check(0, TaskbarFolderMenuCatalog.ReadChildren(pinnedFolderMenuDirectory, maximum: 0).Count, "allow pinned folder menus to request no entries");
+    Check("Nested.txt", TaskbarFolderMenuCatalog.ReadChildren(pinnedFolderMenuSubdirectory).Single().Name, "enumerate nested pinned folder menu contents on demand");
+    Check(0, TaskbarFolderMenuCatalog.ReadChildren(Path.Combine(temporaryPreferencesDirectory, "MissingFolderMenu")).Count, "return no entries for a missing pinned folder");
+    Throws<ArgumentOutOfRangeException>(() => TaskbarFolderMenuCatalog.ReadChildren(pinnedFolderMenuDirectory, maximum: -1), "reject negative pinned folder menu bounds");
     CheckTrue(!TaskbarPinCatalog.CanOpenLocation(new PinnedTaskbarApp("Missing", Path.Combine(startShortcutDirectory, "missing.exe"))), "disable file location for a removed taskbar app pin");
     var quickAccessStore = new ExplorerQuickAccessStore(Path.Combine(temporaryPreferencesDirectory, "explorer-quick-access.json"));
     Check(true, quickAccessStore.Add(explorerTestDirectory), "pin an existing Explorer folder to quick access");

@@ -725,6 +725,76 @@ public partial class TaskbarWindow : Window
         }
     }
 
+    private void PinnedFolderMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: PinnedTaskbarApp { IsDirectory: true } app } menu) return;
+        PopulatePinnedFolderMenu(menu, app.ExecutablePath, depth: 0);
+    }
+
+    private void PinnedFolderSubmenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string path } menu || !int.TryParse(menu.Uid, out var depth)) return;
+        PopulatePinnedFolderMenu(menu, path, depth);
+    }
+
+    private void PopulatePinnedFolderMenu(MenuItem menu, string path, int depth)
+    {
+        menu.Items.Clear();
+        if (!Directory.Exists(path))
+        {
+            menu.Items.Add(new MenuItem { Header = "Folder is unavailable", IsEnabled = false });
+            return;
+        }
+
+        var openFolderItem = new MenuItem { Header = "Open in File Explorer", Tag = path };
+        openFolderItem.Click += OpenFolderMenuEntry_Click;
+        menu.Items.Add(openFolderItem);
+        menu.Items.Add(new Separator());
+        try
+        {
+            var entries = TaskbarFolderMenuCatalog.ReadChildren(path);
+            if (entries.Count == 0)
+                menu.Items.Add(new MenuItem { Header = "No visible items", IsEnabled = false });
+            foreach (var entry in entries)
+            {
+                var item = new MenuItem { Header = entry.Name, Tag = entry.FullPath };
+                if (entry.IsDirectory && !entry.IsReparsePoint && depth < 2)
+                {
+                    item.Uid = (depth + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    item.SubmenuOpened += PinnedFolderSubmenu_SubmenuOpened;
+                    item.Items.Add(new MenuItem { Header = "Loading...", IsEnabled = false });
+                }
+                else
+                {
+                    item.Click += OpenFolderMenuEntry_Click;
+                }
+                menu.Items.Add(item);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Security.SecurityException)
+        {
+            System.Diagnostics.Trace.TraceWarning($"Could not read taskbar folder menu '{path}': {ex.Message}");
+            menu.Items.Add(new MenuItem { Header = "Could not read this folder", IsEnabled = false });
+        }
+    }
+
+    private void OpenFolderMenuEntry_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string path }) return;
+        try
+        {
+            var startInfo = Directory.Exists(path)
+                ? new ProcessStartInfo("explorer.exe") { UseShellExecute = true }
+                : new ProcessStartInfo(path) { UseShellExecute = true };
+            if (Directory.Exists(path)) startInfo.ArgumentList.Add(path);
+            Process.Start(startInfo);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            MessageBox.Show(this, $"Windows could not open {path}.\n\n{ex.Message}", "Could not open folder item", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void PinnedButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: PinnedTaskbarApp app }) return;
