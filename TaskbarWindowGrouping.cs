@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace DesktopTuner;
 
 public sealed record TaskbarWindowGroup(string Label, string ApplicationName, IReadOnlyList<RunningWindow> Windows)
@@ -7,19 +9,34 @@ public sealed record TaskbarWindowGroup(string Label, string ApplicationName, IR
 
 public static class TaskbarWindowGrouping
 {
-    public static IReadOnlyList<TaskbarWindowGroup> Create(IEnumerable<RunningWindow> windows, TaskbarGroupingMode mode, int buttonCapacity)
+    public static IReadOnlyList<TaskbarWindowGroup> Create(IEnumerable<RunningWindow> windows, TaskbarGroupingMode mode, int buttonCapacity, IEnumerable<PinnedTaskbarApp>? pinnedApps = null)
     {
         ArgumentNullException.ThrowIfNull(windows);
         if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
 
         var entries = windows.ToList();
+        var remaining = entries.Where(window => pinnedApps is null || !pinnedApps.Any(app => MatchesPinnedApp(app, window))).ToList();
         if (mode == TaskbarGroupingMode.Never || (mode == TaskbarGroupingMode.WhenFull && entries.Count <= Math.Max(1, buttonCapacity)))
-            return entries.Select(window => CreateGroup([window])).ToList();
+            return remaining.Select(window => CreateGroup([window])).ToList();
 
-        return entries
+        return remaining
             .GroupBy(GroupKey, StringComparer.OrdinalIgnoreCase)
             .Select(group => CreateGroup(group.ToList()))
             .ToList();
+    }
+
+    public static bool MatchesPinnedApp(PinnedTaskbarApp app, RunningWindow window)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        ArgumentNullException.ThrowIfNull(window);
+        if (app.IsDirectory || string.IsNullOrWhiteSpace(app.ExecutablePath) || string.IsNullOrWhiteSpace(window.ExecutablePath)) return false;
+        return string.Equals(NormalizePath(app.ExecutablePath), NormalizePath(window.ExecutablePath), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizePath(string path)
+    {
+        try { return Path.GetFullPath(path); }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { return path; }
     }
 
     private static TaskbarWindowGroup CreateGroup(IReadOnlyList<RunningWindow> windows)

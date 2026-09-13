@@ -31,11 +31,16 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="ButtonBorder" CornerRadius="8" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <ContentPresenter Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                <Border x:Name="RunningIndicator" Grid.Row="1" Width="16" Height="2" Margin="0,3,0,0" HorizontalAlignment="Center" Background="#8D86FF" CornerRadius="1" Visibility="Collapsed" />
+                            </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="#30394D" /></Trigger>
                             <Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="#494F70" /></Trigger>
+                            <DataTrigger Binding="{Binding IsRunning}" Value="True"><Setter TargetName="RunningIndicator" Property="Visibility" Value="Visible" /></DataTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>

@@ -3,7 +3,7 @@ using System.Windows;
 
 namespace DesktopTuner;
 
-public sealed record TaskbarButtonViewModel(string Label, string ToolTip, ImageSource? Icon, object Target, int IconPixels, bool ShowLabel, Thickness ButtonMargin, Thickness IconMargin)
+public sealed record TaskbarButtonViewModel(string Label, string ToolTip, ImageSource? Icon, object Target, int IconPixels, bool ShowLabel, Thickness ButtonMargin, Thickness IconMargin, bool IsRunning = false)
 {
     public string Initial
     {
@@ -14,17 +14,17 @@ public sealed record TaskbarButtonViewModel(string Label, string ToolTip, ImageS
         }
     }
 
-    public static TaskbarButtonViewModel FromPin(PinnedTaskbarApp app, DesktopPreferences preferences, bool vertical) =>
-        Create(app.Name, app.ExecutablePath, app, preferences, vertical);
+    public static TaskbarButtonViewModel FromPin(PinnedTaskbarApp app, DesktopPreferences preferences, bool vertical, bool isRunning = false) =>
+        Create(app.Name, app.ExecutablePath, app, preferences, vertical, isRunning: isRunning);
 
     public static TaskbarButtonViewModel FromWindowGroup(TaskbarWindowGroup group, DesktopPreferences preferences, bool vertical) =>
-        Create(group.Label, group.ToolTip, group, preferences, vertical, group.Windows[0].ExecutablePath);
+        Create(group.Label, group.ToolTip, group, preferences, vertical, group.Windows[0].ExecutablePath, isRunning: true);
 
-    private static TaskbarButtonViewModel Create(string label, string toolTip, object target, DesktopPreferences preferences, bool vertical, string? iconPath = null) =>
+    private static TaskbarButtonViewModel Create(string label, string toolTip, object target, DesktopPreferences preferences, bool vertical, string? iconPath = null, bool isRunning = false) =>
         new(label, toolTip, TaskbarIconService.LoadIcon(iconPath ?? (target as PinnedTaskbarApp)?.ExecutablePath ?? string.Empty), target,
             TaskbarIconSizePolicy.GetPixels(preferences.TaskbarIconSize), preferences.TaskbarShowLabels,
             TaskbarButtonSpacingPolicy.GetButtonMargin(preferences.TaskbarButtonSpacing, vertical),
-            preferences.TaskbarShowLabels ? new Thickness(0, 0, 8, 0) : new Thickness(0));
+            preferences.TaskbarShowLabels ? new Thickness(0, 0, 8, 0) : new Thickness(0), isRunning);
 }
 
 public static class TaskbarIconSizePolicy

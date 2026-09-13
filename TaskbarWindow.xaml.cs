@@ -248,8 +248,10 @@ public partial class TaskbarWindow : Window
             ApplyLayout();
         }
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
-        PinnedItems.ItemsSource = _preferences.PinnedApps!.Select(app => TaskbarButtonViewModel.FromPin(app, _preferences, vertical)).ToList();
-        WindowItems.ItemsSource = TaskbarWindowGrouping.Create(windows, _preferences.TaskbarGrouping, GetWindowButtonCapacity())
+        var pinnedApps = _preferences.PinnedApps!;
+        PinnedItems.ItemsSource = pinnedApps.Select(app => TaskbarButtonViewModel.FromPin(
+            app, _preferences, vertical, windows.Any(window => TaskbarWindowGrouping.MatchesPinnedApp(app, window)))).ToList();
+        WindowItems.ItemsSource = TaskbarWindowGrouping.Create(windows, _preferences.TaskbarGrouping, GetWindowButtonCapacity(), pinnedApps)
             .Select(group => TaskbarButtonViewModel.FromWindowGroup(group, _preferences, vertical)).ToList();
         EmptyText.Visibility = windows.Count == 0 && _preferences.PinnedApps!.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
@@ -640,7 +642,7 @@ public partial class TaskbarWindow : Window
     {
         if (sender is not Button { Tag: PinnedTaskbarApp app }) return;
         var openWindows = _windows.Enumerate()
-            .Where(window => string.Equals(window.ExecutablePath, app.ExecutablePath, StringComparison.OrdinalIgnoreCase))
+            .Where(window => TaskbarWindowGrouping.MatchesPinnedApp(app, window))
             .ToList();
         if (openWindows.Count > 1)
         {
