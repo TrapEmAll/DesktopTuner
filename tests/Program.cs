@@ -50,6 +50,11 @@ var largeAppCatalog = Enumerable.Range(0, 55)
     .ToList();
 Check(56, AppCatalogService.Search(largeAppCatalog).Count, "show every app in a large Start menu catalog");
 Check("Zebra Editor", AppCatalogService.Search(largeAppCatalog, " zebra ").Single().Name, "search apps beyond the first 40 catalog entries");
+var packagedApp = new AppEntry("Calculator", "Microsoft.WindowsCalculator_8wekyb3d8bbwe!App", IsPackagedApp: true);
+Check("Windows app", packagedApp.SourceDescription, "label packaged apps without exposing the application ID");
+var discoveredPackagedApps = new AppCatalogService().FindStartMenuApps().Where(entry => entry.IsPackagedApp).ToList();
+CheckTrue(discoveredPackagedApps.Count > 0, "discover installed packaged apps from the Windows AppsFolder namespace");
+CheckTrue(discoveredPackagedApps.All(entry => entry.ShortcutPath.Contains('!')), "retain application IDs for packaged app activation");
 var fullPinList = Enumerable.Range(0, TaskbarPinCatalog.MaximumPins)
     .Select(index => new PinnedTaskbarApp($"App {index}", $@"C:\Apps\app{index}.exe"))
     .ToList();

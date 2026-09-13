@@ -57,7 +57,7 @@
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" />
-                                    <TextBlock Text="{Binding ShortcutPath}" FontSize="10" Foreground="#8992A3" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                                    <TextBlock Text="{Binding SourceDescription}" FontSize="10" Foreground="#8992A3" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
                                 </StackPanel>
                             </Grid>
                         </DataTemplate>
