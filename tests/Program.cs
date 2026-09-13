@@ -34,7 +34,27 @@ cancelGesture.KeyDown('E');
 Check((uint?)0x5b, cancelGesture.Cancel(), "release a forwarded modifier when disabling the hook");
 Check<uint?>(null, cancelGesture.Cancel(), "cancel clears gesture state");
 Throws<ArgumentOutOfRangeException>(() => TaskbarLayoutCalculator.Calculate(0, 1080, new(TaskbarEdge.Bottom), false), "rejects invalid screen bounds");
-Console.WriteLine($"Passed {count} taskbar layout and auto-hide checks.");
+var temporaryPreferencesDirectory = Path.Combine(Path.GetTempPath(), $"DesktopTuner.Tests-{Guid.NewGuid():N}");
+var preferencesPath = Path.Combine(temporaryPreferencesDirectory, "preferences.json");
+try
+{
+    var preferencesStore = new DesktopPreferencesStore(preferencesPath);
+    var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true, [], true, StartMenuStyle.Classic);
+    preferencesStore.Save(expectedPreferences);
+    var loadedPreferences = preferencesStore.Load();
+    Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
+    Check(expectedPreferences.TaskbarSize, loadedPreferences.TaskbarSize, "persist taskbar size");
+    Check(expectedPreferences.StartMenuStyle, loadedPreferences.StartMenuStyle, "persist Start menu style");
+
+    File.WriteAllText(preferencesPath, "{\"TaskbarEdge\":\"Bottom\"}");
+    Check(StartMenuStyle.Modern, preferencesStore.Load().StartMenuStyle, "default legacy preferences to the Modern Start menu");
+}
+finally
+{
+    if (Directory.Exists(temporaryPreferencesDirectory)) Directory.Delete(temporaryPreferencesDirectory, recursive: true);
+}
+
+Console.WriteLine($"Passed {count} desktop customization checks.");
 
 void Check<T>(T expected, T actual, string label)
 {

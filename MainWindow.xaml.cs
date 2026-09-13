@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private bool _taskbarAutoHide;
     private List<PinnedTaskbarApp> _pinnedApps = [];
     private bool _replaceWindowsKey;
+    private StartMenuStyle _startMenuStyle = StartMenuStyle.Modern;
 
     public MainWindow()
     {
@@ -46,6 +47,7 @@ public partial class MainWindow : Window
         _taskbarAutoHide = desktopPreferences.AutoHide;
         _pinnedApps = desktopPreferences.PinnedApps ?? [];
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
+        _startMenuStyle = desktopPreferences.StartMenuStyle;
         foreach (var setting in SettingsCatalog.All)
         {
             var value = _settings.Read(setting);
@@ -130,6 +132,22 @@ public partial class MainWindow : Window
             var launchButton = new Button { Content = "Open Desktop Tuner Start menu", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowStartMenu();
             PageContent.Children.Add(launchButton);
+            var menuStyleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            menuStyleRow.Children.Add(new TextBlock { Text = "Start menu style", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+            var menuStyleSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
+            menuStyleSelector.Items.Add(new ComboBoxItem { Content = "Modern", Tag = StartMenuStyle.Modern });
+            menuStyleSelector.Items.Add(new ComboBoxItem { Content = "Classic", Tag = StartMenuStyle.Classic });
+            menuStyleSelector.Items.Add(new ComboBoxItem { Content = "Compact", Tag = StartMenuStyle.Compact });
+            menuStyleSelector.SelectedIndex = (int)_startMenuStyle;
+            menuStyleSelector.SelectionChanged += (_, _) =>
+            {
+                if (menuStyleSelector.SelectedItem is not ComboBoxItem { Tag: StartMenuStyle style }) return;
+                _startMenuStyle = style;
+                SaveDesktopPreferences();
+                if (_startMenuWindow?.IsVisible == true) PositionStartMenuWindow();
+            };
+            menuStyleRow.Children.Add(menuStyleSelector);
+            PageContent.Children.Add(menuStyleRow);
             var replaceStart = new CheckBox { Content = "Use Desktop Tuner Start menu for the Windows key while this app is running", IsChecked = _replaceWindowsKey, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
             replaceStart.Checked += (_, _) => ToggleWindowsKeyReplacement(replaceStart, true);
             replaceStart.Unchecked += (_, _) => ToggleWindowsKeyReplacement(replaceStart, false);
@@ -401,8 +419,16 @@ public partial class MainWindow : Window
             _startMenuWindow.Close();
             return;
         }
-        _startMenuWindow = new StartMenuWindow();
+        _startMenuWindow = new StartMenuWindow(_startMenuStyle);
         _startMenuWindow.Closed += (_, _) => _startMenuWindow = null;
+        PositionStartMenuWindow();
+        _startMenuWindow.Show();
+        _startMenuWindow.Activate();
+    }
+
+    private void PositionStartMenuWindow()
+    {
+        if (_startMenuWindow is null) return;
         var workArea = SystemParameters.WorkArea;
         var edge = _taskbarWindow?.IsVisible == true ? _taskbarEdge : TaskbarEdge.Bottom;
         switch (edge)
@@ -424,8 +450,6 @@ public partial class MainWindow : Window
                 _startMenuWindow.Top = Math.Max(workArea.Top + 12, workArea.Bottom - _startMenuWindow.Height - 12);
                 break;
         }
-        _startMenuWindow.Show();
-        _startMenuWindow.Activate();
     }
 
     private void ShowTaskbar()
@@ -436,7 +460,7 @@ public partial class MainWindow : Window
             return;
         }
         _taskbarWindow = new TaskbarWindow(ShowStartMenu, () => _startMenuWindow?.IsVisible == true,
-            new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey), SaveDesktopPreferences);
+            new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle), SaveDesktopPreferences);
         _taskbarWindow.Closed += (_, _) => _taskbarWindow = null;
         _taskbarWindow.Show();
         SetStatus("Desktop Tuner taskbar overlay is running. Close it to reveal the Windows taskbar.");
@@ -446,7 +470,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            SaveDesktopPreferences(new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey));
+            SaveDesktopPreferences(new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle));
         }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not save taskbar preferences", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
@@ -461,8 +485,10 @@ public partial class MainWindow : Window
             _taskbarAutoHide = preferences.AutoHide;
             _pinnedApps = preferences.PinnedApps ?? [];
             _replaceWindowsKey = preferences.ReplaceWindowsKey;
+            _startMenuStyle = preferences.StartMenuStyle;
             _taskbarWindow?.SetPreferences(preferences);
-            SetStatus("Taskbar preferences saved.");
+            _startMenuWindow?.SetStyle(_startMenuStyle);
+            SetStatus("Desktop preferences saved.");
         }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not save taskbar preferences", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
