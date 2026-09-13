@@ -17,6 +17,7 @@ public partial class ExplorerWindow : Window
     private readonly HashSet<string> _cutPaths = new(StringComparer.OrdinalIgnoreCase);
     private int _activeTabIndex;
     private bool _syncingTabs;
+    private bool _updatingSortControls;
     private TabItem? _tabDragCandidate;
     private Point _tabDragStart;
     private ExplorerTabState ActiveTab => _tabs[_activeTabIndex];
@@ -53,6 +54,7 @@ public partial class ExplorerWindow : Window
                     ? new ExplorerLocation(Path.GetFullPath(initialPath))
                     : new ExplorerLocation(null, IsHome: true);
         _tabs.Add(new ExplorerTabState(initialLocation));
+        UpdateSortPresentation();
         SyncExplorerTabs();
         Closed += (_, _) => { foreach (var tab in _tabs) CancelSearch(tab); };
         RefreshLocation();
@@ -557,11 +559,44 @@ public partial class ExplorerWindow : Window
             _sortAscending = true;
         }
 
+        UpdateSortPresentation();
+        ApplySort();
+    }
+
+    private void SortBySelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingSortControls || SortBySelector.SelectedItem is not ComboBoxItem { Tag: string columnName }
+            || !Enum.TryParse(columnName, out ExplorerSortColumn column) || column == _sortColumn) return;
+
+        _sortColumn = column;
+        _sortAscending = true;
+        _sortExplicitly = true;
+        UpdateSortPresentation();
+        ApplySort();
+    }
+
+    private void SortDirectionButton_Click(object sender, RoutedEventArgs e)
+    {
+        _sortAscending = !_sortAscending;
+        _sortExplicitly = true;
+        UpdateSortPresentation();
+        ApplySort();
+    }
+
+    private void UpdateSortPresentation()
+    {
+        _updatingSortControls = true;
+        try
+        {
+            SortBySelector.SelectedIndex = (int)_sortColumn;
+            SortDirectionButton.Content = _sortAscending ? "Ascending ↑" : "Descending ↓";
+        }
+        finally { _updatingSortControls = false; }
+
         NameColumnHeader.Content = HeaderLabel("Name", _sortColumn == ExplorerSortColumn.Name, _sortAscending);
         DateModifiedColumnHeader.Content = HeaderLabel("DateModified", _sortColumn == ExplorerSortColumn.DateModified, _sortAscending);
         TypeColumnHeader.Content = HeaderLabel("Type", _sortColumn == ExplorerSortColumn.Type, _sortAscending);
         SizeColumnHeader.Content = HeaderLabel("Size", _sortColumn == ExplorerSortColumn.Size, _sortAscending);
-        ApplySort();
     }
 
     private static string HeaderLabel(string key, bool sorted, bool ascending)
@@ -635,7 +670,30 @@ public partial class ExplorerWindow : Window
         CopyButton.IsEnabled = CutButton.IsEnabled = canTransferSelection;
         RenameButton.IsEnabled = selection.Count == 1 && !selection[0].IsDrive;
         DeleteButton.IsEnabled = selection.Count > 0 && selection.All(entry => !entry.IsDrive);
+        OpenSelectedButton.IsEnabled = selection.Count == 1;
+        OpenInNewTabButton.IsEnabled = selection.Count == 1 && selection[0].IsDirectory;
+        CopyPathButton.IsEnabled = canTransferSelection;
+        NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_isSearchView;
         PasteButton.IsEnabled = !ActiveTab.Location.IsDriveList && !ActiveTab.Location.IsHome && ClipboardHasFileDrop();
+    }
+
+    private void CopyPath_Click(object sender, RoutedEventArgs e)
+    {
+        var paths = EntriesList.SelectedItems.OfType<ExplorerEntry>()
+            .Where(entry => !entry.IsDrive)
+            .Select(entry => entry.FullPath)
+            .ToArray();
+        if (paths.Length == 0) return;
+
+        try
+        {
+            Clipboard.SetText(string.Join(Environment.NewLine, paths), TextDataFormat.UnicodeText);
+            SetStatus($"Copied {paths.Length:N0} path{(paths.Length == 1 ? "" : "s")}.");
+        }
+        catch (Exception ex) when (ex is ExternalException or ThreadStateException)
+        {
+            ShowFileOperationError("Could not copy the selected path", ex);
+        }
     }
 
     private void Copy_Click(object sender, RoutedEventArgs e) => CopyOrCutSelection(move: false);

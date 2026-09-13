@@ -54,17 +54,63 @@
                 </DockPanel>
             </DockPanel>
         </Border>
-        <Border Grid.Row="2" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="8">
-            <StackPanel Orientation="Horizontal">
-                <Button x:Name="NewFolderButton" Content="New folder" Padding="14,7" Margin="0,0,8,0" Click="NewFolder_Click" />
-                <Button x:Name="RenameButton" Content="Rename" Padding="14,7" Margin="0,0,8,0" IsEnabled="False" Click="Rename_Click" />
-                <Button x:Name="CopyButton" Content="Copy" Padding="12,7" Margin="0,0,8,0" IsEnabled="False" Click="Copy_Click" />
-                <Button x:Name="CutButton" Content="Cut" Padding="12,7" Margin="0,0,8,0" IsEnabled="False" Click="Cut_Click" />
-                <Button x:Name="PasteButton" Content="Paste" Padding="12,7" Margin="0,0,8,0" IsEnabled="False" Click="Paste_Click" />
-                <Button x:Name="DeleteButton" Content="Delete" Padding="14,7" Margin="0,0,8,0" IsEnabled="False" Click="Delete_Click" />
-                <Button Content="Refresh" Padding="14,7" Click="Refresh_Click" />
-                <ToggleButton x:Name="DetailsPaneToggle" Content="Details pane" IsChecked="True" Margin="10,0,0,0" Padding="12,7" Click="DetailsPaneToggle_Click" />
-            </StackPanel>
+        <Border Grid.Row="2" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="4">
+            <TabControl x:Name="CommandRibbon" Background="Transparent" BorderThickness="0">
+                <TabControl.ItemContainerStyle>
+                    <Style TargetType="TabItem">
+                        <Setter Property="Padding" Value="14,5" />
+                        <Setter Property="Margin" Value="2,0" />
+                    </Style>
+                </TabControl.ItemContainerStyle>
+                <TabItem Header="Home">
+                    <StackPanel Orientation="Horizontal" Margin="8,6">
+                        <StackPanel Margin="0,0,12,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="NewFolderButton" Content="New folder" Padding="12,6" Margin="0,0,5,0" Click="NewFolder_Click" />
+                                <Button x:Name="RenameButton" Content="Rename" Padding="12,6" IsEnabled="False" Click="Rename_Click" />
+                            </StackPanel>
+                            <TextBlock Text="Organize" HorizontalAlignment="Center" Foreground="{DynamicResource DesktopMutedTextBrush}" FontSize="10" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <Border Width="1" Background="{DynamicResource DesktopDividerBrush}" Margin="0,2,12,2" />
+                        <StackPanel Margin="0,0,12,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="CutButton" Content="Cut" Padding="12,6" Margin="0,0,5,0" IsEnabled="False" Click="Cut_Click" />
+                                <Button x:Name="CopyButton" Content="Copy" Padding="12,6" Margin="0,0,5,0" IsEnabled="False" Click="Copy_Click" />
+                                <Button x:Name="PasteButton" Content="Paste" Padding="12,6" IsEnabled="False" Click="Paste_Click" />
+                            </StackPanel>
+                            <TextBlock Text="Clipboard" HorizontalAlignment="Center" Foreground="{DynamicResource DesktopMutedTextBrush}" FontSize="10" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <Border Width="1" Background="{DynamicResource DesktopDividerBrush}" Margin="0,2,12,2" />
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="DeleteButton" Content="Delete" Padding="12,6" Margin="0,0,5,0" IsEnabled="False" Click="Delete_Click" />
+                                <Button x:Name="RefreshButton" Content="Refresh" Padding="12,6" Click="Refresh_Click" />
+                            </StackPanel>
+                            <TextBlock Text="Manage" HorizontalAlignment="Center" Foreground="{DynamicResource DesktopMutedTextBrush}" FontSize="10" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </StackPanel>
+                </TabItem>
+                <TabItem Header="Share">
+                    <StackPanel Orientation="Horizontal" Margin="8,6">
+                        <Button x:Name="OpenSelectedButton" Content="Open" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Click="OpenSelected_Click" />
+                        <Button x:Name="OpenInNewTabButton" Content="Open in new tab" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Click="OpenInNewTab_Click" />
+                        <Button x:Name="CopyPathButton" Content="Copy path" Padding="14,6" IsEnabled="False" Click="CopyPath_Click" />
+                    </StackPanel>
+                </TabItem>
+                <TabItem Header="View">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,6">
+                        <TextBlock Text="Sort by" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource DesktopMutedTextBrush}" />
+                        <ComboBox x:Name="SortBySelector" Width="150" Height="32" VerticalContentAlignment="Center" SelectionChanged="SortBySelector_SelectionChanged">
+                            <ComboBoxItem Content="Name" Tag="Name" />
+                            <ComboBoxItem Content="Date modified" Tag="DateModified" />
+                            <ComboBoxItem Content="Type" Tag="Type" />
+                            <ComboBoxItem Content="Size" Tag="Size" />
+                        </ComboBox>
+                        <Button x:Name="SortDirectionButton" Content="Ascending ↑" Margin="6,0,14,0" Padding="12,6" Click="SortDirectionButton_Click" />
+                        <ToggleButton x:Name="DetailsPaneToggle" Content="Details pane" IsChecked="True" Padding="12,6" Click="DetailsPaneToggle_Click" />
+                    </StackPanel>
+                </TabItem>
+            </TabControl>
         </Border>
         <Border Grid.Row="4" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="0">
             <Grid>
