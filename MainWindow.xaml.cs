@@ -56,6 +56,7 @@ public partial class MainWindow : Window
     private bool _taskbarDynamicTransparency;
     private List<PinnedTaskbarApp> _pinnedApps = [];
     private List<AppEntry> _pinnedStartApps = [];
+    private StartMenuPlacePreferences _startMenuPlaces = StartMenuPlaceCatalog.Normalize(null);
     private bool _replaceWindowsKey;
     private StartMenuStyle _startMenuStyle = StartMenuStyle.Modern;
     private bool _taskbarOnAllDisplays = true;
@@ -87,6 +88,7 @@ public partial class MainWindow : Window
         _taskbarDynamicTransparency = desktopPreferences.TaskbarDynamicTransparency;
         _pinnedApps = desktopPreferences.PinnedApps ?? [];
         _pinnedStartApps = StartPinCatalog.Normalize(desktopPreferences.PinnedStartApps).ToList();
+        _startMenuPlaces = StartMenuPlaceCatalog.Normalize(desktopPreferences.StartMenuPlaces);
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
         _startMenuStyle = desktopPreferences.StartMenuStyle;
         _taskbarOnAllDisplays = desktopPreferences.TaskbarOnAllDisplays;
@@ -225,6 +227,39 @@ public partial class MainWindow : Window
             PageContent.Children.Add(replaceStart);
             var info = InfoCard("Windows-key integration", "When enabled, tapping either Windows key opens Desktop Tuner Start. While a Desktop Tuner taskbar is running, Win+1 through Win+9 activate its corresponding pinned app; other Win+key shortcuts such as Win+R continue to Windows. Turn this off at any time to restore native Start and taskbar shortcuts.");
             PageContent.Children.Add(info);
+
+            AddPageHeading("System places", "Choose which shortcuts appear in More places and set their order.");
+            var placesPanel = new StackPanel();
+            void RefreshPlacesPanel()
+            {
+                placesPanel.Children.Clear();
+                var visible = _startMenuPlaces.Visible!.ToHashSet(StringComparer.OrdinalIgnoreCase);
+                foreach (var placeId in _startMenuPlaces.Order!)
+                {
+                    var place = StartMenuPlaceCatalog.AllPlaces.Single(item => string.Equals(item.Id, placeId, StringComparison.OrdinalIgnoreCase));
+                    var row = new Grid { Margin = new Thickness(0, 2, 0, 2) };
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                    var checkBox = new CheckBox { Content = place.Label, IsChecked = visible.Contains(place.Id), VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(4, 6, 8, 6) };
+                    checkBox.Checked += (_, _) => SavePlaceVisibility(place.Id, true, RefreshPlacesPanel);
+                    checkBox.Unchecked += (_, _) => SavePlaceVisibility(place.Id, false, RefreshPlacesPanel);
+                    Grid.SetColumn(checkBox, 0);
+                    row.Children.Add(checkBox);
+                    var reorder = new StackPanel { Orientation = Orientation.Horizontal };
+                    var index = _startMenuPlaces.Order.IndexOf(place.Id);
+                    var up = new Button { Content = "↑", Tag = place.Id, ToolTip = $"Move {place.Label} up", IsEnabled = index > 0, Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(2) };
+                    var down = new Button { Content = "↓", Tag = place.Id, ToolTip = $"Move {place.Label} down", IsEnabled = index < _startMenuPlaces.Order.Count - 1, Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(2) };
+                    up.Click += (_, _) => MoveStartPlace(place.Id, -1, RefreshPlacesPanel);
+                    down.Click += (_, _) => MoveStartPlace(place.Id, 1, RefreshPlacesPanel);
+                    reorder.Children.Add(up);
+                    reorder.Children.Add(down);
+                    Grid.SetColumn(reorder, 1);
+                    row.Children.Add(reorder);
+                    placesPanel.Children.Add(row);
+                }
+            }
+            RefreshPlacesPanel();
+            PageContent.Children.Add(new Border { Background = (Brush)FindResource("DesktopSurfaceBrush"), BorderBrush = (Brush)FindResource("DesktopBorderBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(12), Child = placesPanel });
         }
         else if (section == "Explorer")
         {
@@ -761,7 +796,8 @@ public partial class MainWindow : Window
             _startMenuWindow.Close();
             return;
         }
-        _startMenuWindow = new StartMenuWindow(_startMenuStyle, _pinnedStartApps, SavePinnedStartApps);
+        _startMenuWindow = new StartMenuWindow(_startMenuStyle, _pinnedStartApps, SavePinnedStartApps,
+            startPlaces: _startMenuPlaces);
         _startMenuDisplay = display;
         _startMenuWindow.Closed += (_, _) => { _startMenuWindow = null; _startMenuDisplay = null; };
         if (display is not null)
@@ -895,7 +931,40 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces);
+
+    private void SavePlaceVisibility(string placeId, bool isVisible, Action refresh)
+    {
+        var visible = _startMenuPlaces.Visible!.ToList();
+        if (isVisible && !visible.Contains(placeId, StringComparer.OrdinalIgnoreCase)) visible.Add(placeId);
+        else if (!isVisible) visible.RemoveAll(id => string.Equals(id, placeId, StringComparison.OrdinalIgnoreCase));
+        SaveStartMenuPlaces(StartMenuPlaceCatalog.Normalize(_startMenuPlaces with { Visible = visible }));
+        refresh();
+    }
+
+    private void MoveStartPlace(string placeId, int offset, Action refresh)
+    {
+        SaveStartMenuPlaces(StartMenuPlaceCatalog.Move(_startMenuPlaces, placeId, offset));
+        refresh();
+    }
+
+    private bool SaveStartMenuPlaces(StartMenuPlacePreferences preferences)
+    {
+        var normalized = StartMenuPlaceCatalog.Normalize(preferences);
+        try
+        {
+            _preferences.Save(CreateDesktopPreferences() with { StartMenuPlaces = normalized });
+            _startMenuPlaces = normalized;
+            _startMenuWindow?.SetStartPlaces(normalized);
+            SetStatus("Start menu places saved.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not save Start menu places", MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+        }
+    }
 
     private bool SavePinnedStartApps(IReadOnlyList<AppEntry> apps)
     {
@@ -944,6 +1013,7 @@ public partial class MainWindow : Window
             _taskbarDynamicTransparency = preferences.TaskbarDynamicTransparency;
             _pinnedApps = preferences.PinnedApps ?? [];
             _pinnedStartApps = StartPinCatalog.Normalize(preferences.PinnedStartApps).ToList();
+            _startMenuPlaces = StartMenuPlaceCatalog.Normalize(preferences.StartMenuPlaces);
             _replaceWindowsKey = preferences.ReplaceWindowsKey;
             _startMenuStyle = preferences.StartMenuStyle;
             _taskbarOnAllDisplays = preferences.TaskbarOnAllDisplays;
@@ -966,6 +1036,7 @@ public partial class MainWindow : Window
                 foreach (var taskbar in _taskbarWindows.ToArray()) taskbar.SetPreferences(preferences);
             }
             _startMenuWindow?.SetStyle(_startMenuStyle);
+            _startMenuWindow?.SetStartPlaces(_startMenuPlaces);
             SetStatus("Desktop preferences saved.");
         }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not save taskbar preferences", MessageBoxButton.OK, MessageBoxImage.Error); }

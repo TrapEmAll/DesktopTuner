@@ -16,6 +16,7 @@ public partial class StartMenuWindow : Window
     private readonly AppCatalogService _catalog = new();
     private readonly StartRecentAppsStore _recentAppsStore;
     private readonly Func<IReadOnlyList<AppEntry>, bool>? _savePinnedApps;
+    private StartMenuPlacePreferences _startPlaces;
     private IReadOnlyList<AppEntry> _apps = [];
     private IReadOnlyList<AppEntry> _pinnedApps = [];
     private StartMenuStyle _style = StartMenuStyle.Modern;
@@ -27,14 +28,17 @@ public partial class StartMenuWindow : Window
     private Point _pinnedStartDrag;
     private bool _suppressPinnedStartClick;
 
-    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null)
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null)
     {
         InitializeComponent();
         _pinnedApps = StartPinCatalog.Normalize(pinnedApps);
         _savePinnedApps = savePinnedApps;
         _recentAppsStore = recentAppsStore ?? new StartRecentAppsStore();
+        _startPlaces = StartMenuPlaceCatalog.Normalize(startPlaces);
         SetStyle(style);
     }
+
+    public void SetStartPlaces(StartMenuPlacePreferences preferences) => _startPlaces = StartMenuPlaceCatalog.Normalize(preferences);
 
     public void SetStyle(StartMenuStyle style)
     {
@@ -911,23 +915,25 @@ public partial class StartMenuWindow : Window
     {
         if (sender is not Button { ContextMenu: not null } button) return;
         var menu = button.ContextMenu;
-        if (menu.Items.Count == 0)
+        menu.Items.Clear();
+        var placesById = StartMenuPlaceCatalog.AllPlaces.ToDictionary(place => place.Id, StringComparer.OrdinalIgnoreCase);
+        var dropdownIds = StartMenuPlaceCatalog.DropdownPlaces.Select(place => place.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var firstAdditional = _startPlaces.Order!.FindIndex(id => !dropdownIds.Contains(id));
+        var hasSeparatedSections = firstAdditional >= 0 && _startPlaces.Order.Take(firstAdditional).All(dropdownIds.Contains)
+            && _startPlaces.Order.Skip(firstAdditional).All(id => !dropdownIds.Contains(id));
+        var visibleIds = _startPlaces.Visible!.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        for (var index = 0; index < _startPlaces.Order.Count; index++)
         {
-            foreach (var place in StartMenuPlaceCatalog.DropdownPlaces)
-            {
-                var item = new MenuItem { Header = place.Label, Tag = place.Id };
-                item.Click += SystemPlace_Click;
-                item.SubmenuOpened += PlaceFlyout_Opened;
-                menu.Items.Add(item);
-            }
-            menu.Items.Add(new Separator());
-            foreach (var place in StartMenuPlaceCatalog.AdditionalPlaces)
-            {
-                var item = new MenuItem { Header = place.Label, Tag = place.Id };
-                item.Click += SystemPlace_Click;
-                menu.Items.Add(item);
-            }
+            var placeId = _startPlaces.Order[index];
+            if (!visibleIds.Contains(placeId)) continue;
+            if (hasSeparatedSections && index == firstAdditional && menu.Items.Count > 0) menu.Items.Add(new Separator());
+            var place = placesById[placeId];
+            var item = new MenuItem { Header = place.Label, Tag = place.Id };
+            item.Click += SystemPlace_Click;
+            if (dropdownIds.Contains(placeId)) item.SubmenuOpened += PlaceFlyout_Opened;
+            menu.Items.Add(item);
         }
+        if (menu.Items.Count == 0) menu.Items.Add(new MenuItem { Header = "No places selected", IsEnabled = false });
         menu.PlacementTarget = button;
         menu.Placement = PlacementMode.Bottom;
         menu.IsOpen = true;

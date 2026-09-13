@@ -419,6 +419,14 @@ Check(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfi
 Check(5, StartMenuPlaceCatalog.DropdownPlaces.Count, "show the supported Start places with dropdown navigation");
 Check(5, StartMenuPlaceCatalog.AdditionalPlaces.Count, "show the remaining additional Start system places");
 Check("Run...", StartMenuPlaceCatalog.AdditionalPlaces.Single(place => place.Id == "run").Label, "offer the classic Run dialog from the Start places menu");
+var defaultStartPlaces = StartMenuPlaceCatalog.Normalize(null);
+Check(10, defaultStartPlaces.Order!.Count, "include every supported system place in the default order");
+Check(10, defaultStartPlaces.Visible!.Count, "show every system place by default");
+var customStartPlaces = StartMenuPlaceCatalog.Normalize(new StartMenuPlacePreferences(["run", "documents", "run", "unsupported"], ["documents", "run", "unsupported"]));
+Check("run,documents,downloads,music,pictures,videos,computer,control-panel,network,recent", string.Join(',', customStartPlaces.Order!), "retain a valid custom place order and append missing choices");
+Check("run,documents", string.Join(',', customStartPlaces.Visible!), "filter invalid and duplicate visible places while preserving their custom order");
+Check("documents,run", string.Join(',', StartMenuPlaceCatalog.Move(customStartPlaces, "documents", -1).Visible!), "reorder system places without changing visibility");
+Check("run,documents,downloads,music,pictures,videos,computer,control-panel,network,recent", string.Join(',', StartMenuPlaceCatalog.Move(customStartPlaces, "run", -1).Order!), "keep the first system place at the top when moved upward");
 Throws<ArgumentOutOfRangeException>(() => StartMenuPlaceCatalog.ResolveTarget("unknown"), "reject unknown Start system places");
 Throws<ArgumentOutOfRangeException>(() => StartMenuPlaceCatalog.ReadChildren("missing", -1), "reject a negative Start place dropdown limit");
 Check("lock,sleep,hibernate,sign-out,restart,shutdown", string.Join(',', StartPowerActionCatalog.Actions.Select(action => action.Id)), "offer common Start power actions");
@@ -963,9 +971,10 @@ try
     NativeTaskbarVisibilityService.RestoreSnapshot(staleTaskbarSnapshot);
     Check(false, File.Exists(staleTaskbarSnapshot), "clean up a valid taskbar recovery snapshot after skipping a stale window handle");
     var preferencesStore = new DesktopPreferencesStore(preferencesPath);
+    var savedStartPlaces = StartMenuPlaceCatalog.Normalize(new StartMenuPlacePreferences(["run", "documents"], ["documents", "run"]));
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
@@ -974,6 +983,8 @@ try
     Check("Editor", loadedPreferences.PinnedStartApps!.Single().Name, "persist pinned Start apps");
     Check(StartTileSize.Wide, loadedPreferences.PinnedStartApps!.Single().TileSize, "persist a pinned Start tile's size");
     Check("Dev", loadedPreferences.PinnedStartApps!.Single().GroupName, "persist a pinned Start tile's group");
+    Check(string.Join(',', savedStartPlaces.Order!), string.Join(',', loadedPreferences.StartMenuPlaces!.Order!), "persist custom Start system-place order");
+    Check(string.Join(',', savedStartPlaces.Visible!), string.Join(',', loadedPreferences.StartMenuPlaces.Visible!), "persist custom Start system-place visibility");
     Check(expectedPreferences.TaskbarOnAllDisplays, loadedPreferences.TaskbarOnAllDisplays, "persist taskbar display coverage");
     Check(expectedPreferences.TaskbarLayout, loadedPreferences.TaskbarLayout, "persist floating taskbar style");
     Check(true, loadedPreferences.ReplaceNativeTaskbar, "persist native taskbar replacement mode");
@@ -1021,6 +1032,7 @@ try
     Check(true, preferencesStore.Load().TaskbarShowLabels, "default legacy preferences to visible taskbar labels");
     Check(TaskbarIconSize.Standard, preferencesStore.Load().TaskbarIconSize, "default legacy preferences to standard taskbar icons");
     Check(TaskbarButtonSpacing.Standard, preferencesStore.Load().TaskbarButtonSpacing, "default legacy preferences to standard button spacing");
+    Check(10, preferencesStore.Load().StartMenuPlaces!.Visible!.Count, "show all Start places for older preference files");
     Check(false, preferencesStore.Load().PinnedApps!.Single().IsDirectory, "default old pin records to app launch behavior");
     Check(StartPinCatalog.DefaultGroupName, preferencesStore.Load().PinnedStartApps!.Single().GroupName, "default older Start pin records to the Pinned group");
     File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"TaskbarButtonEffect":99}""");

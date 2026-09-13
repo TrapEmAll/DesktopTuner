@@ -4,6 +4,7 @@ namespace DesktopTuner;
 
 public sealed record StartMenuPlace(string Id, string Label);
 public sealed record StartMenuPlaceEntry(string Name, string FullPath, bool IsDirectory, bool IsReparsePoint);
+public sealed record StartMenuPlacePreferences(List<string>? Order = null, List<string>? Visible = null);
 
 public static class StartMenuPlaceCatalog
 {
@@ -26,6 +27,33 @@ public static class StartMenuPlaceCatalog
         new("recent", "Recent items"),
         new("run", "Run...")
     ];
+
+    public static IReadOnlyList<StartMenuPlace> AllPlaces { get; } = DropdownPlaces.Concat(AdditionalPlaces).ToArray();
+
+    public static StartMenuPlacePreferences Normalize(StartMenuPlacePreferences? preferences)
+    {
+        var validIds = AllPlaces.Select(place => place.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var order = (preferences?.Order ?? [])
+            .Where(validIds.Contains)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Concat(AllPlaces.Select(place => place.Id).Where(id => !(preferences?.Order ?? []).Contains(id, StringComparer.OrdinalIgnoreCase)))
+            .ToList();
+        var visibleSet = preferences?.Visible is null
+            ? order.ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : preferences.Visible.Where(validIds.Contains).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return new StartMenuPlacePreferences(order, order.Where(visibleSet.Contains).ToList());
+    }
+
+    public static StartMenuPlacePreferences Move(StartMenuPlacePreferences? preferences, string placeId, int offset)
+    {
+        var normalized = Normalize(preferences);
+        if (offset is not (-1 or 1)) throw new ArgumentOutOfRangeException(nameof(offset));
+        var index = normalized.Order!.FindIndex(id => string.Equals(id, placeId, StringComparison.OrdinalIgnoreCase));
+        var destination = index + offset;
+        if (index < 0 || destination < 0 || destination >= normalized.Order.Count) return normalized;
+        (normalized.Order[index], normalized.Order[destination]) = (normalized.Order[destination], normalized.Order[index]);
+        return Normalize(normalized);
+    }
 
     public static string ResolveTarget(string id) => id switch
     {
