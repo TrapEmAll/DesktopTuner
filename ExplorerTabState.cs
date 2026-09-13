@@ -13,7 +13,9 @@ public sealed class ExplorerTabState(ExplorerLocation location)
     public ExplorerViewMode ViewMode { get; set; } = ExplorerViewMode.Details;
     public ExplorerSortColumn SortColumn { get; set; } = ExplorerSortColumn.Name;
     public bool SortAscending { get; set; } = true;
-    public bool SortExplicitly { get; set; }
+    public ExplorerSortColumn HomeSortColumn { get; set; } = ExplorerSortColumn.Name;
+    public bool HomeSortAscending { get; set; } = true;
+    public bool HomeSortExplicitly { get; set; }
     public bool GroupDrives { get; set; } = true;
 
     public ExplorerTabState Duplicate()
@@ -23,7 +25,9 @@ public sealed class ExplorerTabState(ExplorerLocation location)
             ViewMode = ViewMode,
             SortColumn = SortColumn,
             SortAscending = SortAscending,
-            SortExplicitly = SortExplicitly,
+            HomeSortColumn = HomeSortColumn,
+            HomeSortAscending = HomeSortAscending,
+            HomeSortExplicitly = HomeSortExplicitly,
             GroupDrives = GroupDrives,
             IsSearchView = IsSearchView
         };

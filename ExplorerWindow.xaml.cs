@@ -45,9 +45,27 @@ public partial class ExplorerWindow : Window
     private readonly bool _hideFileExtensions;
     private readonly bool _showRecentItems;
     private readonly ExplorerQuickAccessStore _quickAccessStore;
-    private ExplorerSortColumn _sortColumn { get => ActiveTab.SortColumn; set => ActiveTab.SortColumn = value; }
-    private bool _sortAscending { get => ActiveTab.SortAscending; set => ActiveTab.SortAscending = value; }
-    private bool _sortExplicitly { get => ActiveTab.SortExplicitly; set => ActiveTab.SortExplicitly = value; }
+    private readonly ExplorerFolderViewStore _folderViewStore;
+    private ExplorerSortColumn _sortColumn
+    {
+        get => _tabs.Count == 0 ? ExplorerSortColumn.Name : _location.IsHome ? ActiveTab.HomeSortColumn : ActiveTab.SortColumn;
+        set
+        {
+            if (_tabs.Count == 0) return;
+            if (_location.IsHome) ActiveTab.HomeSortColumn = value;
+            else ActiveTab.SortColumn = value;
+        }
+    }
+    private bool _sortAscending
+    {
+        get => _tabs.Count == 0 || (_location.IsHome ? ActiveTab.HomeSortAscending : ActiveTab.SortAscending);
+        set
+        {
+            if (_tabs.Count == 0) return;
+            if (_location.IsHome) ActiveTab.HomeSortAscending = value;
+            else ActiveTab.SortAscending = value;
+        }
+    }
     private double _detailsPaneHeight = 160;
 
     private void Window_SourceInitialized(object? sender, EventArgs e)
@@ -55,7 +73,7 @@ public partial class ExplorerWindow : Window
         SystemBackdropService.TryApplyMica(this);
     }
 
-    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null)
+    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null, ExplorerFolderViewStore? folderViewStore = null)
     {
         InitializeComponent();
         _navigationRoots = CreateNavigationRoots();
@@ -64,6 +82,7 @@ public partial class ExplorerWindow : Window
         _hideFileExtensions = hideFileExtensions;
         _showRecentItems = showRecentItems;
         _quickAccessStore = quickAccessStore ?? new ExplorerQuickAccessStore();
+        _folderViewStore = folderViewStore ?? new ExplorerFolderViewStore();
         RefreshQuickAccessPins();
         var initialLocation = startInThisPc && string.IsNullOrWhiteSpace(initialPath)
             ? new ExplorerLocation(null, IsDriveList: true)
@@ -73,6 +92,7 @@ public partial class ExplorerWindow : Window
                     ? new ExplorerLocation(Path.GetFullPath(initialPath))
                     : new ExplorerLocation(null, IsHome: true);
         _tabs.Add(new ExplorerTabState(initialLocation));
+        RestoreFolderViewPreferences(ActiveTab);
         UpdateSortPresentation();
         ApplyExplorerViewMode(ActiveTab.ViewMode);
         SyncExplorerTabs();
@@ -136,6 +156,12 @@ public partial class ExplorerWindow : Window
     {
         var tab = new ExplorerTabState(location);
         tab.ViewMode = ActiveTab.ViewMode;
+        tab.SortColumn = ActiveTab.SortColumn;
+        tab.SortAscending = ActiveTab.SortAscending;
+        tab.HomeSortColumn = ActiveTab.HomeSortColumn;
+        tab.HomeSortAscending = ActiveTab.HomeSortAscending;
+        tab.HomeSortExplicitly = ActiveTab.HomeSortExplicitly;
+        RestoreFolderViewPreferences(tab);
         _tabs.Add(tab);
         _activeTabIndex = _tabs.Count - 1;
         SyncExplorerTabs();
@@ -539,6 +565,9 @@ public partial class ExplorerWindow : Window
         CancelSearch();
         _isSearchView = false;
         _location = target.IsDriveList || target.IsHome ? target : new ExplorerLocation(Path.GetFullPath(target.Path!), SearchQuery: target.SearchQuery);
+        RestoreFolderViewPreferences(ActiveTab);
+        UpdateSortPresentation();
+        ApplyExplorerViewMode(ActiveTab.ViewMode);
         SearchBox.Text = target.SearchQuery ?? "";
         if (string.IsNullOrWhiteSpace(target.SearchQuery)) RefreshLocation();
         else
@@ -1300,7 +1329,7 @@ public partial class ExplorerWindow : Window
         if (sender is not GridViewColumnHeader { Tag: string columnName }
             || !Enum.TryParse(columnName, out ExplorerSortColumn column)) return;
 
-        _sortExplicitly = true;
+        if (_location.IsHome) ActiveTab.HomeSortExplicitly = true;
         if (_sortColumn == column) _sortAscending = !_sortAscending;
         else
         {
@@ -1310,6 +1339,7 @@ public partial class ExplorerWindow : Window
 
         UpdateSortPresentation();
         ApplySort();
+        SaveActiveFolderViewPreferences();
     }
 
     private void ViewModeSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1319,6 +1349,7 @@ public partial class ExplorerWindow : Window
 
         ActiveTab.ViewMode = mode;
         ApplyExplorerViewMode(mode);
+        SaveActiveFolderViewPreferences();
     }
 
     private void ApplyExplorerViewMode(ExplorerViewMode mode)
@@ -1352,17 +1383,34 @@ public partial class ExplorerWindow : Window
 
         _sortColumn = column;
         _sortAscending = true;
-        _sortExplicitly = true;
+        if (_location.IsHome) ActiveTab.HomeSortExplicitly = true;
         UpdateSortPresentation();
         ApplySort();
+        SaveActiveFolderViewPreferences();
     }
 
     private void SortDirectionButton_Click(object sender, RoutedEventArgs e)
     {
         _sortAscending = !_sortAscending;
-        _sortExplicitly = true;
+        if (_location.IsHome) ActiveTab.HomeSortExplicitly = true;
         UpdateSortPresentation();
         ApplySort();
+        SaveActiveFolderViewPreferences();
+    }
+
+    private void RestoreFolderViewPreferences(ExplorerTabState tab)
+    {
+        if (tab.Location.Path is not { } path || _folderViewStore.Load(path) is not { } preference) return;
+        tab.ViewMode = preference.ViewMode;
+        tab.SortColumn = preference.SortColumn;
+        tab.SortAscending = preference.SortAscending;
+    }
+
+    private void SaveActiveFolderViewPreferences()
+    {
+        if (_location.Path is not { } path) return;
+        _folderViewStore.Save(path, new ExplorerFolderViewPreference(
+            ActiveTab.ViewMode, ActiveTab.SortColumn, ActiveTab.SortAscending));
     }
 
     private void UpdateSortPresentation()
@@ -1404,7 +1452,7 @@ public partial class ExplorerWindow : Window
             return;
         }
 
-        var entries = _location.IsHome && !_sortExplicitly
+        var entries = _location.IsHome && !ActiveTab.HomeSortExplicitly
             ? _entries.OrderByDescending(entry => entry.RecentAccessed ?? entry.Modified).ToList()
             : ExplorerSortPolicy.Sort(_entries, _sortColumn, _sortAscending);
         EntriesList.ItemsSource = entries;
