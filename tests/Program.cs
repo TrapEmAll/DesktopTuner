@@ -55,6 +55,12 @@ Check(2, TaskbarDisplayService.Select([secondaryDisplay, primaryDisplay], true).
 Check("DISPLAY1", TaskbarDisplayService.Select([secondaryDisplay, primaryDisplay], false).Single().DeviceName, "select only the primary display");
 CheckTrue(TaskbarAutoHidePolicy.ShouldCollapse(true, false, false), "auto-hide collapses when idle");
 CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(false, false, false), "auto-hide respects disabled state");
+var autoHideShortcutPreferences = new DesktopPreferences(TaskbarEdge.Top, AutoHideWhenMaximized: true, TaskbarTransparency: 35);
+var autoHideShortcutEnabled = TaskbarAutoHideHotkeyPolicy.Toggle(autoHideShortcutPreferences);
+Check(true, autoHideShortcutEnabled.AutoHide, "turn on taskbar auto-hide from its global shortcut");
+Check(true, autoHideShortcutEnabled.AutoHideWhenMaximized, "preserve maximize-aware auto-hide while toggling idle auto-hide");
+Check(35, autoHideShortcutEnabled.TaskbarTransparency, "preserve other taskbar settings while toggling auto-hide");
+Check(false, TaskbarAutoHideHotkeyPolicy.Toggle(autoHideShortcutEnabled).AutoHide, "turn taskbar auto-hide off with the same shortcut");
 CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(true, true, false), "auto-hide stays expanded while pointer is over it");
 CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(true, false, true), "auto-hide stays expanded while Start is open");
 CheckTrue(TaskbarAutoHidePolicy.ShouldCollapse(false, true, true, false, false), "hide when maximize-aware auto-hide is enabled and the display is covered");

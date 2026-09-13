@@ -11,13 +11,17 @@ namespace DesktopTuner;
 
 public partial class MainWindow : Window
 {
-    private const int StartMenuHotkeyId = 0xD701;
+    private const int StartMenuHotkeyId = 0x5D01;
+    private const int TaskbarAutoHideHotkeyId = 0x5D02;
     private const int WM_HOTKEY = 0x0312;
     private const int WM_DISPLAYCHANGE = 0x007E;
     private const int WM_APP_ACTIVATE_SETTINGS = 0x8000 + 0x451;
     private const uint MOD_ALT = 0x0001;
     private const uint MOD_CONTROL = 0x0002;
+    private const uint MOD_WIN = 0x0008;
     private const uint VK_SPACE = 0x20;
+    private const uint VK_T = 0x54;
+    private const uint MOD_NOREPEAT = 0x4000;
     private readonly ProfileStore _profileStore = new();
     private readonly DesktopPreferencesStore _preferences = new();
     private readonly RegistrySettingsService _settings;
@@ -513,8 +517,13 @@ public partial class MainWindow : Window
         var handle = new WindowInteropHelper(this).Handle;
         _windowSource = HwndSource.FromHwnd(handle);
         _windowSource.AddHook(WindowMessageHook);
-        if (!RegisterHotKey(handle, StartMenuHotkeyId, MOD_CONTROL | MOD_ALT, VK_SPACE))
-            SetStatus("Global shortcut Ctrl+Alt+Space is unavailable. Open the Start page and use its launcher button.");
+        var unavailableShortcuts = new List<string>();
+        if (!RegisterHotKey(handle, StartMenuHotkeyId, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_SPACE))
+            unavailableShortcuts.Add("Ctrl+Alt+Space");
+        if (!RegisterHotKey(handle, TaskbarAutoHideHotkeyId, MOD_WIN | MOD_ALT | MOD_NOREPEAT, VK_T))
+            unavailableShortcuts.Add("Win+Alt+T");
+        if (unavailableShortcuts.Count > 0)
+            SetStatus($"Global shortcut(s) {string.Join(" and ", unavailableShortcuts)} unavailable; use the app buttons or taskbar menu instead.");
         if (_replaceWindowsKey && !EnableWindowsKeyHook())
         {
             _replaceWindowsKey = false;
@@ -533,6 +542,7 @@ public partial class MainWindow : Window
         CloseTaskbars();
         var handle = new WindowInteropHelper(this).Handle;
         UnregisterHotKey(handle, StartMenuHotkeyId);
+        UnregisterHotKey(handle, TaskbarAutoHideHotkeyId);
         _windowSource?.RemoveHook(WindowMessageHook);
         _windowsKeyHook?.Dispose();
         _windowsKeyHook = null;
@@ -562,7 +572,28 @@ public partial class MainWindow : Window
             ShowStartMenu();
             handled = true;
         }
+        else if (message == WM_HOTKEY && wParam.ToInt32() == TaskbarAutoHideHotkeyId)
+        {
+            ToggleTaskbarAutoHide();
+            handled = true;
+        }
         return IntPtr.Zero;
+    }
+
+    private void ToggleTaskbarAutoHide()
+    {
+        try
+        {
+            var preferences = TaskbarAutoHideHotkeyPolicy.Toggle(CreateDesktopPreferences());
+            _preferences.Save(preferences);
+            _taskbarAutoHide = preferences.AutoHide;
+            foreach (var taskbar in _taskbarWindows.ToArray()) taskbar.SetPreferences(preferences);
+            SetStatus(_taskbarAutoHide ? "Taskbar auto-hide is on (Win+Alt+T)." : "Taskbar auto-hide is off (Win+Alt+T).");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not toggle taskbar auto-hide", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     public static bool TryActivateExistingInstance(bool showSettings)
