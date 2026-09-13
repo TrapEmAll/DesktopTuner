@@ -1,6 +1,6 @@
 namespace DesktopTuner;
 
-public sealed record SettingChoice(string Label, int Value);
+public sealed record SettingChoice(string Label, int Value, string? RegistryString = null, bool DeleteRegistryValue = false);
 
 public sealed record SettingDefinition(
     string Id,
@@ -32,7 +32,10 @@ public static class SettingsCatalog
         new("explorer-hidden", "Explorer", "Hidden files", "Show or hide files marked as hidden.", ExplorerAdvanced, "Hidden",
             [new("Show hidden files", 1), new("Hide hidden files", 2)], 2),
         new("explorer-compact", "Explorer", "Item spacing", "Use compact spacing in File Explorer lists.", ExplorerAdvanced, "UseCompactMode",
-            [new("Compact", 1), new("Comfortable", 0)], 0)
+            [new("Compact", 1), new("Comfortable", 0)], 0),
+        new("explorer-context-menu", "Explorer", "Context menu style", "Switch between the compact Windows 11 menu and the classic full context menu.",
+            @"Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32", "",
+            [new("Windows 11 menu", 0, DeleteRegistryValue: true), new("Classic full menu", 1, RegistryString: "")], 0, true)
     ];
 
     public static SettingDefinition ById(string id) => All.Single(setting => setting.Id == id);

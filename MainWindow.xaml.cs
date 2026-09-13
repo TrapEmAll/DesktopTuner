@@ -124,6 +124,11 @@ public partial class MainWindow : Window
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);
         }
+        if (section == "Explorer")
+        {
+            var info = InfoCard("Classic context menu is experimental", "Windows 11 does not offer a supported switch for the classic full menu. This compatibility setting writes a per-user shell registration and may require File Explorer to restart or Windows to sign out.");
+            PageContent.Children.Add(info);
+        }
 
         foreach (var setting in settings)
         {
@@ -224,7 +229,7 @@ public partial class MainWindow : Window
             _settings.Apply(desired);
             foreach (var id in desired.Keys) _currentValues[id] = desired[id];
             _dirty.Clear();
-            SetStatus("Changes applied. Some taskbar options may need Explorer to restart or Windows to sign out and back in.");
+            SetStatus("Changes applied. Some Explorer and taskbar options may need Explorer to restart or Windows to sign out and back in.");
         }
         catch (Exception ex)
         {

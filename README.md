@@ -5,13 +5,13 @@ A native Windows 11 desktop-personalization starter focused on the Start menu, t
 ## What works in this build
 
 - Opens a searchable Start-style app launcher from Ctrl+Alt+Space or the Start settings page. It indexes the user's and shared Start menu shortcuts and can open Documents, Downloads, and Windows Settings.
-- Adjusts seven per-user Windows settings across Start, taskbar, and File Explorer.
+- Adjusts eight per-user Windows settings across Start, taskbar, and File Explorer, including an experimental classic context-menu switch.
 - Saves and imports portable JSON profiles. Import loads choices for review and never applies them automatically.
 - Captures the exact prior registry values before applying and provides one-step undo for the last successful apply.
 - Rolls back partial registry writes if an apply fails.
 - Does not inject code into Explorer or require administrator privileges.
 
-Taskbar controls use registry preferences whose behavior may vary across Windows builds. They are labeled experimental in the app. Start's recent-items option is a Windows privacy setting shared with Jump Lists and File Explorer. The launcher is currently a companion menu; replacing the Windows key menu and reproducing legacy taskbar/Explorer styling remain parity work.
+Taskbar controls and the classic context-menu switch use registry preferences whose behavior may vary across Windows builds. They are labeled experimental in the app. Start's recent-items option is a Windows privacy setting shared with Jump Lists and File Explorer. The launcher is currently a companion menu; replacing the Windows key menu and reproducing legacy taskbar/Explorer styling remain parity work.
 
 See [PARITY.md](PARITY.md) for the feature-by-feature gap list against StartAllBack's current public feature description.
 

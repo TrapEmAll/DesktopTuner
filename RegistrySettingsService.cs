@@ -20,7 +20,13 @@ public sealed class RegistrySettingsService
     public int Read(SettingDefinition setting)
     {
         using var key = Registry.CurrentUser.OpenSubKey(setting.RegistryPath, writable: false);
-        var value = key?.GetValue(setting.ValueName, null, RegistryValueOptions.DoNotExpandEnvironmentNames);
+        if (key is null || !key.GetValueNames().Contains(setting.ValueName, StringComparer.OrdinalIgnoreCase)) return setting.DefaultValue;
+        var value = key.GetValue(setting.ValueName, null, RegistryValueOptions.DoNotExpandEnvironmentNames);
+        if (key.GetValueKind(setting.ValueName) == RegistryValueKind.String)
+        {
+            var text = value is null ? string.Empty : Convert.ToString(value, CultureInfo.InvariantCulture);
+            return setting.Choices.FirstOrDefault(choice => choice.RegistryString is not null && choice.RegistryString == text)?.Value ?? setting.DefaultValue;
+        }
         if (value is null) return setting.DefaultValue;
         try { return Convert.ToInt32(value, CultureInfo.InvariantCulture); }
         catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException)
@@ -40,7 +46,10 @@ public sealed class RegistrySettingsService
             {
                 using var key = Registry.CurrentUser.CreateSubKey(setting.RegistryPath, writable: true)
                     ?? throw new IOException($"Could not open the registry location for {setting.Name}.");
-                key.SetValue(setting.ValueName, desired[setting.Id], RegistryValueKind.DWord);
+                var choice = setting.Choices.Single(item => item.Value == desired[setting.Id]);
+                if (choice.DeleteRegistryValue) key.DeleteValue(setting.ValueName, throwOnMissingValue: false);
+                else if (choice.RegistryString is not null) key.SetValue(setting.ValueName, choice.RegistryString, RegistryValueKind.String);
+                else key.SetValue(setting.ValueName, desired[setting.Id], RegistryValueKind.DWord);
                 applied.Add(setting);
             }
             _profiles.SaveUndo(snapshots);

@@ -13,7 +13,7 @@ This tracker uses StartAllBack's public product description as the baseline. Its
 | Explorer | Restyled ribbon/command bar and translucent menus | Missing |
 | Explorer | Bottom details pane and classic search | Missing |
 | Explorer | Dark mode and common-dialog styling | Missing |
-| Explorer | Context-menu appearance and behavior | Missing |
+| Explorer | Context-menu appearance and behavior | Partial: per-user classic full-menu switch; custom acrylic styling and taskbar menus remain |
 | Shell-wide | Classic applet behavior, fonts, colors, and UI consistency | Missing |
 | Reliability | Windows-version compatibility, recovery and resource discipline | Partial: user-level setting snapshots and apply rollback exist; build matrix, updater, installer, telemetry-free resource profiling remain |
 
