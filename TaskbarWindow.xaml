@@ -145,6 +145,7 @@
                 <StackPanel x:Name="RightControls" Orientation="Horizontal" VerticalAlignment="Center">
                 <Button x:Name="SettingsButton" Content="Settings" Style="{StaticResource TaskButton}" Click="Settings_Click" FontSize="11" />
                 <Button x:Name="TrayButton" Content="Tray" Style="{StaticResource TaskButton}" Click="Tray_Click" FontSize="11" ToolTip="Focus the Windows notification area" />
+                <Button x:Name="VolumeButton" Content="🔊" Style="{StaticResource TaskButton}" Click="SoundSettings_Click" PreviewMouseDown="VolumeButton_PreviewMouseDown" PreviewMouseWheel="VolumeButton_PreviewMouseWheel" FontSize="16" Padding="8,4" ToolTip="Scroll to adjust volume, middle-click to mute, click for Sound settings" />
                 <Button x:Name="WidgetsButton" Content="Widgets" Style="{StaticResource TaskButton}" Click="Widgets_Click" FontSize="11" ToolTip="Open the Windows Widgets board" />
                 <Button x:Name="ClockButton" Style="{StaticResource TaskButton}" Click="Clock_Click" ToolTip="Open notifications and calendar" Padding="7,4" Margin="3,0,8,0">
                     <Border Background="#30394D" CornerRadius="8" Padding="10,5">

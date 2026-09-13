@@ -95,6 +95,7 @@ public partial class TaskbarWindow : Window
         if (integratedBounds is { } trayIntegratedBounds) bounds = trayIntegratedBounds;
         SettingsButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         TrayButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
+        VolumeButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         ClockButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         CloseBarButton.Width = _nativeTrayExposed ? 32 : double.NaN;
         CloseBarButton.Height = _nativeTrayExposed ? 32 : double.NaN;
@@ -280,7 +281,10 @@ public partial class TaskbarWindow : Window
         var buttonSpan = vertical
             ? Math.Max(44, iconPixels + 18) + gap * 2
             : (_preferences.TaskbarShowLabels ? 140 : iconPixels + 24) + (gap - 2) * 2;
-        var reservedLength = vertical ? 170 + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan : 250 + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
+        var reservedControlsLength = vertical
+            ? (_nativeTrayExposed ? 170 : 210)
+            : (_nativeTrayExposed ? 250 : 290);
+        var reservedLength = reservedControlsLength + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
         return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / buttonSpan));
     }
 
@@ -662,6 +666,48 @@ public partial class TaskbarWindow : Window
     {
         try { Process.Start(new ProcessStartInfo("ms-settings:") { UseShellExecute = true }); }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open Settings", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void SoundSettings_Click(object sender, RoutedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo("ms-settings:sound") { UseShellExecute = true }); }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open Sound settings", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void VolumeButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle) return;
+        try
+        {
+            var muted = AudioEndpointVolumeService.ToggleDefaultOutputMute();
+            VolumeButton.Content = muted ? "🔇" : "🔊";
+            var state = AudioEndpointVolumeService.ReadDefaultOutput();
+            VolumeButton.ToolTip = AudioVolumePolicy.GetLabel(state.Volume, muted) + " · Click for Sound settings";
+        }
+        catch (Exception ex)
+        {
+            VolumeButton.ToolTip = $"Could not change audio mute: {ex.Message}";
+            Trace.TraceWarning($"Could not toggle default audio output mute: {ex}");
+        }
+        e.Handled = true;
+    }
+
+    private void VolumeButton_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        try
+        {
+            var state = AudioEndpointVolumeService.ReadDefaultOutput();
+            var level = AudioVolumePolicy.Adjust(state.Volume, e.Delta);
+            AudioEndpointVolumeService.SetDefaultOutputVolume(level);
+            VolumeButton.Content = state.Muted ? "🔇" : level < 0.34f ? "🔈" : "🔊";
+            VolumeButton.ToolTip = AudioVolumePolicy.GetLabel(level, state.Muted) + " · Middle-click to mute";
+        }
+        catch (Exception ex)
+        {
+            VolumeButton.ToolTip = $"Could not adjust audio volume: {ex.Message}";
+            Trace.TraceWarning($"Could not adjust default audio output volume: {ex}");
+        }
+        e.Handled = true;
     }
 
     private void Clock_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenNotificationCenter();

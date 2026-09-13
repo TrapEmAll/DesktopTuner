@@ -68,6 +68,12 @@ CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(false, true, false, false, false
 CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(false, true, true, true, false), "reveal a hidden taskbar when the pointer reaches its edge");
 CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(false, true, true, false, true), "keep the taskbar visible while its Start menu is open");
 Check((byte)255, TaskbarTransparencyPolicy.GetAlpha(0), "make a zero-transparency taskbar fully opaque");
+CheckTrue(Math.Abs(AudioVolumePolicy.Adjust(0.3f, 120) - 0.35f) < 0.0001f, "raise audio volume by one mouse-wheel notch");
+CheckTrue(Math.Abs(AudioVolumePolicy.Adjust(0.3f, -120) - 0.25f) < 0.0001f, "lower audio volume by one mouse-wheel notch");
+Check(1f, AudioVolumePolicy.Adjust(0.99f, 120), "clamp audio volume to the maximum");
+Check(0f, AudioVolumePolicy.Adjust(0.01f, -120), "clamp audio volume to silence");
+Check("Muted · 42%", AudioVolumePolicy.GetLabel(0.42f, true), "format muted audio status for the taskbar control");
+Throws<ArgumentOutOfRangeException>(() => AudioVolumePolicy.Adjust(float.NaN, 120), "reject invalid audio volume values");
 Check((byte)128, TaskbarTransparencyPolicy.GetAlpha(50), "convert fifty percent transparency to the expected alpha");
 Check((byte)77, TaskbarTransparencyPolicy.GetAlpha(100), "bound taskbar transparency to retain a visible backdrop");
 Check(0, TaskbarTransparencyPolicy.Clamp(-10), "clamp negative transparency values");
