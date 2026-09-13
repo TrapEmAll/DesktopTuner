@@ -487,6 +487,13 @@ CheckTrue(SystemFlyoutService.GetRunDialogSequence().SequenceEqual(
     new KeyboardKeyEvent((ushort)'R', true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+R Run dialog shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetWindowsSearchSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'S', false),
+    new KeyboardKeyEvent((ushort)'S', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+S search shortcut in balanced key order");
 CheckTrue(SystemFlyoutService.GetShowDesktopSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),

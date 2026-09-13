@@ -142,6 +142,7 @@ public partial class TaskbarWindow : Window
             Grid.SetRow(SystemSegment, 2);
             Grid.SetColumn(SystemSegment, 0);
             RightControls.Orientation = Orientation.Vertical;
+            StartControls.Orientation = Orientation.Vertical;
             TaskButtonsStack.Orientation = Orientation.Vertical;
             CenterSpacer.Visibility = Visibility.Collapsed;
             PinnedItems.ItemsPanel = (ItemsPanelTemplate)FindResource("VerticalWindowPanel");
@@ -168,6 +169,7 @@ public partial class TaskbarWindow : Window
             Grid.SetRow(SystemSegment, 0);
             Grid.SetColumn(SystemSegment, 2);
             RightControls.Orientation = Orientation.Horizontal;
+            StartControls.Orientation = Orientation.Horizontal;
             TaskButtonsStack.Orientation = Orientation.Horizontal;
             CenterSpacer.Visibility = Visibility.Visible;
             PinnedItems.ItemsPanel = (ItemsPanelTemplate)FindResource("HorizontalWindowPanel");
@@ -336,7 +338,7 @@ public partial class TaskbarWindow : Window
             : (_nativeTrayExposed ? 250 : 290) + 60;
         if (!_nativeTrayExposed) reservedControlsLength += 56;
         if (_preferences.ReplaceNativeTaskbar && _batteryStatus is not null) reservedControlsLength += 56;
-        var reservedLength = reservedControlsLength + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
+        var reservedLength = reservedControlsLength + 42 + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
         return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / buttonSpan));
     }
 
@@ -1098,6 +1100,8 @@ public partial class TaskbarWindow : Window
     }
 
     private void Clock_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenNotificationCenter();
+
+    private void Search_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWindowsSearch();
 
     private void ShowDesktop_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.ShowDesktop();
 
