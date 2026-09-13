@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -194,9 +195,18 @@ public partial class TaskbarWindow : Window
     {
         var windows = _windows.Enumerate();
         PinnedItems.ItemsSource = _preferences.PinnedApps;
-        WindowItems.ItemsSource = windows;
+        WindowItems.ItemsSource = TaskbarWindowGrouping.Create(windows, _preferences.TaskbarGrouping, GetWindowButtonCapacity());
         EmptyText.Visibility = windows.Count == 0 && _preferences.PinnedApps!.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdateClock();
+    }
+
+    private int GetWindowButtonCapacity()
+    {
+        var bounds = TaskbarLayoutCalculator.Calculate(Display, _preferences, collapsed: false);
+        var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
+        var availableLength = vertical ? bounds.Height / Display.ScaleY : bounds.Width / Display.ScaleX;
+        var reservedLength = vertical ? 170 : 250 + (_preferences.PinnedApps?.Count ?? 0) * 120;
+        return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / 140));
     }
 
     private void UpdateClock() => ClockText.Text = DateTime.Now.ToString("h:mm tt");
@@ -312,18 +322,59 @@ public partial class TaskbarWindow : Window
 
     private void WindowButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Tag: RunningWindow window }) RunningWindowService.Activate(window);
+        if (sender is not Button { Tag: TaskbarWindowGroup group }) return;
+        if (group.Windows.Count == 1)
+        {
+            RunningWindowService.Activate(group.Windows[0]);
+            return;
+        }
+
+        var menu = new ContextMenu
+        {
+            PlacementTarget = (UIElement)sender,
+            Placement = _edge switch
+            {
+                TaskbarEdge.Top => PlacementMode.Bottom,
+                TaskbarEdge.Left => PlacementMode.Right,
+                TaskbarEdge.Right => PlacementMode.Left,
+                _ => PlacementMode.Top
+            }
+        };
+        foreach (var window in group.Windows)
+        {
+            var item = new MenuItem { Header = window.Title, Tag = window, ToolTip = window.ExecutablePath };
+            item.Click += GroupWindow_Click;
+            menu.Items.Add(item);
+        }
+        menu.IsOpen = true;
+    }
+
+    private static void GroupWindow_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: RunningWindow window }) RunningWindowService.Activate(window);
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem { Tag: RunningWindow window }) RunningWindowService.Minimize(window);
+        if (sender is not MenuItem item) return;
+        if (item.Tag is TaskbarWindowGroup group)
+        {
+            foreach (var window in group.Windows) RunningWindowService.Minimize(window);
+        }
+        else if (item.Tag is RunningWindow window) RunningWindowService.Minimize(window);
     }
 
     private void Pin_Click(object sender, RoutedEventArgs e)
     {
         var currentPins = _preferences.PinnedApps ?? [];
-        if (sender is not MenuItem { Tag: RunningWindow window }) return;
+        if (sender is not MenuItem item) return;
+        var window = item.Tag switch
+        {
+            RunningWindow runningWindow => runningWindow,
+            TaskbarWindowGroup group => group.Windows.FirstOrDefault(),
+            _ => null
+        };
+        if (window is null) return;
         var pins = TaskbarPinCatalog.Add(currentPins, window.ApplicationName, window.ExecutablePath);
         if (pins.Count == currentPins.Count) return;
         _preferences = _preferences with { PinnedApps = pins };

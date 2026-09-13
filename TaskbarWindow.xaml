@@ -65,14 +65,14 @@
                 <ItemsControl x:Name="WindowItems" VerticalAlignment="Center" ItemsPanel="{StaticResource HorizontalWindowPanel}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Style="{StaticResource TaskButton}" Tag="{Binding}" Click="WindowButton_Click" ToolTip="{Binding Title}">
+                            <Button Style="{StaticResource TaskButton}" Tag="{Binding}" Click="WindowButton_Click" ToolTip="{Binding ToolTip}">
                                 <StackPanel Orientation="Horizontal" MaxWidth="190">
                                     <Border Width="7" Height="7" CornerRadius="4" Background="#8D86FF" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                    <TextBlock Text="{Binding Title}" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                                    <TextBlock Text="{Binding Label}" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="160" />
                                 </StackPanel>
                                 <Button.ContextMenu>
                                     <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
-                                        <MenuItem Header="Minimize" Tag="{Binding}" Click="Minimize_Click" />
+                                        <MenuItem Header="Minimize window(s)" Tag="{Binding}" Click="Minimize_Click" />
                                         <MenuItem Header="Pin app to taskbar" Tag="{Binding}" Click="Pin_Click" />
                                         <MenuItem Header="Close Desktop Tuner bar" Click="CloseBar_Click" />
                                     </ContextMenu>
