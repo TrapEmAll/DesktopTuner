@@ -182,6 +182,13 @@ Check("Browser,Editor", string.Join(',', StartPinCatalog.Move(orderedStartPins, 
 Check("Browser,Editor", string.Join(',', StartPinCatalog.Move(orderedStartPins, @"C:\Apps\Editor.lnk", 1).Select(app => app.Name)), "move a Start favorite later");
 Check("Editor,Browser", string.Join(',', StartPinCatalog.Move(orderedStartPins, @"C:\Apps\Editor.lnk", -1).Select(app => app.Name)), "keep the first Start favorite in place at the list boundary");
 Throws<ArgumentOutOfRangeException>(() => StartPinCatalog.Move(orderedStartPins, @"C:\Apps\Editor.lnk", 2), "reject multi-position Start favorite moves");
+var explorerTabOrder = new List<string> { "Home", "Documents", "Downloads" };
+CheckTrue(ExplorerTabOrdering.Move(explorerTabOrder, 0, 3), "move an Explorer tab after the final tab");
+Check("Documents,Downloads,Home", string.Join(',', explorerTabOrder), "preserve Explorer tab order when dragging a tab to the end");
+CheckTrue(ExplorerTabOrdering.Move(explorerTabOrder, 2, 0), "move an Explorer tab before the first tab");
+Check("Home,Documents,Downloads", string.Join(',', explorerTabOrder), "preserve Explorer tab order when dragging a tab to the beginning");
+CheckTrue(!ExplorerTabOrdering.Move(explorerTabOrder, 1, 2), "ignore an Explorer tab drop that keeps it in the same position");
+CheckTrue(!ExplorerTabOrdering.Move(explorerTabOrder, -1, 0), "ignore an invalid Explorer tab drag source");
 var fullStartPinList = Enumerable.Range(0, StartPinCatalog.MaximumPins)
     .Select(index => new AppEntry($"App {index}", $@"C:\Apps\app{index}.lnk"))
     .ToList();

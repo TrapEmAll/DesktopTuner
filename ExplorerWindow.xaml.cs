@@ -6,15 +6,19 @@ using Microsoft.VisualBasic.FileIO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace DesktopTuner;
 
 public partial class ExplorerWindow : Window
 {
+    private const string ExplorerTabDragFormat = "DesktopTuner.ExplorerTabState";
     private readonly List<ExplorerTabState> _tabs = [];
     private readonly HashSet<string> _cutPaths = new(StringComparer.OrdinalIgnoreCase);
     private int _activeTabIndex;
     private bool _syncingTabs;
+    private TabItem? _tabDragCandidate;
+    private Point _tabDragStart;
     private ExplorerTabState ActiveTab => _tabs[_activeTabIndex];
     private List<ExplorerLocation> _back => ActiveTab.Back;
     private List<ExplorerLocation> _forward => ActiveTab.Forward;
@@ -58,7 +62,13 @@ public partial class ExplorerWindow : Window
                 var close = new Button { Content = "×", Padding = new Thickness(3, 0, 3, 0), MinWidth = 20, Height = 20, ToolTip = "Close tab" };
                 close.Click += (_, _) => CloseTab(tab);
                 header.Children.Add(close);
-                ExplorerTabs.Items.Add(new TabItem { Header = header, Tag = tab, Padding = new Thickness(8, 3, 8, 3) });
+                var tabItem = new TabItem { Header = header, Tag = tab, Padding = new Thickness(8, 3, 8, 3), AllowDrop = true, ToolTip = "Drag to reorder tab" };
+                tabItem.PreviewMouseLeftButtonDown += ExplorerTab_PreviewMouseLeftButtonDown;
+                tabItem.PreviewMouseMove += ExplorerTab_PreviewMouseMove;
+                tabItem.PreviewMouseLeftButtonUp += ExplorerTab_PreviewMouseLeftButtonUp;
+                tabItem.DragOver += ExplorerTab_DragOver;
+                tabItem.Drop += ExplorerTab_Drop;
+                ExplorerTabs.Items.Add(tabItem);
             }
             ExplorerTabs.SelectedIndex = _activeTabIndex;
         }
@@ -124,6 +134,75 @@ public partial class ExplorerWindow : Window
         CancelSearch(previous);
         _activeTabIndex = _tabs.IndexOf(tab);
         ShowActiveTab();
+    }
+
+    private void ExplorerTab_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not TabItem tab || IsInsideTabButton(e.OriginalSource as DependencyObject, tab))
+        {
+            _tabDragCandidate = null;
+            return;
+        }
+
+        _tabDragCandidate = tab;
+        _tabDragStart = e.GetPosition(tab);
+    }
+
+    private void ExplorerTab_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || sender is not TabItem tab || !ReferenceEquals(tab, _tabDragCandidate)) return;
+
+        var current = e.GetPosition(tab);
+        if (Math.Abs(current.X - _tabDragStart.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(current.Y - _tabDragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+        _tabDragCandidate = null;
+        var data = new DataObject(ExplorerTabDragFormat, tab.Tag);
+        DragDrop.DoDragDrop(tab, data, DragDropEffects.Move);
+    }
+
+    private void ExplorerTab_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (ReferenceEquals(sender, _tabDragCandidate)) _tabDragCandidate = null;
+    }
+
+    private void ExplorerTab_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(ExplorerTabDragFormat) && sender is TabItem { Tag: ExplorerTabState }
+            ? DragDropEffects.Move
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void ExplorerTab_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is not TabItem { Tag: ExplorerTabState targetTab } target
+            || e.Data.GetData(ExplorerTabDragFormat) is not ExplorerTabState draggedTab) return;
+
+        var sourceIndex = _tabs.IndexOf(draggedTab);
+        var targetIndex = _tabs.IndexOf(targetTab);
+        if (sourceIndex < 0 || targetIndex < 0) return;
+
+        var insertionIndex = targetIndex + (e.GetPosition(target).X >= target.ActualWidth / 2 ? 1 : 0);
+        var activeTab = ActiveTab;
+        if (!ExplorerTabOrdering.Move(_tabs, sourceIndex, insertionIndex)) return;
+
+        _activeTabIndex = _tabs.IndexOf(activeTab);
+        SyncExplorerTabs();
+        e.Handled = true;
+    }
+
+    private static bool IsInsideTabButton(DependencyObject? source, TabItem tab)
+    {
+        while (source is not null && !ReferenceEquals(source, tab))
+        {
+            if (source is Button) return true;
+            source = source is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(source)
+                : LogicalTreeHelper.GetParent(source);
+        }
+
+        return false;
     }
 
     private void NewTabButton_Click(object sender, RoutedEventArgs e) => AddTab(
