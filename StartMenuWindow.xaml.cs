@@ -439,20 +439,29 @@ public partial class StartMenuWindow : Window
 
     private void PinnedStartApp_DragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(PinnedStartDragFormat) ? DragDropEffects.Move : DragDropEffects.None;
+        if (e.Data.GetDataPresent(PinnedStartDragFormat))
+            e.Effects = DragDropEffects.Move;
+        else
+            e.Effects = HasDroppedApps(e.Data) ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
 
     private void PinnedStartApp_Drop(object sender, DragEventArgs e)
     {
-        if (!e.Data.GetDataPresent(PinnedStartDragFormat)
-            || e.Data.GetData(PinnedStartDragFormat) is not string sourcePath
-            || sender is not Button { Tag: AppEntry targetApp } target) return;
+        if (sender is not Button { Tag: AppEntry targetApp } target) return;
 
         var targetIndex = _pinnedApps.ToList().FindIndex(app =>
             string.Equals(app.ShortcutPath, targetApp.ShortcutPath, StringComparison.OrdinalIgnoreCase));
         if (targetIndex < 0) return;
         var insertionIndex = targetIndex + (e.GetPosition(target).X >= target.ActualWidth / 2 ? 1 : 0);
+        if (!e.Data.GetDataPresent(PinnedStartDragFormat))
+        {
+            InsertDroppedApps(GetDroppedAppPaths(e.Data), insertionIndex);
+            e.Handled = true;
+            return;
+        }
+        if (e.Data.GetData(PinnedStartDragFormat) is not string sourcePath) return;
+
         if (_pinnedApps.Any(app => string.Equals(app.ShortcutPath, sourcePath, StringComparison.OrdinalIgnoreCase)))
             SavePinnedApps(StartPinCatalog.Reorder(_pinnedApps, sourcePath, insertionIndex));
         else if (FindApp(sourcePath) is { } app)
@@ -462,18 +471,74 @@ public partial class StartMenuWindow : Window
 
     private void PinnedStartPanel_DragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(PinnedStartDragFormat) ? DragDropEffects.Move : DragDropEffects.None;
+        if (e.Data.GetDataPresent(PinnedStartDragFormat))
+            e.Effects = DragDropEffects.Move;
+        else
+            e.Effects = HasDroppedApps(e.Data) ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
 
     private void PinnedStartPanel_Drop(object sender, DragEventArgs e)
     {
-        if (!e.Data.GetDataPresent(PinnedStartDragFormat)
-            || e.Data.GetData(PinnedStartDragFormat) is not string shortcutPath
-            || _pinnedApps.Any(app => string.Equals(app.ShortcutPath, shortcutPath, StringComparison.OrdinalIgnoreCase))) return;
-        if (FindApp(shortcutPath) is { } app) InsertPinnedApp(app, _pinnedApps.Count);
+        if (e.Data.GetDataPresent(PinnedStartDragFormat))
+        {
+            if (e.Data.GetData(PinnedStartDragFormat) is string shortcutPath)
+            {
+                if (_pinnedApps.Any(app => string.Equals(app.ShortcutPath, shortcutPath, StringComparison.OrdinalIgnoreCase)))
+                    SavePinnedApps(StartPinCatalog.Reorder(_pinnedApps, shortcutPath, _pinnedApps.Count));
+                else if (FindApp(shortcutPath) is { } app)
+                    InsertPinnedApp(app, _pinnedApps.Count);
+            }
+            e.Handled = true;
+            return;
+        }
+
+        InsertDroppedApps(GetDroppedAppPaths(e.Data), _pinnedApps.Count);
         e.Handled = true;
     }
+
+    private bool HasDroppedApps(IDataObject data) =>
+        data.GetDataPresent(DataFormats.FileDrop)
+        && data.GetData(DataFormats.FileDrop) is string[] paths
+        && StartPinCatalog.AddDroppedFiles([], paths.Where(File.Exists)).Count > 0;
+
+    private static IEnumerable<string> GetDroppedAppPaths(IDataObject data) =>
+        data.GetDataPresent(DataFormats.FileDrop) && data.GetData(DataFormats.FileDrop) is string[] paths
+            ? paths.Where(File.Exists)
+            : [];
+
+    private void InsertDroppedApps(IEnumerable<string> paths, int index)
+    {
+        var droppedApps = StartPinCatalog.AddDroppedFiles([], paths);
+        if (droppedApps.Count == 0) return;
+
+        var updated = _pinnedApps;
+        var insertionIndex = Math.Clamp(index, 0, updated.Count);
+        var reachedPinLimit = false;
+        foreach (var app in droppedApps)
+        {
+            if (updated.Any(pin => string.Equals(pin.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase))) continue;
+            if (updated.Count >= StartPinCatalog.MaximumPins)
+            {
+                reachedPinLimit = true;
+                break;
+            }
+            updated = StartPinCatalog.Pin(updated, app);
+            updated = StartPinCatalog.Reorder(updated, app.ShortcutPath, insertionIndex++);
+        }
+
+        if (updated.Count == _pinnedApps.Count)
+        {
+            if (droppedApps.Any(app => !_pinnedApps.Any(pin => string.Equals(pin.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase))))
+                ShowStartPinLimitMessage();
+            return;
+        }
+        SavePinnedApps(updated);
+        if (reachedPinLimit) ShowStartPinLimitMessage();
+    }
+
+    private void ShowStartPinLimitMessage() =>
+        MessageBox.Show(this, $"You can pin up to {StartPinCatalog.MaximumPins} apps to Start.", "Start is full", MessageBoxButton.OK, MessageBoxImage.Information);
 
     private AppEntry? FindApp(string shortcutPath) => _apps.FirstOrDefault(app =>
         string.Equals(app.ShortcutPath, shortcutPath, StringComparison.OrdinalIgnoreCase));

@@ -23,6 +23,23 @@ public static class StartPinCatalog
         return [.. pins, app];
     }
 
+    public static IReadOnlyList<AppEntry> AddDroppedFiles(IEnumerable<AppEntry>? current, IEnumerable<string> paths)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+        var pins = Normalize(current);
+        foreach (var path in paths)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path)) continue;
+            var extension = Path.GetExtension(path);
+            if (!IsShortcutExtension(extension)) continue;
+
+            var name = Path.GetFileNameWithoutExtension(path);
+            if (string.IsNullOrWhiteSpace(name)) name = path;
+            pins = Pin(pins, new AppEntry(name, path));
+        }
+        return pins;
+    }
+
     public static IReadOnlyList<AppEntry> Unpin(IEnumerable<AppEntry>? current, string shortcutPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(shortcutPath);
@@ -65,5 +82,9 @@ public static class StartPinCatalog
         !string.IsNullOrWhiteSpace(app.ShortcutPath) &&
         (app.IsPackagedApp
             ? app.ShortcutPath.Contains('!')
-            : string.Equals(Path.GetExtension(app.ShortcutPath), ".lnk", StringComparison.OrdinalIgnoreCase));
+            : IsShortcutExtension(Path.GetExtension(app.ShortcutPath)));
+
+    private static bool IsShortcutExtension(string extension) =>
+        string.Equals(extension, ".lnk", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(extension, ".exe", StringComparison.OrdinalIgnoreCase);
 }

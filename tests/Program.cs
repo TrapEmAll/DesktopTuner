@@ -358,7 +358,10 @@ var fullStartPinList = Enumerable.Range(0, StartPinCatalog.MaximumPins)
     .Select(index => new AppEntry($"App {index}", $@"C:\Apps\app{index}.lnk"))
     .ToList();
 Check(StartPinCatalog.MaximumPins, StartPinCatalog.Pin(fullStartPinList, new AppEntry("Extra", @"C:\Apps\extra.lnk")).Count, "respect the Start pin limit");
-Throws<ArgumentException>(() => StartPinCatalog.Pin([], new AppEntry("Unsupported", @"C:\Apps\unsupported.exe")), "reject unsupported Start pin targets");
+Check(1, StartPinCatalog.Pin([], new AppEntry("Editor", @"C:\Apps\Editor.exe")).Count, "pin executable targets to Start");
+var droppedStartPins = StartPinCatalog.AddDroppedFiles([], [@"C:\Apps\Editor.exe", @"C:\Apps\Editor.lnk", @"C:\Apps\Notes.txt", "relative.exe"]);
+Check("Editor,Editor", string.Join(',', droppedStartPins.Select(app => app.Name)), "pin dropped executables and shortcuts while ignoring documents and relative paths");
+Throws<ArgumentException>(() => StartPinCatalog.Pin([], new AppEntry("Unsupported", @"C:\Apps\unsupported.txt")), "reject unsupported Start pin targets");
 Check("shell:MyComputerFolder", StartMenuPlaceCatalog.ResolveTarget("computer"), "open This PC from the Start places menu");
 Check("control.exe", StartMenuPlaceCatalog.ResolveTarget("control-panel"), "open Control Panel from the Start places menu");
 Check(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), StartMenuPlaceCatalog.ResolveTarget("music"), "open the user's Music folder from the Start places menu");
