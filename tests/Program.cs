@@ -41,6 +41,15 @@ cancelGesture.KeyDown('E');
 Check((uint?)0x5b, cancelGesture.Cancel(), "release a forwarded modifier when disabling the hook");
 Check<uint?>(null, cancelGesture.Cancel(), "cancel clears gesture state");
 Throws<ArgumentOutOfRangeException>(() => TaskbarLayoutCalculator.Calculate(0, 1080, new(TaskbarEdge.Bottom), false), "rejects invalid screen bounds");
+var appModeSetting = SettingsCatalog.ById("explorer-app-mode");
+var systemModeSetting = SettingsCatalog.ById("explorer-system-mode");
+var transparencySetting = SettingsCatalog.ById("explorer-transparency");
+Check(SettingsCatalog.Personalize, appModeSetting.RegistryPath, "use shared Windows personalization registry location for app color mode");
+Check("AppsUseLightTheme", appModeSetting.ValueName, "target Windows app color mode value");
+Check("SystemUsesLightTheme", systemModeSetting.ValueName, "target Windows system color mode value");
+Check("EnableTransparency", transparencySetting.ValueName, "target Windows transparency setting");
+Check(0, appModeSetting.Choices.Single(choice => choice.Label == "Dark").Value, "map dark app mode to the Windows registry value");
+Check(1, transparencySetting.Choices.Single(choice => choice.Label == "On").Value, "map enabled transparency to the Windows registry value");
 var temporaryPreferencesDirectory = Path.Combine(Path.GetTempPath(), $"DesktopTuner.Tests-{Guid.NewGuid():N}");
 var preferencesPath = Path.Combine(temporaryPreferencesDirectory, "preferences.json");
 try
@@ -55,6 +64,20 @@ try
 
     File.WriteAllText(preferencesPath, "{\"TaskbarEdge\":\"Bottom\"}");
     Check(StartMenuStyle.Modern, preferencesStore.Load().StartMenuStyle, "default legacy preferences to the Modern Start menu");
+
+    var profilePath = Path.Combine(temporaryPreferencesDirectory, "appearance-profile.json");
+    var profileStore = new ProfileStore();
+    var appearanceValues = new Dictionary<string, int>
+    {
+        [appModeSetting.Id] = 0,
+        [systemModeSetting.Id] = 0,
+        [transparencySetting.Id] = 1
+    };
+    profileStore.SaveProfile(profilePath, "Dark appearance", appearanceValues);
+    var loadedAppearanceProfile = profileStore.LoadProfile(profilePath);
+    Check(appearanceValues[appModeSetting.Id], loadedAppearanceProfile.Settings[appModeSetting.Id], "round-trip app mode in a profile");
+    Check(appearanceValues[systemModeSetting.Id], loadedAppearanceProfile.Settings[systemModeSetting.Id], "round-trip system mode in a profile");
+    Check(appearanceValues[transparencySetting.Id], loadedAppearanceProfile.Settings[transparencySetting.Id], "round-trip transparency in a profile");
 }
 finally
 {

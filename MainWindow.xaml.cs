@@ -204,6 +204,8 @@ public partial class MainWindow : Window
         }
         if (section == "Explorer")
         {
+            var appearanceInfo = InfoCard("Appearance settings are shared with Windows", "App color mode affects File Explorer and other apps. System color mode also changes shell surfaces such as the taskbar and Start menu, and transparency effects apply system-wide. Some changes may need apps to restart or Windows to sign out and back in.");
+            PageContent.Children.Add(appearanceInfo);
             var info = InfoCard("Classic context menu is experimental", "Windows 11 does not offer a supported switch for the classic full menu. This compatibility setting writes a per-user shell registration and may require File Explorer to restart or Windows to sign out.");
             PageContent.Children.Add(info);
         }

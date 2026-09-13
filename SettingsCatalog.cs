@@ -16,6 +16,7 @@ public sealed record SettingDefinition(
 public static class SettingsCatalog
 {
     public const string ExplorerAdvanced = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
+    public const string Personalize = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
 
     public static IReadOnlyList<SettingDefinition> All { get; } =
     [
@@ -35,7 +36,13 @@ public static class SettingsCatalog
             [new("Compact", 1), new("Comfortable", 0)], 0),
         new("explorer-context-menu", "Explorer", "Context menu style", "Switch between the compact Windows 11 menu and the classic full context menu.",
             @"Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32", "",
-            [new("Windows 11 menu", 0, DeleteRegistryValue: true), new("Classic full menu", 1, RegistryString: "")], 0, true)
+            [new("Windows 11 menu", 0, DeleteRegistryValue: true), new("Classic full menu", 1, RegistryString: "")], 0, true),
+        new("explorer-app-mode", "Explorer", "App color mode", "Set light or dark colors for File Explorer and other Windows apps.", Personalize, "AppsUseLightTheme",
+            [new("Light", 1), new("Dark", 0)], 1, true),
+        new("explorer-system-mode", "Explorer", "System color mode", "Set light or dark colors for Windows shell surfaces such as the taskbar and Start menu.", Personalize, "SystemUsesLightTheme",
+            [new("Light", 1), new("Dark", 0)], 1, true),
+        new("explorer-transparency", "Explorer", "Transparency effects", "Enable or disable Windows transparency effects across supported shell and app surfaces.", Personalize, "EnableTransparency",
+            [new("On", 1), new("Off", 0)], 1, true)
     ];
 
     public static SettingDefinition ById(string id) => All.Single(setting => setting.Id == id);

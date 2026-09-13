@@ -10,6 +10,7 @@ public sealed class RegistrySettingsService
 {
     private const int HWND_BROADCAST = 0xffff;
     private const uint WM_SETTINGCHANGE = 0x001a;
+    private const uint WM_THEMECHANGED = 0x031a;
     private const uint SMTO_ABORTIFHUNG = 0x0002;
     private const uint SHCNE_ASSOCCHANGED = 0x08000000;
     private const uint SHCNF_IDLIST = 0x0000;
@@ -53,7 +54,7 @@ public sealed class RegistrySettingsService
                 applied.Add(setting);
             }
             _profiles.SaveUndo(snapshots);
-            NotifyShell();
+            NotifyShell(settings.Any(setting => setting.RegistryPath == SettingsCatalog.Personalize));
             return snapshots;
         }
         catch (Exception applyError)
@@ -61,7 +62,7 @@ public sealed class RegistrySettingsService
             try
             {
                 RestoreValues(snapshots.Where(snapshot => applied.Any(setting => setting.Id == snapshot.SettingId)));
-                NotifyShell();
+                NotifyShell(settings.Any(setting => setting.RegistryPath == SettingsCatalog.Personalize));
             }
             catch (Exception rollbackError)
             {
@@ -76,7 +77,7 @@ public sealed class RegistrySettingsService
         var snapshots = _profiles.LoadUndo() ?? throw new InvalidOperationException("There is no saved change to undo.");
         RestoreValues(snapshots);
         _profiles.ClearUndo();
-        NotifyShell();
+        NotifyShell(snapshots.Any(snapshot => SettingsCatalog.ById(snapshot.SettingId).RegistryPath == SettingsCatalog.Personalize));
     }
 
     public bool HasUndo => _profiles.LoadUndo() is { Count: > 0 };
@@ -143,9 +144,22 @@ public sealed class RegistrySettingsService
         }
     }
 
-    private static void NotifyShell()
+    private static void NotifyShell(bool appearanceChanged)
     {
         SendMessageTimeout(new IntPtr(HWND_BROADCAST), WM_SETTINGCHANGE, IntPtr.Zero, IntPtr.Zero, SMTO_ABORTIFHUNG, 2000, out _);
+        if (appearanceChanged)
+        {
+            var colorSet = Marshal.StringToHGlobalUni("ImmersiveColorSet");
+            try
+            {
+                SendMessageTimeout(new IntPtr(HWND_BROADCAST), WM_SETTINGCHANGE, IntPtr.Zero, colorSet, SMTO_ABORTIFHUNG, 2000, out _);
+                SendMessageTimeout(new IntPtr(HWND_BROADCAST), WM_THEMECHANGED, IntPtr.Zero, IntPtr.Zero, SMTO_ABORTIFHUNG, 2000, out _);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(colorSet);
+            }
+        }
         SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
     }
 
