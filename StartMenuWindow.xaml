@@ -107,10 +107,19 @@
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Row" Property="Background" Value="{DynamicResource DesktopHoverBrush}" /></Trigger>
                                             <Trigger Property="IsSelected" Value="True"><Setter TargetName="Row" Property="Background" Value="{DynamicResource DesktopSelectedBrush}" /></Trigger>
+                                            <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows7}">
+                                                <Setter TargetName="Row" Property="CornerRadius" Value="2" />
+                                            </DataTrigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </Setter.Value>
                             </Setter>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows7}">
+                                    <Setter Property="Padding" Value="7,5" />
+                                    <Setter Property="Margin" Value="0,1" />
+                                </DataTrigger>
+                            </Style.Triggers>
                         </Style>
                     </ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate>

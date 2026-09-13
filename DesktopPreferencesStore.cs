@@ -12,7 +12,7 @@ public enum TaskbarButtonAlignment { Left, Center }
 public enum TaskbarIconSize { Small, Standard, Large }
 public enum TaskbarButtonSpacing { Compact, Standard, Relaxed }
 public enum TaskbarButtonEffect { Accent, Aura, DynamicAura }
-public enum StartMenuStyle { Modern, Classic, Compact }
+public enum StartMenuStyle { Modern, Classic, Compact, Windows7 }
 public sealed record PinnedTaskbarApp(string Name, string ExecutablePath, bool IsDirectory = false)
 {
     [JsonIgnore]

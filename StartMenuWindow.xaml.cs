@@ -35,48 +35,68 @@ public partial class StartMenuWindow : Window
     public void SetStyle(StartMenuStyle style)
     {
         _style = style;
+        Tag = style;
         MenuLayout.RowDefinitions.Clear();
         MenuLayout.ColumnDefinitions.Clear();
-        var classic = style == StartMenuStyle.Classic;
+        var windows7 = style == StartMenuStyle.Windows7;
+        var classic = style is StartMenuStyle.Classic or StartMenuStyle.Windows7;
         MenuLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         if (classic) MenuLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(176) });
 
         if (classic)
         {
             MenuLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            MenuLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            MenuLayout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            Width = 650;
-            Height = 590;
-            OuterBorder.CornerRadius = new CornerRadius(8);
-            OuterBorder.BorderBrush = Brush("#30394D");
-            OuterBorder.Background = Brush("#F0F2F7");
+            if (windows7)
+            {
+                MenuLayout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                MenuLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                Width = 650;
+                Height = 610;
+                OuterBorder.CornerRadius = new CornerRadius(8);
+                OuterBorder.BorderBrush = Brush("#7389A4");
+                OuterBorder.Background = Brush("#E7ECF3");
+                OuterBorder.Padding = new Thickness(0);
+            }
+            else
+            {
+                MenuLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                MenuLayout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                Width = 650;
+                Height = 590;
+                OuterBorder.CornerRadius = new CornerRadius(8);
+                OuterBorder.BorderBrush = Brush("#30394D");
+                OuterBorder.Background = Brush("#F0F2F7");
+                OuterBorder.Padding = new Thickness(20);
+            }
             HeaderTitle.Text = "Start";
-            HeaderSubtitle.Text = "Search and launch apps";
+            HeaderSubtitle.Text = windows7 ? "Desktop Tuner" : "Search and launch apps";
             HeaderSubtitle.Visibility = Visibility.Visible;
-            HeaderPanel.Margin = new Thickness(2, 0, 12, 12);
-            SearchBox.Height = 42;
-            AppPanel.Margin = new Thickness(0, 10, 12, 0);
+            HeaderPanel.Margin = windows7 ? new Thickness(10, 6, 12, 4) : new Thickness(2, 0, 12, 12);
+            SearchBox.Height = windows7 ? 38 : 42;
+            SearchBox.Margin = windows7 ? new Thickness(8, 2, 8, 8) : new Thickness(0);
+            AppPanel.Margin = windows7 ? new Thickness(0, 4, 8, 4) : new Thickness(0, 10, 12, 0);
             ResultsHeading.Text = "All programs";
             Grid.SetRow(HeaderPanel, 0);
             Grid.SetColumn(HeaderPanel, 0);
-            Grid.SetRow(SearchBox, 1);
+            Grid.SetRow(SearchBox, windows7 ? 2 : 1);
             Grid.SetColumn(SearchBox, 0);
-            Grid.SetRow(AppPanel, 2);
+            Grid.SetRow(AppPanel, windows7 ? 1 : 2);
             Grid.SetColumn(AppPanel, 0);
             Grid.SetRow(QuickLinksBorder, 0);
             Grid.SetColumn(QuickLinksBorder, 1);
             Grid.SetRowSpan(QuickLinksBorder, 3);
-            QuickLinksBorder.Background = Brush("#252C3D");
-            QuickLinksBorder.BorderBrush = Brush("#252C3D");
+            QuickLinksBorder.Background = Brush(windows7 ? "#294B70" : "#252C3D");
+            QuickLinksBorder.BorderBrush = Brush(windows7 ? "#294B70" : "#252C3D");
             QuickLinksBorder.BorderThickness = new Thickness(0);
-            QuickLinksBorder.Padding = new Thickness(14, 14, 10, 14);
+            QuickLinksBorder.Padding = windows7 ? new Thickness(12, 12, 9, 12) : new Thickness(14, 14, 10, 14);
             QuickLinksStack.Orientation = Orientation.Vertical;
             QuickLinksTitle.Visibility = Visibility.Visible;
             SetQuickLinkAppearance(classic: true);
         }
         else
         {
+            OuterBorder.Padding = new Thickness(20);
+            SearchBox.Margin = new Thickness(0);
             MenuLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             MenuLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             MenuLayout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });

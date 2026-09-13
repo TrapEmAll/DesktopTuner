@@ -185,6 +185,7 @@ public partial class MainWindow : Window
             menuStyleSelector.Items.Add(new ComboBoxItem { Content = "Modern", Tag = StartMenuStyle.Modern });
             menuStyleSelector.Items.Add(new ComboBoxItem { Content = "Classic", Tag = StartMenuStyle.Classic });
             menuStyleSelector.Items.Add(new ComboBoxItem { Content = "Compact", Tag = StartMenuStyle.Compact });
+            menuStyleSelector.Items.Add(new ComboBoxItem { Content = "Windows 7 inspired", Tag = StartMenuStyle.Windows7 });
             menuStyleSelector.SelectedIndex = (int)_startMenuStyle;
             menuStyleSelector.SelectionChanged += (_, _) =>
             {

@@ -896,6 +896,8 @@ try
     Check(true, loadedPreferences.ReplaceNativeTaskbar, "persist native taskbar replacement mode");
     Check(true, loadedPreferences.TaskbarDynamicTransparency, "persist adaptive taskbar transparency");
     Check(TaskbarButtonEffect.DynamicAura, loadedPreferences.TaskbarButtonEffect, "persist the Dynamic Aura button effect");
+    preferencesStore.Save(expectedPreferences with { StartMenuStyle = StartMenuStyle.Windows7 });
+    Check(StartMenuStyle.Windows7, preferencesStore.Load().StartMenuStyle, "persist the Windows 7-inspired Start menu style");
     Check(expectedPreferences.TaskbarGrouping, loadedPreferences.TaskbarGrouping, "persist taskbar grouping mode");
     Check(expectedPreferences.TaskbarButtonAlignment, loadedPreferences.TaskbarButtonAlignment, "persist taskbar button alignment");
     preferencesStore.Save(expectedPreferences with { StartWithWindows = true });
