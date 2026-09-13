@@ -1,5 +1,6 @@
 using DesktopTuner;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 
 var count = 0;
@@ -222,6 +223,12 @@ Check("search:query=quarter%20%26%20year", StartSearchTargetBuilder.WindowsSearc
 Check("https://www.bing.com/search?q=caf%C3%A9%20%2F%20tea", StartSearchTargetBuilder.WebSearch("café / tea"), "encode a query for explicit web search");
 Throws<ArgumentException>(() => StartSearchTargetBuilder.WindowsSearch("  "), "reject empty Windows Search requests");
 Throws<ArgumentException>(() => StartSearchTargetBuilder.WebSearch(string.Empty), "reject empty web search requests");
+Check(ExplorerKeyboardAction.FocusAddress, ExplorerKeyboardPolicy.Resolve(Key.L, ModifierKeys.Control), "focus the Explorer address field with Ctrl+L");
+Check(ExplorerKeyboardAction.FocusAddress, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.D), "focus the Explorer address field with Alt+D system-key events");
+Check(ExplorerKeyboardAction.FocusSearch, ExplorerKeyboardPolicy.Resolve(Key.F, ModifierKeys.Control), "focus Explorer search with Ctrl+F");
+Check(ExplorerKeyboardAction.NextPane, ExplorerKeyboardPolicy.Resolve(Key.F6, ModifierKeys.None), "cycle Explorer navigation panes with F6");
+Check(ExplorerKeyboardAction.PreviousPane, ExplorerKeyboardPolicy.Resolve(Key.F6, ModifierKeys.Shift), "cycle Explorer navigation panes in reverse with Shift+F6");
+Check(ExplorerKeyboardAction.None, ExplorerKeyboardPolicy.Resolve(Key.L, ModifierKeys.Control | ModifierKeys.Shift), "leave modified Ctrl+L combinations untouched");
 var folderCatalog = new[]
 {
     new AppEntry("Word", @"C:\Apps\Word.lnk", CategoryPath: @"Office\Editors"),

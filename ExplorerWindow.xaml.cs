@@ -220,6 +220,28 @@ public partial class ExplorerWindow : Window
 
     private void ExplorerWindow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        var explorerAction = ExplorerKeyboardPolicy.Resolve(e.Key, Keyboard.Modifiers, e.SystemKey);
+        if (explorerAction != ExplorerKeyboardAction.None)
+        {
+            switch (explorerAction)
+            {
+                case ExplorerKeyboardAction.FocusAddress:
+                    FocusAndSelect(AddressBox);
+                    break;
+                case ExplorerKeyboardAction.FocusSearch:
+                    FocusAndSelect(SearchBox);
+                    break;
+                case ExplorerKeyboardAction.NextPane:
+                    CycleNavigationFocus(reverse: false);
+                    break;
+                case ExplorerKeyboardAction.PreviousPane:
+                    CycleNavigationFocus(reverse: true);
+                    break;
+            }
+            e.Handled = true;
+            return;
+        }
+
         if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) return;
         if (e.Key == Key.T)
             NewTabButton_Click(this, new RoutedEventArgs());
@@ -233,6 +255,24 @@ public partial class ExplorerWindow : Window
         }
         else return;
         e.Handled = true;
+    }
+
+    private static void FocusAndSelect(TextBox textBox)
+    {
+        textBox.Focus();
+        textBox.SelectAll();
+    }
+
+    private void CycleNavigationFocus(bool reverse)
+    {
+        Control[] controls = [AddressBox, SearchBox, EntriesList];
+        var current = Array.FindIndex(controls, control => control.IsKeyboardFocusWithin);
+        var direction = reverse ? -1 : 1;
+        var next = current < 0
+            ? (reverse ? controls.Length - 1 : 0)
+            : (current + direction + controls.Length) % controls.Length;
+        controls[next].Focus();
+        if (controls[next] is TextBox textBox) textBox.SelectAll();
     }
 
     private void Navigate(ExplorerLocation target, bool addHistory = true)
