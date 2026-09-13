@@ -27,3 +27,17 @@ jobs:
 
       - name: Run regression checks
         run: dotnet run --project tests/DesktopTuner.Tests.csproj --configuration Release
+
+      - name: Restore Windows runtime pack
+        run: dotnet restore DesktopTuner.csproj --runtime win-x64 --source https://api.nuget.org/v3/index.json
+
+      - name: Publish portable Windows app
+        run: dotnet publish DesktopTuner.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output artifacts/DesktopTuner --no-restore
+
+      - name: Upload portable Windows app
+        uses: actions/upload-artifact@v4
+        with:
+          name: DesktopTuner-win-x64-${{ github.sha }}
+          path: artifacts/DesktopTuner/
+          if-no-files-found: error
+          retention-days: 30

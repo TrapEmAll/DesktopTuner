@@ -32,4 +32,4 @@ dotnet run --no-restore
 dotnet run --project tests/DesktopTuner.Tests.csproj
 ```
 
-The app targets `net10.0-windows` and uses WPF with no third-party package dependencies.
+The app targets `net10.0-windows` and uses WPF with no third-party package dependencies. Each successful Windows workflow run also publishes a self-contained, single-file `win-x64` app as a downloadable artifact on that run's page. Download and extract the artifact, then run `DesktopTuner.exe`; no separate .NET runtime install is required.
