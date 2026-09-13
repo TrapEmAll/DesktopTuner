@@ -489,6 +489,14 @@ public partial class StartMenuWindow : Window
         if (sender is not MenuItem { Tag: string action }) return;
         try
         {
+            if (action == "run")
+            {
+                if (!SystemFlyoutService.OpenRunDialog())
+                    throw new InvalidOperationException("Windows did not accept the Run shortcut.");
+                Close();
+                return;
+            }
+
             AppCatalogService.OpenLocation(StartMenuPlaceCatalog.ResolveTarget(action));
             Close();
         }

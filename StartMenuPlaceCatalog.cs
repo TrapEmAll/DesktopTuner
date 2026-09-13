@@ -23,7 +23,8 @@ public static class StartMenuPlaceCatalog
         new("computer", "This PC"),
         new("control-panel", "Control Panel"),
         new("network", "Network"),
-        new("recent", "Recent items")
+        new("recent", "Recent items"),
+        new("run", "Run...")
     ];
 
     public static string ResolveTarget(string id) => id switch

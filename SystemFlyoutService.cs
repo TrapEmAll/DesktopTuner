@@ -12,6 +12,7 @@ public static class SystemFlyoutService
     private const ushort VK_B = 0x42;
     private const ushort VK_D = 0x44;
     private const ushort VK_N = 0x4E;
+    private const ushort VK_R = 0x52;
     private const ushort VK_W = 0x57;
     private const uint INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_KEYUP = 0x0002;
@@ -36,6 +37,13 @@ public static class SystemFlyoutService
         new(VK_W, true),
         new(VK_LWIN, true)
     ]);
+    private static readonly IReadOnlyList<KeyboardKeyEvent> RunDialogSequence = Array.AsReadOnly<KeyboardKeyEvent>(
+    [
+        new(VK_LWIN, false),
+        new(VK_R, false),
+        new(VK_R, true),
+        new(VK_LWIN, true)
+    ]);
     private static readonly IReadOnlyList<KeyboardKeyEvent> ShowDesktopSequence = Array.AsReadOnly<KeyboardKeyEvent>(
     [
         new(VK_LWIN, false),
@@ -47,6 +55,7 @@ public static class SystemFlyoutService
     public static IReadOnlyList<KeyboardKeyEvent> GetNotificationCenterSequence() => NotificationCenterSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetNotificationAreaSequence() => NotificationAreaSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetWidgetsSequence() => WidgetsSequence;
+    public static IReadOnlyList<KeyboardKeyEvent> GetRunDialogSequence() => RunDialogSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetShowDesktopSequence() => ShowDesktopSequence;
 
     public static bool OpenNotificationCenter() => SendWindowsShortcut(VK_N, NotificationCenterSequence, "notification center");
@@ -54,6 +63,8 @@ public static class SystemFlyoutService
     public static bool FocusNotificationArea() => SendWindowsShortcut(VK_B, NotificationAreaSequence, "notification area");
 
     public static bool OpenWidgets() => SendWindowsShortcut(VK_W, WidgetsSequence, "Widgets board");
+
+    public static bool OpenRunDialog() => SendWindowsShortcut(VK_R, RunDialogSequence, "Run dialog");
 
     public static bool ShowDesktop() => SendWindowsShortcut(VK_D, ShowDesktopSequence, "Show desktop");
 

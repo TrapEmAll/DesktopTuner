@@ -250,7 +250,8 @@ Check(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), StartMenuPla
 Check(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), StartMenuPlaceCatalog.ResolveTarget("documents"), "resolve Documents from the Start dropdown places");
 Check(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"), StartMenuPlaceCatalog.ResolveTarget("downloads"), "resolve Downloads from the Start dropdown places");
 Check(5, StartMenuPlaceCatalog.DropdownPlaces.Count, "show the supported Start places with dropdown navigation");
-Check(4, StartMenuPlaceCatalog.AdditionalPlaces.Count, "show the remaining additional Start system places");
+Check(5, StartMenuPlaceCatalog.AdditionalPlaces.Count, "show the remaining additional Start system places");
+Check("Run...", StartMenuPlaceCatalog.AdditionalPlaces.Single(place => place.Id == "run").Label, "offer the classic Run dialog from the Start places menu");
 Throws<ArgumentOutOfRangeException>(() => StartMenuPlaceCatalog.ResolveTarget("unknown"), "reject unknown Start system places");
 Throws<ArgumentOutOfRangeException>(() => StartMenuPlaceCatalog.ReadChildren("missing", -1), "reject a negative Start place dropdown limit");
 Check("lock,sleep,hibernate,sign-out,restart,shutdown", string.Join(',', StartPowerActionCatalog.Actions.Select(action => action.Id)), "offer common Start power actions");
@@ -342,6 +343,13 @@ CheckTrue(SystemFlyoutService.GetWidgetsSequence().SequenceEqual(
     new KeyboardKeyEvent((ushort)'W', true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+W Widgets shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetRunDialogSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'R', false),
+    new KeyboardKeyEvent((ushort)'R', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+R Run dialog shortcut in balanced key order");
 CheckTrue(SystemFlyoutService.GetShowDesktopSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),
