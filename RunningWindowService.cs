@@ -5,7 +5,7 @@ using System.Text;
 
 namespace DesktopTuner;
 
-public sealed record RunningWindow(nint Handle, string Title, string ApplicationName, bool IsMinimized);
+public sealed record RunningWindow(nint Handle, string Title, string ApplicationName, string ExecutablePath, bool IsMinimized);
 
 public sealed class RunningWindowService
 {
@@ -32,15 +32,17 @@ public sealed class RunningWindowService
             if (text.Length == 0) return true;
 
             var appName = "Application";
+            var executablePath = string.Empty;
             try
             {
                 using var process = Process.GetProcessById((int)processId);
-                appName = process.MainModule?.FileName is { } path ? Path.GetFileNameWithoutExtension(path) : process.ProcessName;
+                executablePath = process.MainModule?.FileName ?? string.Empty;
+                appName = executablePath.Length > 0 ? Path.GetFileNameWithoutExtension(executablePath) : process.ProcessName;
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
             {
             }
-            windows.Add(new RunningWindow(handle, text, appName, IsIconic(handle)));
+            windows.Add(new RunningWindow(handle, text, appName, executablePath, IsIconic(handle)));
             return true;
         }, IntPtr.Zero);
 

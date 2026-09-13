@@ -5,7 +5,8 @@ namespace DesktopTuner;
 
 public enum TaskbarEdge { Bottom, Top, Left, Right }
 public enum TaskbarSize { Small, Standard, Large }
-public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false);
+public sealed record PinnedTaskbarApp(string Name, string ExecutablePath);
+public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null);
 
 public sealed class DesktopPreferencesStore
 {
@@ -17,9 +18,15 @@ public sealed class DesktopPreferencesStore
         try
         {
             var value = JsonSerializer.Deserialize<DesktopPreferences>(File.ReadAllText(_path));
-            return value is not null && Enum.IsDefined(value.TaskbarEdge) && Enum.IsDefined(value.TaskbarSize)
-                ? value
-                : new DesktopPreferences(TaskbarEdge.Bottom);
+            if (value is null || !Enum.IsDefined(value.TaskbarEdge) || !Enum.IsDefined(value.TaskbarSize))
+                return new DesktopPreferences(TaskbarEdge.Bottom);
+            var pins = (value.PinnedApps ?? [])
+                .Where(app => app is not null && !string.IsNullOrWhiteSpace(app.Name) && !string.IsNullOrWhiteSpace(app.ExecutablePath) && Path.IsPathFullyQualified(app.ExecutablePath) &&
+                    string.Equals(Path.GetExtension(app.ExecutablePath), ".exe", StringComparison.OrdinalIgnoreCase))
+                .DistinctBy(app => app.ExecutablePath, StringComparer.OrdinalIgnoreCase)
+                .Take(TaskbarPinCatalog.MaximumPins)
+                .ToList();
+            return value with { PinnedApps = pins };
         }
         catch (JsonException) { return new DesktopPreferences(TaskbarEdge.Bottom); }
         catch (IOException) { return new DesktopPreferences(TaskbarEdge.Bottom); }

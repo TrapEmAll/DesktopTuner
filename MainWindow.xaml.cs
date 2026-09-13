@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     private TaskbarEdge _taskbarEdge = TaskbarEdge.Bottom;
     private TaskbarSize _taskbarSize = TaskbarSize.Standard;
     private bool _taskbarAutoHide;
+    private List<PinnedTaskbarApp> _pinnedApps = [];
 
     public MainWindow()
     {
@@ -41,6 +42,7 @@ public partial class MainWindow : Window
         _taskbarEdge = desktopPreferences.TaskbarEdge;
         _taskbarSize = desktopPreferences.TaskbarSize;
         _taskbarAutoHide = desktopPreferences.AutoHide;
+        _pinnedApps = desktopPreferences.PinnedApps ?? [];
         foreach (var setting in SettingsCatalog.All)
         {
             var value = _settings.Read(setting);
@@ -401,7 +403,7 @@ public partial class MainWindow : Window
             return;
         }
         _taskbarWindow = new TaskbarWindow(ShowStartMenu, () => _startMenuWindow?.IsVisible == true,
-            new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide));
+            new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList()), SaveDesktopPreferences);
         _taskbarWindow.Closed += (_, _) => _taskbarWindow = null;
         _taskbarWindow.Show();
         SetStatus("Desktop Tuner taskbar overlay is running. Close it to reveal the Windows taskbar.");
@@ -411,8 +413,20 @@ public partial class MainWindow : Window
     {
         try
         {
-            var preferences = new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide);
+            SaveDesktopPreferences(new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList()));
+        }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not save taskbar preferences", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void SaveDesktopPreferences(DesktopPreferences preferences)
+    {
+        try
+        {
             _preferences.Save(preferences);
+            _taskbarEdge = preferences.TaskbarEdge;
+            _taskbarSize = preferences.TaskbarSize;
+            _taskbarAutoHide = preferences.AutoHide;
+            _pinnedApps = preferences.PinnedApps ?? [];
             _taskbarWindow?.SetPreferences(preferences);
             SetStatus("Taskbar preferences saved.");
         }

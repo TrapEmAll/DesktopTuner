@@ -35,6 +35,27 @@
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <Button x:Name="StartButton" Grid.Column="0" Content="D" Width="38" Height="38" Style="{StaticResource TaskButton}" Background="#6258D9" FontWeight="Bold" FontSize="18" Click="Start_Click" ToolTip="Open Desktop Tuner Start menu" />
             <ScrollViewer x:Name="WindowScroller" Grid.Column="1" Margin="10,0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="TaskButtonsStack" Orientation="Horizontal" VerticalAlignment="Center">
+                <ItemsControl x:Name="PinnedItems" VerticalAlignment="Center" ItemsPanel="{StaticResource HorizontalWindowPanel}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Style="{StaticResource TaskButton}" Tag="{Binding}" Click="PinnedButton_Click" ToolTip="{Binding ExecutablePath}">
+                                <StackPanel Orientation="Horizontal" MaxWidth="190">
+                                    <Border Width="20" Height="20" CornerRadius="6" Background="#6258D9" VerticalAlignment="Center" Margin="0,0,8,0">
+                                        <TextBlock Text="{Binding Name}" MaxWidth="17" TextTrimming="CharacterEllipsis" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="130" />
+                                </StackPanel>
+                                <Button.ContextMenu>
+                                    <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                        <MenuItem Header="Unpin from taskbar" Tag="{Binding}" Click="Unpin_Click" />
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Border x:Name="PinDivider" Width="1" Height="24" Background="#405064" Margin="5,0" VerticalAlignment="Center" />
                 <ItemsControl x:Name="WindowItems" VerticalAlignment="Center" ItemsPanel="{StaticResource HorizontalWindowPanel}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -44,8 +65,9 @@
                                     <TextBlock Text="{Binding Title}" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="160" />
                                 </StackPanel>
                                 <Button.ContextMenu>
-                                    <ContextMenu>
+                                    <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
                                         <MenuItem Header="Minimize" Tag="{Binding}" Click="Minimize_Click" />
+                                        <MenuItem Header="Pin app to taskbar" Tag="{Binding}" Click="Pin_Click" />
                                         <MenuItem Header="Close Desktop Tuner bar" Click="CloseBar_Click" />
                                     </ContextMenu>
                                 </Button.ContextMenu>
@@ -53,6 +75,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                </StackPanel>
             </ScrollViewer>
                 <TextBlock x:Name="EmptyText" Text="No open app windows" Foreground="#8993A7" FontSize="11" VerticalAlignment="Center" Margin="6,0" />
             <StackPanel x:Name="RightControls" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
