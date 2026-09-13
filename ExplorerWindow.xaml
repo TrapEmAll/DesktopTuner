@@ -6,9 +6,11 @@
     <Grid Margin="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="12" />
+            <RowDefinition Height="10" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="10" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="12" />
+            <RowDefinition Height="10" />
             <RowDefinition Height="160" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -30,7 +32,15 @@
                 </DockPanel>
             </DockPanel>
         </Border>
-        <Border Grid.Row="2" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="0">
+        <Border Grid.Row="2" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="8">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="New folder" Padding="14,7" Margin="0,0,8,0" Click="NewFolder_Click" />
+                <Button x:Name="RenameButton" Content="Rename" Padding="14,7" Margin="0,0,8,0" IsEnabled="False" Click="Rename_Click" />
+                <Button x:Name="DeleteButton" Content="Delete" Padding="14,7" Margin="0,0,8,0" IsEnabled="False" Click="Delete_Click" />
+                <Button Content="Refresh" Padding="14,7" Click="Refresh_Click" />
+            </StackPanel>
+        </Border>
+        <Border Grid.Row="4" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="190" />
@@ -53,7 +63,18 @@
                         <TextBlock x:Name="LocationTitle" Text="Home" FontSize="21" FontWeight="SemiBold" Foreground="#172033" />
                         <TextBlock x:Name="LocationSubtitle" Foreground="#697386" FontSize="12" Margin="0,3,0,0" />
                     </StackPanel>
-                    <ListView x:Name="EntriesList" SelectionChanged="EntriesList_SelectionChanged" MouseDoubleClick="EntriesList_MouseDoubleClick" BorderThickness="0" Background="Transparent">
+                    <ListView x:Name="EntriesList" SelectionChanged="EntriesList_SelectionChanged" MouseDoubleClick="EntriesList_MouseDoubleClick" PreviewKeyDown="EntriesList_PreviewKeyDown" PreviewMouseRightButtonDown="EntriesList_PreviewMouseRightButtonDown" BorderThickness="0" Background="Transparent">
+                        <ListView.ContextMenu>
+                            <ContextMenu Opened="EntriesContextMenu_Opened">
+                                <MenuItem Header="Open" Click="OpenSelected_Click" />
+                                <MenuItem Header="New folder" Click="NewFolder_Click" />
+                                <Separator />
+                                <MenuItem x:Name="RenameMenuItem" Header="Rename" IsEnabled="False" Click="Rename_Click" />
+                                <MenuItem x:Name="DeleteMenuItem" Header="Send to Recycle Bin" IsEnabled="False" Click="Delete_Click" />
+                                <Separator />
+                                <MenuItem Header="Refresh" Click="Refresh_Click" />
+                            </ContextMenu>
+                        </ListView.ContextMenu>
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="Name" Width="360" DisplayMemberBinding="{Binding Name}" />
@@ -67,7 +88,7 @@
                 </DockPanel>
             </Grid>
         </Border>
-        <Border Grid.Row="4" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="16">
+        <Border Grid.Row="6" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="16">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                 <DockPanel>
@@ -82,6 +103,6 @@
                 </UniformGrid>
             </Grid>
         </Border>
-        <TextBlock x:Name="StatusText" Grid.Row="5" Foreground="#697386" FontSize="11" Margin="5,8,0,0" />
+        <TextBlock x:Name="StatusText" Grid.Row="7" Foreground="#697386" FontSize="11" Margin="5,8,0,0" />
     </Grid>
 </Window>

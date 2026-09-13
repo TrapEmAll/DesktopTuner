@@ -251,6 +251,19 @@ var temporaryPreferencesDirectory = Path.Combine(Path.GetTempPath(), $"DesktopTu
 var preferencesPath = Path.Combine(temporaryPreferencesDirectory, "preferences.json");
 try
 {
+    var explorerTestDirectory = Path.Combine(temporaryPreferencesDirectory, "ExplorerOperations");
+    Directory.CreateDirectory(explorerTestDirectory);
+    var firstCreatedFolder = ExplorerFileOperationService.CreateFolder(explorerTestDirectory);
+    var secondCreatedFolder = ExplorerFileOperationService.CreateFolder(explorerTestDirectory);
+    Check("New folder", Path.GetFileName(firstCreatedFolder), "create a new folder using the familiar default name");
+    Check("New folder (2)", Path.GetFileName(secondCreatedFolder), "avoid overwriting an existing folder when creating another");
+    var sourceFile = Path.Combine(explorerTestDirectory, "draft.txt");
+    File.WriteAllText(sourceFile, "draft");
+    var renamedFile = ExplorerFileOperationService.Rename(sourceFile, "notes.txt");
+    Check(true, File.Exists(renamedFile), "rename a file within its current folder");
+    Throws<IOException>(() => ExplorerFileOperationService.Rename(renamedFile, "New folder"), "reject a rename that would replace a folder");
+    Throws<ArgumentException>(() => ExplorerFileOperationService.ValidateName("invalid/name"), "reject file names containing reserved characters");
+
     var freshPreferencesStore = new DesktopPreferencesStore(Path.Combine(temporaryPreferencesDirectory, "new-install.json"));
     Check(true, freshPreferencesStore.Load().TaskbarOnAllDisplays, "enable all displays by default for a new installation");
     Check(TaskbarStyle.EdgeToEdge, freshPreferencesStore.Load().TaskbarLayout, "default a new install to the full-edge taskbar layout");

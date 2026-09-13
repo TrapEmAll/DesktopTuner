@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using Microsoft.VisualBasic.FileIO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -171,6 +172,7 @@ public partial class ExplorerWindow : Window
     {
         if (EntriesList.SelectedItem is ExplorerEntry entry)
         {
+            RenameButton.IsEnabled = DeleteButton.IsEnabled = !entry.IsDrive;
             DetailsName.Text = entry.Name;
             DetailsType.Text = entry.Type;
             DetailsLocation.Text = entry.FullPath;
@@ -178,12 +180,21 @@ public partial class ExplorerWindow : Window
             DetailsModified.Text = entry.Modified == DateTime.MinValue ? "—" : entry.Modified.ToString("f");
             SetStatus(entry.IsDirectory ? $"{entry.Name} · folder" : $"{entry.Name} · {entry.SizeText}");
         }
-        else SetFolderDetails(_entries.Count);
+        else
+        {
+            RenameButton.IsEnabled = DeleteButton.IsEnabled = false;
+            SetFolderDetails(_entries.Count);
+        }
     }
 
     private void EntriesList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (EntriesList.SelectedItem is not ExplorerEntry entry) return;
+        OpenEntry(entry);
+    }
+
+    private void OpenEntry(ExplorerEntry entry)
+    {
         if (entry.IsDirectory) { Navigate(new ExplorerLocation(entry.FullPath)); return; }
         try { Process.Start(new ProcessStartInfo(entry.FullPath) { UseShellExecute = true }); }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or FileNotFoundException)
@@ -191,6 +202,162 @@ public partial class ExplorerWindow : Window
             MessageBox.Show(this, ex.Message, "Could not open item", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
+
+    private void EntriesList_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && EntriesList.SelectedItem is ExplorerEntry selectedEntry)
+        {
+            OpenEntry(selectedEntry);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Back && !_location.IsDriveList)
+        {
+            Up_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Left && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
+        {
+            Back_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Right && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
+        {
+            Forward_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F2 && EntriesList.SelectedItem is ExplorerEntry { IsDrive: false })
+        {
+            RenameSelected();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Delete && EntriesList.SelectedItem is ExplorerEntry { IsDrive: false })
+        {
+            DeleteSelected();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F5)
+        {
+            RefreshLocation();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.N && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift) && !_location.IsDriveList)
+        {
+            CreateFolder();
+            e.Handled = true;
+        }
+    }
+
+    private void EntriesList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (ItemsControl.ContainerFromElement(EntriesList, e.OriginalSource as DependencyObject) is ListViewItem item)
+            item.IsSelected = true;
+    }
+
+    private void EntriesContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        var hasSelection = EntriesList.SelectedItem is ExplorerEntry { IsDrive: false };
+        RenameMenuItem.IsEnabled = hasSelection;
+        DeleteMenuItem.IsEnabled = hasSelection;
+        if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open")) is { } openItem)
+            openItem.IsEnabled = EntriesList.SelectedItem is ExplorerEntry;
+        if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "New folder")) is { } newFolderItem)
+            newFolderItem.IsEnabled = !_location.IsDriveList;
+    }
+
+    private void NewFolder_Click(object sender, RoutedEventArgs e) => CreateFolder();
+    private void Rename_Click(object sender, RoutedEventArgs e) => RenameSelected();
+    private void Delete_Click(object sender, RoutedEventArgs e) => DeleteSelected();
+    private void Refresh_Click(object sender, RoutedEventArgs e) => RefreshLocation();
+
+    private void OpenSelected_Click(object sender, RoutedEventArgs e)
+    {
+        if (EntriesList.SelectedItem is ExplorerEntry entry) OpenEntry(entry);
+    }
+
+    private void CreateFolder()
+    {
+        if (_location.IsDriveList) return;
+        try
+        {
+            var createdPath = ExplorerFileOperationService.CreateFolder(_location.Path!);
+            RefreshLocation();
+            EntriesList.SelectedItem = EntriesList.Items.Cast<ExplorerEntry>().FirstOrDefault(entry => string.Equals(entry.FullPath, createdPath, StringComparison.OrdinalIgnoreCase));
+            SetStatus($"Created {Path.GetFileName(createdPath)}.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            ShowFileOperationError("Could not create folder", ex);
+        }
+    }
+
+    private void RenameSelected()
+    {
+        if (EntriesList.SelectedItem is not ExplorerEntry { IsDrive: false } entry) return;
+        var currentName = Path.GetFileName(entry.FullPath);
+        var newName = PromptForName("Rename", "New name:", currentName);
+        if (newName is null || string.Equals(currentName, newName, StringComparison.Ordinal)) return;
+        try
+        {
+            var renamedPath = ExplorerFileOperationService.Rename(entry.FullPath, newName);
+            RefreshLocation();
+            EntriesList.SelectedItem = EntriesList.Items.Cast<ExplorerEntry>().FirstOrDefault(item => string.Equals(item.FullPath, renamedPath, StringComparison.OrdinalIgnoreCase));
+            SetStatus($"Renamed to {Path.GetFileName(renamedPath)}.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            ShowFileOperationError("Could not rename item", ex);
+        }
+    }
+
+    private void DeleteSelected()
+    {
+        if (EntriesList.SelectedItem is not ExplorerEntry { IsDrive: false } entry) return;
+        var result = MessageBox.Show(this, $"Send ‘{entry.Name}’ to the Recycle Bin?", "Delete item", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+        if (result != MessageBoxResult.Yes) return;
+        try
+        {
+            if (entry.IsDirectory) FileSystem.DeleteDirectory(entry.FullPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+            else FileSystem.DeleteFile(entry.FullPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+            RefreshLocation();
+            SetStatus($"Sent {entry.Name} to the Recycle Bin.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            ShowFileOperationError("Could not delete item", ex);
+        }
+    }
+
+    private string? PromptForName(string title, string prompt, string initialValue)
+    {
+        var dialog = new Window
+        {
+            Title = title,
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ResizeMode = ResizeMode.NoResize,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            ShowInTaskbar = false,
+            Background = Background,
+            FontFamily = FontFamily
+        };
+        var panel = new StackPanel { Margin = new Thickness(20), MinWidth = 340 };
+        panel.Children.Add(new TextBlock { Text = prompt, Margin = new Thickness(0, 0, 0, 8) });
+        var nameBox = new TextBox { Text = initialValue, MinWidth = 340, Padding = new Thickness(8, 6, 8, 6) };
+        panel.Children.Add(nameBox);
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 16, 0, 0) };
+        var cancel = new Button { Content = "Cancel", IsCancel = true, MinWidth = 82, Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 8, 0) };
+        var confirm = new Button { Content = "OK", IsDefault = true, MinWidth = 82, Padding = new Thickness(12, 6, 12, 6) };
+        confirm.Click += (_, _) => dialog.DialogResult = true;
+        buttons.Children.Add(cancel);
+        buttons.Children.Add(confirm);
+        panel.Children.Add(buttons);
+        dialog.Content = panel;
+        dialog.Loaded += (_, _) => { nameBox.Focus(); nameBox.SelectAll(); };
+        return dialog.ShowDialog() == true ? nameBox.Text.Trim() : null;
+    }
+
+    private void ShowFileOperationError(string title, Exception ex) =>
+        MessageBox.Show(this, ex.Message, title, MessageBoxButton.OK, MessageBoxImage.Error);
 
     private void SetFolderDetails(int itemCount)
     {
