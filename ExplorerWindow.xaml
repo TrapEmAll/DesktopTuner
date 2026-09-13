@@ -10,8 +10,8 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="10" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="10" />
-            <RowDefinition Height="160" />
+            <RowDefinition x:Name="DetailsPaneSplitterRow" Height="8" />
+            <RowDefinition x:Name="DetailsPaneRow" Height="160" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Border Grid.Row="0" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="10">
@@ -38,6 +38,7 @@
                 <Button x:Name="RenameButton" Content="Rename" Padding="14,7" Margin="0,0,8,0" IsEnabled="False" Click="Rename_Click" />
                 <Button x:Name="DeleteButton" Content="Delete" Padding="14,7" Margin="0,0,8,0" IsEnabled="False" Click="Delete_Click" />
                 <Button Content="Refresh" Padding="14,7" Click="Refresh_Click" />
+                <ToggleButton x:Name="DetailsPaneToggle" Content="Details pane" IsChecked="True" Margin="10,0,0,0" Padding="12,7" Click="DetailsPaneToggle_Click" />
             </StackPanel>
         </Border>
         <Border Grid.Row="4" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="0">
@@ -96,7 +97,9 @@
                 </DockPanel>
             </Grid>
         </Border>
-        <Border Grid.Row="6" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="16">
+        <GridSplitter x:Name="DetailsPaneSplitter" Grid.Row="5" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                      Background="#DDE1EA" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ShowsPreview="False" />
+        <Border x:Name="DetailsPane" Grid.Row="6" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="16" SizeChanged="DetailsPane_SizeChanged">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                 <DockPanel>

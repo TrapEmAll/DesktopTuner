@@ -21,6 +21,7 @@ public partial class ExplorerWindow : Window
     private readonly bool _hideFileExtensions;
     private ExplorerSortColumn _sortColumn = ExplorerSortColumn.Name;
     private bool _sortAscending = true;
+    private double _detailsPaneHeight = 160;
 
     public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false)
     {
@@ -310,6 +311,31 @@ public partial class ExplorerWindow : Window
     }
 
     private void ApplySort() => EntriesList.ItemsSource = ExplorerSortPolicy.Sort(_entries, _sortColumn, _sortAscending);
+
+    private void DetailsPaneToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (DetailsPaneToggle.IsChecked == true)
+        {
+            DetailsPane.Visibility = Visibility.Visible;
+            DetailsPaneSplitter.Visibility = Visibility.Visible;
+            DetailsPaneSplitterRow.Height = new GridLength(8);
+            DetailsPaneRow.Height = new GridLength(Math.Max(100, _detailsPaneHeight));
+        }
+        else
+        {
+            if (DetailsPane.ActualHeight > 0) _detailsPaneHeight = DetailsPane.ActualHeight;
+            DetailsPane.Visibility = Visibility.Collapsed;
+            DetailsPaneSplitter.Visibility = Visibility.Collapsed;
+            DetailsPaneSplitterRow.Height = new GridLength(0);
+            DetailsPaneRow.Height = new GridLength(0);
+        }
+    }
+
+    private void DetailsPane_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (DetailsPane.Visibility == Visibility.Visible && e.NewSize.Height >= 100)
+            _detailsPaneHeight = e.NewSize.Height;
+    }
 
     private void EntriesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
