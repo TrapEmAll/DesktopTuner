@@ -2,7 +2,32 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Desktop Tuner Explorer" Height="700" Width="1060" MinHeight="500" MinWidth="760"
-        WindowStartupLocation="CenterOwner" Background="#F5F6FA" FontFamily="Segoe UI Variable Text, Segoe UI">
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource DesktopWindowBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}" FontFamily="Segoe UI Variable Text, Segoe UI">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource DesktopSurfaceAltBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DesktopBorderBrush}" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DesktopInputBorderBrush}" />
+        </Style>
+        <Style TargetType="ToggleButton">
+            <Setter Property="Background" Value="{DynamicResource DesktopSurfaceAltBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DesktopBorderBrush}" />
+        </Style>
+        <Style TargetType="ContextMenu">
+            <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DesktopBorderBrush}" />
+        </Style>
+        <Style TargetType="MenuItem">
+            <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
+        </Style>
+    </Window.Resources>
     <Grid Margin="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -14,7 +39,7 @@
             <RowDefinition x:Name="DetailsPaneRow" Height="160" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Border Grid.Row="0" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="10">
+        <Border Grid.Row="0" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="10">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                     <Button x:Name="BackButton" Content="←" ToolTip="Back" Width="38" Height="36" Margin="0,0,6,0" Click="Back_Click" />
@@ -26,13 +51,13 @@
                     <Button Content="Search" Margin="6,0,0,0" Padding="14,0" Click="Search_Click" />
                 </StackPanel>
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Left" Text="Location" Foreground="#697386" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBlock DockPanel.Dock="Left" Text="Location" Foreground="{DynamicResource DesktopMutedTextBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <TextBox x:Name="AddressBox" Height="36" VerticalContentAlignment="Center" Padding="10,0" KeyDown="AddressBox_KeyDown" />
                     <Button Content="Go" Margin="6,0,0,0" Padding="14,0" Click="Go_Click" />
                 </DockPanel>
             </DockPanel>
         </Border>
-        <Border Grid.Row="2" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="8">
+        <Border Grid.Row="2" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="8">
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="NewFolderButton" Content="New folder" Padding="14,7" Margin="0,0,8,0" Click="NewFolder_Click" />
                 <Button x:Name="RenameButton" Content="Rename" Padding="14,7" Margin="0,0,8,0" IsEnabled="False" Click="Rename_Click" />
@@ -41,7 +66,7 @@
                 <ToggleButton x:Name="DetailsPaneToggle" Content="Details pane" IsChecked="True" Margin="10,0,0,0" Padding="12,7" Click="DetailsPaneToggle_Click" />
             </StackPanel>
         </Border>
-        <Border Grid.Row="4" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="0">
+        <Border Grid.Row="4" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="190" />
@@ -49,20 +74,20 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Margin="12">
-                    <TextBlock Text="QUICK ACCESS" FontSize="10" FontWeight="Bold" Foreground="#7B8495" Margin="8,4,0,10" />
+                    <TextBlock Text="QUICK ACCESS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DesktopSoftTextBrush}" Margin="8,4,0,10" />
                     <Button Content="Home" Tag="home" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
                     <Button Content="Desktop" Tag="desktop" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
                     <Button Content="Documents" Tag="documents" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
                     <Button Content="Downloads" Tag="downloads" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
                     <Button Content="Pictures" Tag="pictures" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
-                    <TextBlock Text="THIS PC" FontSize="10" FontWeight="Bold" Foreground="#7B8495" Margin="8,18,0,10" />
+                    <TextBlock Text="THIS PC" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DesktopSoftTextBrush}" Margin="8,18,0,10" />
                     <Button Content="Local drives" Tag="drives" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
                 </StackPanel>
-                <Border Grid.Column="1" Background="#E7E9EF" />
+                <Border Grid.Column="1" Background="{DynamicResource DesktopDividerBrush}" />
                 <DockPanel Grid.Column="2" Margin="16,12,12,12">
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                        <TextBlock x:Name="LocationTitle" Text="Home" FontSize="21" FontWeight="SemiBold" Foreground="#172033" />
-                        <TextBlock x:Name="LocationSubtitle" Foreground="#697386" FontSize="12" Margin="0,3,0,0" />
+                        <TextBlock x:Name="LocationTitle" Text="Home" FontSize="21" FontWeight="SemiBold" Foreground="{DynamicResource DesktopPrimaryTextBrush}" />
+                        <TextBlock x:Name="LocationSubtitle" Foreground="{DynamicResource DesktopMutedTextBrush}" FontSize="12" Margin="0,3,0,0" />
                     </StackPanel>
                     <ListView x:Name="EntriesList" SelectionChanged="EntriesList_SelectionChanged" MouseDoubleClick="EntriesList_MouseDoubleClick" PreviewKeyDown="EntriesList_PreviewKeyDown" PreviewMouseRightButtonDown="EntriesList_PreviewMouseRightButtonDown" BorderThickness="0" Background="Transparent">
                         <ListView.ContextMenu>
@@ -93,27 +118,27 @@
                             </GridView>
                         </ListView.View>
                     </ListView>
-                    <TextBlock x:Name="EmptyMessage" DockPanel.Dock="Bottom" Foreground="#7B8495" Margin="4,8" Visibility="Collapsed" />
+                    <TextBlock x:Name="EmptyMessage" DockPanel.Dock="Bottom" Foreground="{DynamicResource DesktopSoftTextBrush}" Margin="4,8" Visibility="Collapsed" />
                 </DockPanel>
             </Grid>
         </Border>
         <GridSplitter x:Name="DetailsPaneSplitter" Grid.Row="5" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Center"
-                      Background="#DDE1EA" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ShowsPreview="False" />
-        <Border x:Name="DetailsPane" Grid.Row="6" Background="White" BorderBrush="#DDE1EA" BorderThickness="1" CornerRadius="12" Padding="16" SizeChanged="DetailsPane_SizeChanged">
+                      Background="{DynamicResource DesktopDividerBrush}" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ShowsPreview="False" />
+        <Border x:Name="DetailsPane" Grid.Row="6" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16" SizeChanged="DetailsPane_SizeChanged">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                 <DockPanel>
-                    <TextBlock Text="DETAILS" FontSize="10" FontWeight="Bold" Foreground="#7B8495" />
-                    <TextBlock x:Name="DetailsName" DockPanel.Dock="Right" FontSize="13" FontWeight="SemiBold" Foreground="#172033" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="DETAILS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DesktopSoftTextBrush}" />
+                    <TextBlock x:Name="DetailsName" DockPanel.Dock="Right" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource DesktopPrimaryTextBrush}" TextTrimming="CharacterEllipsis" />
                 </DockPanel>
                 <UniformGrid Grid.Row="1" Columns="4" Margin="0,14,0,0">
-                    <StackPanel><TextBlock Text="Type" Foreground="#7B8495" FontSize="11" /><TextBlock x:Name="DetailsType" Margin="0,5,14,0" TextWrapping="Wrap" /></StackPanel>
-                    <StackPanel><TextBlock Text="Location" Foreground="#7B8495" FontSize="11" /><TextBlock x:Name="DetailsLocation" Margin="0,5,14,0" TextTrimming="CharacterEllipsis" /></StackPanel>
-                    <StackPanel><TextBlock Text="Size" Foreground="#7B8495" FontSize="11" /><TextBlock x:Name="DetailsSize" Margin="0,5,14,0" /></StackPanel>
-                    <StackPanel><TextBlock Text="Date modified" Foreground="#7B8495" FontSize="11" /><TextBlock x:Name="DetailsModified" Margin="0,5,0,0" TextWrapping="Wrap" /></StackPanel>
+                    <StackPanel><TextBlock Text="Type" Foreground="{DynamicResource DesktopSoftTextBrush}" FontSize="11" /><TextBlock x:Name="DetailsType" Margin="0,5,14,0" TextWrapping="Wrap" /></StackPanel>
+                    <StackPanel><TextBlock Text="Location" Foreground="{DynamicResource DesktopSoftTextBrush}" FontSize="11" /><TextBlock x:Name="DetailsLocation" Margin="0,5,14,0" TextTrimming="CharacterEllipsis" /></StackPanel>
+                    <StackPanel><TextBlock Text="Size" Foreground="{DynamicResource DesktopSoftTextBrush}" FontSize="11" /><TextBlock x:Name="DetailsSize" Margin="0,5,14,0" /></StackPanel>
+                    <StackPanel><TextBlock Text="Date modified" Foreground="{DynamicResource DesktopSoftTextBrush}" FontSize="11" /><TextBlock x:Name="DetailsModified" Margin="0,5,0,0" TextWrapping="Wrap" /></StackPanel>
                 </UniformGrid>
             </Grid>
         </Border>
-        <TextBlock x:Name="StatusText" Grid.Row="7" Foreground="#697386" FontSize="11" Margin="5,8,0,0" />
+        <TextBlock x:Name="StatusText" Grid.Row="7" Foreground="{DynamicResource DesktopMutedTextBrush}" FontSize="11" Margin="5,8,0,0" />
     </Grid>
 </Window>

@@ -4,9 +4,24 @@
         xmlns:local="clr-namespace:DesktopTuner"
         Title="Desktop Tuner Start" Width="470" Height="650" MinWidth="340" MinHeight="440"
         WindowStyle="None" ResizeMode="CanResizeWithGrip" ShowInTaskbar="False" Topmost="True"
-        Background="#F9FAFD" Foreground="#172033" FontFamily="Segoe UI Variable Text, Segoe UI"
+        Background="{DynamicResource DesktopSurfaceAltBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}" FontFamily="Segoe UI Variable Text, Segoe UI"
         PreviewKeyDown="Window_PreviewKeyDown" Loaded="Window_Loaded">
-    <Border x:Name="OuterBorder" Background="#F9FAFD" BorderBrush="#DDE2EB" BorderThickness="1" CornerRadius="18" Padding="20">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DesktopBorderBrush}" />
+        </Style>
+        <Style TargetType="ContextMenu">
+            <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DesktopBorderBrush}" />
+        </Style>
+        <Style TargetType="MenuItem">
+            <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
+        </Style>
+    </Window.Resources>
+    <Border x:Name="OuterBorder" Background="{DynamicResource DesktopSurfaceAltBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" BorderThickness="1" CornerRadius="18" Padding="20">
         <Grid x:Name="MenuLayout">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
@@ -17,19 +32,19 @@
                 </Border>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock x:Name="HeaderTitle" Text="Good to see you" FontSize="17" FontWeight="SemiBold" />
-                    <TextBlock x:Name="HeaderSubtitle" Text="Search apps or open a favorite place" FontSize="11" Foreground="#70798A" Margin="0,2,0,0" />
+                    <TextBlock x:Name="HeaderSubtitle" Text="Search apps or open a favorite place" FontSize="11" Foreground="{DynamicResource DesktopMutedTextBrush}" Margin="0,2,0,0" />
                 </StackPanel>
-                <Button Content="×" Width="30" Height="30" HorizontalAlignment="Right" Margin="12,0,0,0" Background="Transparent" BorderThickness="0" Foreground="#667085" FontSize="18" Click="Close_Click" />
+                <Button Content="×" Width="30" Height="30" HorizontalAlignment="Right" Margin="12,0,0,0" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource DesktopMutedTextBrush}" FontSize="18" Click="Close_Click" />
             </StackPanel>
-            <TextBox x:Name="SearchBox" Grid.Row="1" Height="46" FontSize="14" Padding="14,9" BorderBrush="#D7DCE6" Background="White" VerticalContentAlignment="Center" TextChanged="SearchBox_TextChanged" ToolTip="Search installed Start menu apps" />
+            <TextBox x:Name="SearchBox" Grid.Row="1" Height="46" FontSize="14" Padding="14,9" BorderBrush="{DynamicResource DesktopInputBorderBrush}" Background="{DynamicResource DesktopSurfaceBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}" VerticalContentAlignment="Center" TextChanged="SearchBox_TextChanged" ToolTip="Search installed Start menu apps" />
             <Grid x:Name="AppPanel" Grid.Row="2" Margin="0,16,0,10">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <DockPanel Grid.Row="0" Margin="2,0,2,9">
                     <TextBlock x:Name="ResultsHeading" Text="All apps" FontWeight="SemiBold" FontSize="13" />
                     <StackPanel x:Name="SearchActionPanel" DockPanel.Dock="Right" Orientation="Horizontal" Visibility="Collapsed">
-                        <TextBlock x:Name="ResultCount" Foreground="#8992A3" FontSize="11" VerticalAlignment="Center" Margin="0,0,7,0" />
-                        <Button Content="Windows" Click="WindowsSearch_Click" Padding="7,4" Margin="0,0,4,0" Background="White" BorderBrush="#DDE2EB" FontSize="10" ToolTip="Search Windows and indexed files" />
-                        <Button Content="Web" Click="WebSearch_Click" Padding="7,4" Background="White" BorderBrush="#DDE2EB" FontSize="10" ToolTip="Search the web in your default browser" />
+                        <TextBlock x:Name="ResultCount" Foreground="{DynamicResource DesktopFaintTextBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,7,0" />
+                        <Button Content="Windows" Click="WindowsSearch_Click" Padding="7,4" Margin="0,0,4,0" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" FontSize="10" ToolTip="Search Windows and indexed files" />
+                        <Button Content="Web" Click="WebSearch_Click" Padding="7,4" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" FontSize="10" ToolTip="Search the web in your default browser" />
                     </StackPanel>
                 </DockPanel>
                 <ListBox x:Name="AppList" Grid.Row="1" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppList_MouseDoubleClick">
@@ -45,8 +60,8 @@
                                             <ContentPresenter />
                                         </Border>
                                         <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Row" Property="Background" Value="#EFF0FB" /></Trigger>
-                                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="Row" Property="Background" Value="#E8E7FB" /></Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Row" Property="Background" Value="{DynamicResource DesktopHoverBrush}" /></Trigger>
+                                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="Row" Property="Background" Value="{DynamicResource DesktopSelectedBrush}" /></Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </Setter.Value>
@@ -57,12 +72,12 @@
                         <DataTemplate>
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="8" Background="#ECEBFA" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Name}" MaxWidth="25" TextTrimming="CharacterEllipsis" Foreground="#5148C7" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Border Width="28" Height="28" CornerRadius="8" Background="{DynamicResource DesktopAccentTintBrush}" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" MaxWidth="25" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource DesktopAccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" />
-                                    <TextBlock Text="{Binding SourceDescription}" FontSize="10" Foreground="#8992A3" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                                    <TextBlock Text="{Binding SourceDescription}" FontSize="10" Foreground="{DynamicResource DesktopFaintTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
                                 </StackPanel>
                             </Grid>
                         </DataTemplate>
@@ -82,18 +97,18 @@
                         </Style>
                     </TreeView.ItemContainerStyle>
                 </TreeView>
-                <TextBlock x:Name="EmptyMessage" Grid.Row="1" Text="No matching apps. Try a different search." Foreground="#70798A" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" />
+                <TextBlock x:Name="EmptyMessage" Grid.Row="1" Text="No matching apps. Try a different search." Foreground="{DynamicResource DesktopMutedTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" />
             </Grid>
-            <Border x:Name="QuickLinksBorder" Grid.Row="3" BorderBrush="#E5E8EF" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+            <Border x:Name="QuickLinksBorder" Grid.Row="3" BorderBrush="{DynamicResource DesktopDividerBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
                 <StackPanel x:Name="QuickLinksStack" Orientation="Horizontal">
-                    <TextBlock x:Name="QuickLinksTitle" Text="Places" Foreground="#C1C8D7" FontSize="11" FontWeight="Bold" Visibility="Collapsed" Margin="0,0,0,12" />
-                    <Button Content="Documents" Tag="documents" Click="QuickLink_Click" Padding="9,7" Margin="0,0,7,0" Background="White" BorderBrush="#E1E5EC" />
-                    <Button Content="Downloads" Tag="downloads" Click="QuickLink_Click" Padding="9,7" Margin="0,0,7,0" Background="White" BorderBrush="#E1E5EC" />
-                    <Button Content="Settings" Tag="settings" Click="QuickLink_Click" Padding="9,7" Background="White" BorderBrush="#E1E5EC" />
-                    <Button Content="More" Click="MorePlaces_Click" Padding="9,7" Margin="0,0,7,0" Background="White" BorderBrush="#E1E5EC" ToolTip="Open more system places">
+                    <TextBlock x:Name="QuickLinksTitle" Text="Places" Foreground="{DynamicResource DesktopSoftTextBrush}" FontSize="11" FontWeight="Bold" Visibility="Collapsed" Margin="0,0,0,12" />
+                    <Button Content="Documents" Tag="documents" Click="QuickLink_Click" Padding="9,7" Margin="0,0,7,0" Background="{DynamicResource DesktopSurfaceBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" />
+                    <Button Content="Downloads" Tag="downloads" Click="QuickLink_Click" Padding="9,7" Margin="0,0,7,0" Background="{DynamicResource DesktopSurfaceBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" />
+                    <Button Content="Settings" Tag="settings" Click="QuickLink_Click" Padding="9,7" Background="{DynamicResource DesktopSurfaceBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" />
+                    <Button Content="More" Click="MorePlaces_Click" Padding="9,7" Margin="0,0,7,0" Background="{DynamicResource DesktopSurfaceBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" ToolTip="Open more system places">
                         <Button.ContextMenu><ContextMenu /></Button.ContextMenu>
                     </Button>
-                    <Button Content="⏻" Tag="power" Click="QuickLink_Click" Padding="11,7" Margin="7,0,0,0" Background="#ECEBFA" BorderBrush="#E1DFFF" Foreground="#5148C7" HorizontalAlignment="Right" ToolTip="Power options">
+                    <Button Content="⏻" Tag="power" Click="QuickLink_Click" Padding="11,7" Margin="7,0,0,0" Background="{DynamicResource DesktopAccentTintBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" Foreground="{DynamicResource DesktopAccentTextBrush}" HorizontalAlignment="Right" ToolTip="Power options">
                         <Button.ContextMenu><ContextMenu /></Button.ContextMenu>
                     </Button>
                 </StackPanel>

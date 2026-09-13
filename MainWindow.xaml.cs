@@ -80,6 +80,7 @@ public partial class MainWindow : Window
             _currentValues[setting.Id] = value;
             _selectedValues[setting.Id] = value;
         }
+        DesktopTheme.Apply(_currentValues["explorer-app-mode"] == 0);
         _taskbarGrouping = (TaskbarGroupingMode)_currentValues["taskbar-combine"];
         _taskbarButtonAlignment = (TaskbarButtonAlignment)_currentValues["taskbar-alignment"];
         RenderPage("Overview");
@@ -426,6 +427,7 @@ public partial class MainWindow : Window
             var desired = _dirty.ToDictionary(id => id, id => _selectedValues[id]);
             _settings.Apply(desired);
             foreach (var id in desired.Keys) _currentValues[id] = desired[id];
+            DesktopTheme.Apply(_currentValues["explorer-app-mode"] == 0);
             _taskbarGrouping = (TaskbarGroupingMode)_currentValues["taskbar-combine"];
             _taskbarButtonAlignment = (TaskbarButtonAlignment)_currentValues["taskbar-alignment"];
             _dirty.Clear();
@@ -450,6 +452,7 @@ public partial class MainWindow : Window
                 _currentValues[setting.Id] = value;
                 _selectedValues[setting.Id] = value;
             }
+            DesktopTheme.Apply(_currentValues["explorer-app-mode"] == 0);
             _taskbarGrouping = (TaskbarGroupingMode)_currentValues["taskbar-combine"];
             _taskbarButtonAlignment = (TaskbarButtonAlignment)_currentValues["taskbar-alignment"];
             _dirty.Clear();
