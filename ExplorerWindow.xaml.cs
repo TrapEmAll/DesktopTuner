@@ -463,6 +463,8 @@ public partial class ExplorerWindow : Window
                     ReopenClosedTab();
                     break;
                 case ExplorerKeyboardAction.FocusAddress:
+                    AddressBreadcrumbsScroll.Visibility = Visibility.Collapsed;
+                    AddressBox.Visibility = Visibility.Visible;
                     FocusAndSelect(AddressBox);
                     break;
                 case ExplorerKeyboardAction.FocusSearch:
@@ -582,7 +584,7 @@ public partial class ExplorerWindow : Window
         LocationSubtitle.Text = _location.IsHome
             ? _showRecentItems ? "Recently opened files · newest first" : "Recent activity is disabled in Windows"
             : _location.IsDriveList ? "Browse available drives" : _location.Path;
-        AddressBox.Text = _location.IsHome ? "Home" : _location.IsDriveList ? "This PC" : _location.Path;
+        UpdateAddressLocation();
         UpdateExplorerTabTitles();
         BackButton.IsEnabled = _back.Count > 0;
         ForwardButton.IsEnabled = _forward.Count > 0;
@@ -870,6 +872,87 @@ public partial class ExplorerWindow : Window
 
     private void Go_Click(object sender, RoutedEventArgs e) => NavigateFromAddress();
     private void AddressBox_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) NavigateFromAddress(); }
+
+    private void UpdateAddressLocation()
+    {
+        AddressBox.Text = _location.IsHome ? "Home" : _location.IsDriveList ? "This PC" : _location.Path;
+        AddressBreadcrumbs.Children.Clear();
+        if (_location.IsHome || _location.IsDriveList)
+        {
+            var label = _location.IsHome ? "Home" : "This PC";
+            var shortcut = new Button
+            {
+                Content = label,
+                Tag = label,
+                Padding = new Thickness(8, 4, 8, 4),
+                Margin = new Thickness(0, 0, 2, 0),
+                BorderThickness = new Thickness(0),
+                ToolTip = label
+            };
+            shortcut.Click += Breadcrumb_Click;
+            AddressBreadcrumbs.Children.Add(shortcut);
+        }
+        else if (_location.Path is { } path)
+        {
+            var segments = ExplorerBreadcrumbPolicy.Create(path);
+            for (var index = 0; index < segments.Count; index++)
+            {
+                var segment = segments[index];
+                if (index > 0)
+                {
+                    var separator = new TextBlock
+                    {
+                        Text = "›",
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Foreground = (Brush)FindResource("DesktopMutedTextBrush"),
+                        Margin = new Thickness(1, 0, 3, 0)
+                    };
+                    AddressBreadcrumbs.Children.Add(separator);
+                }
+
+                if (index == segments.Count - 1)
+                {
+                    var current = new TextBlock
+                    {
+                        Text = segment.Label,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = (Brush)FindResource("DesktopPrimaryTextBrush"),
+                        Margin = new Thickness(4, 0, 8, 0),
+                        ToolTip = segment.Path
+                    };
+                    AddressBreadcrumbs.Children.Add(current);
+                    continue;
+                }
+
+                var ancestor = new Button
+                {
+                    Content = segment.Label,
+                    Tag = segment.Path,
+                    Padding = new Thickness(7, 4, 7, 4),
+                    Margin = new Thickness(0, 0, 1, 0),
+                    BorderThickness = new Thickness(0),
+                    ToolTip = segment.Path
+                };
+                ancestor.Click += Breadcrumb_Click;
+                AddressBreadcrumbs.Children.Add(ancestor);
+            }
+        }
+
+        AddressBox.Visibility = Visibility.Collapsed;
+        AddressBreadcrumbsScroll.Visibility = Visibility.Visible;
+    }
+
+    private void Breadcrumb_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string target }) return;
+        if (string.Equals(target, "Home", StringComparison.OrdinalIgnoreCase))
+            Navigate(new ExplorerLocation(null, IsHome: true));
+        else if (string.Equals(target, "This PC", StringComparison.OrdinalIgnoreCase))
+            Navigate(new ExplorerLocation(null, IsDriveList: true));
+        else
+            Navigate(new ExplorerLocation(target));
+    }
 
     private void NavigateFromAddress()
     {

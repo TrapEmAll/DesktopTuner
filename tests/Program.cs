@@ -15,6 +15,9 @@ try
     File.SetAttributes(hiddenPath, FileAttributes.Hidden);
     Check("Alpha", string.Join(',', ExplorerNavigationService.ReadDirectories(navigationTestRoot, showHiddenItems: false).Directories.Select(directory => directory.Name)), "hide hidden folders in Explorer navigation when Windows hidden items are off");
     Check("Alpha,Hidden", string.Join(',', ExplorerNavigationService.ReadDirectories(navigationTestRoot, showHiddenItems: true).Directories.Select(directory => directory.Name)), "include hidden folders in Explorer navigation when enabled");
+    var breadcrumbs = ExplorerBreadcrumbPolicy.Create(nestedPath);
+    Check(Path.GetPathRoot(nestedPath), breadcrumbs[0].Label, "show the drive root as the first Explorer breadcrumb");
+    Check(nestedPath, breadcrumbs[^1].Path, "keep the final Explorer breadcrumb pointed at the active folder");
     CheckTrue(ExplorerNavigationService.ReadDirectories(Path.Combine(navigationTestRoot, "Missing"), showHiddenItems: false).Error is not null, "report unavailable folders in the Explorer navigation tree");
     var nestedNavigationPath = Path.Combine(navigationTestRoot, "Alpha", "Nested");
     var siblingPrefixPath = Path.Combine(navigationTestRoot + "-other", "Nested");
