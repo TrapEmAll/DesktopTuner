@@ -55,6 +55,7 @@ public partial class TaskbarWindow : Window
         _autoHide = _preferences.AutoHide;
         _collapsed = _autoHide && !_isStartMenuVisible() && !IsMouseOver;
         ApplyLayout();
+        if (IsLoaded) Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
         if (!_autoHide) _autoHideTimer.Stop();
         else if (IsLoaded) _autoHideTimer.Start();
     }
@@ -84,6 +85,7 @@ public partial class TaskbarWindow : Window
             Grid.SetColumn(SystemSegment, 0);
             RightControls.Orientation = Orientation.Vertical;
             TaskButtonsStack.Orientation = Orientation.Vertical;
+            CenterSpacer.Visibility = Visibility.Collapsed;
             PinnedItems.ItemsPanel = (ItemsPanelTemplate)FindResource("VerticalWindowPanel");
             WindowItems.ItemsPanel = (ItemsPanelTemplate)FindResource("VerticalWindowPanel");
             WindowScroller.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
@@ -109,6 +111,7 @@ public partial class TaskbarWindow : Window
             Grid.SetColumn(SystemSegment, 2);
             RightControls.Orientation = Orientation.Horizontal;
             TaskButtonsStack.Orientation = Orientation.Horizontal;
+            CenterSpacer.Visibility = Visibility.Visible;
             PinnedItems.ItemsPanel = (ItemsPanelTemplate)FindResource("HorizontalWindowPanel");
             WindowItems.ItemsPanel = (ItemsPanelTemplate)FindResource("HorizontalWindowPanel");
             WindowScroller.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
@@ -197,7 +200,23 @@ public partial class TaskbarWindow : Window
         PinnedItems.ItemsSource = _preferences.PinnedApps;
         WindowItems.ItemsSource = TaskbarWindowGrouping.Create(windows, _preferences.TaskbarGrouping, GetWindowButtonCapacity());
         EmptyText.Visibility = windows.Count == 0 && _preferences.PinnedApps!.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
         UpdateClock();
+    }
+
+    private void WindowScroller_SizeChanged(object sender, SizeChangedEventArgs e) => Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
+
+    private void UpdateButtonCentering()
+    {
+        if (!IsLoaded || _edge is TaskbarEdge.Left or TaskbarEdge.Right || _preferences.TaskbarButtonAlignment == TaskbarButtonAlignment.Left)
+        {
+            CenterSpacer.Width = 0;
+            return;
+        }
+
+        TaskButtonsStack.UpdateLayout();
+        var contentWidth = PinnedItems.DesiredSize.Width + PinDivider.DesiredSize.Width + WindowItems.DesiredSize.Width;
+        CenterSpacer.Width = TaskbarButtonAlignmentPolicy.CalculateLeadingSpacer(WindowScroller.ViewportWidth, contentWidth, _preferences.TaskbarButtonAlignment);
     }
 
     private int GetWindowButtonCapacity()

@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     private TaskbarSize _taskbarSize = TaskbarSize.Standard;
     private TaskbarStyle _taskbarLayout = TaskbarStyle.EdgeToEdge;
     private TaskbarGroupingMode _taskbarGrouping = TaskbarGroupingMode.Always;
+    private TaskbarButtonAlignment _taskbarButtonAlignment = TaskbarButtonAlignment.Center;
     private bool _taskbarAutoHide;
     private List<PinnedTaskbarApp> _pinnedApps = [];
     private bool _replaceWindowsKey;
@@ -64,6 +65,7 @@ public partial class MainWindow : Window
             _selectedValues[setting.Id] = value;
         }
         _taskbarGrouping = (TaskbarGroupingMode)_currentValues["taskbar-combine"];
+        _taskbarButtonAlignment = (TaskbarButtonAlignment)_currentValues["taskbar-alignment"];
         RenderPage("Overview");
     }
 
@@ -339,6 +341,7 @@ public partial class MainWindow : Window
             _settings.Apply(desired);
             foreach (var id in desired.Keys) _currentValues[id] = desired[id];
             _taskbarGrouping = (TaskbarGroupingMode)_currentValues["taskbar-combine"];
+            _taskbarButtonAlignment = (TaskbarButtonAlignment)_currentValues["taskbar-alignment"];
             _dirty.Clear();
             UpdateTaskbarPreferences();
             SetStatus("Changes applied. Some Explorer and taskbar options may need Explorer to restart or Windows to sign out and back in.");
@@ -362,6 +365,7 @@ public partial class MainWindow : Window
                 _selectedValues[setting.Id] = value;
             }
             _taskbarGrouping = (TaskbarGroupingMode)_currentValues["taskbar-combine"];
+            _taskbarButtonAlignment = (TaskbarButtonAlignment)_currentValues["taskbar-alignment"];
             _dirty.Clear();
             UpdateTaskbarPreferences();
             RenderPage(_activePage);
@@ -562,7 +566,7 @@ public partial class MainWindow : Window
         finally { _closingTaskbars = false; }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment);
 
     private void UpdateTaskbarPreferences()
     {
@@ -594,6 +598,7 @@ public partial class MainWindow : Window
             _taskbarOnAllDisplays = preferences.TaskbarOnAllDisplays;
             _taskbarLayout = preferences.TaskbarLayout;
             _taskbarGrouping = preferences.TaskbarGrouping;
+            _taskbarButtonAlignment = preferences.TaskbarButtonAlignment;
             if (displayModeChanged && _taskbarWindows.Any(window => window.IsVisible))
             {
                 CloseTaskbars();

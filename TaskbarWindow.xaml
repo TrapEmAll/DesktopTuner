@@ -39,8 +39,9 @@
             </Border>
             <Border x:Name="AppsSegment" Grid.Column="1">
                 <Grid>
-                    <ScrollViewer x:Name="WindowScroller" Margin="10,0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <ScrollViewer x:Name="WindowScroller" Margin="10,0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" SizeChanged="WindowScroller_SizeChanged">
                         <StackPanel x:Name="TaskButtonsStack" Orientation="Horizontal" VerticalAlignment="Center">
+                <Border x:Name="CenterSpacer" Width="0" />
                 <ItemsControl x:Name="PinnedItems" VerticalAlignment="Center" ItemsPanel="{StaticResource HorizontalWindowPanel}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
