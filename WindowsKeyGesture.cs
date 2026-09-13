@@ -6,7 +6,8 @@ public enum WindowsKeyAction
     Suppress,
     ForwardWindowsDownThenPass,
     ForwardWindowsUpThenSuppress,
-    OpenStartMenu
+    OpenStartMenu,
+    ActivateTaskbarPin
 }
 
 public sealed class WindowsKeyGesture
@@ -15,10 +16,13 @@ public sealed class WindowsKeyGesture
     private const uint VK_RWIN = 0x5c;
     private uint? _heldWindowsKey;
     private bool _forwarded;
+    private bool _taskbarShortcutConsumed;
+    private readonly HashSet<uint> _suppressedTaskbarDigits = [];
+    public int? TaskbarPinIndex { get; private set; }
 
     public uint? HeldWindowsKey => _heldWindowsKey;
 
-    public WindowsKeyAction KeyDown(uint key)
+    public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null)
     {
         if (key is VK_LWIN or VK_RWIN)
         {
@@ -39,6 +43,14 @@ public sealed class WindowsKeyGesture
 
         if (_heldWindowsKey is not null && !_forwarded)
         {
+            if (_suppressedTaskbarDigits.Contains(key)) return WindowsKeyAction.Suppress;
+            if (TaskbarShortcutCatalog.GetOneBasedPinIndex(key) is { } pinIndex && canActivateTaskbarPin?.Invoke(pinIndex) == true)
+            {
+                _taskbarShortcutConsumed = true;
+                TaskbarPinIndex = pinIndex;
+                _suppressedTaskbarDigits.Add(key);
+                return WindowsKeyAction.ActivateTaskbarPin;
+            }
             _forwarded = true;
             return WindowsKeyAction.ForwardWindowsDownThenPass;
         }
@@ -47,10 +59,15 @@ public sealed class WindowsKeyGesture
 
     public WindowsKeyAction KeyUp(uint key)
     {
+        if (_suppressedTaskbarDigits.Remove(key)) return WindowsKeyAction.Suppress;
         if (_heldWindowsKey != key) return WindowsKeyAction.PassThrough;
-        var action = _forwarded ? WindowsKeyAction.ForwardWindowsUpThenSuppress : WindowsKeyAction.OpenStartMenu;
+        var action = _forwarded
+            ? WindowsKeyAction.ForwardWindowsUpThenSuppress
+            : _taskbarShortcutConsumed ? WindowsKeyAction.Suppress : WindowsKeyAction.OpenStartMenu;
         _heldWindowsKey = null;
         _forwarded = false;
+        _taskbarShortcutConsumed = false;
+        TaskbarPinIndex = null;
         return action;
     }
 
@@ -59,6 +76,9 @@ public sealed class WindowsKeyGesture
         var forwardedKey = _heldWindowsKey is not null && _forwarded ? _heldWindowsKey : null;
         _heldWindowsKey = null;
         _forwarded = false;
+        _taskbarShortcutConsumed = false;
+        _suppressedTaskbarDigits.Clear();
+        TaskbarPinIndex = null;
         return forwardedKey;
     }
 }

@@ -14,19 +14,26 @@ public sealed class WindowsKeyStartHook : IDisposable
     private const int WM_KEYUP = 0x0101;
     private const int WM_SYSKEYDOWN = 0x0104;
     private const int WM_SYSKEYUP = 0x0105;
+    private const int VK_SHIFT = 0x10;
+    private const int VK_CONTROL = 0x11;
+    private const int VK_MENU = 0x12;
     private const uint LLKHF_INJECTED = 0x10;
     private const uint INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_KEYUP = 0x0002;
     private const nuint InjectionMarker = 0x44544b59;
 
     private readonly Action _showStartMenu;
+    private readonly Func<int, bool> _canActivateTaskbarPin;
+    private readonly Action<int> _activateTaskbarPin;
     private readonly HookProc _callback;
     private readonly WindowsKeyGesture _gesture = new();
     private nint _hook;
 
-    public WindowsKeyStartHook(Action showStartMenu)
+    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null)
     {
         _showStartMenu = showStartMenu;
+        _canActivateTaskbarPin = canActivateTaskbarPin ?? (_ => false);
+        _activateTaskbarPin = activateTaskbarPin ?? (_ => { });
         _callback = KeyboardCallback;
     }
 
@@ -50,9 +57,12 @@ public sealed class WindowsKeyStartHook : IDisposable
             if ((data.Flags & LLKHF_INJECTED) != 0 || data.ExtraInfo == InjectionMarker)
                 return CallNextHookEx(_hook, code, wParam, lParam);
 
+            var canActivateTaskbarPin = !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_MENU)
+                ? _canActivateTaskbarPin
+                : static _ => false;
             var action = message switch
             {
-                WM_KEYDOWN or WM_SYSKEYDOWN => _gesture.KeyDown(data.VirtualKey),
+                WM_KEYDOWN or WM_SYSKEYDOWN => _gesture.KeyDown(data.VirtualKey, canActivateTaskbarPin),
                 WM_KEYUP or WM_SYSKEYUP => _gesture.KeyUp(data.VirtualKey),
                 _ => WindowsKeyAction.PassThrough
             };
@@ -67,6 +77,10 @@ public sealed class WindowsKeyStartHook : IDisposable
                     break;
                 case WindowsKeyAction.OpenStartMenu:
                     Application.Current?.Dispatcher.BeginInvoke(_showStartMenu, DispatcherPriority.Input);
+                    return new nint(1);
+                case WindowsKeyAction.ActivateTaskbarPin:
+                    if (_gesture.TaskbarPinIndex is { } pinIndex)
+                        Application.Current?.Dispatcher.BeginInvoke(() => _activateTaskbarPin(pinIndex), DispatcherPriority.Input);
                     return new nint(1);
             }
         }
@@ -95,6 +109,8 @@ public sealed class WindowsKeyStartHook : IDisposable
         if (SendInput(1, [input], Marshal.SizeOf<Input>()) != 1)
             Trace.TraceWarning($"Windows-key event injection failed (Windows error {Marshal.GetLastWin32Error()}).");
     }
+
+    private static bool IsModifierPressed(int virtualKey) => (GetAsyncKeyState(virtualKey) & 0x8000) != 0;
 
     public void Dispose()
     {
@@ -167,4 +183,7 @@ public sealed class WindowsKeyStartHook : IDisposable
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint inputCount, [In] Input[] inputs, int inputSize);
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int virtualKey);
 }

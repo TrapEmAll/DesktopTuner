@@ -681,17 +681,36 @@ public partial class TaskbarWindow : Window
     private void PinnedButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: PinnedTaskbarApp app }) return;
+        ActivatePinnedApp(app, sender as Button);
+    }
+
+    public bool TryActivatePinnedApp(int oneBasedIndex)
+    {
+        if (oneBasedIndex < 1 || oneBasedIndex > (_preferences.PinnedApps?.Count ?? 0)) return false;
+        ActivatePinnedApp(_preferences.PinnedApps![oneBasedIndex - 1], showPreview: false, toggleMinimizeOnActive: false);
+        return true;
+    }
+
+    private void ActivatePinnedApp(PinnedTaskbarApp app, Button? sourceButton = null, bool showPreview = true, bool toggleMinimizeOnActive = true)
+    {
         var openWindows = _windows.Enumerate()
             .Where(window => TaskbarWindowGrouping.MatchesPinnedApp(app, window))
             .ToList();
-        if (openWindows.Count > 1)
+        if (openWindows.Count > 1 && showPreview && sourceButton is not null)
         {
-            ShowWindowPreview(new TaskbarWindowGroup(app.Name, app.Name, openWindows), (Button)sender, activate: true);
+            ShowWindowPreview(new TaskbarWindowGroup(app.Name, app.Name, openWindows), sourceButton, activate: true);
             return;
         }
         if (openWindows.Count == 1)
         {
-            RunningWindowService.ActivateOrMinimize(openWindows[0]);
+            if (toggleMinimizeOnActive) RunningWindowService.ActivateOrMinimize(openWindows[0]);
+            else RunningWindowService.Activate(openWindows[0]);
+            return;
+        }
+        if (openWindows.Count > 1)
+        {
+            if (toggleMinimizeOnActive) RunningWindowService.ActivateOrMinimize(openWindows[0]);
+            else RunningWindowService.Activate(openWindows[0]);
             return;
         }
         var isDirectory = app.IsDirectory || Directory.Exists(app.ExecutablePath);

@@ -191,11 +191,11 @@ public partial class MainWindow : Window
             };
             menuStyleRow.Children.Add(menuStyleSelector);
             PageContent.Children.Add(menuStyleRow);
-            var replaceStart = new CheckBox { Content = "Use Desktop Tuner Start menu for the Windows key while this app is running", IsChecked = _replaceWindowsKey, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
+            var replaceStart = new CheckBox { Content = "Use Desktop Tuner Start and taskbar shortcuts for the Windows key while this app is running", IsChecked = _replaceWindowsKey, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
             replaceStart.Checked += (_, _) => ToggleWindowsKeyReplacement(replaceStart, true);
             replaceStart.Unchecked += (_, _) => ToggleWindowsKeyReplacement(replaceStart, false);
             PageContent.Children.Add(replaceStart);
-            var info = InfoCard("Windows-key integration", "When enabled, tapping either Windows key opens Desktop Tuner Start while this app is running. Win+key combinations such as Win+R are forwarded to Windows. Turn this off at any time to restore the native Start key.");
+            var info = InfoCard("Windows-key integration", "When enabled, tapping either Windows key opens Desktop Tuner Start. While a Desktop Tuner taskbar is running, Win+1 through Win+9 activate its corresponding pinned app; other Win+key shortcuts such as Win+R continue to Windows. Turn this off at any time to restore native Start and taskbar shortcuts.");
             PageContent.Children.Add(info);
         }
         else if (section == "Explorer")
@@ -933,7 +933,7 @@ public partial class MainWindow : Window
     private bool EnableWindowsKeyHook()
     {
         if (_windowsKeyHook?.IsInstalled == true) return true;
-        var hook = new WindowsKeyStartHook(ShowStartMenu);
+        var hook = new WindowsKeyStartHook(ShowStartMenu, CanActivateTaskbarPinShortcut, ActivateTaskbarPinShortcut);
         if (!hook.TryInstall(out var error))
         {
             hook.Dispose();
@@ -942,6 +942,16 @@ public partial class MainWindow : Window
         }
         _windowsKeyHook = hook;
         return true;
+    }
+
+    private bool CanActivateTaskbarPinShortcut(int oneBasedIndex) =>
+        oneBasedIndex >= 1 && oneBasedIndex <= _pinnedApps.Count && _taskbarWindows.Any(window => window.IsVisible);
+
+    private void ActivateTaskbarPinShortcut(int oneBasedIndex)
+    {
+        var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
+            ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
+        taskbar?.TryActivatePinnedApp(oneBasedIndex);
     }
 
     [DllImport("user32.dll", SetLastError = true)]
