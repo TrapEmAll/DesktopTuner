@@ -86,6 +86,9 @@
                     <Button Content="Documents" Tag="documents" Click="QuickLink_Click" Padding="9,7" Margin="0,0,7,0" Background="White" BorderBrush="#E1E5EC" />
                     <Button Content="Downloads" Tag="downloads" Click="QuickLink_Click" Padding="9,7" Margin="0,0,7,0" Background="White" BorderBrush="#E1E5EC" />
                     <Button Content="Settings" Tag="settings" Click="QuickLink_Click" Padding="9,7" Background="White" BorderBrush="#E1E5EC" />
+                    <Button Content="More" Click="MorePlaces_Click" Padding="9,7" Margin="0,0,7,0" Background="White" BorderBrush="#E1E5EC" ToolTip="Open more system places">
+                        <Button.ContextMenu><ContextMenu /></Button.ContextMenu>
+                    </Button>
                     <Button Content="⏻" Tag="power" Click="QuickLink_Click" Padding="11,7" Margin="7,0,0,0" Background="#ECEBFA" BorderBrush="#E1DFFF" Foreground="#5148C7" HorizontalAlignment="Right" />
                 </StackPanel>
             </Border>

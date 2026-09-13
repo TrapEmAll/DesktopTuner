@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -255,6 +256,39 @@ public partial class StartMenuWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Could not open location", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void MorePlaces_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { ContextMenu: not null } button) return;
+        var menu = button.ContextMenu;
+        if (menu.Items.Count == 0)
+        {
+            foreach (var place in StartMenuPlaceCatalog.AdditionalPlaces)
+            {
+                if (place.Id == "music") menu.Items.Add(new Separator());
+                var item = new MenuItem { Header = place.Label, Tag = place.Id };
+                item.Click += SystemPlace_Click;
+                menu.Items.Add(item);
+            }
+        }
+        menu.PlacementTarget = button;
+        menu.Placement = PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
+
+    private void SystemPlace_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string action }) return;
+        try
+        {
+            AppCatalogService.OpenLocation(StartMenuPlaceCatalog.ResolveTarget(action));
+            Close();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not open system place", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

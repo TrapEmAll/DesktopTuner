@@ -85,6 +85,11 @@ Check("Editor Pro", rankedSearchResults[1].Name, "rank app-name prefixes before 
 Check("Text Editor", rankedSearchResults[2].Name, "rank word-boundary matches above mid-word matches");
 Check("TextEditor", rankedSearchResults[3].Name, "match camel-case word boundaries");
 Check("Documents", AppCatalogService.Search([new AppEntry("Documents", "documents.lnk", CategoryPath: "Creative Tools")], "creative tool").Single().Name, "search nested Start menu folder names");
+Check("shell:MyComputerFolder", StartMenuPlaceCatalog.ResolveTarget("computer"), "open This PC from the Start places menu");
+Check("control.exe", StartMenuPlaceCatalog.ResolveTarget("control-panel"), "open Control Panel from the Start places menu");
+Check(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), StartMenuPlaceCatalog.ResolveTarget("music"), "open the user's Music folder from the Start places menu");
+Check(7, StartMenuPlaceCatalog.AdditionalPlaces.Count, "show the supported additional Start system places");
+Throws<ArgumentOutOfRangeException>(() => StartMenuPlaceCatalog.ResolveTarget("unknown"), "reject unknown Start system places");
 var folderCatalog = new[]
 {
     new AppEntry("Word", @"C:\Apps\Word.lnk", CategoryPath: @"Office\Editors"),
