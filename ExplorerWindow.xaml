@@ -24,6 +24,26 @@
                 <DataTrigger Binding="{Binding IsCut}" Value="True"><Setter Property="Opacity" Value="0.55" /></DataTrigger>
             </Style.Triggers>
         </Style>
+        <DataTemplate x:Key="ExplorerListItemTemplate">
+            <StackPanel Orientation="Horizontal" Height="28" VerticalAlignment="Center">
+                <Image Source="{Binding Icon}" Width="20" Height="20" Margin="0,0,8,0" Stretch="Uniform" />
+                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="ExplorerMediumIconTemplate">
+            <StackPanel Width="128" Height="112" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Image Source="{Binding Icon}" Width="44" Height="44" Margin="0,5,0,7" HorizontalAlignment="Center" Stretch="Uniform" />
+                <TextBlock Text="{Binding DisplayName}" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="38" />
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="ExplorerLargeIconTemplate">
+            <StackPanel Width="152" Height="142" Margin="6" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Image Source="{Binding Icon}" Width="72" Height="72" Margin="0,4,0,9" HorizontalAlignment="Center" Stretch="Uniform" />
+                <TextBlock Text="{Binding DisplayName}" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="40" />
+            </StackPanel>
+        </DataTemplate>
+        <ItemsPanelTemplate x:Key="ExplorerVerticalItemsPanel"><VirtualizingStackPanel /></ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="ExplorerWrapItemsPanel"><WrapPanel /></ItemsPanelTemplate>
     </Window.Resources>
     <Grid Margin="18">
         <Grid.RowDefinitions>
@@ -99,6 +119,14 @@
                 </TabItem>
                 <TabItem Header="View">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,6">
+                        <TextBlock Text="Layout" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource DesktopMutedTextBrush}" />
+                        <ComboBox x:Name="ViewModeSelector" Width="138" Height="32" VerticalContentAlignment="Center" SelectionChanged="ViewModeSelector_SelectionChanged">
+                            <ComboBoxItem Content="Details" Tag="Details" />
+                            <ComboBoxItem Content="List" Tag="List" />
+                            <ComboBoxItem Content="Medium icons" Tag="MediumIcons" />
+                            <ComboBoxItem Content="Large icons" Tag="LargeIcons" />
+                        </ComboBox>
+                        <Border Width="1" Background="{DynamicResource DesktopDividerBrush}" Margin="12,2,12,2" />
                         <TextBlock Text="Sort by" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource DesktopMutedTextBrush}" />
                         <ComboBox x:Name="SortBySelector" Width="150" Height="32" VerticalContentAlignment="Center" SelectionChanged="SortBySelector_SelectionChanged">
                             <ComboBoxItem Content="Name" Tag="Name" />
@@ -157,7 +185,7 @@
                             </ContextMenu>
                         </ListView.ContextMenu>
                         <ListView.View>
-                            <GridView>
+                            <GridView x:Name="ExplorerDetailsGridView">
                                 <GridViewColumn Width="360">
                                     <GridViewColumn.Header><GridViewColumnHeader x:Name="NameColumnHeader" Tag="Name" Click="SortColumn_Click">Name</GridViewColumnHeader></GridViewColumn.Header>
                                     <GridViewColumn.CellTemplate>

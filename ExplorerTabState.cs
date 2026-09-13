@@ -10,6 +10,7 @@ public sealed class ExplorerTabState(ExplorerLocation location)
     public IReadOnlyList<ExplorerEntry> Entries { get; set; } = [];
     public CancellationTokenSource? SearchCancellation { get; set; }
     public bool IsSearchView { get; set; }
+    public ExplorerViewMode ViewMode { get; set; } = ExplorerViewMode.Details;
 
     public void PushHistory(ExplorerLocation current)
     {

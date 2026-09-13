@@ -8,6 +8,9 @@ Check(false, SystemBackdropService.TryApplyTransientBackdrop(IntPtr.Zero), "leav
 Check(false, SystemBackdropService.TryApplySmallRoundedCorners(IntPtr.Zero), "leave unsupported menu handles with system-default corners");
 Check(false, new DesktopPreferences(TaskbarEdge.Bottom).TaskbarOnAllDisplays, "preserve the primary-display behavior for older preference data");
 Check(false, new DesktopPreferences(TaskbarEdge.Bottom).ReplaceNativeTaskbar, "leave native taskbar replacement disabled by default");
+Check("Details,List,MediumIcons,LargeIcons", string.Join(',', ExplorerViewModeCatalog.Options.Select(option => option.Mode)), "offer familiar Explorer details, list, and icon layouts");
+Check("ExplorerMediumIconTemplate", ExplorerViewModeCatalog.Get(ExplorerViewMode.MediumIcons).ItemTemplateKey, "map the medium icon layout to its item template");
+CheckTrue(ExplorerViewModeCatalog.Get(ExplorerViewMode.LargeIcons).WrapItems, "wrap large Explorer icons to the available viewport");
 CheckTrue(NativeTaskbarWatchdog.IsWatchdogInvocation(["--taskbar-watchdog", "123", "snapshot.json"]), "recognize the taskbar recovery process entry point");
 CheckTrue(NativeTaskbarWatchdog.TryReadInvocation(["--taskbar-watchdog", "123", "snapshot.json"], out var watchdogOwner, out var watchdogSnapshot), "parse taskbar recovery process arguments");
 Check((123, "snapshot.json"), (watchdogOwner, watchdogSnapshot), "recover the watchdog owner and snapshot path");
@@ -496,10 +499,12 @@ try
     Check("b-folder,z-folder,a.txt,b.log", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.Size, ascending: false).Select(entry => entry.Name)), "sort files by numeric size instead of formatted size text");
 
     var firstExplorerTab = new ExplorerTabState(new ExplorerLocation(explorerTestDirectory));
+    firstExplorerTab.ViewMode = ExplorerViewMode.LargeIcons;
     firstExplorerTab.PushHistory(new ExplorerLocation(explorerTestDirectory, SearchQuery: "draft"));
     firstExplorerTab.Location = new ExplorerLocation(firstCreatedFolder);
     var secondExplorerTab = new ExplorerTabState(new ExplorerLocation(nestedExplorerFolder));
     Check(0, secondExplorerTab.Back.Count, "keep Explorer tab history isolated per tab");
+    Check(ExplorerViewMode.Details, secondExplorerTab.ViewMode, "keep Explorer view layout state isolated per tab");
     Check("draft", firstExplorerTab.GoBack(new ExplorerLocation(firstCreatedFolder))!.SearchQuery, "navigate back to a tab's previous search query");
     Check(firstCreatedFolder, firstExplorerTab.GoForward(new ExplorerLocation(explorerTestDirectory, SearchQuery: "draft"))!.Path, "navigate forward to a tab's previous folder");
     firstExplorerTab.PushHistory(new ExplorerLocation(firstCreatedFolder));

@@ -18,6 +18,7 @@ public partial class ExplorerWindow : Window
     private int _activeTabIndex;
     private bool _syncingTabs;
     private bool _updatingSortControls;
+    private bool _updatingViewModeControl;
     private TabItem? _tabDragCandidate;
     private Point _tabDragStart;
     private ExplorerEntry? _entryDragCandidate;
@@ -57,6 +58,7 @@ public partial class ExplorerWindow : Window
                     : new ExplorerLocation(null, IsHome: true);
         _tabs.Add(new ExplorerTabState(initialLocation));
         UpdateSortPresentation();
+        ApplyExplorerViewMode(ActiveTab.ViewMode);
         SyncExplorerTabs();
         Closed += (_, _) => { foreach (var tab in _tabs) CancelSearch(tab); };
         RefreshLocation();
@@ -109,6 +111,7 @@ public partial class ExplorerWindow : Window
     private void AddTab(ExplorerLocation location)
     {
         var tab = new ExplorerTabState(location);
+        tab.ViewMode = ActiveTab.ViewMode;
         _tabs.Add(tab);
         _activeTabIndex = _tabs.Count - 1;
         SyncExplorerTabs();
@@ -135,6 +138,7 @@ public partial class ExplorerWindow : Window
     private void ShowActiveTab()
     {
         SearchBox.Text = _location.SearchQuery ?? string.Empty;
+        ApplyExplorerViewMode(ActiveTab.ViewMode);
         if (_isSearchView && !string.IsNullOrWhiteSpace(_location.SearchQuery))
             _ = SearchCurrentFolderAsync(_location.SearchQuery);
         else
@@ -666,6 +670,39 @@ public partial class ExplorerWindow : Window
 
         UpdateSortPresentation();
         ApplySort();
+    }
+
+    private void ViewModeSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingViewModeControl || ViewModeSelector.SelectedItem is not ComboBoxItem { Tag: string modeName }
+            || !Enum.TryParse(modeName, out ExplorerViewMode mode) || !Enum.IsDefined(mode)) return;
+
+        ActiveTab.ViewMode = mode;
+        ApplyExplorerViewMode(mode);
+    }
+
+    private void ApplyExplorerViewMode(ExplorerViewMode mode)
+    {
+        var option = ExplorerViewModeCatalog.Get(mode);
+        _updatingViewModeControl = true;
+        try
+        {
+            ViewModeSelector.SelectedItem = ViewModeSelector.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(item => string.Equals(item.Tag as string, mode.ToString(), StringComparison.Ordinal));
+        }
+        finally { _updatingViewModeControl = false; }
+
+        if (mode == ExplorerViewMode.Details)
+        {
+            EntriesList.ItemTemplate = null;
+            EntriesList.ItemsPanel = (ItemsPanelTemplate)FindResource("ExplorerVerticalItemsPanel");
+            EntriesList.View = ExplorerDetailsGridView;
+            return;
+        }
+
+        EntriesList.View = null;
+        EntriesList.ItemTemplate = (DataTemplate)FindResource(option.ItemTemplateKey!);
+        EntriesList.ItemsPanel = (ItemsPanelTemplate)FindResource(option.WrapItems ? "ExplorerWrapItemsPanel" : "ExplorerVerticalItemsPanel");
     }
 
     private void SortBySelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
