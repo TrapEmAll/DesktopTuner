@@ -156,7 +156,7 @@
                         <Button Content="Downloads" Tag="downloads" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
                         <Button Content="Pictures" Tag="pictures" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
                         <TextBlock Text="PINNED FOLDERS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DesktopSoftTextBrush}" Margin="8,18,0,6" />
-                        <StackPanel x:Name="QuickAccessPinsPanel" />
+                        <StackPanel x:Name="QuickAccessPinsPanel" AllowDrop="True" DragOver="QuickAccessPinsPanel_DragOver" Drop="QuickAccessPinsPanel_Drop" />
                         <TextBlock Text="THIS PC" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DesktopSoftTextBrush}" Margin="8,18,0,10" />
                         <Button Content="Local drives" Tag="drives" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
                     </StackPanel>

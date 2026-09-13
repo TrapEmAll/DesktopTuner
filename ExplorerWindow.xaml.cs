@@ -13,6 +13,7 @@ namespace DesktopTuner;
 public partial class ExplorerWindow : Window
 {
     private const string ExplorerTabDragFormat = "DesktopTuner.ExplorerTabState";
+    private const string QuickAccessPinDragFormat = "DesktopTuner.ExplorerQuickAccessPin";
     private readonly List<ExplorerTabState> _tabs = [];
     private readonly HashSet<string> _cutPaths = new(StringComparer.OrdinalIgnoreCase);
     private int _activeTabIndex;
@@ -23,6 +24,9 @@ public partial class ExplorerWindow : Window
     private Point _tabDragStart;
     private ExplorerEntry? _entryDragCandidate;
     private Point _entryDragStart;
+    private string? _quickAccessDragCandidate;
+    private Point _quickAccessDragStart;
+    private bool _suppressQuickAccessClick;
     private ExplorerTabState ActiveTab => _tabs[_activeTabIndex];
     private List<ExplorerLocation> _back => ActiveTab.Back;
     private List<ExplorerLocation> _forward => ActiveTab.Forward;
@@ -578,9 +582,15 @@ public partial class ExplorerWindow : Window
                 ToolTip = pin.Path,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Left,
+                AllowDrop = true,
                 Padding = new Thickness(10, 8, 6, 8)
             };
             button.Click += QuickAccessPin_Click;
+            button.PreviewMouseLeftButtonDown += QuickAccessPin_PreviewMouseLeftButtonDown;
+            button.PreviewMouseLeftButtonUp += QuickAccessPin_PreviewMouseLeftButtonUp;
+            button.PreviewMouseMove += QuickAccessPin_PreviewMouseMove;
+            button.DragOver += QuickAccessPin_DragOver;
+            button.Drop += QuickAccessPin_Drop;
             var menu = new ContextMenu();
             var removeItem = new MenuItem { Header = "Remove from quick access", Tag = pin.Path };
             removeItem.Click += RemoveQuickAccessPin_Click;
@@ -592,8 +602,87 @@ public partial class ExplorerWindow : Window
 
     private void QuickAccessPin_Click(object sender, RoutedEventArgs e)
     {
+        if (_suppressQuickAccessClick)
+        {
+            _suppressQuickAccessClick = false;
+            return;
+        }
         if (sender is not Button { Tag: string path }) return;
         Navigate(new ExplorerLocation(path));
+    }
+
+    private void QuickAccessPin_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not Button { Tag: string path } button) return;
+        _suppressQuickAccessClick = false;
+        _quickAccessDragCandidate = path;
+        _quickAccessDragStart = e.GetPosition(button);
+    }
+
+    private void QuickAccessPin_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Button { Tag: string path } && string.Equals(path, _quickAccessDragCandidate, StringComparison.OrdinalIgnoreCase))
+            _quickAccessDragCandidate = null;
+    }
+
+    private void QuickAccessPin_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || sender is not Button { Tag: string path } button
+            || !string.Equals(path, _quickAccessDragCandidate, StringComparison.OrdinalIgnoreCase)) return;
+        var current = e.GetPosition(button);
+        if (Math.Abs(current.X - _quickAccessDragStart.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(current.Y - _quickAccessDragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+        _quickAccessDragCandidate = null;
+        var data = new DataObject(QuickAccessPinDragFormat, path);
+        DragDrop.DoDragDrop(button, data, DragDropEffects.Move);
+        _suppressQuickAccessClick = true;
+    }
+
+    private void QuickAccessPin_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(QuickAccessPinDragFormat) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void QuickAccessPin_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is not Button { Tag: string targetPath } target
+            || !e.Data.GetDataPresent(QuickAccessPinDragFormat)
+            || e.Data.GetData(QuickAccessPinDragFormat) is not string sourcePath) return;
+        var targetIndex = QuickAccessPinsPanel.Children.OfType<Button>().ToList().FindIndex(button =>
+            string.Equals(button.Tag as string, targetPath, StringComparison.OrdinalIgnoreCase));
+        if (targetIndex < 0) return;
+        var insertionIndex = targetIndex + (e.GetPosition(target).Y >= target.ActualHeight / 2 ? 1 : 0);
+        ReorderQuickAccessPin(sourcePath, insertionIndex);
+        e.Handled = true;
+    }
+
+    private void QuickAccessPinsPanel_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(QuickAccessPinDragFormat) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void QuickAccessPinsPanel_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(QuickAccessPinDragFormat)
+            || e.Data.GetData(QuickAccessPinDragFormat) is not string sourcePath) return;
+        ReorderQuickAccessPin(sourcePath, QuickAccessPinsPanel.Children.Count);
+        e.Handled = true;
+    }
+
+    private void ReorderQuickAccessPin(string path, int insertionIndex)
+    {
+        try
+        {
+            if (!_quickAccessStore.Move(path, insertionIndex)) return;
+            RefreshQuickAccessPins();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            SetStatus($"Could not reorder quick access folders: {ex.Message}");
+        }
     }
 
     private void PinQuickAccess_Click(object sender, RoutedEventArgs e)

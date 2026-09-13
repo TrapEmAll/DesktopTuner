@@ -45,6 +45,19 @@ public static class ExplorerQuickAccessCatalog
         var name = System.IO.Path.GetFileName(trimmed);
         return string.IsNullOrWhiteSpace(name) ? path : name;
     }
+
+    public static bool Move(IList<ExplorerQuickAccessPin> pins, string path, int insertionIndex)
+    {
+        ArgumentNullException.ThrowIfNull(pins);
+        var sourceIndex = -1;
+        for (var index = 0; index < pins.Count; index++)
+        {
+            if (!string.Equals(pins[index].Path, path, StringComparison.OrdinalIgnoreCase)) continue;
+            sourceIndex = index;
+            break;
+        }
+        return ExplorerTabOrdering.Move(pins, sourceIndex, insertionIndex);
+    }
 }
 
 public sealed class ExplorerQuickAccessStore
@@ -101,6 +114,14 @@ public sealed class ExplorerQuickAccessStore
         var updated = pins.Where(pin => !string.Equals(pin.Path, directoryPath, StringComparison.OrdinalIgnoreCase)).ToList();
         if (updated.Count == pins.Count) return false;
         Save(updated);
+        return true;
+    }
+
+    public bool Move(string directoryPath, int insertionIndex)
+    {
+        var pins = ExplorerQuickAccessCatalog.Normalize(Load()).ToList();
+        if (!ExplorerQuickAccessCatalog.Move(pins, directoryPath, insertionIndex)) return false;
+        Save(pins);
         return true;
     }
 

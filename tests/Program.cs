@@ -380,14 +380,28 @@ try
     Check(false, quickAccessStore.Add(explorerTestDirectory.ToUpperInvariant()), "avoid duplicate quick access pins without regard to path casing");
     Check(Path.GetFullPath(explorerTestDirectory), quickAccessStore.Load().Single().Path, "persist a quick access folder path");
     Check("ExplorerOperations", quickAccessStore.Load().Single().Name, "derive the quick access label from its folder name");
+    var secondQuickAccessFolder = Path.Combine(temporaryPreferencesDirectory, "SecondQuickAccess");
+    Directory.CreateDirectory(secondQuickAccessFolder);
+    Check(true, quickAccessStore.Add(secondQuickAccessFolder), "pin a second folder for quick access ordering");
+    Check(true, quickAccessStore.Move(secondQuickAccessFolder, 0), "reorder a quick access folder before the first pin");
+    Check("SecondQuickAccess,ExplorerOperations", string.Join(',', quickAccessStore.Load().Select(pin => pin.Name)), "persist the user-selected quick access order");
     Check(true, quickAccessStore.Remove(explorerTestDirectory), "remove a folder from quick access");
-    Check(0, quickAccessStore.Load().Count, "persist quick access removals");
+    Check("SecondQuickAccess", string.Join(',', quickAccessStore.Load().Select(pin => pin.Name)), "persist quick access removals without disturbing other pins");
     Check(0, ExplorerQuickAccessCatalog.Normalize([
         new ExplorerQuickAccessPin("relative", "relative-folder")
     ]).Count, "reject relative paths from imported quick access pins");
     var maximumQuickAccessPins = ExplorerQuickAccessCatalog.Normalize(Enumerable.Range(0, ExplorerQuickAccessCatalog.MaximumPins + 1)
         .Select(index => new ExplorerQuickAccessPin($"Folder {index}", $"C:\\Pinned\\Folder {index}")));
     Check(ExplorerQuickAccessCatalog.MaximumPins, maximumQuickAccessPins.Count, "bound imported quick access pins");
+    List<ExplorerQuickAccessPin> reorderableQuickAccessPins =
+    [
+        new("First", @"C:\Pinned\First"),
+        new("Second", @"C:\Pinned\Second"),
+        new("Third", @"C:\Pinned\Third")
+    ];
+    CheckTrue(ExplorerQuickAccessCatalog.Move(reorderableQuickAccessPins, @"C:\Pinned\Third", 0), "move a quick access folder before the list");
+    Check("Third,First,Second", string.Join(',', reorderableQuickAccessPins.Select(pin => pin.Name)), "retain quick access order after moving an item to the front");
+    CheckTrue(!ExplorerQuickAccessCatalog.Move(reorderableQuickAccessPins, @"C:\Pinned\Missing", 0), "ignore reorder requests for an unknown quick access pin");
     var startPlaceTestDirectory = Path.Combine(temporaryPreferencesDirectory, "StartPlaceFlyout");
     Directory.CreateDirectory(startPlaceTestDirectory);
     Directory.CreateDirectory(Path.Combine(startPlaceTestDirectory, "Folder"));
