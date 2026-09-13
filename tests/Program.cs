@@ -405,6 +405,10 @@ try
     CheckTrue(ExplorerQuickAccessCatalog.Move(reorderableQuickAccessPins, @"C:\Pinned\Third", 0), "move a quick access folder before the list");
     Check("Third,First,Second", string.Join(',', reorderableQuickAccessPins.Select(pin => pin.Name)), "retain quick access order after moving an item to the front");
     CheckTrue(!ExplorerQuickAccessCatalog.Move(reorderableQuickAccessPins, @"C:\Pinned\Missing", 0), "ignore reorder requests for an unknown quick access pin");
+    var droppableQuickAccessFolders = ExplorerQuickAccessCatalog.GetDroppableFolders(
+        [@"C:\Folders\Projects", @"C:\Folders\Projects", @"C:\Folders\readme.txt", "relative-folder"],
+        path => string.Equals(path, @"C:\Folders\Projects", StringComparison.OrdinalIgnoreCase));
+    Check(1, droppableQuickAccessFolders.Count, "accept only distinct absolute folders from drag-and-drop paths");
     var startPlaceTestDirectory = Path.Combine(temporaryPreferencesDirectory, "StartPlaceFlyout");
     Directory.CreateDirectory(startPlaceTestDirectory);
     Directory.CreateDirectory(Path.Combine(startPlaceTestDirectory, "Folder"));

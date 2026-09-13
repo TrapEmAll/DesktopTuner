@@ -641,35 +641,80 @@ public partial class ExplorerWindow : Window
 
     private void QuickAccessPin_DragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(QuickAccessPinDragFormat) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Effects = e.Data.GetDataPresent(QuickAccessPinDragFormat)
+            ? DragDropEffects.Move
+            : GetDroppedQuickAccessFolders(e.Data).Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
 
     private void QuickAccessPin_Drop(object sender, DragEventArgs e)
     {
-        if (sender is not Button { Tag: string targetPath } target
-            || !e.Data.GetDataPresent(QuickAccessPinDragFormat)
-            || e.Data.GetData(QuickAccessPinDragFormat) is not string sourcePath) return;
+        if (sender is not Button { Tag: string targetPath } target) return;
         var targetIndex = QuickAccessPinsPanel.Children.OfType<Button>().ToList().FindIndex(button =>
             string.Equals(button.Tag as string, targetPath, StringComparison.OrdinalIgnoreCase));
         if (targetIndex < 0) return;
         var insertionIndex = targetIndex + (e.GetPosition(target).Y >= target.ActualHeight / 2 ? 1 : 0);
-        ReorderQuickAccessPin(sourcePath, insertionIndex);
+        if (e.Data.GetDataPresent(QuickAccessPinDragFormat) && e.Data.GetData(QuickAccessPinDragFormat) is string sourcePath)
+            ReorderQuickAccessPin(sourcePath, insertionIndex);
+        else
+            PinDroppedFolders(GetDroppedQuickAccessFolders(e.Data), insertionIndex);
         e.Handled = true;
     }
 
     private void QuickAccessPinsPanel_DragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(QuickAccessPinDragFormat) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Effects = e.Data.GetDataPresent(QuickAccessPinDragFormat)
+            ? DragDropEffects.Move
+            : GetDroppedQuickAccessFolders(e.Data).Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
 
     private void QuickAccessPinsPanel_Drop(object sender, DragEventArgs e)
     {
-        if (!e.Data.GetDataPresent(QuickAccessPinDragFormat)
-            || e.Data.GetData(QuickAccessPinDragFormat) is not string sourcePath) return;
-        ReorderQuickAccessPin(sourcePath, QuickAccessPinsPanel.Children.Count);
+        if (e.Data.GetDataPresent(QuickAccessPinDragFormat)
+            && e.Data.GetData(QuickAccessPinDragFormat) is string sourcePath)
+            ReorderQuickAccessPin(sourcePath, QuickAccessPinsPanel.Children.Count);
+        else
+            PinDroppedFolders(GetDroppedQuickAccessFolders(e.Data), QuickAccessPinsPanel.Children.Count);
         e.Handled = true;
+    }
+
+    private static IReadOnlyList<string> GetDroppedQuickAccessFolders(IDataObject data)
+    {
+        if (!data.GetDataPresent(DataFormats.FileDrop, autoConvert: false)) return [];
+        IEnumerable<string> paths = data.GetData(DataFormats.FileDrop, autoConvert: false) switch
+        {
+            string[] values => values,
+            StringCollection values => values.Cast<string>(),
+            _ => Array.Empty<string>()
+        };
+        return ExplorerQuickAccessCatalog.GetDroppableFolders(paths, Directory.Exists);
+    }
+
+    private void PinDroppedFolders(IReadOnlyList<string> paths, int insertionIndex)
+    {
+        if (paths.Count == 0) return;
+        try
+        {
+            var added = new List<string>();
+            foreach (var path in paths)
+                if (_quickAccessStore.Add(path)) added.Add(path);
+            if (added.Count == 0)
+            {
+                SetStatus("These folders are already pinned or quick access has reached its limit.");
+                return;
+            }
+
+            for (var index = 0; index < added.Count; index++)
+                _quickAccessStore.Move(added[index], insertionIndex + index);
+            RefreshQuickAccessPins();
+            SetStatus(added.Count == 1 ? "Pinned folder to quick access." : $"Pinned {added.Count} folders to quick access.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            RefreshQuickAccessPins();
+            SetStatus($"Could not pin dropped folders: {ex.Message}");
+        }
     }
 
     private void ReorderQuickAccessPin(string path, int insertionIndex)

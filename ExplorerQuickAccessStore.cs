@@ -58,6 +58,34 @@ public static class ExplorerQuickAccessCatalog
         }
         return ExplorerTabOrdering.Move(pins, sourceIndex, insertionIndex);
     }
+
+    public static IReadOnlyList<string> GetDroppableFolders(IEnumerable<string>? paths, Func<string, bool> isDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(isDirectory);
+        if (paths is null) return [];
+
+        var folders = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var candidate in paths)
+        {
+            if (string.IsNullOrWhiteSpace(candidate)) continue;
+            string path;
+            try
+            {
+                if (!System.IO.Path.IsPathFullyQualified(candidate)) continue;
+                path = System.IO.Path.GetFullPath(candidate);
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                continue;
+            }
+
+            if (!seen.Add(path) || !isDirectory(path)) continue;
+            folders.Add(path);
+        }
+
+        return folders;
+    }
 }
 
 public sealed class ExplorerQuickAccessStore
