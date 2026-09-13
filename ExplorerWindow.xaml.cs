@@ -1,5 +1,7 @@
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using Microsoft.VisualBasic.FileIO;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,6 +12,7 @@ namespace DesktopTuner;
 public partial class ExplorerWindow : Window
 {
     private readonly List<ExplorerTabState> _tabs = [];
+    private readonly HashSet<string> _cutPaths = new(StringComparer.OrdinalIgnoreCase);
     private int _activeTabIndex;
     private bool _syncingTabs;
     private ExplorerTabState ActiveTab => _tabs[_activeTabIndex];
@@ -200,6 +203,7 @@ public partial class ExplorerWindow : Window
         _entries = entries;
         ApplySort();
         EntriesList.SelectedItem = null;
+        UpdateSelectionCommands();
         NewFolderButton.IsEnabled = !_location.IsDriveList;
         var title = _location.IsDriveList ? "This PC" : Path.GetFileName(_location.Path!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         if (string.IsNullOrEmpty(title)) title = _location.Path ?? "Home";
@@ -252,7 +256,8 @@ public partial class ExplorerWindow : Window
 
     private ExplorerEntry ApplyDisplayName(ExplorerEntry entry) => entry with
     {
-        DisplayName = entry.GetDisplayName(_hideFileExtensions)
+        DisplayName = entry.GetDisplayName(_hideFileExtensions),
+        IsCut = _cutPaths.Contains(entry.FullPath)
     };
 
     private void Back_Click(object sender, RoutedEventArgs e)
@@ -342,6 +347,7 @@ public partial class ExplorerWindow : Window
         {
             EntriesList.ItemsSource = null;
             EntriesList.SelectedItem = null;
+            UpdateSelectionCommands();
             NewFolderButton.IsEnabled = false;
             LocationTitle.Text = $"Search results for “{searchTerm}”";
             LocationSubtitle.Text = $"Searching this folder and its subfolders in {searchRoot}";
@@ -459,9 +465,9 @@ public partial class ExplorerWindow : Window
 
     private void EntriesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (EntriesList.SelectedItem is ExplorerEntry entry)
+        UpdateSelectionCommands();
+        if (EntriesList.SelectedItems.OfType<ExplorerEntry>().FirstOrDefault() is { } entry)
         {
-            RenameButton.IsEnabled = DeleteButton.IsEnabled = !entry.IsDrive;
             DetailsName.Text = entry.DisplayName;
             DetailsType.Text = entry.Type;
             DetailsLocation.Text = entry.FullPath;
@@ -471,9 +477,112 @@ public partial class ExplorerWindow : Window
         }
         else
         {
-            RenameButton.IsEnabled = DeleteButton.IsEnabled = false;
             SetFolderDetails(_entries.Count);
         }
+    }
+
+    private void UpdateSelectionCommands()
+    {
+        var selection = EntriesList.SelectedItems.OfType<ExplorerEntry>().ToList();
+        var canTransferSelection = selection.Count > 0 && selection.All(entry => !entry.IsDrive);
+        CopyButton.IsEnabled = CutButton.IsEnabled = canTransferSelection;
+        RenameButton.IsEnabled = DeleteButton.IsEnabled = selection.Count == 1 && !selection[0].IsDrive;
+        PasteButton.IsEnabled = !ActiveTab.Location.IsDriveList && ClipboardHasFileDrop();
+    }
+
+    private void Copy_Click(object sender, RoutedEventArgs e) => CopyOrCutSelection(move: false);
+
+    private void Cut_Click(object sender, RoutedEventArgs e) => CopyOrCutSelection(move: true);
+
+    private void CopyOrCutSelection(bool move)
+    {
+        var paths = EntriesList.SelectedItems.OfType<ExplorerEntry>()
+            .Where(entry => !entry.IsDrive)
+            .Select(entry => entry.FullPath)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (paths.Length == 0) return;
+
+        try
+        {
+            var data = new DataObject();
+            data.SetData(DataFormats.FileDrop, paths, autoConvert: false);
+            data.SetData("Preferred DropEffect", new MemoryStream(BitConverter.GetBytes(move ? 2 : 1)), autoConvert: false);
+            Clipboard.SetDataObject(data, copy: true);
+            _cutPaths.Clear();
+            if (move) _cutPaths.UnionWith(paths);
+            RefreshCutIndicators();
+            SetStatus($"{(move ? "Cut" : "Copied")} {paths.Length:N0} item{(paths.Length == 1 ? "" : "s")}.");
+        }
+        catch (Exception ex)
+        {
+            ShowFileOperationError($"Could not {(move ? "cut" : "copy")} items", ex);
+        }
+    }
+
+    private void Paste_Click(object sender, RoutedEventArgs e) => PasteClipboardItems();
+
+    private void PasteClipboardItems()
+    {
+        if (_location.IsDriveList || string.IsNullOrWhiteSpace(_location.Path)) return;
+        try
+        {
+            var (paths, move) = ReadClipboardTransfer();
+            if (paths.Length == 0) return;
+            var transferred = ExplorerFileOperationService.Transfer(paths, _location.Path, move);
+            if (move)
+            {
+                Clipboard.Clear();
+                _cutPaths.Clear();
+                RefreshCutIndicators();
+            }
+            RefreshCurrentView();
+            SetStatus(transferred.Count == 0
+                ? "Those items are already in this folder."
+                : $"{(move ? "Moved" : "Copied")} {transferred.Count:N0} item{(transferred.Count == 1 ? "" : "s")}.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or ExternalException)
+        {
+            ShowFileOperationError("Could not paste items", ex);
+        }
+    }
+
+    private void RefreshCutIndicators()
+    {
+        var selectedPaths = EntriesList.SelectedItems.OfType<ExplorerEntry>().Select(entry => entry.FullPath).ToList();
+        _entries = _entries.Select(entry => entry with { IsCut = _cutPaths.Contains(entry.FullPath) }).ToList();
+        ApplySort();
+        foreach (var path in selectedPaths)
+            if (EntriesList.Items.OfType<ExplorerEntry>().FirstOrDefault(entry => string.Equals(entry.FullPath, path, StringComparison.OrdinalIgnoreCase)) is { } entry)
+                EntriesList.SelectedItems.Add(entry);
+        UpdateSelectionCommands();
+    }
+
+    private static bool ClipboardHasFileDrop()
+    {
+        try { return ReadClipboardTransfer().Paths.Length > 0; }
+        catch (ExternalException) { return false; }
+    }
+
+    private static (string[] Paths, bool Move) ReadClipboardTransfer()
+    {
+        var data = Clipboard.GetDataObject();
+        if (data is null) return ([], false);
+        var paths = data.GetData(DataFormats.FileDrop, autoConvert: false) switch
+        {
+            string[] filePaths => filePaths,
+            StringCollection filePaths => filePaths.Cast<string>().ToArray(),
+            _ => []
+        };
+        var effect = data.GetData("Preferred DropEffect", autoConvert: false);
+        var effectValue = effect switch
+        {
+            MemoryStream stream when stream.Length >= sizeof(int) => BitConverter.ToInt32(stream.ToArray(), 0),
+            byte[] bytes when bytes.Length >= sizeof(int) => BitConverter.ToInt32(bytes, 0),
+            int value => value,
+            _ => 1
+        };
+        return (paths, (effectValue & 2) != 0);
     }
 
     private void EntriesList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -494,7 +603,22 @@ public partial class ExplorerWindow : Window
 
     private void EntriesList_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter && EntriesList.SelectedItem is ExplorerEntry selectedEntry)
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && e.Key == Key.C)
+        {
+            CopyOrCutSelection(move: false);
+            e.Handled = true;
+        }
+        else if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && e.Key == Key.X)
+        {
+            CopyOrCutSelection(move: true);
+            e.Handled = true;
+        }
+        else if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && e.Key == Key.V)
+        {
+            PasteClipboardItems();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter && EntriesList.SelectedItem is ExplorerEntry selectedEntry)
         {
             OpenEntry(selectedEntry);
             e.Handled = true;
@@ -514,12 +638,12 @@ public partial class ExplorerWindow : Window
             Forward_Click(this, new RoutedEventArgs());
             e.Handled = true;
         }
-        else if (e.Key == Key.F2 && EntriesList.SelectedItem is ExplorerEntry { IsDrive: false })
+        else if (e.Key == Key.F2 && EntriesList.SelectedItems.Count == 1 && EntriesList.SelectedItem is ExplorerEntry { IsDrive: false })
         {
             RenameSelected();
             e.Handled = true;
         }
-        else if (e.Key == Key.Delete && EntriesList.SelectedItem is ExplorerEntry { IsDrive: false })
+        else if (e.Key == Key.Delete && EntriesList.SelectedItems.Count == 1 && EntriesList.SelectedItem is ExplorerEntry { IsDrive: false })
         {
             DeleteSelected();
             e.Handled = true;
@@ -544,12 +668,15 @@ public partial class ExplorerWindow : Window
 
     private void EntriesContextMenu_Opened(object sender, RoutedEventArgs e)
     {
-        var hasSelection = EntriesList.SelectedItem is ExplorerEntry { IsDrive: false };
-        OpenInNewTabMenuItem.IsEnabled = EntriesList.SelectedItem is ExplorerEntry { IsDirectory: true };
-        RenameMenuItem.IsEnabled = hasSelection;
-        DeleteMenuItem.IsEnabled = hasSelection;
+        var selection = EntriesList.SelectedItems.OfType<ExplorerEntry>().ToList();
+        var hasTransferableSelection = selection.Count > 0 && selection.All(entry => !entry.IsDrive);
+        var hasSingleSelection = selection.Count == 1;
+        CopyMenuItem.IsEnabled = CutMenuItem.IsEnabled = hasTransferableSelection;
+        PasteMenuItem.IsEnabled = !_location.IsDriveList && ClipboardHasFileDrop();
+        OpenInNewTabMenuItem.IsEnabled = hasSingleSelection && selection[0].IsDirectory;
+        RenameMenuItem.IsEnabled = DeleteMenuItem.IsEnabled = hasSingleSelection && !selection[0].IsDrive;
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open")) is { } openItem)
-            openItem.IsEnabled = EntriesList.SelectedItem is ExplorerEntry;
+            openItem.IsEnabled = hasSingleSelection;
         NewFolderButton.IsEnabled = !_location.IsDriveList && !_isSearchView;
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "New folder")) is { } newFolderItem)
             newFolderItem.IsEnabled = !_location.IsDriveList && !_isSearchView;

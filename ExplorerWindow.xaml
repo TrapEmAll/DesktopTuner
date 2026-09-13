@@ -27,6 +27,11 @@
         <Style TargetType="MenuItem">
             <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
         </Style>
+        <Style TargetType="ListViewItem">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCut}" Value="True"><Setter Property="Opacity" Value="0.55" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
     <Grid Margin="18">
         <Grid.RowDefinitions>
@@ -61,6 +66,9 @@
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="NewFolderButton" Content="New folder" Padding="14,7" Margin="0,0,8,0" Click="NewFolder_Click" />
                 <Button x:Name="RenameButton" Content="Rename" Padding="14,7" Margin="0,0,8,0" IsEnabled="False" Click="Rename_Click" />
+                <Button x:Name="CopyButton" Content="Copy" Padding="12,7" Margin="0,0,8,0" IsEnabled="False" Click="Copy_Click" />
+                <Button x:Name="CutButton" Content="Cut" Padding="12,7" Margin="0,0,8,0" IsEnabled="False" Click="Cut_Click" />
+                <Button x:Name="PasteButton" Content="Paste" Padding="12,7" Margin="0,0,8,0" IsEnabled="False" Click="Paste_Click" />
                 <Button x:Name="DeleteButton" Content="Delete" Padding="14,7" Margin="0,0,8,0" IsEnabled="False" Click="Delete_Click" />
                 <Button Content="Refresh" Padding="14,7" Click="Refresh_Click" />
                 <ToggleButton x:Name="DetailsPaneToggle" Content="Details pane" IsChecked="True" Margin="10,0,0,0" Padding="12,7" Click="DetailsPaneToggle_Click" />
@@ -93,12 +101,16 @@
                         <TextBlock x:Name="LocationTitle" Text="Home" FontSize="21" FontWeight="SemiBold" Foreground="{DynamicResource DesktopPrimaryTextBrush}" />
                         <TextBlock x:Name="LocationSubtitle" Foreground="{DynamicResource DesktopMutedTextBrush}" FontSize="12" Margin="0,3,0,0" />
                     </StackPanel>
-                    <ListView x:Name="EntriesList" SelectionChanged="EntriesList_SelectionChanged" MouseDoubleClick="EntriesList_MouseDoubleClick" PreviewKeyDown="EntriesList_PreviewKeyDown" PreviewMouseRightButtonDown="EntriesList_PreviewMouseRightButtonDown" BorderThickness="0" Background="Transparent">
+                    <ListView x:Name="EntriesList" SelectionMode="Extended" SelectionChanged="EntriesList_SelectionChanged" MouseDoubleClick="EntriesList_MouseDoubleClick" PreviewKeyDown="EntriesList_PreviewKeyDown" PreviewMouseRightButtonDown="EntriesList_PreviewMouseRightButtonDown" BorderThickness="0" Background="Transparent">
                         <ListView.ContextMenu>
                             <ContextMenu Opened="EntriesContextMenu_Opened">
                                 <MenuItem Header="Open" Click="OpenSelected_Click" />
                                 <MenuItem x:Name="OpenInNewTabMenuItem" Header="Open in new tab" Click="OpenInNewTab_Click" />
                                 <MenuItem Header="New folder" Click="NewFolder_Click" />
+                                <Separator />
+                                <MenuItem x:Name="CutMenuItem" Header="Cut" InputGestureText="Ctrl+X" IsEnabled="False" Click="Cut_Click" />
+                                <MenuItem x:Name="CopyMenuItem" Header="Copy" InputGestureText="Ctrl+C" IsEnabled="False" Click="Copy_Click" />
+                                <MenuItem x:Name="PasteMenuItem" Header="Paste" InputGestureText="Ctrl+V" IsEnabled="False" Click="Paste_Click" />
                                 <Separator />
                                 <MenuItem x:Name="RenameMenuItem" Header="Rename" IsEnabled="False" Click="Rename_Click" />
                                 <MenuItem x:Name="DeleteMenuItem" Header="Send to Recycle Bin" IsEnabled="False" Click="Delete_Click" />
