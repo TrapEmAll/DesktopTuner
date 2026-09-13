@@ -25,6 +25,7 @@ public partial class TaskbarWindow : Window
     private bool _autoHide;
     private bool _collapsed;
     private bool _nativeReady;
+    private bool _nativeTrayExposed;
     private PinnedTaskbarApp? _pinDragCandidate;
     private Point _pinDragStart;
 
@@ -68,6 +69,20 @@ public partial class TaskbarWindow : Window
     {
         var layoutPreferences = _preferences with { TaskbarEdge = _edge, TaskbarSize = _size, AutoHide = _autoHide };
         var bounds = TaskbarLayoutCalculator.Calculate(Display, layoutPreferences, _collapsed);
+        var trayBounds = NativeTaskbarTrayService.FindTrayBounds(Display);
+        var integratedBounds = TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(Display, layoutPreferences, trayBounds, _collapsed);
+        _nativeTrayExposed = integratedBounds is not null;
+        if (integratedBounds is { } trayIntegratedBounds) bounds = trayIntegratedBounds;
+        SettingsButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
+        TrayButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
+        ClockButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
+        CloseBarButton.Width = _nativeTrayExposed ? 32 : double.NaN;
+        CloseBarButton.Height = _nativeTrayExposed ? 32 : double.NaN;
+        CloseBarButton.Padding = _nativeTrayExposed ? new Thickness(0) : new Thickness(12, 7, 12, 7);
+        CloseBarButton.Margin = _nativeTrayExposed ? new Thickness(0) : new Thickness(2, 0, 2, 0);
+        RootBorder.Padding = _nativeTrayExposed && _edge == TaskbarEdge.Bottom
+            ? new Thickness(10, 4, 0, 4)
+            : new Thickness(10, 4, 10, 4);
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         Width = bounds.Width / Display.ScaleX;
         Height = bounds.Height / Display.ScaleY;
@@ -121,7 +136,7 @@ public partial class TaskbarWindow : Window
             WindowScroller.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
             WindowScroller.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
             WindowScroller.Margin = new Thickness(10, 0, 10, 0);
-            RootBorder.Padding = new Thickness(10, 4, 10, 4);
+            RootBorder.Padding = new Thickness(10, 4, _nativeTrayExposed ? 0 : 10, 4);
             RootBorder.BorderThickness = _edge == TaskbarEdge.Top ? new Thickness(0, 0, 0, 1) : new Thickness(0, 1, 0, 0);
             PinDivider.Width = 1;
             PinDivider.Height = 24;
