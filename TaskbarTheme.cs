@@ -1,5 +1,4 @@
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
 using Microsoft.Win32;
@@ -66,44 +65,13 @@ public static class TaskbarTheme
             Read("TaskbarPreviewCardBrush"),
             Read("TaskbarPreviewBorderBrush"),
             Read("TaskbarPreviewSurfaceBrush"));
-        if (!TryReadSystemAccentColor(out var colorizationColor)) return palette;
+        if (!SystemAccentColorService.TryRead(out var colorizationColor)) return palette;
         var (accent, fallback) = ResolveAccentBrushes(colorizationColor);
         return palette with { Accent = accent, AccentFallback = fallback };
     }
 
     public static (string Accent, string Fallback) ResolveAccentBrushes(uint colorizationColor)
-    {
-        var accent = Color.FromArgb(
-            255,
-            (byte)(colorizationColor >> 16),
-            (byte)(colorizationColor >> 8),
-            (byte)colorizationColor);
-        var fallback = Color.FromRgb(
-            (byte)Math.Round(accent.R * 0.75),
-            (byte)Math.Round(accent.G * 0.75),
-            (byte)Math.Round(accent.B * 0.75));
-        return (accent.ToString(), fallback.ToString());
-    }
-
-    private static bool TryReadSystemAccentColor(out uint colorizationColor)
-    {
-        colorizationColor = 0;
-        try
-        {
-            return DwmGetColorizationColor(out colorizationColor, out _) >= 0;
-        }
-        catch (DllNotFoundException)
-        {
-            return false;
-        }
-        catch (EntryPointNotFoundException)
-        {
-            return false;
-        }
-    }
-
-    [DllImport("dwmapi.dll", ExactSpelling = true)]
-    private static extern int DwmGetColorizationColor(out uint colorizationColor, [MarshalAs(UnmanagedType.Bool)] out bool opaqueBlend);
+        => SystemAccentColorService.ResolveTaskbarAccent(colorizationColor);
 
     public static bool ReadSystemDarkMode()
     {

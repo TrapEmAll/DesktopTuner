@@ -85,6 +85,12 @@ Check(70, TaskbarTransparencyPolicy.Clamp(100), "cap transparency to preserve ta
 var systemAccent = TaskbarTheme.ResolveAccentBrushes(0xFF336699);
 Check("#FF336699", systemAccent.Accent, "read DWM colorization values as Windows accent RGB");
 Check("#FF264C73", systemAccent.Fallback, "darken the Windows accent for white taskbar fallback icons");
+var desktopAccent = SystemAccentColorService.ResolveDesktopAccent(dark: false, 0xFF336699);
+Check("#FFE1E8F1", desktopAccent.Tint, "blend the Windows accent into the Start and Explorer surface tint");
+Check("#FF336699", desktopAccent.Text, "keep the Windows accent readable on the light surface tint");
+var darkDesktopAccent = SystemAccentColorService.ResolveDesktopAccent(dark: true, 0xFF336699);
+Check("#FF273141", darkDesktopAccent.Tint, "blend the Windows accent into the dark Start and Explorer surface tint");
+Check("#FF86A4C3", darkDesktopAccent.Text, "keep the Windows accent readable on the dark surface tint");
 var firstPin = TaskbarPinCatalog.Add([], "Editor", @"C:\Program Files\Editor\editor.exe");
 Check(1, firstPin.Count, "pin a running app executable");
 Check(1, TaskbarPinCatalog.Add(firstPin, "Editor", @"C:\Program Files\Editor\editor.exe").Count, "avoid duplicate pins");

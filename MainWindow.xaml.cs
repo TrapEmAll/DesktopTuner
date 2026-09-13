@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     private const int TaskbarAutoHideHotkeyId = 0x5D02;
     private const int WM_HOTKEY = 0x0312;
     private const int WM_DISPLAYCHANGE = 0x007E;
+    private const int WM_DWMCOLORIZATIONCOLORCHANGED = 0x0320;
     private const int WM_APP_ACTIVATE_SETTINGS = 0x8000 + 0x451;
     private const uint MOD_ALT = 0x0001;
     private const uint MOD_CONTROL = 0x0002;
@@ -552,6 +553,8 @@ public partial class MainWindow : Window
 
     private IntPtr WindowMessageHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if (message == WM_DWMCOLORIZATIONCOLORCHANGED)
+            DesktopTheme.Apply(_currentValues["explorer-app-mode"] == 0);
         if (message == WM_APP_ACTIVATE_SETTINGS)
         {
             ShowSettingsWindow();

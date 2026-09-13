@@ -33,5 +33,12 @@ public static class DesktopTheme
             var color = (Color)ColorConverter.ConvertFromString(dark ? colors.Dark : colors.Light);
             resources[key] = new SolidColorBrush(color);
         }
+
+        if (SystemAccentColorService.TryRead(out var colorizationColor))
+        {
+            var (tint, text) = SystemAccentColorService.ResolveDesktopAccent(dark, colorizationColor);
+            resources["DesktopAccentTintBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(tint));
+            resources["DesktopAccentTextBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(text));
+        }
     }
 }
