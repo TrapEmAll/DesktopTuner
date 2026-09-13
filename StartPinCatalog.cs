@@ -5,18 +5,31 @@ namespace DesktopTuner;
 public static class StartPinCatalog
 {
     public const int MaximumPins = 24;
+    public const string DefaultGroupName = "Pinned";
+    public const int MaximumGroupNameLength = 32;
 
-    public static IReadOnlyList<AppEntry> Normalize(IEnumerable<AppEntry>? apps) => (apps ?? [])
-        .Where(IsSupported)
-        .Select(app => app with
+    public static IReadOnlyList<AppEntry> Normalize(IEnumerable<AppEntry>? apps)
+    {
+        var pins = (apps ?? [])
+            .Where(IsSupported)
+            .Select(app => app with
+            {
+                Name = app.Name.Trim(),
+                CategoryPath = app.CategoryPath ?? string.Empty,
+                TileSize = Enum.IsDefined(app.TileSize) ? app.TileSize : StartTileSize.Medium,
+                GroupName = NormalizeGroupName(app.GroupName)
+            })
+            .DistinctBy(app => app.ShortcutPath, StringComparer.OrdinalIgnoreCase)
+            .Take(MaximumPins)
+            .ToList();
+        var canonicalNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        return pins.Select(pin =>
         {
-            Name = app.Name.Trim(),
-            CategoryPath = app.CategoryPath ?? string.Empty,
-            TileSize = Enum.IsDefined(app.TileSize) ? app.TileSize : StartTileSize.Medium
-        })
-        .DistinctBy(app => app.ShortcutPath, StringComparer.OrdinalIgnoreCase)
-        .Take(MaximumPins)
-        .ToList();
+            if (!canonicalNames.TryGetValue(pin.GroupName, out var canonicalName))
+                canonicalNames[pin.GroupName] = canonicalName = pin.GroupName;
+            return pin with { GroupName = canonicalName };
+        }).ToList();
+    }
 
     public static IReadOnlyList<AppEntry> Pin(IEnumerable<AppEntry>? current, AppEntry app)
     {
@@ -77,6 +90,42 @@ public static class StartPinCatalog
             .ToList();
     }
 
+    public static IReadOnlyList<AppEntry> SetGroup(IEnumerable<AppEntry>? current, string shortcutPath, string groupName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(shortcutPath);
+        var normalizedGroupName = NormalizeGroupName(groupName);
+        return Normalize(current)
+            .Select(pin => string.Equals(pin.ShortcutPath, shortcutPath, StringComparison.OrdinalIgnoreCase)
+                ? pin with { GroupName = normalizedGroupName }
+                : pin)
+            .ToList();
+    }
+
+    public static IReadOnlyList<AppEntry> RenameGroup(IEnumerable<AppEntry>? current, string currentGroupName, string newGroupName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(currentGroupName);
+        var normalizedCurrentGroupName = NormalizeGroupName(currentGroupName);
+        var normalizedNewGroupName = NormalizeGroupName(newGroupName);
+        return Normalize(current)
+            .Select(pin => string.Equals(pin.GroupName, normalizedCurrentGroupName, StringComparison.OrdinalIgnoreCase)
+                ? pin with { GroupName = normalizedNewGroupName }
+                : pin)
+            .ToList();
+    }
+
+    public static IReadOnlyList<StartPinGroup> Group(IEnumerable<AppEntry>? current) => Normalize(current)
+        .GroupBy(pin => pin.GroupName, StringComparer.OrdinalIgnoreCase)
+        .Select(group => new StartPinGroup(group.Key, group.ToList()))
+        .ToList();
+
+    public static string NormalizeGroupName(string? groupName)
+    {
+        if (string.IsNullOrWhiteSpace(groupName)) return DefaultGroupName;
+        var normalized = string.Concat(groupName.Trim().Where(character => !char.IsControl(character)));
+        if (normalized.Length == 0) return DefaultGroupName;
+        return normalized.Length <= MaximumGroupNameLength ? normalized : normalized[..MaximumGroupNameLength].TrimEnd();
+    }
+
     public static IReadOnlyList<AppEntry> Reorder(IEnumerable<AppEntry>? current, string shortcutPath, int insertionIndex)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(shortcutPath);
@@ -104,3 +153,5 @@ public static class StartPinCatalog
         string.Equals(extension, ".lnk", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(extension, ".exe", StringComparison.OrdinalIgnoreCase);
 }
+
+public sealed record StartPinGroup(string Name, IReadOnlyList<AppEntry> Apps);

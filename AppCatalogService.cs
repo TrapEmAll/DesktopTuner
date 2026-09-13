@@ -7,7 +7,7 @@ using System.Windows.Media;
 
 namespace DesktopTuner;
 
-public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedApp = false, string CategoryPath = "", StartTileSize TileSize = StartTileSize.Medium)
+public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedApp = false, string CategoryPath = "", StartTileSize TileSize = StartTileSize.Medium, string GroupName = StartPinCatalog.DefaultGroupName)
 {
     public string SourceDescription => IsPackagedApp ? "Windows app" : Path.GetDirectoryName(ShortcutPath) ?? ShortcutPath;
     public ImageSource? Icon => TaskbarIconService.LoadIcon(ShortcutPath);

@@ -8,7 +8,8 @@
         PreviewKeyDown="Window_PreviewKeyDown" Loaded="Window_Loaded">
     <Window.Resources>
         <ItemsPanelTemplate x:Key="PinnedStartHorizontalPanel"><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-        <ItemsPanelTemplate x:Key="Windows8TilePanel"><WrapPanel ItemWidth="144" ItemHeight="104" /></ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="PinnedStartGroupsPanel"><StackPanel Orientation="Vertical" /></ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="Windows8TilePanel"><WrapPanel /></ItemsPanelTemplate>
         <Style TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
@@ -55,6 +56,15 @@
                     <TextBlock x:Name="PinnedStartEmptyHint" Text="Drag apps here to pin them" FontSize="10" Foreground="{DynamicResource DesktopFaintTextBrush}" Margin="4,2,0,4" Visibility="Collapsed" />
                     <ScrollViewer x:Name="PinnedStartScrollViewer" Height="82" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                         <ItemsControl x:Name="PinnedStartItems" AlternationCount="4" ItemsPanel="{StaticResource PinnedStartHorizontalPanel}">
+                            <ItemsControl.GroupStyle>
+                                <GroupStyle Panel="{StaticResource Windows8TilePanel}">
+                                    <GroupStyle.HeaderTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Name}" Tag="{Binding Name}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource DesktopMutedTextBrush}" Margin="4,7,0,5" AllowDrop="True" DragOver="PinnedStartGroup_DragOver" Drop="PinnedStartGroup_Drop" />
+                                        </DataTemplate>
+                                    </GroupStyle.HeaderTemplate>
+                                </GroupStyle>
+                            </ItemsControl.GroupStyle>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Button Tag="{Binding}" Click="PinnedStartApp_Click" PreviewMouseLeftButtonDown="PinnedStartApp_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="PinnedStartApp_PreviewMouseLeftButtonUp" PreviewMouseMove="PinnedStartApp_PreviewMouseMove" AllowDrop="True" DragOver="PinnedStartApp_DragOver" Drop="PinnedStartApp_Drop" ToolTip="{Binding Name}">
@@ -146,6 +156,10 @@
                                                     <MenuItem Header="Wide" Tag="{x:Static local:StartTileSize.Wide}" IsCheckable="True" Click="PinnedStartTileSize_Click" />
                                                     <MenuItem Header="Large" Tag="{x:Static local:StartTileSize.Large}" IsCheckable="True" Click="PinnedStartTileSize_Click" />
                                                 </MenuItem>
+                                                <Separator />
+                                                <MenuItem Header="Move to group" Tag="{Binding}" SubmenuOpened="PinnedStartGroupMenu_Opened" />
+                                                <MenuItem Header="Create group and move…" Tag="{Binding}" Click="CreateStartGroup_Click" />
+                                                <MenuItem Header="Rename this group…" Tag="{Binding}" Click="RenameStartGroup_Click" />
                                                 <Separator />
                                                 <MenuItem Header="Unpin from Start" Tag="{Binding}" Click="UnpinStartApp_Click" />
                                             </ContextMenu>

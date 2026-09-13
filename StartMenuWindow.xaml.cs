@@ -3,8 +3,10 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using Microsoft.VisualBasic;
 
 namespace DesktopTuner;
 
@@ -84,7 +86,7 @@ public partial class StartMenuWindow : Window
         PinnedStartScrollViewer.Height = windows10 ? 360 : windows8 ? 220 : 82;
         PinnedStartScrollViewer.HorizontalScrollBarVisibility = tileGrid ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
         PinnedStartScrollViewer.VerticalScrollBarVisibility = tileGrid ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
-        PinnedStartItems.ItemsPanel = (ItemsPanelTemplate)FindResource(tileGrid ? "Windows8TilePanel" : "PinnedStartHorizontalPanel");
+        PinnedStartItems.ItemsPanel = (ItemsPanelTemplate)FindResource(tileGrid ? "PinnedStartGroupsPanel" : "PinnedStartHorizontalPanel");
         MenuLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         if (classic) MenuLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(176) });
 
@@ -300,7 +302,16 @@ public partial class StartMenuWindow : Window
     private void RefreshApps()
     {
         var query = SearchBox?.Text.Trim() ?? string.Empty;
-        PinnedStartItems.ItemsSource = _pinnedApps;
+        if (_style is StartMenuStyle.Windows8 or StartMenuStyle.Windows10)
+        {
+            var groupedPins = new ListCollectionView(_pinnedApps.ToList());
+            groupedPins.GroupDescriptions.Add(new PropertyGroupDescription(nameof(AppEntry.GroupName)));
+            PinnedStartItems.ItemsSource = groupedPins;
+        }
+        else
+        {
+            PinnedStartItems.ItemsSource = _pinnedApps;
+        }
         var showPinnedPanel = query.Length == 0;
         PinnedStartPanel.Visibility = showPinnedPanel ? Visibility.Visible : Visibility.Collapsed;
         PinnedStartEmptyHint.Visibility = showPinnedPanel && _pinnedApps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -580,16 +591,23 @@ public partial class StartMenuWindow : Window
         var insertionIndex = targetIndex + (e.GetPosition(target).X >= target.ActualWidth / 2 ? 1 : 0);
         if (!e.Data.GetDataPresent(PinnedStartDragFormat))
         {
-            InsertDroppedApps(GetDroppedAppPaths(e.Data), insertionIndex);
+            InsertDroppedApps(GetDroppedAppPaths(e.Data), insertionIndex, targetApp.GroupName);
             e.Handled = true;
             return;
         }
         if (e.Data.GetData(PinnedStartDragFormat) is not string sourcePath) return;
 
         if (_pinnedApps.Any(app => string.Equals(app.ShortcutPath, sourcePath, StringComparison.OrdinalIgnoreCase)))
-            SavePinnedApps(StartPinCatalog.Reorder(_pinnedApps, sourcePath, insertionIndex));
+        {
+            var reordered = StartPinCatalog.Reorder(_pinnedApps, sourcePath, insertionIndex);
+            SavePinnedApps(StartPinCatalog.SetGroup(reordered, sourcePath, targetApp.GroupName));
+        }
         else if (FindApp(sourcePath) is { } app)
-            InsertPinnedApp(app, insertionIndex);
+        {
+            var updated = StartPinCatalog.Pin(_pinnedApps, app);
+            updated = StartPinCatalog.SetGroup(updated, app.ShortcutPath, targetApp.GroupName);
+            SavePinnedApps(StartPinCatalog.Reorder(updated, app.ShortcutPath, insertionIndex));
+        }
         e.Handled = true;
     }
 
@@ -631,9 +649,11 @@ public partial class StartMenuWindow : Window
             ? paths.Where(File.Exists)
             : [];
 
-    private void InsertDroppedApps(IEnumerable<string> paths, int index)
+    private void InsertDroppedApps(IEnumerable<string> paths, int index, string? groupName = null)
     {
-        var droppedApps = StartPinCatalog.AddDroppedFiles([], paths);
+        var droppedApps = StartPinCatalog.AddDroppedFiles([], paths)
+            .Select(app => groupName is null ? app : app with { GroupName = StartPinCatalog.NormalizeGroupName(groupName) })
+            .ToList();
         if (droppedApps.Count == 0) return;
 
         var updated = _pinnedApps;
@@ -689,10 +709,18 @@ public partial class StartMenuWindow : Window
     {
         if (sender is not ContextMenu { DataContext: AppEntry app } menu) return;
         var tileSizeMenu = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Tile size"));
-        if (tileSizeMenu is null) return;
-        tileSizeMenu.Visibility = _style is StartMenuStyle.Windows8 or StartMenuStyle.Windows10 ? Visibility.Visible : Visibility.Collapsed;
-        foreach (var item in tileSizeMenu.Items.OfType<MenuItem>())
-            item.IsChecked = item.Tag is StartTileSize size && size == app.TileSize;
+        var tileLayout = _style is StartMenuStyle.Windows8 or StartMenuStyle.Windows10;
+        if (tileSizeMenu is not null)
+        {
+            tileSizeMenu.Visibility = tileLayout ? Visibility.Visible : Visibility.Collapsed;
+            foreach (var item in tileSizeMenu.Items.OfType<MenuItem>())
+                item.IsChecked = item.Tag is StartTileSize size && size == app.TileSize;
+        }
+        foreach (var item in menu.Items.OfType<MenuItem>())
+        {
+            if (Equals(item.Header, "Move to group") || Equals(item.Header, "Create group and move…") || Equals(item.Header, "Rename this group…"))
+                item.Visibility = tileLayout ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
     private void PinnedStartTileSize_Click(object sender, RoutedEventArgs e)
@@ -700,6 +728,79 @@ public partial class StartMenuWindow : Window
         if (sender is not MenuItem { Tag: StartTileSize size } item
             || ItemsControl.ItemsControlFromItemContainer(item) is not MenuItem { Tag: AppEntry app }) return;
         SavePinnedApps(StartPinCatalog.SetTileSize(_pinnedApps, app.ShortcutPath, size));
+    }
+
+    private void PinnedStartGroupMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AppEntry app } menu) return;
+        menu.Items.Clear();
+        foreach (var group in StartPinCatalog.Group(_pinnedApps))
+        {
+            var item = new MenuItem { Header = group.Name, Tag = group.Name, IsCheckable = true, IsChecked = string.Equals(group.Name, app.GroupName, StringComparison.OrdinalIgnoreCase) };
+            item.Click += MoveStartAppToGroup_Click;
+            menu.Items.Add(item);
+        }
+    }
+
+    private void MoveStartAppToGroup_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string groupName } item
+            || ItemsControl.ItemsControlFromItemContainer(item) is not MenuItem { Tag: AppEntry app }) return;
+        MovePinnedStartAppToGroup(app.ShortcutPath, groupName);
+    }
+
+    private void CreateStartGroup_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AppEntry app }) return;
+        var groupName = Interaction.InputBox("Enter a name for this Start tile group (up to 32 characters).", "Create Start group");
+        if (!string.IsNullOrWhiteSpace(groupName)) MovePinnedStartAppToGroup(app.ShortcutPath, groupName);
+    }
+
+    private void RenameStartGroup_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AppEntry app }) return;
+        var groupName = Interaction.InputBox("Enter a new name for this Start tile group (up to 32 characters).", "Rename Start group", app.GroupName);
+        if (string.IsNullOrWhiteSpace(groupName) || string.Equals(groupName.Trim(), app.GroupName, StringComparison.OrdinalIgnoreCase)) return;
+        SavePinnedApps(StartPinCatalog.RenameGroup(_pinnedApps, app.GroupName, groupName));
+    }
+
+    private void MovePinnedStartAppToGroup(string shortcutPath, string groupName)
+    {
+        groupName = StartPinCatalog.NormalizeGroupName(groupName);
+        var insertionIndex = _pinnedApps.Select((app, index) => (app, index))
+            .Where(item => string.Equals(item.app.GroupName, groupName, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(item.app.ShortcutPath, shortcutPath, StringComparison.OrdinalIgnoreCase))
+            .Select(item => item.index + 1)
+            .DefaultIfEmpty(_pinnedApps.Count)
+            .Max();
+        var updated = StartPinCatalog.SetGroup(_pinnedApps, shortcutPath, groupName);
+        SavePinnedApps(StartPinCatalog.Reorder(updated, shortcutPath, insertionIndex));
+    }
+
+    private void PinnedStartGroup_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(PinnedStartDragFormat)
+            ? DragDropEffects.Move
+            : HasDroppedApps(e.Data) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void PinnedStartGroup_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is not TextBlock { Tag: string groupName }) return;
+        if (e.Data.GetDataPresent(PinnedStartDragFormat) && e.Data.GetData(PinnedStartDragFormat) is string shortcutPath)
+        {
+            MovePinnedStartAppToGroup(shortcutPath, groupName);
+            e.Handled = true;
+            return;
+        }
+        var insertionIndex = _pinnedApps.Select((app, index) => (app, index))
+            .Where(item => string.Equals(item.app.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
+            .Select(item => item.index + 1)
+            .DefaultIfEmpty(_pinnedApps.Count)
+            .Max();
+        InsertDroppedApps(GetDroppedAppPaths(e.Data), insertionIndex, groupName);
+        e.Handled = true;
     }
 
     private void MoveStartAppEarlier_Click(object sender, RoutedEventArgs e) => MovePinnedStartApp(sender, -1);

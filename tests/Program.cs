@@ -373,6 +373,15 @@ Check("Editor,Calculator,Browser", string.Join(',', StartPinCatalog.Reorder(Star
 Check(StartTileSize.Wide, StartPinCatalog.SetTileSize(orderedStartPins, @"C:\Apps\Browser.lnk", StartTileSize.Wide).Single(app => app.Name == "Browser").TileSize, "resize a pinned Start tile");
 Check(StartTileSize.Medium, StartPinCatalog.Normalize([new AppEntry("Invalid size", @"C:\Apps\invalid.lnk", TileSize: (StartTileSize)99)]).Single().TileSize, "normalize an unknown saved Start tile size");
 Throws<ArgumentOutOfRangeException>(() => StartPinCatalog.SetTileSize(orderedStartPins, @"C:\Apps\Browser.lnk", (StartTileSize)99), "reject an unknown Start tile size");
+var groupedStartPins = StartPinCatalog.SetGroup(orderedStartPins, @"C:\Apps\Browser.lnk", " Games ");
+Check("Games", groupedStartPins.Single(app => app.Name == "Browser").GroupName, "move a pinned Start app into a named tile group");
+Check(StartTileSize.Medium, groupedStartPins.Single(app => app.Name == "Browser").TileSize, "preserve tile size when moving an app between groups");
+Check("Pinned,Games", string.Join(',', StartPinCatalog.Group(groupedStartPins).Select(group => group.Name)), "keep Start tile groups in their first pinned order");
+var renamedStartGroups = StartPinCatalog.RenameGroup(StartPinCatalog.SetGroup(groupedStartPins, @"C:\Apps\Editor.lnk", "games"), "Games", "Play");
+Check("Play", renamedStartGroups.Single(app => app.Name == "Browser").GroupName, "rename all apps in a Start tile group");
+Check(1, StartPinCatalog.Group(renamedStartGroups).Count(group => group.Name == "Play"), "merge case-insensitive duplicate Start group names");
+Check(StartPinCatalog.DefaultGroupName, StartPinCatalog.NormalizeGroupName(" \n "), "replace blank Start group names with the default group");
+Check(StartPinCatalog.MaximumGroupNameLength, StartPinCatalog.NormalizeGroupName(new string('x', 40)).Length, "bound Start tile group names");
 Check("Editor,Browser", string.Join(',', StartPinCatalog.Reorder(orderedStartPins, @"C:\Apps\Missing.lnk", 0).Select(app => app.Name)), "ignore a Start favorite drop with an unknown source");
 var explorerTabOrder = new List<string> { "Home", "Documents", "Downloads" };
 CheckTrue(ExplorerTabOrdering.Move(explorerTabOrder, 0, 3), "move an Explorer tab after the final tab");
@@ -949,7 +958,7 @@ try
     var preferencesStore = new DesktopPreferencesStore(preferencesPath);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide)], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
@@ -957,6 +966,7 @@ try
     Check(expectedPreferences.StartMenuStyle, loadedPreferences.StartMenuStyle, "persist Start menu style");
     Check("Editor", loadedPreferences.PinnedStartApps!.Single().Name, "persist pinned Start apps");
     Check(StartTileSize.Wide, loadedPreferences.PinnedStartApps!.Single().TileSize, "persist a pinned Start tile's size");
+    Check("Dev", loadedPreferences.PinnedStartApps!.Single().GroupName, "persist a pinned Start tile's group");
     Check(expectedPreferences.TaskbarOnAllDisplays, loadedPreferences.TaskbarOnAllDisplays, "persist taskbar display coverage");
     Check(expectedPreferences.TaskbarLayout, loadedPreferences.TaskbarLayout, "persist floating taskbar style");
     Check(true, loadedPreferences.ReplaceNativeTaskbar, "persist native taskbar replacement mode");
@@ -990,7 +1000,7 @@ try
     Check(TaskbarButtonSpacing.Relaxed, preferencesStore.Load().TaskbarButtonSpacing, "persist relaxed taskbar button spacing");
     Check(true, loadedPreferences.PinnedApps!.Single().IsDirectory, "persist folder pin type");
 
-    File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"PinnedApps":[{"Name":"Legacy app","ExecutablePath":"C:\\Apps\\Editor.exe"}]}""");
+    File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"PinnedApps":[{"Name":"Legacy app","ExecutablePath":"C:\\Apps\\Editor.exe"}],"PinnedStartApps":[{"Name":"Legacy Start app","ShortcutPath":"C:\\Apps\\legacy.lnk"}]}""");
     Check(StartMenuStyle.Modern, preferencesStore.Load().StartMenuStyle, "default legacy preferences to the Modern Start menu");
     Check(false, preferencesStore.Load().TaskbarOnAllDisplays, "keep legacy taskbar preferences on the primary display");
     Check(false, preferencesStore.Load().ReplaceNativeTaskbar, "keep native taskbar replacement disabled for legacy preferences");
@@ -1005,6 +1015,7 @@ try
     Check(TaskbarIconSize.Standard, preferencesStore.Load().TaskbarIconSize, "default legacy preferences to standard taskbar icons");
     Check(TaskbarButtonSpacing.Standard, preferencesStore.Load().TaskbarButtonSpacing, "default legacy preferences to standard button spacing");
     Check(false, preferencesStore.Load().PinnedApps!.Single().IsDirectory, "default old pin records to app launch behavior");
+    Check(StartPinCatalog.DefaultGroupName, preferencesStore.Load().PinnedStartApps!.Single().GroupName, "default older Start pin records to the Pinned group");
     File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"TaskbarButtonEffect":99}""");
     Check(TaskbarButtonEffect.Accent, preferencesStore.Load().TaskbarButtonEffect, "reject an unknown taskbar button effect and fall back to the default");
 
