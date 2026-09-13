@@ -681,6 +681,63 @@ public partial class TaskbarWindow : Window
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open Sound settings", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
+    private void AudioOutputContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu menu) return;
+        menu.Items.Clear();
+        try
+        {
+            var outputs = AudioEndpointVolumeService.EnumerateOutputs();
+            if (outputs.Count == 0)
+                menu.Items.Add(new MenuItem { Header = "No active output devices", IsEnabled = false });
+            else
+            {
+                foreach (var output in outputs)
+                {
+                    var item = new MenuItem
+                    {
+                        Header = output.Name,
+                        Tag = output,
+                        IsCheckable = true,
+                        IsChecked = output.IsDefault,
+                        IsEnabled = !output.IsDefault,
+                        ToolTip = output.IsDefault ? "Current default output" : null
+                    };
+                    item.Click += AudioOutputDevice_Click;
+                    menu.Items.Add(item);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            menu.Items.Add(new MenuItem { Header = "Could not list output devices", IsEnabled = false, ToolTip = ex.Message });
+            Trace.TraceWarning($"Could not enumerate audio output devices: {ex}");
+        }
+
+        menu.Items.Add(new Separator());
+        var settingsItem = new MenuItem { Header = "Sound settings…" };
+        settingsItem.Click += SoundSettings_Click;
+        menu.Items.Add(settingsItem);
+    }
+
+    private void AudioOutputDevice_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AudioOutputDevice output }) return;
+        try
+        {
+            AudioEndpointVolumeService.SetDefaultOutput(output.Id);
+            var state = AudioEndpointVolumeService.ReadDefaultOutput();
+            VolumeButton.Content = state.Muted ? "🔇" : state.Volume < 0.34f ? "🔈" : "🔊";
+            VolumeButton.ToolTip = AudioVolumePolicy.GetLabel(state.Volume, state.Muted) + " · Click for Sound settings · Right-click to choose output";
+        }
+        catch (Exception ex)
+        {
+            VolumeButton.ToolTip = $"Could not select audio output: {ex.Message} · Open Sound settings";
+            Trace.TraceWarning($"Could not set the default audio output to '{output.Name}': {ex}");
+            SoundSettings_Click(this, new RoutedEventArgs());
+        }
+    }
+
     private void VolumeButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Middle) return;
@@ -689,7 +746,7 @@ public partial class TaskbarWindow : Window
             var muted = AudioEndpointVolumeService.ToggleDefaultOutputMute();
             VolumeButton.Content = muted ? "🔇" : "🔊";
             var state = AudioEndpointVolumeService.ReadDefaultOutput();
-            VolumeButton.ToolTip = AudioVolumePolicy.GetLabel(state.Volume, muted) + " · Click for Sound settings";
+            VolumeButton.ToolTip = AudioVolumePolicy.GetLabel(state.Volume, muted) + " · Click for Sound settings · Right-click to choose output";
         }
         catch (Exception ex)
         {
@@ -707,7 +764,7 @@ public partial class TaskbarWindow : Window
             var level = AudioVolumePolicy.Adjust(state.Volume, e.Delta);
             AudioEndpointVolumeService.SetDefaultOutputVolume(level);
             VolumeButton.Content = state.Muted ? "🔇" : level < 0.34f ? "🔈" : "🔊";
-            VolumeButton.ToolTip = AudioVolumePolicy.GetLabel(level, state.Muted) + " · Middle-click to mute";
+            VolumeButton.ToolTip = AudioVolumePolicy.GetLabel(level, state.Muted) + " · Middle-click to mute · Click for Sound settings · Right-click to choose output";
         }
         catch (Exception ex)
         {

@@ -73,6 +73,8 @@ CheckTrue(Math.Abs(AudioVolumePolicy.Adjust(0.3f, -120) - 0.25f) < 0.0001f, "low
 Check(1f, AudioVolumePolicy.Adjust(0.99f, 120), "clamp audio volume to the maximum");
 Check(0f, AudioVolumePolicy.Adjust(0.01f, -120), "clamp audio volume to silence");
 Check("Muted · 42%", AudioVolumePolicy.GetLabel(0.42f, true), "format muted audio status for the taskbar control");
+CheckTrue(AudioVolumePolicy.IsDefaultOutput("endpoint-a", "ENDPOINT-A"), "identify the selected audio output without case-sensitive endpoint matching");
+CheckTrue(!AudioVolumePolicy.IsDefaultOutput("endpoint-a", null), "leave audio outputs unselected when Windows has no default endpoint");
 Throws<ArgumentOutOfRangeException>(() => AudioVolumePolicy.Adjust(float.NaN, 120), "reject invalid audio volume values");
 Check((byte)128, TaskbarTransparencyPolicy.GetAlpha(50), "convert fifty percent transparency to the expected alpha");
 Check((byte)77, TaskbarTransparencyPolicy.GetAlpha(100), "bound taskbar transparency to retain a visible backdrop");

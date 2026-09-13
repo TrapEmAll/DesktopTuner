@@ -9,6 +9,79 @@ public static class AudioEndpointVolumeService
     private const int RenderFlow = 0;
     private const int MultimediaRole = 1;
     private const int ClassContextAll = 23;
+    private const int ActiveDeviceState = 1;
+    private const int PropertyStoreReadOnly = 0;
+    private static readonly Guid DeviceFriendlyNamePropertySet = new("A45C254E-DF1C-4EFD-8020-67D146A850E0");
+    private static readonly Guid PolicyConfigClassId = new("870AF99C-171D-4F9E-AF0D-E63DF40C2BC9");
+
+    public static IReadOnlyList<AudioOutputDevice> EnumerateOutputs()
+    {
+        IMMDeviceEnumerator? enumerator = null;
+        IMMDeviceCollection? devices = null;
+        IMMDevice? defaultDevice = null;
+        try
+        {
+            enumerator = CreateEnumerator();
+            Check(enumerator.EnumAudioEndpoints(RenderFlow, ActiveDeviceState, out devices));
+            var defaultId = GetDefaultDeviceId(enumerator, out defaultDevice);
+            Check(devices.GetCount(out var count));
+
+            var outputs = new List<AudioOutputDevice>((int)count);
+            for (uint index = 0; index < count; index++)
+            {
+                IMMDevice? device = null;
+                IPropertyStore? properties = null;
+                IntPtr deviceId = IntPtr.Zero;
+                var name = default(PropVariant);
+                try
+                {
+                    Check(devices.Item(index, out device));
+                    Check(device.GetId(out deviceId));
+                    Check(device.OpenPropertyStore(PropertyStoreReadOnly, out properties));
+                    var key = new PropertyKey(DeviceFriendlyNamePropertySet, 14);
+                    Check(properties.GetValue(ref key, out name));
+                    var endpointId = Marshal.PtrToStringUni(deviceId);
+                    var friendlyName = name.Type == 31 ? Marshal.PtrToStringUni(name.StringValue) : null;
+                    if (!string.IsNullOrWhiteSpace(endpointId) && !string.IsNullOrWhiteSpace(friendlyName))
+                        outputs.Add(new AudioOutputDevice(endpointId, friendlyName, AudioVolumePolicy.IsDefaultOutput(endpointId, defaultId)));
+                }
+                finally
+                {
+                    PropVariantClear(ref name);
+                    if (deviceId != IntPtr.Zero) Marshal.FreeCoTaskMem(deviceId);
+                    ReleaseComObject(properties);
+                    ReleaseComObject(device);
+                }
+            }
+
+            return outputs.OrderByDescending(device => device.IsDefault).ThenBy(device => device.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+        }
+        finally
+        {
+            ReleaseComObject(defaultDevice);
+            ReleaseComObject(devices);
+            ReleaseComObject(enumerator);
+        }
+    }
+
+    // Endpoint enumeration uses the documented MMDevice API. Default selection uses Windows' policy COM interface,
+    // which is outside the documented MMDevice API; the click handler reports failures and opens Sound settings as a fallback.
+    public static void SetDefaultOutput(string endpointId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(endpointId);
+        object? policyObject = null;
+        try
+        {
+            var policyType = Type.GetTypeFromCLSID(PolicyConfigClassId, throwOnError: true)!;
+            policyObject = Activator.CreateInstance(policyType)!;
+            var policy = (IPolicyConfig)policyObject;
+            foreach (var role in new[] { 0, 1, 2 }) Check(policy.SetDefaultEndpoint(endpointId, role));
+        }
+        finally
+        {
+            ReleaseComObject(policyObject);
+        }
+    }
 
     public static (float Volume, bool Muted) ReadDefaultOutput() => WithDefaultOutput(volume =>
     {
@@ -58,6 +131,26 @@ public static class AudioEndpointVolumeService
         }
     }
 
+    private static IMMDeviceEnumerator CreateEnumerator()
+    {
+        var enumeratorType = Type.GetTypeFromCLSID(DeviceEnumeratorClassId, throwOnError: true)!;
+        return (IMMDeviceEnumerator)Activator.CreateInstance(enumeratorType)!;
+    }
+
+    private static string? GetDefaultDeviceId(IMMDeviceEnumerator enumerator, out IMMDevice? device)
+    {
+        device = null;
+        Check(enumerator.GetDefaultAudioEndpoint(RenderFlow, MultimediaRole, out device));
+        Check(device.GetId(out var deviceId));
+        try { return Marshal.PtrToStringUni(deviceId); }
+        finally { Marshal.FreeCoTaskMem(deviceId); }
+    }
+
+    private static void ReleaseComObject(object? value)
+    {
+        if (value is not null && Marshal.IsComObject(value)) Marshal.ReleaseComObject(value);
+    }
+
     private static void Check(int hresult)
     {
         if (hresult < 0) Marshal.ThrowExceptionForHR(hresult);
@@ -69,10 +162,28 @@ public static class AudioEndpointVolumeService
     private interface IMMDeviceEnumerator
     {
         [PreserveSig]
-        int EnumAudioEndpoints(int dataFlow, int stateMask, out IntPtr devices);
+        int EnumAudioEndpoints(int dataFlow, int stateMask, out IMMDeviceCollection devices);
 
         [PreserveSig]
         int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice endpoint);
+
+        [PreserveSig]
+        int GetDevice([MarshalAs(UnmanagedType.LPWStr)] string endpointId, out IMMDevice device);
+
+        [PreserveSig]
+        int RegisterEndpointNotificationCallback(IntPtr notificationClient);
+
+        [PreserveSig]
+        int UnregisterEndpointNotificationCallback(IntPtr notificationClient);
+    }
+
+    [ComImport]
+    [Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IMMDeviceCollection
+    {
+        [PreserveSig] int GetCount(out uint count);
+        [PreserveSig] int Item(uint index, out IMMDevice device);
     }
 
     [ComImport]
@@ -82,6 +193,60 @@ public static class AudioEndpointVolumeService
     {
         [PreserveSig]
         int Activate(ref Guid interfaceId, int classContext, IntPtr activationParameters, [MarshalAs(UnmanagedType.IUnknown)] out object instance);
+
+        [PreserveSig]
+        int OpenPropertyStore(int storageAccess, out IPropertyStore properties);
+
+        [PreserveSig]
+        int GetId(out IntPtr endpointId);
+
+        [PreserveSig]
+        int GetState(out int state);
+    }
+
+    [ComImport]
+    [Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IPropertyStore
+    {
+        [PreserveSig] int GetCount(out uint count);
+        [PreserveSig] int GetAt(uint index, out PropertyKey key);
+        [PreserveSig] int GetValue(ref PropertyKey key, out PropVariant value);
+        [PreserveSig] int SetValue(ref PropertyKey key, ref PropVariant value);
+        [PreserveSig] int Commit();
+    }
+
+    [ComImport]
+    [Guid("F8679F50-850A-41CF-9C72-430F290290C8")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IPolicyConfig
+    {
+        [PreserveSig] int GetMixFormat(IntPtr endpointId, out IntPtr format);
+        [PreserveSig] int GetDeviceFormat(IntPtr endpointId, int defaultFormat, out IntPtr format);
+        [PreserveSig] int ResetDeviceFormat(IntPtr endpointId);
+        [PreserveSig] int SetDeviceFormat(IntPtr endpointId, IntPtr endpointFormat, IntPtr mixFormat);
+        [PreserveSig] int GetProcessingPeriod(IntPtr endpointId, out long defaultPeriod, out long minimumPeriod);
+        [PreserveSig] int SetProcessingPeriod(IntPtr endpointId, IntPtr period, int hasChanged);
+        [PreserveSig] int GetShareMode(IntPtr endpointId, IntPtr shareMode);
+        [PreserveSig] int SetShareMode(IntPtr endpointId, IntPtr shareMode);
+        [PreserveSig] int GetPropertyValue(IntPtr endpointId, IntPtr propertyKey, IntPtr value);
+        [PreserveSig] int SetPropertyValue(IntPtr endpointId, IntPtr propertyKey, IntPtr value);
+        [PreserveSig] int SetDefaultEndpoint([MarshalAs(UnmanagedType.LPWStr)] string endpointId, int role);
+        [PreserveSig] int SetEndpointVisibility([MarshalAs(UnmanagedType.LPWStr)] string endpointId, int visible);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PropertyKey(Guid formatId, uint propertyId)
+    {
+        public Guid FormatId = formatId;
+        public uint PropertyId = propertyId;
+    }
+
+    [StructLayout(LayoutKind.Explicit, Size = 16)]
+    private struct PropVariant
+    {
+        [FieldOffset(0)] public ushort Type;
+        [FieldOffset(8)] public IntPtr StringValue;
     }
 
     [ComImport]
@@ -103,4 +268,9 @@ public static class AudioEndpointVolumeService
         [PreserveSig] int SetMute([MarshalAs(UnmanagedType.Bool)] bool muted, ref Guid eventContext);
         [PreserveSig] int GetMute([MarshalAs(UnmanagedType.Bool)] out bool muted);
     }
+
+    [DllImport("ole32.dll")]
+    private static extern int PropVariantClear(ref PropVariant value);
 }
+
+public sealed record AudioOutputDevice(string Id, string Name, bool IsDefault);
