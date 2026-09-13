@@ -678,6 +678,18 @@ try
     Check(searchablePdf, ExplorerSearchService.SearchAsync(explorerTestDirectory, "*.pdf").GetAwaiter().GetResult().Entries.Single().FullPath, "match file names with wildcard patterns");
     Check(searchablePdf, ExplorerSearchService.SearchAsync(explorerTestDirectory, "final invoice ext:pdf kind:document").GetAwaiter().GetResult().Entries.Single().FullPath, "combine name terms with extension and document-kind filters");
     Check(searchablePdf, ExplorerSearchService.SearchAsync(explorerTestDirectory, "name:\"final invoice.pdf\"").GetAwaiter().GetResult().Entries.Single().FullPath, "keep quoted file-name phrases together in a search");
+    var boundedSearch = ExplorerSearchQuery.Parse("after:2024-01-10 before:2024-01-20 size:>=1KB ext:pdf kind:document");
+    var inRangePdf = new ExplorerEntry("report.pdf", searchablePdf, false, false, 1024, new DateTime(2024, 1, 15));
+    CheckTrue(boundedSearch.Matches(inRangePdf), "combine modified-date, size, extension, and file-kind search filters");
+    CheckTrue(!boundedSearch.Matches(inRangePdf with { Length = 1023 }), "apply binary size thresholds to Explorer search results");
+    CheckTrue(!boundedSearch.Matches(inRangePdf with { Modified = new DateTime(2024, 1, 9) }), "exclude search results modified before the inclusive date range");
+    CheckTrue(!boundedSearch.Matches(inRangePdf with { Modified = new DateTime(2024, 1, 21) }), "exclude search results modified after the inclusive date range");
+    CheckTrue(!boundedSearch.Matches(inRangePdf with { IsDirectory = true }), "do not match folders against file-size filters");
+    CheckTrue(ExplorerSearchQuery.Parse("size:=1KB").Matches(inRangePdf), "support exact file-size search filters");
+    CheckTrue(ExplorerSearchQuery.Parse("size:1.5KB").Matches(inRangePdf with { Length = 1536 }), "parse fractional binary file-size filters");
+    CheckTrue(ExplorerSearchQuery.Parse("size:<2KB").Matches(inRangePdf), "support less-than file-size search filters");
+    Throws<ArgumentException>(() => ExplorerSearchQuery.Parse("after:2024-13-01"), "explain malformed modified-date search filters");
+    Throws<ArgumentException>(() => ExplorerSearchQuery.Parse("size:large"), "explain malformed file-size search filters");
     Check(true, ExplorerSearchService.SearchAsync(explorerTestDirectory, "kind:folder").GetAwaiter().GetResult().Entries.Any(entry => entry.FullPath == archiveFolder), "search for folders with a kind filter");
     Check(0, ExplorerSearchService.SearchAsync(explorerTestDirectory, "ext:pdf kind:folder").GetAwaiter().GetResult().Entries.Count, "apply file extension filters only to files");
     var hiddenMatchPath = Path.Combine(explorerTestDirectory, "classified-notes.txt");
