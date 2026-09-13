@@ -119,7 +119,7 @@ public partial class TaskbarWindow : Window
         CloseBarButton.Height = _nativeTrayExposed ? 32 : double.NaN;
         CloseBarButton.Padding = _nativeTrayExposed ? new Thickness(0) : new Thickness(12, 7, 12, 7);
         CloseBarButton.Margin = _nativeTrayExposed ? new Thickness(0) : new Thickness(2, 0, 2, 0);
-        RootBorder.Padding = _nativeTrayExposed && _edge == TaskbarEdge.Bottom
+        RootBorder.Padding = _nativeTrayExposed && _edge is TaskbarEdge.Bottom or TaskbarEdge.Top
             ? new Thickness(10, 4, 0, 4)
             : new Thickness(10, 4, 10, 4);
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
