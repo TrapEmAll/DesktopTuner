@@ -338,7 +338,7 @@ public partial class TaskbarWindow : Window
             : (_nativeTrayExposed ? 250 : 290) + 60;
         if (!_nativeTrayExposed) reservedControlsLength += 56;
         if (_preferences.ReplaceNativeTaskbar && _batteryStatus is not null) reservedControlsLength += 56;
-        var reservedLength = reservedControlsLength + 42 + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
+        var reservedLength = reservedControlsLength + 84 + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
         return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / buttonSpan));
     }
 
@@ -1102,6 +1102,8 @@ public partial class TaskbarWindow : Window
     private void Clock_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenNotificationCenter();
 
     private void Search_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWindowsSearch();
+
+    private void TaskView_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenTaskView();
 
     private void ShowDesktop_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.ShowDesktop();
 

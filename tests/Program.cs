@@ -494,6 +494,13 @@ CheckTrue(SystemFlyoutService.GetWindowsSearchSequence().SequenceEqual(
     new KeyboardKeyEvent((ushort)'S', true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+S search shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetTaskViewSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent(0x09, false),
+    new KeyboardKeyEvent(0x09, true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+Tab Task View shortcut in balanced key order");
 CheckTrue(SystemFlyoutService.GetShowDesktopSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),

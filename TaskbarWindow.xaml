@@ -222,6 +222,12 @@
                     </StackPanel>
                 </Button>
                 <Button x:Name="WidgetsButton" Content="Widgets" Style="{StaticResource TaskButton}" Click="Widgets_Click" FontSize="11" ToolTip="Open the Windows Widgets board" />
+                <Button x:Name="TaskViewButton" Width="38" Height="38" Style="{StaticResource TaskButton}" Click="TaskView_Click" ToolTip="Open Windows Task View (Win+Tab)" AutomationProperties.Name="Task View">
+                    <Grid Width="20" Height="20">
+                        <Border Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="1" BorderBrush="{DynamicResource TaskbarForegroundBrush}" BorderThickness="2" CornerRadius="2" />
+                        <Border Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" BorderBrush="{DynamicResource TaskbarForegroundBrush}" BorderThickness="2" CornerRadius="2" Background="{DynamicResource TaskbarBackgroundBrush}" />
+                    </Grid>
+                </Button>
                 <Button x:Name="ShowDesktopButton" Content="Desktop" Style="{StaticResource TaskButton}" Click="ShowDesktop_Click" FontSize="11" ToolTip="Show the desktop (Win+D)" />
                 <Button x:Name="ClockButton" Style="{StaticResource TaskButton}" Click="Clock_Click" ToolTip="Open notifications and calendar" Padding="7,4" Margin="3,0,8,0">
                     <Border Background="{DynamicResource TaskbarClockSurfaceBrush}" CornerRadius="8" Padding="10,5">
