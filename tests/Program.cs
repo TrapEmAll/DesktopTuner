@@ -321,6 +321,16 @@ try
     Check("b-folder,z-folder,a.txt,b.log", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.Type, ascending: false).Select(entry => entry.Name)), "sort by type with folders grouped first");
     Check("b-folder,z-folder,a.txt,b.log", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.Size, ascending: false).Select(entry => entry.Name)), "sort files by numeric size instead of formatted size text");
 
+    var firstExplorerTab = new ExplorerTabState(new ExplorerLocation(explorerTestDirectory));
+    firstExplorerTab.PushHistory(new ExplorerLocation(explorerTestDirectory, SearchQuery: "draft"));
+    firstExplorerTab.Location = new ExplorerLocation(firstCreatedFolder);
+    var secondExplorerTab = new ExplorerTabState(new ExplorerLocation(nestedExplorerFolder));
+    Check(0, secondExplorerTab.Back.Count, "keep Explorer tab history isolated per tab");
+    Check("draft", firstExplorerTab.GoBack(new ExplorerLocation(firstCreatedFolder))!.SearchQuery, "navigate back to a tab's previous search query");
+    Check(firstCreatedFolder, firstExplorerTab.GoForward(new ExplorerLocation(explorerTestDirectory, SearchQuery: "draft"))!.Path, "navigate forward to a tab's previous folder");
+    firstExplorerTab.PushHistory(new ExplorerLocation(firstCreatedFolder));
+    Check(0, firstExplorerTab.Forward.Count, "clear forward history after navigating to a new Explorer location");
+
     var freshPreferencesStore = new DesktopPreferencesStore(Path.Combine(temporaryPreferencesDirectory, "new-install.json"));
     Check(true, freshPreferencesStore.Load().TaskbarOnAllDisplays, "enable all displays by default for a new installation");
     Check(TaskbarStyle.EdgeToEdge, freshPreferencesStore.Load().TaskbarLayout, "default a new install to the full-edge taskbar layout");

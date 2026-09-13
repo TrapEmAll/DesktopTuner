@@ -9,14 +9,16 @@ namespace DesktopTuner;
 
 public partial class ExplorerWindow : Window
 {
-    private sealed record ExplorerLocation(string? Path, bool IsDriveList = false, string? SearchQuery = null);
-
-    private readonly List<ExplorerLocation> _back = [];
-    private readonly List<ExplorerLocation> _forward = [];
-    private ExplorerLocation _location;
-    private IReadOnlyList<ExplorerEntry> _entries = [];
-    private CancellationTokenSource? _searchCancellation;
-    private bool _isSearchView;
+    private readonly List<ExplorerTabState> _tabs = [];
+    private int _activeTabIndex;
+    private bool _syncingTabs;
+    private ExplorerTabState ActiveTab => _tabs[_activeTabIndex];
+    private List<ExplorerLocation> _back => ActiveTab.Back;
+    private List<ExplorerLocation> _forward => ActiveTab.Forward;
+    private ExplorerLocation _location { get => ActiveTab.Location; set => ActiveTab.Location = value; }
+    private IReadOnlyList<ExplorerEntry> _entries { get => ActiveTab.Entries; set => ActiveTab.Entries = value; }
+    private CancellationTokenSource? _searchCancellation { get => ActiveTab.SearchCancellation; set => ActiveTab.SearchCancellation = value; }
+    private bool _isSearchView { get => ActiveTab.IsSearchView; set => ActiveTab.IsSearchView = value; }
     private readonly bool _showHiddenItems;
     private readonly bool _hideFileExtensions;
     private ExplorerSortColumn _sortColumn = ExplorerSortColumn.Name;
@@ -29,13 +31,122 @@ public partial class ExplorerWindow : Window
         _showHiddenItems = showHiddenItems;
         _hideFileExtensions = hideFileExtensions;
         var startPath = string.IsNullOrWhiteSpace(initialPath) ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) : initialPath;
-        _location = startInThisPc && string.IsNullOrWhiteSpace(initialPath)
+        var initialLocation = startInThisPc && string.IsNullOrWhiteSpace(initialPath)
             ? new ExplorerLocation(null, IsDriveList: true)
             : Directory.Exists(startPath)
                 ? new ExplorerLocation(Path.GetFullPath(startPath))
                 : new ExplorerLocation(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
-        Closed += (_, _) => CancelSearch();
+        _tabs.Add(new ExplorerTabState(initialLocation));
+        SyncExplorerTabs();
+        Closed += (_, _) => { foreach (var tab in _tabs) CancelSearch(tab); };
         RefreshLocation();
+    }
+
+    private void SyncExplorerTabs()
+    {
+        _syncingTabs = true;
+        try
+        {
+            ExplorerTabs.Items.Clear();
+            foreach (var tab in _tabs)
+            {
+                var header = new StackPanel { Orientation = Orientation.Horizontal };
+                header.Children.Add(new TextBlock { Text = GetTabTitle(tab), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+                var close = new Button { Content = "×", Padding = new Thickness(3, 0, 3, 0), MinWidth = 20, Height = 20, ToolTip = "Close tab" };
+                close.Click += (_, _) => CloseTab(tab);
+                header.Children.Add(close);
+                ExplorerTabs.Items.Add(new TabItem { Header = header, Tag = tab, Padding = new Thickness(8, 3, 8, 3) });
+            }
+            ExplorerTabs.SelectedIndex = _activeTabIndex;
+        }
+        finally { _syncingTabs = false; }
+    }
+
+    private void UpdateExplorerTabTitles()
+    {
+        for (var index = 0; index < _tabs.Count && index < ExplorerTabs.Items.Count; index++)
+        {
+            if (ExplorerTabs.Items[index] is not TabItem { Header: StackPanel { Children: { Count: > 0 } } header }) continue;
+            if (header.Children[0] is TextBlock title) title.Text = GetTabTitle(_tabs[index]);
+        }
+    }
+
+    private static string GetTabTitle(ExplorerTabState tab)
+    {
+        if (tab.IsSearchView) return $"Search: {tab.Location.SearchQuery}";
+        if (tab.Location.IsDriveList) return "This PC";
+        var path = tab.Location.Path ?? "Home";
+        return Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) is { Length: > 0 } name ? name : path;
+    }
+
+    private void AddTab(ExplorerLocation location)
+    {
+        var tab = new ExplorerTabState(location);
+        _tabs.Add(tab);
+        _activeTabIndex = _tabs.Count - 1;
+        SyncExplorerTabs();
+        ShowActiveTab();
+    }
+
+    private void CloseTab(ExplorerTabState tab)
+    {
+        var index = _tabs.IndexOf(tab);
+        if (index < 0) return;
+        if (_tabs.Count == 1)
+        {
+            Close();
+            return;
+        }
+        CancelSearch(tab);
+        _tabs.RemoveAt(index);
+        if (index < _activeTabIndex) _activeTabIndex--;
+        else if (index == _activeTabIndex) _activeTabIndex = Math.Min(index, _tabs.Count - 1);
+        SyncExplorerTabs();
+        ShowActiveTab();
+    }
+
+    private void ShowActiveTab()
+    {
+        SearchBox.Text = _location.SearchQuery ?? string.Empty;
+        if (_isSearchView && !string.IsNullOrWhiteSpace(_location.SearchQuery))
+            _ = SearchCurrentFolderAsync(_location.SearchQuery);
+        else
+            RefreshLocation();
+    }
+
+    private void ExplorerTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingTabs || ExplorerTabs.SelectedItem is not TabItem { Tag: ExplorerTabState tab }) return;
+        var previous = ActiveTab;
+        CancelSearch(previous);
+        _activeTabIndex = _tabs.IndexOf(tab);
+        ShowActiveTab();
+    }
+
+    private void NewTabButton_Click(object sender, RoutedEventArgs e) => AddTab(
+        _location.IsDriveList ? new ExplorerLocation(null, IsDriveList: true) : new ExplorerLocation(_location.Path));
+
+    private void OpenInNewTab_Click(object sender, RoutedEventArgs e)
+    {
+        if (EntriesList.SelectedItem is ExplorerEntry { IsDirectory: true } entry)
+            AddTab(entry.IsDrive ? new ExplorerLocation(null, IsDriveList: true) : new ExplorerLocation(entry.FullPath));
+    }
+
+    private void ExplorerWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) return;
+        if (e.Key == Key.T)
+            NewTabButton_Click(this, new RoutedEventArgs());
+        else if (e.Key == Key.W)
+            CloseTab(ActiveTab);
+        else if (e.Key == Key.Tab)
+        {
+            var direction = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? -1 : 1;
+            var next = (_activeTabIndex + direction + _tabs.Count) % _tabs.Count;
+            ExplorerTabs.SelectedIndex = next;
+        }
+        else return;
+        e.Handled = true;
     }
 
     private void Navigate(ExplorerLocation target, bool addHistory = true)
@@ -48,8 +159,7 @@ public partial class ExplorerWindow : Window
 
         if (addHistory)
         {
-            _back.Add(CurrentHistoryLocation());
-            _forward.Clear();
+            ActiveTab.PushHistory(CurrentHistoryLocation());
         }
         CancelSearch();
         _isSearchView = false;
@@ -63,10 +173,14 @@ public partial class ExplorerWindow : Window
 
     private void CancelSearch()
     {
-        if (_searchCancellation is null) return;
-        _searchCancellation.Cancel();
-        _searchCancellation.Dispose();
-        _searchCancellation = null;
+        CancelSearch(ActiveTab);
+    }
+
+    private static void CancelSearch(ExplorerTabState tab)
+    {
+        if (tab.SearchCancellation is null) return;
+        tab.SearchCancellation.Cancel();
+        tab.SearchCancellation = null;
     }
 
     private void RefreshLocation()
@@ -92,6 +206,7 @@ public partial class ExplorerWindow : Window
         LocationTitle.Text = title;
         LocationSubtitle.Text = _location.IsDriveList ? "Browse available drives" : _location.Path;
         AddressBox.Text = _location.IsDriveList ? "This PC" : _location.Path;
+        UpdateExplorerTabTitles();
         BackButton.IsEnabled = _back.Count > 0;
         ForwardButton.IsEnabled = _forward.Count > 0;
         UpButton.IsEnabled = !_location.IsDriveList && Directory.GetParent(_location.Path!) is not null;
@@ -142,19 +257,15 @@ public partial class ExplorerWindow : Window
 
     private void Back_Click(object sender, RoutedEventArgs e)
     {
-        if (_back.Count == 0) return;
-        _forward.Add(CurrentHistoryLocation());
-        var target = _back[^1];
-        _back.RemoveAt(_back.Count - 1);
+        var target = ActiveTab.GoBack(CurrentHistoryLocation());
+        if (target is null) return;
         Navigate(target, addHistory: false);
     }
 
     private void Forward_Click(object sender, RoutedEventArgs e)
     {
-        if (_forward.Count == 0) return;
-        _back.Add(CurrentHistoryLocation());
-        var target = _forward[^1];
-        _forward.RemoveAt(_forward.Count - 1);
+        var target = ActiveTab.GoForward(CurrentHistoryLocation());
+        if (target is null) return;
         Navigate(target, addHistory: false);
     }
 
@@ -206,69 +317,78 @@ public partial class ExplorerWindow : Window
 
     private async Task SearchCurrentFolderAsync(string query)
     {
+        var tab = ActiveTab;
         var searchTerm = query.Trim();
-        CancelSearch();
+        CancelSearch(tab);
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
-            _isSearchView = false;
-            _location = _location with { SearchQuery = null };
-            RefreshLocation();
+            tab.IsSearchView = false;
+            tab.Location = tab.Location with { SearchQuery = null };
+            if (ReferenceEquals(ActiveTab, tab)) RefreshLocation();
             return;
         }
-        if (_location.IsDriveList || string.IsNullOrWhiteSpace(_location.Path))
+        if (tab.Location.IsDriveList || string.IsNullOrWhiteSpace(tab.Location.Path))
         {
             SetStatus("Open a folder before searching its contents.");
             return;
         }
 
+        var searchRoot = tab.Location.Path!;
         var cancellation = new CancellationTokenSource();
-        _searchCancellation = cancellation;
-        _isSearchView = true;
-        _location = _location with { SearchQuery = searchTerm };
-        EntriesList.ItemsSource = null;
-        EntriesList.SelectedItem = null;
-        NewFolderButton.IsEnabled = false;
-        LocationTitle.Text = $"Search results for “{searchTerm}”";
-        LocationSubtitle.Text = $"Searching this folder and its subfolders in {_location.Path}";
-        EmptyMessage.Visibility = Visibility.Collapsed;
-        SetFolderDetails(0);
-        SetStatus("Searching…");
+        tab.SearchCancellation = cancellation;
+        tab.IsSearchView = true;
+        tab.Location = tab.Location with { SearchQuery = searchTerm };
+        if (ReferenceEquals(ActiveTab, tab))
+        {
+            EntriesList.ItemsSource = null;
+            EntriesList.SelectedItem = null;
+            NewFolderButton.IsEnabled = false;
+            LocationTitle.Text = $"Search results for “{searchTerm}”";
+            LocationSubtitle.Text = $"Searching this folder and its subfolders in {searchRoot}";
+            UpdateExplorerTabTitles();
+            EmptyMessage.Visibility = Visibility.Collapsed;
+            SetFolderDetails(0);
+            SetStatus("Searching…");
+        }
 
         try
         {
-            var result = await ExplorerSearchService.SearchAsync(_location.Path, searchTerm, cancellation.Token, _showHiddenItems);
-            if (!ReferenceEquals(_searchCancellation, cancellation)) return;
-            _entries = result.Entries.Select(ApplyDisplayName).ToList();
-            ApplySort();
-            LocationSubtitle.Text = $"Search in {_location.Path}";
-            EmptyMessage.Text = $"No items match “{searchTerm}”.";
-            EmptyMessage.Visibility = _entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-            SetFolderDetails(_entries.Count);
-            SetStatus(result.SkippedItems == 0
-                ? $"{FormatItemCount(_entries.Count)} found."
-                : $"{FormatItemCount(_entries.Count)} found; {result.SkippedItems} inaccessible item(s) or folder(s) skipped.");
+            var result = await ExplorerSearchService.SearchAsync(searchRoot, searchTerm, cancellation.Token, _showHiddenItems);
+            if (cancellation.IsCancellationRequested) return;
+            tab.Entries = result.Entries.Select(ApplyDisplayName).ToList();
+            if (ReferenceEquals(ActiveTab, tab))
+            {
+                ApplySort();
+                LocationSubtitle.Text = $"Search in {searchRoot}";
+                EmptyMessage.Text = $"No items match “{searchTerm}”.";
+                EmptyMessage.Visibility = tab.Entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+                SetFolderDetails(tab.Entries.Count);
+                SetStatus(result.SkippedItems == 0
+                    ? $"{FormatItemCount(tab.Entries.Count)} found."
+                    : $"{FormatItemCount(tab.Entries.Count)} found; {result.SkippedItems} inaccessible item(s) or folder(s) skipped.");
+            }
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            if (ReferenceEquals(_searchCancellation, cancellation))
+            if (!cancellation.IsCancellationRequested)
             {
-                _entries = [];
-                EntriesList.ItemsSource = _entries;
-                EmptyMessage.Text = "Search could not complete.";
-                EmptyMessage.Visibility = Visibility.Visible;
-                LocationSubtitle.Text = $"Search in {_location.Path}";
-                SetFolderDetails(0);
-                SetStatus($"Search failed: {ex.Message}");
+                tab.Entries = [];
+                if (ReferenceEquals(ActiveTab, tab))
+                {
+                    EntriesList.ItemsSource = tab.Entries;
+                    EmptyMessage.Text = "Search could not complete.";
+                    EmptyMessage.Visibility = Visibility.Visible;
+                    LocationSubtitle.Text = $"Search in {searchRoot}";
+                    SetFolderDetails(0);
+                    SetStatus($"Search failed: {ex.Message}");
+                }
             }
         }
         finally
         {
-            if (ReferenceEquals(_searchCancellation, cancellation))
-            {
-                _searchCancellation.Dispose();
-                _searchCancellation = null;
-            }
+            if (ReferenceEquals(tab.SearchCancellation, cancellation)) tab.SearchCancellation = null;
+            cancellation.Dispose();
         }
     }
 
@@ -425,6 +545,7 @@ public partial class ExplorerWindow : Window
     private void EntriesContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         var hasSelection = EntriesList.SelectedItem is ExplorerEntry { IsDrive: false };
+        OpenInNewTabMenuItem.IsEnabled = EntriesList.SelectedItem is ExplorerEntry { IsDirectory: true };
         RenameMenuItem.IsEnabled = hasSelection;
         DeleteMenuItem.IsEnabled = hasSelection;
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open")) is { } openItem)
