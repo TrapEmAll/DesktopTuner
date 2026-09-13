@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json.Serialization;
 using System.Text.Json;
 
 namespace DesktopTuner;
@@ -11,7 +12,11 @@ public enum TaskbarButtonAlignment { Left, Center }
 public enum TaskbarIconSize { Small, Standard, Large }
 public enum TaskbarButtonSpacing { Compact, Standard, Relaxed }
 public enum StartMenuStyle { Modern, Classic, Compact }
-public sealed record PinnedTaskbarApp(string Name, string ExecutablePath, bool IsDirectory = false);
+public sealed record PinnedTaskbarApp(string Name, string ExecutablePath, bool IsDirectory = false)
+{
+    [JsonIgnore]
+    public bool CanOpenLocation => TaskbarPinCatalog.CanOpenLocation(this);
+}
 public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern, bool TaskbarOnAllDisplays = false, TaskbarStyle TaskbarLayout = TaskbarStyle.EdgeToEdge, TaskbarGroupingMode TaskbarGrouping = TaskbarGroupingMode.Always, TaskbarButtonAlignment TaskbarButtonAlignment = TaskbarButtonAlignment.Center, bool TaskbarShowLabels = true, TaskbarIconSize TaskbarIconSize = TaskbarIconSize.Standard, TaskbarButtonSpacing TaskbarButtonSpacing = TaskbarButtonSpacing.Standard, bool StartWithWindows = false, bool AutoHideWhenMaximized = false, int TaskbarTransparency = 5, List<AppEntry>? PinnedStartApps = null, bool ReplaceNativeTaskbar = false, bool TaskbarDynamicTransparency = false);
 
 public sealed class DesktopPreferencesStore

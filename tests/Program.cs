@@ -401,6 +401,13 @@ try
     CheckTrue(!AppCatalogService.CanOpenFileLocation(new AppEntry("Missing", Path.Combine(startShortcutDirectory, "missing.lnk"))), "disable file location for a removed Start shortcut");
     CheckTrue(!AppCatalogService.CanOpenFileLocation(new AppEntry("Calculator", "CalculatorApp!App", IsPackagedApp: true)), "do not offer a file location for packaged Windows apps");
     Throws<NotSupportedException>(() => AppCatalogService.BuildFileLocationLaunchInfo(new AppEntry("Missing", Path.Combine(startShortcutDirectory, "missing.lnk"))), "reject file location for a removed Start shortcut");
+    var pinnedStartShortcut = new PinnedTaskbarApp("Editor", startShortcutPath);
+    CheckTrue(pinnedStartShortcut.CanOpenLocation, "offer file location for an existing taskbar app pin");
+    Check($"/select,\"{startShortcutPath}\"", TaskbarPinCatalog.BuildLocationLaunchInfo(pinnedStartShortcut).ArgumentList.Single(), "select the pinned app's executable or shortcut in Explorer");
+    var pinnedFolder = new PinnedTaskbarApp("ExplorerOperations", explorerTestDirectory, IsDirectory: true);
+    CheckTrue(pinnedFolder.CanOpenLocation, "offer the folder itself for an existing taskbar folder pin");
+    Check(explorerTestDirectory, TaskbarPinCatalog.BuildLocationLaunchInfo(pinnedFolder).FileName, "open a pinned folder directly in File Explorer");
+    CheckTrue(!TaskbarPinCatalog.CanOpenLocation(new PinnedTaskbarApp("Missing", Path.Combine(startShortcutDirectory, "missing.exe"))), "disable file location for a removed taskbar app pin");
     var quickAccessStore = new ExplorerQuickAccessStore(Path.Combine(temporaryPreferencesDirectory, "explorer-quick-access.json"));
     Check(true, quickAccessStore.Add(explorerTestDirectory), "pin an existing Explorer folder to quick access");
     Check(false, quickAccessStore.Add(explorerTestDirectory.ToUpperInvariant()), "avoid duplicate quick access pins without regard to path casing");

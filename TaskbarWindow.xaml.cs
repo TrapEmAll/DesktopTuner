@@ -683,6 +683,19 @@ public partial class TaskbarWindow : Window
         RefreshWindows();
     }
 
+    private void OpenPinnedLocation_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: PinnedTaskbarApp { CanOpenLocation: true } app }) return;
+        try
+        {
+            System.Diagnostics.Process.Start(TaskbarPinCatalog.BuildLocationLaunchInfo(app));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Windows could not show the location for {app.Name}.\n\n{ex.Message}", "Could not open file location", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void PinnedButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: PinnedTaskbarApp app }) return;

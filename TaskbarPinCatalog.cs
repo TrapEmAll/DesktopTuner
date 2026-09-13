@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 
 namespace DesktopTuner;
@@ -5,6 +6,25 @@ namespace DesktopTuner;
 public static class TaskbarPinCatalog
 {
     public const int MaximumPins = 40;
+
+    public static bool CanOpenLocation(PinnedTaskbarApp app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        return app.IsDirectory
+            ? Directory.Exists(app.ExecutablePath)
+            : AppCatalogService.CanOpenFileLocation(new AppEntry(app.Name, app.ExecutablePath));
+    }
+
+    public static ProcessStartInfo BuildLocationLaunchInfo(PinnedTaskbarApp app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        if (!CanOpenLocation(app))
+            throw new NotSupportedException("This taskbar pin does not have an available file location.");
+
+        return app.IsDirectory
+            ? new ProcessStartInfo(app.ExecutablePath) { UseShellExecute = true }
+            : AppCatalogService.BuildFileLocationLaunchInfo(new AppEntry(app.Name, app.ExecutablePath));
+    }
 
     public static bool IsSupportedTarget(string itemPath, bool isDirectory = false) =>
         Path.IsPathFullyQualified(itemPath) && (isDirectory || IsLaunchableExtension(Path.GetExtension(itemPath)));
