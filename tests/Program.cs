@@ -324,6 +324,7 @@ Check("Editor,Browser", string.Join(',', StartPinCatalog.Reorder(orderedStartPin
 Check("Browser,Editor", string.Join(',', StartPinCatalog.Reorder(orderedStartPins, @"C:\Apps\Editor.lnk", 2).Select(app => app.Name)), "drag a Start favorite after the last pin");
 Check("Browser,Editor", string.Join(',', StartPinCatalog.Reorder(orderedStartPins, @"C:\Apps\Browser.lnk", 0).Select(app => app.Name)), "drag a Start favorite before the first pin");
 Check("Editor,Browser", string.Join(',', StartPinCatalog.Reorder(orderedStartPins, @"C:\Apps\Browser.lnk", 3).Select(app => app.Name)), "ignore an out-of-range Start favorite drop");
+Check("Editor,Calculator,Browser", string.Join(',', StartPinCatalog.Reorder(StartPinCatalog.Pin(orderedStartPins, packagedStartPin), packagedStartPin.ShortcutPath, 1).Select(app => app.Name)), "insert a newly dragged app before a Start favorite");
 Check("Editor,Browser", string.Join(',', StartPinCatalog.Reorder(orderedStartPins, @"C:\Apps\Missing.lnk", 0).Select(app => app.Name)), "ignore a Start favorite drop with an unknown source");
 var explorerTabOrder = new List<string> { "Home", "Documents", "Downloads" };
 CheckTrue(ExplorerTabOrdering.Move(explorerTabOrder, 0, 3), "move an Explorer tab after the final tab");

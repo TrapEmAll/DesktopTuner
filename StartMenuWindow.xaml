@@ -48,9 +48,10 @@
                         <Button Content="Web" Click="WebSearch_Click" Padding="7,4" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" FontSize="10" ToolTip="Search the web in your default browser" />
                     </StackPanel>
                 </DockPanel>
-                <StackPanel x:Name="PinnedStartPanel" Grid.Row="1" Visibility="Collapsed" Margin="0,0,0,8">
+                <StackPanel x:Name="PinnedStartPanel" Grid.Row="1" Visibility="Collapsed" Margin="0,0,0,8" AllowDrop="True" DragOver="PinnedStartPanel_DragOver" Drop="PinnedStartPanel_Drop">
                     <TextBlock Text="Pinned" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DesktopMutedTextBrush}" Margin="4,0,0,3" />
-                    <ScrollViewer Height="82" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <TextBlock x:Name="PinnedStartEmptyHint" Text="Drag apps here to pin them" FontSize="10" Foreground="{DynamicResource DesktopFaintTextBrush}" Margin="4,2,0,4" Visibility="Collapsed" />
+                    <ScrollViewer x:Name="PinnedStartScrollViewer" Height="82" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                         <ItemsControl x:Name="PinnedStartItems">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
@@ -91,7 +92,7 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </StackPanel>
-                <ListBox x:Name="AppList" Grid.Row="2" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppList_MouseDoubleClick">
+                <ListBox x:Name="AppList" Grid.Row="2" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppList_MouseDoubleClick" PreviewMouseLeftButtonDown="AppList_PreviewMouseLeftButtonDown" PreviewMouseMove="AppList_PreviewMouseMove">
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
                             <Setter Property="Padding" Value="11,10" />

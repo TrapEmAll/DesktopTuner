@@ -19,6 +19,8 @@ public partial class StartMenuWindow : Window
     private bool _catalogLoaded;
     private string? _catalogLoadError;
     private string? _pinnedStartDragCandidate;
+    private string? _appListDragCandidate;
+    private Point _appListDrag;
     private Point _pinnedStartDrag;
     private bool _suppressPinnedStartClick;
 
@@ -227,7 +229,10 @@ public partial class StartMenuWindow : Window
     {
         var query = SearchBox?.Text.Trim() ?? string.Empty;
         PinnedStartItems.ItemsSource = _pinnedApps;
-        PinnedStartPanel.Visibility = query.Length == 0 && _pinnedApps.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        var showPinnedPanel = query.Length == 0;
+        PinnedStartPanel.Visibility = showPinnedPanel ? Visibility.Visible : Visibility.Collapsed;
+        PinnedStartEmptyHint.Visibility = showPinnedPanel && _pinnedApps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        PinnedStartScrollViewer.Visibility = _pinnedApps.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         if (!_catalogLoaded)
         {
             AppTree.ItemsSource = null;
@@ -296,6 +301,28 @@ public partial class StartMenuWindow : Window
     }
 
     private void AppList_MouseDoubleClick(object sender, MouseButtonEventArgs e) => LaunchSelected();
+
+    private void AppList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _appListDragCandidate = null;
+        if (e.OriginalSource is not DependencyObject source
+            || ItemsControl.ContainerFromElement(AppList, source) is not ListBoxItem { DataContext: StartMenuAppListItem item }
+            || !StartPinCatalog.IsSupported(item.Application)) return;
+        _appListDragCandidate = item.Application.ShortcutPath;
+        _appListDrag = e.GetPosition(AppList);
+    }
+
+    private void AppList_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _appListDragCandidate is null) return;
+        var current = e.GetPosition(AppList);
+        if (Math.Abs(current.X - _appListDrag.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(current.Y - _appListDrag.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+        var shortcutPath = _appListDragCandidate;
+        _appListDragCandidate = null;
+        DragDrop.DoDragDrop(AppList, new DataObject(PinnedStartDragFormat, shortcutPath), DragDropEffects.Move);
+    }
 
     private void AppTree_MouseDoubleClick(object sender, MouseButtonEventArgs e) => LaunchSelected();
 
@@ -426,8 +453,41 @@ public partial class StartMenuWindow : Window
             string.Equals(app.ShortcutPath, targetApp.ShortcutPath, StringComparison.OrdinalIgnoreCase));
         if (targetIndex < 0) return;
         var insertionIndex = targetIndex + (e.GetPosition(target).X >= target.ActualWidth / 2 ? 1 : 0);
-        SavePinnedApps(StartPinCatalog.Reorder(_pinnedApps, sourcePath, insertionIndex));
+        if (_pinnedApps.Any(app => string.Equals(app.ShortcutPath, sourcePath, StringComparison.OrdinalIgnoreCase)))
+            SavePinnedApps(StartPinCatalog.Reorder(_pinnedApps, sourcePath, insertionIndex));
+        else if (FindApp(sourcePath) is { } app)
+            InsertPinnedApp(app, insertionIndex);
         e.Handled = true;
+    }
+
+    private void PinnedStartPanel_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(PinnedStartDragFormat) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void PinnedStartPanel_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(PinnedStartDragFormat)
+            || e.Data.GetData(PinnedStartDragFormat) is not string shortcutPath
+            || _pinnedApps.Any(app => string.Equals(app.ShortcutPath, shortcutPath, StringComparison.OrdinalIgnoreCase))) return;
+        if (FindApp(shortcutPath) is { } app) InsertPinnedApp(app, _pinnedApps.Count);
+        e.Handled = true;
+    }
+
+    private AppEntry? FindApp(string shortcutPath) => _apps.FirstOrDefault(app =>
+        string.Equals(app.ShortcutPath, shortcutPath, StringComparison.OrdinalIgnoreCase));
+
+    private void InsertPinnedApp(AppEntry app, int index)
+    {
+        var updated = StartPinCatalog.Pin(_pinnedApps, app);
+        if (updated.Count == _pinnedApps.Count)
+        {
+            if (!_pinnedApps.Any(pin => string.Equals(pin.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase)))
+                MessageBox.Show(this, $"You can pin up to {StartPinCatalog.MaximumPins} apps to Start.", "Start is full", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        SavePinnedApps(StartPinCatalog.Reorder(updated, app.ShortcutPath, index));
     }
 
     private void UnpinStartApp_Click(object sender, RoutedEventArgs e)
