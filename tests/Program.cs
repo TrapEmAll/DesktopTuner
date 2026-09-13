@@ -2,6 +2,7 @@ using DesktopTuner;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 var count = 0;
 Check(false, SystemBackdropService.TryApplyTransientBackdrop(IntPtr.Zero), "leave unsupported menu handles on the solid background");
@@ -195,6 +196,20 @@ Check(new Thickness(0, 4, 0, 4), TaskbarButtonSpacingPolicy.GetButtonMargin(Task
 Throws<ArgumentOutOfRangeException>(() => TaskbarButtonSpacingPolicy.GetGap((TaskbarButtonSpacing)99), "reject unknown taskbar spacing values");
 CheckTrue(TaskbarIconService.LoadIcon(Environment.ProcessPath!) is not null, "extract a taskbar icon from an executable file");
 CheckTrue(new AppEntry("Desktop Tuner", Environment.ProcessPath!).Icon is not null, "expose extracted app icons to Start menu entries");
+var auraIcon = BitmapSource.Create(5, 1, 96, 96, PixelFormats.Bgra32, null,
+new byte[]
+{
+    0, 255, 0, 0,
+    45, 50, 220, 255,
+    40, 55, 210, 255,
+    220, 60, 40, 255,
+    128, 128, 128, 255
+}, 20);
+Check<Color?>(Color.FromRgb(215, 52, 42), TaskbarAuraColorPolicy.ResolvePrimaryColor(auraIcon), "derive an Aura highlight from the dominant saturated app-icon color");
+var monochromeIcon = BitmapSource.Create(1, 1, 96, 96, PixelFormats.Bgra32, null, new byte[] { 128, 128, 128, 255 }, 4);
+Check<Color?>(null, TaskbarAuraColorPolicy.ResolvePrimaryColor(monochromeIcon), "use the system accent when an app icon has no dominant chromatic color");
+var auraBrush = TaskbarAuraColorPolicy.CreateBrush(Color.FromRgb(220, 50, 40));
+Check(Color.FromArgb(140, 220, 50, 40), auraBrush.GradientStops[0].Color, "create a soft app-colored Aura glow");
 var presentationPreferences = new DesktopPreferences(TaskbarEdge.Bottom, TaskbarShowLabels: false, TaskbarIconSize: TaskbarIconSize.Large);
 var pinPresentation = TaskbarButtonViewModel.FromPin(new PinnedTaskbarApp("Editor", Environment.ProcessPath!), presentationPreferences, vertical: false);
 Check("Editor", pinPresentation.Label, "retain pinned app labels in taskbar presentation data");
@@ -203,6 +218,10 @@ Check(24, pinPresentation.IconPixels, "apply the selected icon size to pinned ta
 Check(new Thickness(0), pinPresentation.IconMargin, "remove the icon-to-label gap when labels are hidden");
 CheckTrue(TaskbarButtonViewModel.FromPin(editorPin, presentationPreferences, vertical: false, isRunning: true).IsRunning, "show a running indicator for an app absorbed into its pinned taskbar button");
 CheckTrue(TaskbarButtonViewModel.FromPin(editorPin, presentationPreferences, vertical: false, isRunning: true, isActive: true).IsActive, "mark a running pinned app active when one of its windows is foreground");
+Check(false, pinPresentation.AuraEnabled, "preserve the Windows accent highlight by default");
+var dynamicAuraPresentation = TaskbarButtonViewModel.FromPin(editorPin, presentationPreferences with { TaskbarButtonEffect = TaskbarButtonEffect.DynamicAura }, vertical: false);
+Check(true, dynamicAuraPresentation.AuraEnabled, "enable app-icon colors for the Aura button effect");
+Check(true, dynamicAuraPresentation.DynamicAura, "enable pointer tracking for Dynamic Aura");
 Check("#7A8497", TaskbarTheme.Resolve(dark: false).RunningIndicator, "use a subdued indicator for running apps in light mode");
 var verticalPinPresentation = TaskbarButtonViewModel.FromPin(new PinnedTaskbarApp("Editor", Environment.ProcessPath!), presentationPreferences with { TaskbarButtonSpacing = TaskbarButtonSpacing.Relaxed }, vertical: true);
 Check(new Thickness(0, 4, 0, 4), verticalPinPresentation.ButtonMargin, "apply selected vertical button spacing in taskbar presentation data");
@@ -627,7 +646,7 @@ try
     var preferencesStore = new DesktopPreferencesStore(preferencesPath);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
@@ -638,6 +657,7 @@ try
     Check(expectedPreferences.TaskbarLayout, loadedPreferences.TaskbarLayout, "persist floating taskbar style");
     Check(true, loadedPreferences.ReplaceNativeTaskbar, "persist native taskbar replacement mode");
     Check(true, loadedPreferences.TaskbarDynamicTransparency, "persist adaptive taskbar transparency");
+    Check(TaskbarButtonEffect.DynamicAura, loadedPreferences.TaskbarButtonEffect, "persist the Dynamic Aura button effect");
     Check(expectedPreferences.TaskbarGrouping, loadedPreferences.TaskbarGrouping, "persist taskbar grouping mode");
     Check(expectedPreferences.TaskbarButtonAlignment, loadedPreferences.TaskbarButtonAlignment, "persist taskbar button alignment");
     preferencesStore.Save(expectedPreferences with { StartWithWindows = true });
@@ -667,6 +687,7 @@ try
     Check(false, preferencesStore.Load().StartWithWindows, "disable sign-in startup for older preference files");
     Check(5, preferencesStore.Load().TaskbarTransparency, "default taskbar transparency for older preference files");
     Check(false, preferencesStore.Load().TaskbarDynamicTransparency, "disable adaptive transparency for older preference files");
+    Check(TaskbarButtonEffect.Accent, preferencesStore.Load().TaskbarButtonEffect, "default older preference files to the Windows accent button effect");
     Check(TaskbarStyle.EdgeToEdge, preferencesStore.Load().TaskbarLayout, "default legacy preferences to a full-edge taskbar");
     Check(TaskbarGroupingMode.Always, preferencesStore.Load().TaskbarGrouping, "default legacy preferences to grouped taskbar buttons");
     Check(TaskbarButtonAlignment.Center, preferencesStore.Load().TaskbarButtonAlignment, "default legacy preferences to centered taskbar buttons");
@@ -674,6 +695,8 @@ try
     Check(TaskbarIconSize.Standard, preferencesStore.Load().TaskbarIconSize, "default legacy preferences to standard taskbar icons");
     Check(TaskbarButtonSpacing.Standard, preferencesStore.Load().TaskbarButtonSpacing, "default legacy preferences to standard button spacing");
     Check(false, preferencesStore.Load().PinnedApps!.Single().IsDirectory, "default old pin records to app launch behavior");
+    File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"TaskbarButtonEffect":99}""");
+    Check(TaskbarButtonEffect.Accent, preferencesStore.Load().TaskbarButtonEffect, "reject an unknown taskbar button effect and fall back to the default");
 
     var profilePath = Path.Combine(temporaryPreferencesDirectory, "appearance-profile.json");
     var profileStore = new ProfileStore();

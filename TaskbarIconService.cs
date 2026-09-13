@@ -13,6 +13,7 @@ public static class TaskbarIconService
     private const uint SHGFI_LARGEICON = 0x000000000;
     private const uint SHGFI_PIDL = 0x000000008;
     private static readonly Dictionary<string, ImageSource?> Cache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, Color?> PrimaryColorCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly object CacheLock = new();
 
     public static ImageSource? LoadIcon(string path)
@@ -24,6 +25,18 @@ public static class TaskbarIconService
             var icon = LoadIconCore(path);
             Cache.Add(path, icon);
             return icon;
+        }
+    }
+
+    public static Color? GetPrimaryColor(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        lock (CacheLock)
+        {
+            if (PrimaryColorCache.TryGetValue(path, out var cached)) return cached;
+            var color = TaskbarAuraColorPolicy.ResolvePrimaryColor(LoadIcon(path));
+            PrimaryColorCache.Add(path, color);
+            return color;
         }
     }
 

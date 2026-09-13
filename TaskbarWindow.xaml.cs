@@ -503,6 +503,7 @@ public partial class TaskbarWindow : Window
 
     private void WindowButton_MouseLeave(object sender, MouseEventArgs e)
     {
+        TaskbarAppButton_MouseLeave(sender, e);
         _previewOpenTimer.Stop();
         _pendingPreviewGroup = null;
         _pendingPreviewTarget = null;
@@ -643,6 +644,25 @@ public partial class TaskbarWindow : Window
 
         _previewWindow?.Close();
         RunningWindowService.ActivateOrMinimize(group.Windows[0]);
+    }
+
+    private void TaskbarAppButton_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (sender is not Button button || button.DataContext is not TaskbarButtonViewModel { DynamicAura: true, AuraBrush: RadialGradientBrush brush } ||
+            button.ActualWidth <= 0 || button.ActualHeight <= 0) return;
+        var point = e.GetPosition(button);
+        var center = new Point(Math.Clamp(point.X / button.ActualWidth, 0, 1), Math.Clamp(point.Y / button.ActualHeight, 0, 1));
+        brush.Center = center;
+        brush.GradientOrigin = center;
+    }
+
+    private void TaskbarAppButton_MouseLeave(object sender, MouseEventArgs e)
+    {
+        if (sender is Button { DataContext: TaskbarButtonViewModel { AuraBrush: RadialGradientBrush brush } })
+        {
+            brush.Center = new Point(0.5, 0.5);
+            brush.GradientOrigin = new Point(0.5, 0.5);
+        }
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e)

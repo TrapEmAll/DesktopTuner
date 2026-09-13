@@ -3,7 +3,7 @@ using System.Windows;
 
 namespace DesktopTuner;
 
-public sealed record TaskbarButtonViewModel(string Label, string ToolTip, ImageSource? Icon, object Target, int IconPixels, bool ShowLabel, Thickness ButtonMargin, Thickness IconMargin, bool IsRunning = false, bool IsActive = false)
+public sealed record TaskbarButtonViewModel(string Label, string ToolTip, ImageSource? Icon, object Target, int IconPixels, bool ShowLabel, Thickness ButtonMargin, Thickness IconMargin, bool IsRunning, bool IsActive, Brush AuraBrush, Brush AuraSolidBrush, bool AuraEnabled, bool DynamicAura)
 {
     public string Initial
     {
@@ -20,11 +20,20 @@ public sealed record TaskbarButtonViewModel(string Label, string ToolTip, ImageS
     public static TaskbarButtonViewModel FromWindowGroup(TaskbarWindowGroup group, DesktopPreferences preferences, bool vertical) =>
         Create(group.Label, group.ToolTip, group, preferences, vertical, group.Windows[0].ExecutablePath, isRunning: true, isActive: group.IsActive);
 
-    private static TaskbarButtonViewModel Create(string label, string toolTip, object target, DesktopPreferences preferences, bool vertical, string? iconPath = null, bool isRunning = false, bool isActive = false) =>
-        new(label, toolTip, TaskbarIconService.LoadIcon(iconPath ?? (target as PinnedTaskbarApp)?.ExecutablePath ?? string.Empty), target,
+    private static TaskbarButtonViewModel Create(string label, string toolTip, object target, DesktopPreferences preferences, bool vertical, string? iconPath = null, bool isRunning = false, bool isActive = false)
+    {
+        var resolvedIconPath = iconPath ?? (target as PinnedTaskbarApp)?.ExecutablePath ?? string.Empty;
+        var icon = TaskbarIconService.LoadIcon(resolvedIconPath);
+        var auraColor = TaskbarIconService.GetPrimaryColor(resolvedIconPath) ?? TaskbarTheme.ReadAccentColor();
+        var auraBrush = TaskbarAuraColorPolicy.CreateBrush(auraColor);
+        var auraSolidBrush = new SolidColorBrush(auraColor);
+        var auraEnabled = preferences.TaskbarButtonEffect != TaskbarButtonEffect.Accent;
+        return new(label, toolTip, icon, target,
             TaskbarIconSizePolicy.GetPixels(preferences.TaskbarIconSize), preferences.TaskbarShowLabels,
             TaskbarButtonSpacingPolicy.GetButtonMargin(preferences.TaskbarButtonSpacing, vertical),
-            preferences.TaskbarShowLabels ? new Thickness(0, 0, 8, 0) : new Thickness(0), isRunning, isActive);
+            preferences.TaskbarShowLabels ? new Thickness(0, 0, 8, 0) : new Thickness(0), isRunning, isActive,
+            auraBrush, auraSolidBrush, auraEnabled, preferences.TaskbarButtonEffect == TaskbarButtonEffect.DynamicAura);
+    }
 }
 
 public static class TaskbarIconSizePolicy

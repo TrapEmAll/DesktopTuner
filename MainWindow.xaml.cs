@@ -48,6 +48,7 @@ public partial class MainWindow : Window
     private TaskbarButtonAlignment _taskbarButtonAlignment = TaskbarButtonAlignment.Center;
     private TaskbarIconSize _taskbarIconSize = TaskbarIconSize.Standard;
     private TaskbarButtonSpacing _taskbarButtonSpacing = TaskbarButtonSpacing.Standard;
+    private TaskbarButtonEffect _taskbarButtonEffect = TaskbarButtonEffect.Accent;
     private bool _taskbarShowLabels = true;
     private bool _taskbarAutoHide;
     private bool _taskbarAutoHideWhenMaximized;
@@ -77,6 +78,7 @@ public partial class MainWindow : Window
         _taskbarLayout = desktopPreferences.TaskbarLayout;
         _taskbarIconSize = desktopPreferences.TaskbarIconSize;
         _taskbarButtonSpacing = desktopPreferences.TaskbarButtonSpacing;
+        _taskbarButtonEffect = desktopPreferences.TaskbarButtonEffect;
         _taskbarShowLabels = desktopPreferences.TaskbarShowLabels;
         _taskbarAutoHide = desktopPreferences.AutoHide;
         _taskbarAutoHideWhenMaximized = desktopPreferences.AutoHideWhenMaximized;
@@ -258,6 +260,22 @@ public partial class MainWindow : Window
             iconSizeRow.Children.Add(iconSizeSelector);
             PageContent.Children.Add(iconSizeRow);
 
+            var buttonEffectRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            buttonEffectRow.Children.Add(new TextBlock { Text = "App button highlight", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+            var buttonEffectSelector = new ComboBox { Width = 230, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
+            buttonEffectSelector.Items.Add(new ComboBoxItem { Content = "Windows accent", Tag = TaskbarButtonEffect.Accent });
+            buttonEffectSelector.Items.Add(new ComboBoxItem { Content = "Aura (app icon color)", Tag = TaskbarButtonEffect.Aura });
+            buttonEffectSelector.Items.Add(new ComboBoxItem { Content = "Dynamic Aura (follows pointer)", Tag = TaskbarButtonEffect.DynamicAura });
+            buttonEffectSelector.SelectedItem = buttonEffectSelector.Items.Cast<ComboBoxItem>().FirstOrDefault(item => (TaskbarButtonEffect)item.Tag == _taskbarButtonEffect);
+            buttonEffectSelector.SelectionChanged += (_, _) =>
+            {
+                if (buttonEffectSelector.SelectedItem is not ComboBoxItem { Tag: TaskbarButtonEffect effect }) return;
+                _taskbarButtonEffect = effect;
+                SaveDesktopPreferences();
+            };
+            buttonEffectRow.Children.Add(buttonEffectSelector);
+            PageContent.Children.Add(buttonEffectRow);
+
             var spacingRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
             spacingRow.Children.Add(new TextBlock { Text = "Button spacing", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
             var spacingSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
@@ -370,7 +388,7 @@ public partial class MainWindow : Window
             var launchButton = new Button { Content = _replaceNativeTaskbar ? "Start replacement taskbar" : "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowTaskbar();
             PageContent.Children.Add(launchButton);
-            var overlayInfo = InfoCard(_replaceNativeTaskbar ? "Experimental taskbar replacement" : "Live taskbar overlay", "Choose an edge, bar size and style, transparency or dynamic translucency, app button labels, icon size, spacing, and optional auto-hide. The custom taskbar lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and opens the native Widgets board. Enable sign-in startup to keep the taskbar running in the background; right-click the bar to reopen Desktop Tuner settings or exit. In replacement mode, the built-in taskbar is hidden only on displays covered by Desktop Tuner and restored when its windows close. Otherwise, the overlay can leave Windows' native notification area visible on supported bottom layouts.");
+            var overlayInfo = InfoCard(_replaceNativeTaskbar ? "Experimental taskbar replacement" : "Live taskbar overlay", "Choose an edge, bar size and style, transparency or dynamic translucency, app button labels, icon size, spacing, and optional auto-hide. Aura highlights use each app icon's primary color; Dynamic Aura moves the highlight with the pointer. The custom taskbar lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and opens the native Widgets board. Enable sign-in startup to keep the taskbar running in the background; right-click the bar to reopen Desktop Tuner settings or exit. In replacement mode, the built-in taskbar is hidden only on displays covered by Desktop Tuner and restored when its windows close. Otherwise, the overlay can leave Windows' native notification area visible on supported bottom layouts.");
             PageContent.Children.Add(overlayInfo);
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);
@@ -805,7 +823,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect);
 
     private bool SavePinnedStartApps(IReadOnlyList<AppEntry> apps)
     {
@@ -863,6 +881,7 @@ public partial class MainWindow : Window
             _taskbarShowLabels = preferences.TaskbarShowLabels;
             _taskbarIconSize = preferences.TaskbarIconSize;
             _taskbarButtonSpacing = preferences.TaskbarButtonSpacing;
+            _taskbarButtonEffect = preferences.TaskbarButtonEffect;
             _startWithWindows = preferences.StartWithWindows;
             _replaceNativeTaskbar = preferences.ReplaceNativeTaskbar;
             if ((displayModeChanged || replacementModeChanged) && _taskbarWindows.Any(window => window.IsVisible))
