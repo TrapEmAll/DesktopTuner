@@ -33,6 +33,7 @@ public partial class ExplorerWindow : Window
     private readonly bool _showHiddenItems;
     private readonly bool _hideFileExtensions;
     private readonly bool _showRecentItems;
+    private readonly ExplorerQuickAccessStore _quickAccessStore;
     private ExplorerSortColumn _sortColumn = ExplorerSortColumn.Name;
     private bool _sortAscending = true;
     private bool _sortExplicitly;
@@ -43,12 +44,14 @@ public partial class ExplorerWindow : Window
         SystemBackdropService.TryApplyMica(this);
     }
 
-    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true)
+    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null)
     {
         InitializeComponent();
         _showHiddenItems = showHiddenItems;
         _hideFileExtensions = hideFileExtensions;
         _showRecentItems = showRecentItems;
+        _quickAccessStore = quickAccessStore ?? new ExplorerQuickAccessStore();
+        RefreshQuickAccessPins();
         var initialLocation = startInThisPc && string.IsNullOrWhiteSpace(initialPath)
             ? new ExplorerLocation(null, IsDriveList: true)
             : string.IsNullOrWhiteSpace(initialPath)
@@ -563,6 +566,80 @@ public partial class ExplorerWindow : Window
         Navigate(new ExplorerLocation(path));
     }
 
+    private void RefreshQuickAccessPins()
+    {
+        QuickAccessPinsPanel.Children.Clear();
+        foreach (var pin in _quickAccessStore.Load())
+        {
+            var button = new Button
+            {
+                Content = new TextBlock { Text = pin.Name, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 138 },
+                Tag = pin.Path,
+                ToolTip = pin.Path,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(10, 8, 6, 8)
+            };
+            button.Click += QuickAccessPin_Click;
+            var menu = new ContextMenu();
+            var removeItem = new MenuItem { Header = "Remove from quick access", Tag = pin.Path };
+            removeItem.Click += RemoveQuickAccessPin_Click;
+            menu.Items.Add(removeItem);
+            button.ContextMenu = menu;
+            QuickAccessPinsPanel.Children.Add(button);
+        }
+    }
+
+    private void QuickAccessPin_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string path }) return;
+        Navigate(new ExplorerLocation(path));
+    }
+
+    private void PinQuickAccess_Click(object sender, RoutedEventArgs e)
+    {
+        if (EntriesList.SelectedItem is not ExplorerEntry { IsDirectory: true, IsDrive: false } entry) return;
+        try
+        {
+            if (!_quickAccessStore.Add(entry.FullPath))
+            {
+                SetStatus("This folder is already pinned or quick access has reached its limit.");
+                return;
+            }
+            RefreshQuickAccessPins();
+            SetStatus($"Pinned {entry.DisplayName} to quick access.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            SetStatus($"Could not pin this folder: {ex.Message}");
+        }
+    }
+
+    private void UnpinQuickAccess_Click(object sender, RoutedEventArgs e)
+    {
+        if (EntriesList.SelectedItem is not ExplorerEntry { IsDirectory: true, IsDrive: false } entry) return;
+        RemoveQuickAccessPin(entry.FullPath);
+    }
+
+    private void RemoveQuickAccessPin_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: string path }) RemoveQuickAccessPin(path);
+    }
+
+    private void RemoveQuickAccessPin(string path)
+    {
+        try
+        {
+            if (!_quickAccessStore.Remove(path)) return;
+            RefreshQuickAccessPins();
+            SetStatus("Removed folder from quick access.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            SetStatus($"Could not remove this quick access folder: {ex.Message}");
+        }
+    }
+
     private void Search_Click(object sender, RoutedEventArgs e) => _ = SearchCurrentFolderAsync(SearchBox.Text);
     private void SearchBox_KeyDown(object sender, KeyEventArgs e)
     {
@@ -1026,6 +1103,12 @@ public partial class ExplorerWindow : Window
         CopyMenuItem.IsEnabled = CutMenuItem.IsEnabled = hasTransferableSelection;
         PasteMenuItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && ClipboardHasFileDrop();
         OpenInNewTabMenuItem.IsEnabled = hasSingleSelection && selection[0].IsDirectory;
+        var selectedDirectory = hasSingleSelection && selection[0].IsDirectory && !selection[0].IsDrive;
+        var isPinned = selectedDirectory && _quickAccessStore.Load().Any(pin => string.Equals(pin.Path, selection[0].FullPath, StringComparison.OrdinalIgnoreCase));
+        PinQuickAccessMenuItem.Visibility = selectedDirectory && !isPinned ? Visibility.Visible : Visibility.Collapsed;
+        PinQuickAccessMenuItem.IsEnabled = selectedDirectory && !isPinned;
+        UnpinQuickAccessMenuItem.Visibility = isPinned ? Visibility.Visible : Visibility.Collapsed;
+        UnpinQuickAccessMenuItem.IsEnabled = isPinned;
         RenameMenuItem.IsEnabled = hasSingleSelection && !selection[0].IsDrive;
         DeleteMenuItem.IsEnabled = hasTransferableSelection;
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open")) is { } openItem)

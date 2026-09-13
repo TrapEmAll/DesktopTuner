@@ -147,16 +147,20 @@
                     <ColumnDefinition Width="1" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Margin="12">
-                    <TextBlock Text="QUICK ACCESS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DesktopSoftTextBrush}" Margin="8,4,0,10" />
-                    <Button Content="Home" Tag="home" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
-                    <Button Content="Desktop" Tag="desktop" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
-                    <Button Content="Documents" Tag="documents" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
-                    <Button Content="Downloads" Tag="downloads" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
-                    <Button Content="Pictures" Tag="pictures" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
-                    <TextBlock Text="THIS PC" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DesktopSoftTextBrush}" Margin="8,18,0,10" />
-                    <Button Content="Local drives" Tag="drives" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
-                </StackPanel>
+                <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12">
+                        <TextBlock Text="QUICK ACCESS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DesktopSoftTextBrush}" Margin="8,4,0,10" />
+                        <Button Content="Home" Tag="home" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
+                        <Button Content="Desktop" Tag="desktop" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
+                        <Button Content="Documents" Tag="documents" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
+                        <Button Content="Downloads" Tag="downloads" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
+                        <Button Content="Pictures" Tag="pictures" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
+                        <TextBlock Text="PINNED FOLDERS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DesktopSoftTextBrush}" Margin="8,18,0,6" />
+                        <StackPanel x:Name="QuickAccessPinsPanel" />
+                        <TextBlock Text="THIS PC" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DesktopSoftTextBrush}" Margin="8,18,0,10" />
+                        <Button Content="Local drives" Tag="drives" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
+                    </StackPanel>
+                </ScrollViewer>
                 <Border Grid.Column="1" Background="{DynamicResource DesktopDividerBrush}" />
                 <DockPanel Grid.Column="2" Margin="16,12,12,12">
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
@@ -172,6 +176,8 @@
                             <ContextMenu Opened="EntriesContextMenu_Opened">
                                 <MenuItem Header="Open" Click="OpenSelected_Click" />
                                 <MenuItem x:Name="OpenInNewTabMenuItem" Header="Open in new tab" Click="OpenInNewTab_Click" />
+                                <MenuItem x:Name="PinQuickAccessMenuItem" Header="Pin to quick access" Click="PinQuickAccess_Click" />
+                                <MenuItem x:Name="UnpinQuickAccessMenuItem" Header="Remove from quick access" Click="UnpinQuickAccess_Click" />
                                 <MenuItem Header="New folder" Click="NewFolder_Click" />
                                 <Separator />
                                 <MenuItem x:Name="CutMenuItem" Header="Cut" InputGestureText="Ctrl+X" IsEnabled="False" Click="Cut_Click" />

@@ -375,6 +375,19 @@ try
 {
     var explorerTestDirectory = Path.Combine(temporaryPreferencesDirectory, "ExplorerOperations");
     Directory.CreateDirectory(explorerTestDirectory);
+    var quickAccessStore = new ExplorerQuickAccessStore(Path.Combine(temporaryPreferencesDirectory, "explorer-quick-access.json"));
+    Check(true, quickAccessStore.Add(explorerTestDirectory), "pin an existing Explorer folder to quick access");
+    Check(false, quickAccessStore.Add(explorerTestDirectory.ToUpperInvariant()), "avoid duplicate quick access pins without regard to path casing");
+    Check(Path.GetFullPath(explorerTestDirectory), quickAccessStore.Load().Single().Path, "persist a quick access folder path");
+    Check("ExplorerOperations", quickAccessStore.Load().Single().Name, "derive the quick access label from its folder name");
+    Check(true, quickAccessStore.Remove(explorerTestDirectory), "remove a folder from quick access");
+    Check(0, quickAccessStore.Load().Count, "persist quick access removals");
+    Check(0, ExplorerQuickAccessCatalog.Normalize([
+        new ExplorerQuickAccessPin("relative", "relative-folder")
+    ]).Count, "reject relative paths from imported quick access pins");
+    var maximumQuickAccessPins = ExplorerQuickAccessCatalog.Normalize(Enumerable.Range(0, ExplorerQuickAccessCatalog.MaximumPins + 1)
+        .Select(index => new ExplorerQuickAccessPin($"Folder {index}", $"C:\\Pinned\\Folder {index}")));
+    Check(ExplorerQuickAccessCatalog.MaximumPins, maximumQuickAccessPins.Count, "bound imported quick access pins");
     var startPlaceTestDirectory = Path.Combine(temporaryPreferencesDirectory, "StartPlaceFlyout");
     Directory.CreateDirectory(startPlaceTestDirectory);
     Directory.CreateDirectory(Path.Combine(startPlaceTestDirectory, "Folder"));
