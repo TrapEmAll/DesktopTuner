@@ -52,18 +52,43 @@ public sealed class AppCatalogService
     public static IReadOnlyList<AppEntry> Search(IEnumerable<AppEntry> entries, string? query = null)
     {
         ArgumentNullException.ThrowIfNull(entries);
-        var matches = entries
-            .DistinctBy(entry => entry.ShortcutPath, StringComparer.OrdinalIgnoreCase)
-            .OrderBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase);
-        if (!string.IsNullOrWhiteSpace(query))
+        var uniqueEntries = entries.DistinctBy(entry => entry.ShortcutPath, StringComparer.OrdinalIgnoreCase).ToList();
+        if (string.IsNullOrWhiteSpace(query))
+            return uniqueEntries.OrderBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+
+        var normalizedQuery = query.Trim();
+        var terms = normalizedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return uniqueEntries
+            .Select(entry => (Entry: entry, Rank: SearchRank(entry, normalizedQuery, terms)))
+            .Where(match => match.Rank >= 0)
+            .OrderBy(match => match.Rank)
+            .ThenBy(match => match.Entry.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(match => match.Entry)
+            .ToList();
+    }
+
+    private static int SearchRank(AppEntry entry, string query, IReadOnlyList<string> terms)
+    {
+        if (string.Equals(entry.Name, query, StringComparison.CurrentCultureIgnoreCase)) return 0;
+        if (entry.Name.StartsWith(query, StringComparison.CurrentCultureIgnoreCase)) return 1;
+        if (terms.All(term => StartsAtWordBoundary(entry.Name, term))) return 2;
+        if (entry.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase)) return 3;
+
+        var category = entry.CategoryPath ?? string.Empty;
+        return terms.All(term => entry.Name.Contains(term, StringComparison.CurrentCultureIgnoreCase) ||
+            category.Contains(term, StringComparison.CurrentCultureIgnoreCase)) ? 4 : -1;
+    }
+
+    private static bool StartsAtWordBoundary(string value, string term)
+    {
+        for (var index = 0; index <= value.Length - term.Length; index++)
         {
-            var normalizedQuery = query.Trim();
-            var terms = normalizedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            matches = matches.Where(entry => terms.All(term => entry.Name.Contains(term, StringComparison.CurrentCultureIgnoreCase)))
-                .OrderBy(entry => entry.Name.StartsWith(normalizedQuery, StringComparison.CurrentCultureIgnoreCase) ? 0 : 1)
-                .ThenBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase);
+            var isBoundary = index == 0 || !char.IsLetterOrDigit(value[index - 1]) ||
+                (char.IsUpper(value[index]) && char.IsLower(value[index - 1]));
+            if (isBoundary && string.Compare(value, index, term, 0, term.Length, StringComparison.CurrentCultureIgnoreCase) == 0)
+                return true;
         }
-        return matches.ToList();
+        return false;
     }
 
     public static IReadOnlyList<StartMenuNode> BuildTree(IEnumerable<AppEntry> entries)

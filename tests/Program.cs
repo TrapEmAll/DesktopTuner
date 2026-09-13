@@ -72,6 +72,19 @@ var largeAppCatalog = Enumerable.Range(0, 55)
     .ToList();
 Check(56, AppCatalogService.Search(largeAppCatalog).Count, "show every app in a large Start menu catalog");
 Check("Zebra Editor", AppCatalogService.Search(largeAppCatalog, " zebra ").Single().Name, "search apps beyond the first 40 catalog entries");
+var rankedSearchResults = AppCatalogService.Search(
+[
+    new AppEntry("TextEditor", "text-editor.lnk"),
+    new AppEntry("Text Editor", "text editor.lnk"),
+    new AppEntry("Editor Pro", "editor-pro.lnk"),
+    new AppEntry("Editor", "editor.lnk"),
+    new AppEntry("Documents", "documents.lnk", CategoryPath: "Creative Tools")
+], "editor");
+Check("Editor", rankedSearchResults[0].Name, "rank an exact app-name search first");
+Check("Editor Pro", rankedSearchResults[1].Name, "rank app-name prefixes before broader matches");
+Check("Text Editor", rankedSearchResults[2].Name, "rank word-boundary matches above mid-word matches");
+Check("TextEditor", rankedSearchResults[3].Name, "match camel-case word boundaries");
+Check("Documents", AppCatalogService.Search([new AppEntry("Documents", "documents.lnk", CategoryPath: "Creative Tools")], "creative tool").Single().Name, "search nested Start menu folder names");
 var folderCatalog = new[]
 {
     new AppEntry("Word", @"C:\Apps\Word.lnk", CategoryPath: @"Office\Editors"),

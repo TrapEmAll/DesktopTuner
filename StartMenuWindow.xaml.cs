@@ -184,10 +184,10 @@ public partial class StartMenuWindow : Window
         AppTree.Visibility = showFolders ? Visibility.Visible : Visibility.Collapsed;
         AppList.Visibility = showFolders ? Visibility.Collapsed : Visibility.Visible;
         AppList.ItemsSource = showFolders ? null : results;
+        AppList.SelectedIndex = showFolders || results.Count == 0 ? -1 : 0;
         ResultsHeading.Text = query.Length > 0 ? "Search results" : showFolders ? "Programs" : "All apps";
         ResultCount.Text = results.Count.ToString();
         EmptyMessage.Visibility = results.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        if (!showFolders && results.Count > 0 && AppList.SelectedIndex < 0) AppList.SelectedIndex = 0;
     }
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
