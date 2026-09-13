@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Width="760" Height="232" MinWidth="250" WindowStyle="None" ResizeMode="NoResize"
         ShowInTaskbar="False" Topmost="True" Background="{DynamicResource TaskbarPreviewSurfaceBrush}" Foreground="{DynamicResource TaskbarForegroundBrush}"
-        FontFamily="Segoe UI Variable Text, Segoe UI" Loaded="Window_Loaded" Closed="Window_Closed"
+        FontFamily="Segoe UI Variable Text, Segoe UI" SourceInitialized="Window_SourceInitialized" Loaded="Window_Loaded" Closed="Window_Closed"
         Deactivated="Window_Deactivated" PreviewKeyDown="Window_PreviewKeyDown">
-    <Border Background="{DynamicResource TaskbarPreviewSurfaceBrush}" BorderBrush="{DynamicResource TaskbarPreviewBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="10">
+    <Border x:Name="PreviewSurface" Background="{DynamicResource TaskbarPreviewSurfaceBrush}" BorderBrush="{DynamicResource TaskbarPreviewBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="10">
         <ScrollViewer x:Name="CardsScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" ScrollChanged="CardsScroller_ScrollChanged">
             <StackPanel x:Name="CardsPanel" Orientation="Horizontal" />
         </ScrollViewer>

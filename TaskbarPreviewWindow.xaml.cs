@@ -91,6 +91,15 @@ public partial class TaskbarPreviewWindow : Window
     public bool Matches(IReadOnlyList<RunningWindow> windows) =>
         _items.Select(item => item.Window.Handle).SequenceEqual(windows.Select(window => window.Handle));
 
+    private void Window_SourceInitialized(object? sender, EventArgs e)
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        SystemBackdropService.TryApplySmallRoundedCorners(handle);
+        if (!SystemBackdropService.TryApplyTransientBackdrop(handle)) return;
+        Background = Brushes.Transparent;
+        PreviewSurface.Background = Brushes.Transparent;
+    }
+
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
         var handle = new WindowInteropHelper(this).Handle;

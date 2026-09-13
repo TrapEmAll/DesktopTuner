@@ -42,7 +42,7 @@ public static class AcrylicContextMenuBehavior
     private static void ApplyMaterial(ContextMenu menu)
     {
         if (!menu.IsOpen || PresentationSource.FromVisual(menu) is not HwndSource source || source.Handle == IntPtr.Zero) return;
-        SystemBackdropService.TryApplyRoundedMenuCorners(source.Handle);
+        SystemBackdropService.TryApplySmallRoundedCorners(source.Handle);
         if (!SystemBackdropService.TryApplyTransientBackdrop(source.Handle)) return;
 
         var state = MenuStates.GetValue(menu, static _ => new MenuState());

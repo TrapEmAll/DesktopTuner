@@ -50,11 +50,11 @@ public static class SystemBackdropService
         {
             var result = SetSystemBackdrop(windowHandle, TransientWindowBackdrop);
             if (result == 0) return true;
-            Trace.TraceInformation($"DWM acrylic backdrop is unavailable for menu window (HRESULT 0x{result:X8}); keeping the solid menu background.");
+            Trace.TraceInformation($"DWM acrylic backdrop is unavailable for a transient window (HRESULT 0x{result:X8}); keeping its solid background.");
         }
         catch (DllNotFoundException ex)
         {
-            Trace.TraceInformation($"DWM is unavailable for a menu window: {ex.Message}");
+            Trace.TraceInformation($"DWM is unavailable for a transient window: {ex.Message}");
         }
         catch (EntryPointNotFoundException ex)
         {
@@ -63,7 +63,7 @@ public static class SystemBackdropService
         return false;
     }
 
-    public static bool TryApplyRoundedMenuCorners(IntPtr windowHandle)
+    public static bool TryApplySmallRoundedCorners(IntPtr windowHandle)
     {
         if (windowHandle == IntPtr.Zero) return false;
         try
@@ -71,15 +71,15 @@ public static class SystemBackdropService
             var preference = SmallRoundedCorners;
             var result = DwmSetWindowAttribute(windowHandle, WindowCornerPreferenceAttribute, ref preference, sizeof(int));
             if (result == 0) return true;
-            Trace.TraceInformation($"DWM rounded menu corners are unavailable (HRESULT 0x{result:X8}).");
+            Trace.TraceInformation($"DWM small rounded corners are unavailable (HRESULT 0x{result:X8}).");
         }
         catch (DllNotFoundException ex)
         {
-            Trace.TraceInformation($"DWM is unavailable for rounded menu corners: {ex.Message}");
+            Trace.TraceInformation($"DWM is unavailable for small rounded corners: {ex.Message}");
         }
         catch (EntryPointNotFoundException ex)
         {
-            Trace.TraceInformation($"DWM rounded menu corners are unavailable: {ex.Message}");
+            Trace.TraceInformation($"DWM small rounded corners are unavailable: {ex.Message}");
         }
         return false;
     }
