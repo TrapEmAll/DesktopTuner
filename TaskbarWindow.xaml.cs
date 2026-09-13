@@ -349,7 +349,7 @@ public partial class TaskbarWindow : Window
     private void UpdateClock()
     {
         var now = DateTime.Now;
-        ClockText.Text = TaskbarClockPolicy.FormatTime(now);
+        ClockText.Text = TaskbarClockPolicy.FormatTime(now, showSeconds: TaskbarClockPolicy.ShouldShowSeconds());
         DateText.Text = TaskbarClockPolicy.FormatDate(now);
     }
 

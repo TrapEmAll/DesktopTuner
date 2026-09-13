@@ -260,6 +260,8 @@ var usCulture = CultureInfo.GetCultureInfo("en-US");
 var ukCulture = CultureInfo.GetCultureInfo("en-GB");
 Check("5:05 PM", TaskbarClockPolicy.FormatTime(clockSample, usCulture), "format the taskbar clock using a 12-hour locale");
 Check("17:05", TaskbarClockPolicy.FormatTime(clockSample, ukCulture), "format the taskbar clock using a 24-hour locale");
+Check("5:05:00 PM", TaskbarClockPolicy.FormatTime(clockSample, usCulture, showSeconds: true), "include seconds using the 12-hour locale's long-time pattern");
+Check("17:05:00", TaskbarClockPolicy.FormatTime(clockSample, ukCulture, showSeconds: true), "include seconds using the 24-hour locale's long-time pattern");
 Check("9/13/2026", TaskbarClockPolicy.FormatDate(clockSample, usCulture), "format the taskbar date using the US regional order");
 Check("13/09/2026", TaskbarClockPolicy.FormatDate(clockSample, ukCulture), "format the taskbar date using the UK regional order");
 Check(new Thickness(1, 0, 1, 0), TaskbarButtonSpacingPolicy.GetButtonMargin(TaskbarButtonSpacing.Compact, false), "apply compact spacing on a horizontal taskbar");
