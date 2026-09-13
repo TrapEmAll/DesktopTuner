@@ -34,10 +34,37 @@ jobs:
       - name: Publish portable Windows app
         run: dotnet publish DesktopTuner.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output artifacts/DesktopTuner --no-restore
 
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build per-user installer
+        shell: pwsh
+        run: |
+          $compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $compiler)) {
+            throw "Inno Setup compiler was not found at $compiler"
+          }
+          $version = dotnet msbuild DesktopTuner.csproj -getProperty:Version
+          if ($LASTEXITCODE -ne 0 -or -not $version) {
+            throw 'Could not read the app version from DesktopTuner.csproj'
+          }
+          & $compiler "/DAppVersion=$version" installer/DesktopTuner.iss
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup compiler exited with code $LASTEXITCODE"
+          }
+
       - name: Upload portable Windows app
         uses: actions/upload-artifact@v7
         with:
           name: DesktopTuner-win-x64-${{ github.sha }}
           path: artifacts/DesktopTuner/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: DesktopTuner-Setup-win-x64-${{ github.sha }}
+          path: artifacts/installer/DesktopTuner-Setup-win-x64.exe
           if-no-files-found: error
           retention-days: 30
