@@ -1,0 +1,103 @@
+<Window x:Class="DesktopTuner.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Desktop Tuner" Height="790" Width="1180" MinHeight="680" MinWidth="980"
+        WindowStartupLocation="CenterScreen" Background="#F4F6FA" Foreground="#172033"
+        FontFamily="Segoe UI Variable Text, Segoe UI">
+    <Window.Resources>
+        <SolidColorBrush x:Key="AccentBrush" Color="#6258D9" />
+        <Style x:Key="NavButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#B9C2D5" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="Margin" Value="0,3" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="NavBorder" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="NavBorder" Property="Background" Value="#252C3D" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="18,11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#35415A" />
+            <Setter Property="BorderBrush" Value="#DCE2EC" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="238"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Border Grid.Column="0" Background="#171D2A">
+            <DockPanel Margin="18,22">
+                <StackPanel DockPanel.Dock="Top">
+                    <StackPanel Orientation="Horizontal" Margin="8,2,0,34">
+                        <Border Width="34" Height="34" CornerRadius="10" Background="#6258D9" Margin="0,0,11,0">
+                            <TextBlock Text="D" Foreground="White" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="DESKTOP TUNER" Foreground="White" FontWeight="Bold" FontSize="13" />
+                            <TextBlock Text="Windows, your way" Foreground="#909BB1" FontSize="11" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock Text="PERSONALIZE" Foreground="#707B91" FontSize="10" FontWeight="Bold" Margin="12,0,0,8" />
+                    <Button Content="▦   Overview" Tag="Overview" Style="{StaticResource NavButton}" Click="Navigate_Click" />
+                    <Button Content="◉   Start menu" Tag="Start" Style="{StaticResource NavButton}" Click="Navigate_Click" />
+                    <Button Content="▰   Taskbar" Tag="Taskbar" Style="{StaticResource NavButton}" Click="Navigate_Click" />
+                    <Button Content="▤   File Explorer" Tag="Explorer" Style="{StaticResource NavButton}" Click="Navigate_Click" />
+                    <TextBlock Text="YOUR SETUP" Foreground="#707B91" FontSize="10" FontWeight="Bold" Margin="12,27,0,8" />
+                    <Button Content="◷   Profiles &amp; restore" Tag="Profiles" Style="{StaticResource NavButton}" Click="Navigate_Click" />
+                </StackPanel>
+                <Border DockPanel.Dock="Bottom" Background="#202838" CornerRadius="10" Padding="12" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Built for Windows 11" Foreground="#E8ECF4" FontSize="12" FontWeight="SemiBold" />
+                        <TextBlock Text="Settings are saved per user and can be restored." Foreground="#9BA6BA" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0" />
+                    </StackPanel>
+                </Border>
+            </DockPanel>
+        </Border>
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions><RowDefinition Height="70"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Border Grid.Row="0" Background="White" BorderBrush="#E7EAF0" BorderThickness="0,0,0,1">
+                <Grid Margin="34,0">
+                    <TextBlock x:Name="Breadcrumb" Text="Overview" VerticalAlignment="Center" Foreground="#5B6475" FontSize="13" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Border Background="#EEF0FF" CornerRadius="12" Padding="10,5" Margin="0,0,10,0"><TextBlock Text="PREVIEW" Foreground="#5148C7" FontSize="10" FontWeight="Bold" /></Border>
+                        <TextBlock Text="Windows 11" Foreground="#697386" VerticalAlignment="Center" FontSize="12" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="PageContent" Margin="38,30,38,24" />
+            </ScrollViewer>
+            <Border Grid.Row="2" Background="White" BorderBrush="#E7EAF0" BorderThickness="0,1,0,0" Padding="30,14">
+                <DockPanel>
+                    <TextBlock x:Name="StatusText" Text="Ready. Changes only apply when you choose Apply." Foreground="#697386" VerticalAlignment="Center" FontSize="12" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Undo last apply" Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" Click="Undo_Click" />
+                        <Button Content="Apply changes" Style="{StaticResource PrimaryButton}" Click="Apply_Click" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
