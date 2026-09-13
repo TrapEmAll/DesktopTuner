@@ -223,11 +223,13 @@ Check(3, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFu
 Check(2, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFull, 2).Count, "group windows when the taskbar is full");
 var editorPin = new PinnedTaskbarApp("Editor", @"C:\Apps\editor.exe");
 CheckTrue(TaskbarWindowGrouping.MatchesPinnedApp(editorPin, runningWindows[1]), "match a running window to its pinned app without case-sensitive path differences");
+Check((nint)1, TaskbarWindowGrouping.SelectPinnedRepresentative(editorPin, [runningWindows[1], runningWindows[0]])!.Handle, "prefer the foreground matching window for a pinned taskbar button");
 var editorShortcutPin = new PinnedTaskbarApp("Editor shortcut", @"C:\Apps\Editor.lnk");
 CheckTrue(TaskbarPinIdentityService.Matches(editorShortcutPin, runningWindows[0], _ => @"C:\Apps\Editor.exe"), "match a running app to the executable target of its pinned shortcut");
 CheckTrue(!TaskbarPinIdentityService.Matches(editorShortcutPin, runningWindows[0], _ => @"C:\Apps\Other.exe"), "keep a shortcut separate when its target is a different executable");
-Check(1, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Never, 10, [editorPin]).Count, "show pinned apps only once instead of duplicating their running windows");
-Check("Mail", TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Never, 10, [editorPin]).Single().ApplicationName, "retain unrelated running apps when hiding pinned duplicates");
+var neverGroupPinnedWindows = TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Never, 10, [editorPin]);
+Check(2, neverGroupPinnedWindows.Count, "show additional windows for pinned apps as separate buttons when grouping is off");
+Check("Document two,Inbox", string.Join(',', neverGroupPinnedWindows.Select(group => group.Windows.Single().Title)), "attach one pinned-app window to its pin and leave each other window separate");
 RunningWindow[] twoMailWindows =
 [
     .. runningWindows,

@@ -961,6 +961,11 @@ public partial class TaskbarWindow : Window
         var openWindows = _windows.Enumerate()
             .Where(window => TaskbarWindowGrouping.MatchesPinnedApp(app, window))
             .ToList();
+        if (_preferences.TaskbarGrouping == TaskbarGroupingMode.Never && openWindows.Count > 1 &&
+            TaskbarWindowGrouping.SelectPinnedRepresentative(app, openWindows) is { } representative)
+        {
+            openWindows = [representative];
+        }
         if (openWindows.Count > 1 && showPreview && sourceButton is not null)
         {
             ShowWindowPreview(new TaskbarWindowGroup(app.Name, app.Name, openWindows), sourceButton, activate: true);

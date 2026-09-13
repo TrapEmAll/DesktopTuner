@@ -14,13 +14,36 @@ public static class TaskbarWindowGrouping
         return group.Windows.FirstOrDefault(window => window.IsForeground) ?? group.Windows.FirstOrDefault();
     }
 
+    public static RunningWindow? SelectPinnedRepresentative(PinnedTaskbarApp app, IEnumerable<RunningWindow> windows)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        ArgumentNullException.ThrowIfNull(windows);
+        var matches = windows.Where(window => MatchesPinnedApp(app, window)).ToList();
+        return matches.FirstOrDefault(window => window.IsForeground) ?? matches.FirstOrDefault();
+    }
+
     public static IReadOnlyList<TaskbarWindowGroup> Create(IEnumerable<RunningWindow> windows, TaskbarGroupingMode mode, int buttonCapacity, IEnumerable<PinnedTaskbarApp>? pinnedApps = null)
     {
         ArgumentNullException.ThrowIfNull(windows);
         if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
 
         var entries = windows.ToList();
-        var remaining = entries.Where(window => pinnedApps is null || !pinnedApps.Any(app => MatchesPinnedApp(app, window))).ToList();
+        var pins = (pinnedApps ?? []).Where(app => !app.IsDirectory).ToList();
+        var attachedWindowHandles = new HashSet<nint>();
+        foreach (var app in pins)
+        {
+            if (mode == TaskbarGroupingMode.Never)
+            {
+                var representative = SelectPinnedRepresentative(app, entries);
+                if (representative is not null) attachedWindowHandles.Add(representative.Handle);
+            }
+            else
+            {
+                foreach (var window in entries.Where(window => MatchesPinnedApp(app, window)))
+                    attachedWindowHandles.Add(window.Handle);
+            }
+        }
+        var remaining = entries.Where(window => !attachedWindowHandles.Contains(window.Handle)).ToList();
         var capacity = Math.Max(1, buttonCapacity);
         var shouldGroup = mode == TaskbarGroupingMode.Always
             || mode == TaskbarGroupingMode.WhenFull && remaining.Count > capacity;
