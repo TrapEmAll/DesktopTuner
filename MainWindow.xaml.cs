@@ -13,6 +13,7 @@ public partial class MainWindow : Window
 {
     private const int StartMenuHotkeyId = 0xD701;
     private const int WM_HOTKEY = 0x0312;
+    private const int WM_DISPLAYCHANGE = 0x007E;
     private const uint MOD_ALT = 0x0001;
     private const uint MOD_CONTROL = 0x0002;
     private const uint VK_SPACE = 0x20;
@@ -26,7 +27,8 @@ public partial class MainWindow : Window
     private string _activePage = "Overview";
     private HwndSource? _windowSource;
     private StartMenuWindow? _startMenuWindow;
-    private TaskbarWindow? _taskbarWindow;
+    private TaskbarDisplay? _startMenuDisplay;
+    private readonly List<TaskbarWindow> _taskbarWindows = [];
     private WindowsKeyStartHook? _windowsKeyHook;
     private TaskbarEdge _taskbarEdge = TaskbarEdge.Bottom;
     private TaskbarSize _taskbarSize = TaskbarSize.Standard;
@@ -34,6 +36,9 @@ public partial class MainWindow : Window
     private List<PinnedTaskbarApp> _pinnedApps = [];
     private bool _replaceWindowsKey;
     private StartMenuStyle _startMenuStyle = StartMenuStyle.Modern;
+    private bool _taskbarOnAllDisplays = true;
+    private bool _closingTaskbars;
+    private bool _displayRefreshPending;
 
     public MainWindow()
     {
@@ -48,6 +53,7 @@ public partial class MainWindow : Window
         _pinnedApps = desktopPreferences.PinnedApps ?? [];
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
         _startMenuStyle = desktopPreferences.StartMenuStyle;
+        _taskbarOnAllDisplays = desktopPreferences.TaskbarOnAllDisplays;
         foreach (var setting in SettingsCatalog.All)
         {
             var value = _settings.Read(setting);
@@ -194,10 +200,14 @@ public partial class MainWindow : Window
             autoHide.Checked += (_, _) => { _taskbarAutoHide = true; SaveDesktopPreferences(); };
             autoHide.Unchecked += (_, _) => { _taskbarAutoHide = false; SaveDesktopPreferences(); };
             PageContent.Children.Add(autoHide);
+            var allDisplays = new CheckBox { Content = "Show the custom taskbar on all displays", IsChecked = _taskbarOnAllDisplays, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
+            allDisplays.Checked += (_, _) => { _taskbarOnAllDisplays = true; SaveDesktopPreferences(); };
+            allDisplays.Unchecked += (_, _) => { _taskbarOnAllDisplays = false; SaveDesktopPreferences(); };
+            PageContent.Children.Add(allDisplays);
             var launchButton = new Button { Content = "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowTaskbar();
             PageContent.Children.Add(launchButton);
-            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, size, and optional auto-hide behavior for the primary display. The overlay lists open windows, activates or minimizes them, opens the companion Start menu, and shows the clock. It covers the Windows taskbar visually while running; closing it reveals the native taskbar again. System tray and multi-monitor support are still parity work.");
+            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, size, and optional auto-hide behavior. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and shows the clock. It covers the Windows taskbar visually while running; closing it reveals the native taskbar again. System tray integration remains parity work.");
             PageContent.Children.Add(overlayInfo);
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);
@@ -397,6 +407,7 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closed(object? sender, EventArgs e)
     {
+        CloseTaskbars();
         var handle = new WindowInteropHelper(this).Handle;
         UnregisterHotKey(handle, StartMenuHotkeyId);
         _windowSource?.RemoveHook(WindowMessageHook);
@@ -406,6 +417,17 @@ public partial class MainWindow : Window
 
     private IntPtr WindowMessageHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if (message == WM_DISPLAYCHANGE && !_displayRefreshPending && _taskbarWindows.Any(window => window.IsVisible))
+        {
+            _displayRefreshPending = true;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                _displayRefreshPending = false;
+                if (!IsVisible || !_taskbarWindows.Any(window => window.IsVisible)) return;
+                CloseTaskbars();
+                ShowTaskbar();
+            }));
+        }
         if (message == WM_HOTKEY && wParam.ToInt32() == StartMenuHotkeyId)
         {
             ShowStartMenu();
@@ -414,7 +436,9 @@ public partial class MainWindow : Window
         return IntPtr.Zero;
     }
 
-    private void ShowStartMenu()
+    private void ShowStartMenu() => ShowStartMenu(null);
+
+    private void ShowStartMenu(TaskbarDisplay? display)
     {
         if (_startMenuWindow is { IsVisible: true })
         {
@@ -422,29 +446,44 @@ public partial class MainWindow : Window
             return;
         }
         _startMenuWindow = new StartMenuWindow(_startMenuStyle);
-        _startMenuWindow.Closed += (_, _) => _startMenuWindow = null;
-        PositionStartMenuWindow();
+        _startMenuDisplay = display;
+        _startMenuWindow.Closed += (_, _) => { _startMenuWindow = null; _startMenuDisplay = null; };
+        if (display is not null)
+            _startMenuWindow.SourceInitialized += (_, _) => PositionStartMenuWindow(display);
         _startMenuWindow.Show();
+        if (display is null) PositionStartMenuWindow();
         _startMenuWindow.Activate();
     }
 
-    private void PositionStartMenuWindow()
+    private void PositionStartMenuWindow(TaskbarDisplay? display = null)
     {
         if (_startMenuWindow is null) return;
+        display ??= _startMenuDisplay;
+        if (display is not null)
+        {
+            var bounds = TaskbarLayoutCalculator.CalculateStartMenu(display, _startMenuWindow.Width, _startMenuWindow.Height,
+                new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide));
+            if (!TaskbarDisplayService.PositionWindow(_startMenuWindow, bounds))
+                System.Diagnostics.Trace.TraceError($"Could not place Start menu on display {display.DeviceName}.");
+            return;
+        }
+
         var workArea = SystemParameters.WorkArea;
-        var edge = _taskbarWindow?.IsVisible == true ? _taskbarEdge : TaskbarEdge.Bottom;
+        var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
+            ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
+        var edge = taskbar is not null ? _taskbarEdge : TaskbarEdge.Bottom;
         switch (edge)
         {
             case TaskbarEdge.Top:
                 _startMenuWindow.Left = workArea.Left + 12;
-                _startMenuWindow.Top = workArea.Top + (_taskbarWindow?.Height ?? 54) + 12;
+                _startMenuWindow.Top = workArea.Top + (taskbar?.Height ?? 54) + 12;
                 break;
             case TaskbarEdge.Left:
-                _startMenuWindow.Left = workArea.Left + (_taskbarWindow?.Width ?? 176) + 12;
+                _startMenuWindow.Left = workArea.Left + (taskbar?.Width ?? 176) + 12;
                 _startMenuWindow.Top = workArea.Top + 12;
                 break;
             case TaskbarEdge.Right:
-                _startMenuWindow.Left = workArea.Right - _startMenuWindow.Width - (_taskbarWindow?.Width ?? 176) - 12;
+                _startMenuWindow.Left = workArea.Right - _startMenuWindow.Width - (taskbar?.Width ?? 176) - 12;
                 _startMenuWindow.Top = workArea.Top + 12;
                 break;
             default:
@@ -456,23 +495,56 @@ public partial class MainWindow : Window
 
     private void ShowTaskbar()
     {
-        if (_taskbarWindow is { IsVisible: true })
+        if (_taskbarWindows.FirstOrDefault(window => window.IsVisible) is { } existing)
         {
-            _taskbarWindow.Activate();
+            existing.Activate();
             return;
         }
-        _taskbarWindow = new TaskbarWindow(ShowStartMenu, () => _startMenuWindow?.IsVisible == true,
-            new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle), SaveDesktopPreferences);
-        _taskbarWindow.Closed += (_, _) => _taskbarWindow = null;
-        _taskbarWindow.Show();
-        SetStatus("Desktop Tuner taskbar overlay is running. Close it to reveal the Windows taskbar.");
+        try
+        {
+            var preferences = CreateDesktopPreferences();
+            foreach (var display in TaskbarDisplayService.Select(_taskbarOnAllDisplays))
+            {
+                var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, SaveDesktopPreferences, CloseTaskbars);
+                taskbar.Closed += (_, _) =>
+                {
+                    _taskbarWindows.Remove(taskbar);
+                    if (!_closingTaskbars) CloseTaskbars();
+                };
+                _taskbarWindows.Add(taskbar);
+                taskbar.Show();
+            }
+            SetStatus(_taskbarOnAllDisplays
+                ? "Desktop Tuner taskbar overlays are running on all displays. Close one to reveal the Windows taskbar everywhere."
+                : "Desktop Tuner taskbar overlay is running on the primary display. Close it to reveal the Windows taskbar.");
+        }
+        catch (Exception ex)
+        {
+            CloseTaskbars();
+            MessageBox.Show(this, ex.Message, "Could not show taskbar overlays", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
+
+    private void CloseTaskbars()
+    {
+        if (_closingTaskbars) return;
+        _closingTaskbars = true;
+        try
+        {
+            foreach (var taskbar in _taskbarWindows.ToArray())
+                if (taskbar.IsVisible) taskbar.Close();
+            _taskbarWindows.Clear();
+        }
+        finally { _closingTaskbars = false; }
+    }
+
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays);
 
     private void SaveDesktopPreferences()
     {
         try
         {
-            SaveDesktopPreferences(new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle));
+            SaveDesktopPreferences(CreateDesktopPreferences());
         }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not save taskbar preferences", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
@@ -481,6 +553,7 @@ public partial class MainWindow : Window
     {
         try
         {
+            var displayModeChanged = _taskbarOnAllDisplays != preferences.TaskbarOnAllDisplays;
             _preferences.Save(preferences);
             _taskbarEdge = preferences.TaskbarEdge;
             _taskbarSize = preferences.TaskbarSize;
@@ -488,7 +561,16 @@ public partial class MainWindow : Window
             _pinnedApps = preferences.PinnedApps ?? [];
             _replaceWindowsKey = preferences.ReplaceWindowsKey;
             _startMenuStyle = preferences.StartMenuStyle;
-            _taskbarWindow?.SetPreferences(preferences);
+            _taskbarOnAllDisplays = preferences.TaskbarOnAllDisplays;
+            if (displayModeChanged && _taskbarWindows.Any(window => window.IsVisible))
+            {
+                CloseTaskbars();
+                ShowTaskbar();
+            }
+            else
+            {
+                foreach (var taskbar in _taskbarWindows.ToArray()) taskbar.SetPreferences(preferences);
+            }
             _startMenuWindow?.SetStyle(_startMenuStyle);
             SetStatus("Desktop preferences saved.");
         }

@@ -13,23 +13,36 @@ public partial class TaskbarWindow : Window
     private readonly RunningWindowService _windows = new();
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
     private readonly DispatcherTimer _autoHideTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
-    private readonly Action _showStartMenu;
+    private readonly Action<TaskbarDisplay> _showStartMenu;
     private readonly Func<bool> _isStartMenuVisible;
     private readonly Action<DesktopPreferences> _persistPreferences;
+    private readonly Action _closeAllTaskbars;
     private DesktopPreferences _preferences = new(TaskbarEdge.Bottom);
     private TaskbarEdge _edge;
     private TaskbarSize _size;
     private bool _autoHide;
     private bool _collapsed;
+    private bool _nativeReady;
 
-    public TaskbarWindow(Action showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, Action<DesktopPreferences> persistPreferences)
+    public TaskbarDisplay Display { get; private set; }
+
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars)
     {
         InitializeComponent();
+        Display = display;
         _showStartMenu = showStartMenu;
         _isStartMenuVisible = isStartMenuVisible;
         _persistPreferences = persistPreferences;
+        _closeAllTaskbars = closeAllTaskbars;
         _refreshTimer.Tick += (_, _) => RefreshWindows();
         _autoHideTimer.Tick += (_, _) => AutoHideTimer_Tick();
+        SourceInitialized += (_, _) =>
+        {
+            _nativeReady = true;
+            ApplyLayout();
+            Display = TaskbarDisplayService.ReadWindowDpi(Display, this);
+            ApplyLayout();
+        };
         SetPreferences(preferences);
     }
 
@@ -47,14 +60,12 @@ public partial class TaskbarWindow : Window
 
     private void ApplyLayout()
     {
-        var screenWidth = SystemParameters.PrimaryScreenWidth;
-        var screenHeight = SystemParameters.PrimaryScreenHeight;
-        var bounds = TaskbarLayoutCalculator.Calculate(screenWidth, screenHeight, new DesktopPreferences(_edge, _size, _autoHide), _collapsed);
+        var bounds = TaskbarLayoutCalculator.Calculate(Display, new DesktopPreferences(_edge, _size, _autoHide), _collapsed);
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
-        Left = bounds.Left;
-        Top = bounds.Top;
-        Width = bounds.Width;
-        Height = bounds.Height;
+        Width = bounds.Width / Display.ScaleX;
+        Height = bounds.Height / Display.ScaleY;
+        if (_nativeReady && !TaskbarDisplayService.PositionWindow(this, bounds))
+            Trace.TraceError($"Could not place taskbar on display {Display.DeviceName}.");
         LayoutGrid.ColumnDefinitions.Clear();
         LayoutGrid.RowDefinitions.Clear();
         if (vertical)
@@ -115,7 +126,10 @@ public partial class TaskbarWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        ApplyLayout();
+        Display = TaskbarDisplayService.ReadWindowDpi(Display, this);
         RefreshWindows();
+        ApplyLayout();
         UpdateClock();
         _refreshTimer.Start();
         if (_autoHide) _autoHideTimer.Start();
@@ -201,7 +215,7 @@ public partial class TaskbarWindow : Window
         _autoHideTimer.Stop();
     }
 
-    private void Start_Click(object sender, RoutedEventArgs e) => _showStartMenu();
+    private void Start_Click(object sender, RoutedEventArgs e) => _showStartMenu(Display);
 
     private void WindowButton_Click(object sender, RoutedEventArgs e)
     {
@@ -257,5 +271,5 @@ public partial class TaskbarWindow : Window
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open Settings", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
-    private void CloseBar_Click(object sender, RoutedEventArgs e) => Close();
+    private void CloseBar_Click(object sender, RoutedEventArgs e) => _closeAllTaskbars();
 }

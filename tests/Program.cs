@@ -1,12 +1,25 @@
 using DesktopTuner;
 
 var count = 0;
+Check(false, new DesktopPreferences(TaskbarEdge.Bottom).TaskbarOnAllDisplays, "preserve the primary-display behavior for older preference data");
 Check(new TaskbarBounds(0, 1026, 1920, 54), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom), false), "bottom, standard");
 Check(new TaskbarBounds(0, 0, 1920, 46), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Top, TaskbarSize.Small), false), "top, small");
 Check(new TaskbarBounds(0, 0, 204, 1080), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Left, TaskbarSize.Large), false), "left, large");
 Check(new TaskbarBounds(1744, 0, 176, 1080), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Right), false), "right, standard");
 Check(new TaskbarBounds(1916, 0, 4, 1080), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Right), true), "right, collapsed");
 Check(new TaskbarBounds(0, 1076, 1920, 4), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom), true), "bottom, collapsed");
+var secondaryDisplay = new TaskbarDisplay("DISPLAY2", -1920, -200, 1920, 1080, false, 1.5, 1.5);
+var primaryDisplay = new TaskbarDisplay("DISPLAY1", 0, 0, 2560, 1440, true, 1.25, 1.25);
+var secondaryBar = TaskbarLayoutCalculator.Calculate(secondaryDisplay, new(TaskbarEdge.Bottom), false);
+Check(-1920d, secondaryBar.Left, "place taskbar on a monitor with negative desktop coordinates");
+Check(799d, secondaryBar.Top, "scale taskbar thickness for a high-DPI display");
+Check(1920d, secondaryBar.Width, "span the taskbar across the selected monitor only");
+Check(81d, secondaryBar.Height, "scale the taskbar height in physical pixels");
+var secondaryStart = TaskbarLayoutCalculator.CalculateStartMenu(secondaryDisplay, 470, 650, new(TaskbarEdge.Bottom));
+Check(-1902d, secondaryStart.Left, "anchor Start menu to the selected secondary display");
+Check(-188d, secondaryStart.Top, "keep Start menu within display bounds above its taskbar");
+Check(2, TaskbarDisplayService.Select([secondaryDisplay, primaryDisplay], true).Count, "select all connected displays");
+Check("DISPLAY1", TaskbarDisplayService.Select([secondaryDisplay, primaryDisplay], false).Single().DeviceName, "select only the primary display");
 CheckTrue(TaskbarAutoHidePolicy.ShouldCollapse(true, false, false), "auto-hide collapses when idle");
 CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(false, false, false), "auto-hide respects disabled state");
 CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(true, true, false), "auto-hide stays expanded while pointer is over it");
@@ -54,16 +67,20 @@ var temporaryPreferencesDirectory = Path.Combine(Path.GetTempPath(), $"DesktopTu
 var preferencesPath = Path.Combine(temporaryPreferencesDirectory, "preferences.json");
 try
 {
+    var freshPreferencesStore = new DesktopPreferencesStore(Path.Combine(temporaryPreferencesDirectory, "new-install.json"));
+    Check(true, freshPreferencesStore.Load().TaskbarOnAllDisplays, "enable all displays by default for a new installation");
     var preferencesStore = new DesktopPreferencesStore(preferencesPath);
-    var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true, [], true, StartMenuStyle.Classic);
+    var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true, [], true, StartMenuStyle.Classic, false);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
     Check(expectedPreferences.TaskbarSize, loadedPreferences.TaskbarSize, "persist taskbar size");
     Check(expectedPreferences.StartMenuStyle, loadedPreferences.StartMenuStyle, "persist Start menu style");
+    Check(expectedPreferences.TaskbarOnAllDisplays, loadedPreferences.TaskbarOnAllDisplays, "persist taskbar display coverage");
 
     File.WriteAllText(preferencesPath, "{\"TaskbarEdge\":\"Bottom\"}");
     Check(StartMenuStyle.Modern, preferencesStore.Load().StartMenuStyle, "default legacy preferences to the Modern Start menu");
+    Check(false, preferencesStore.Load().TaskbarOnAllDisplays, "keep legacy taskbar preferences on the primary display");
 
     var profilePath = Path.Combine(temporaryPreferencesDirectory, "appearance-profile.json");
     var profileStore = new ProfileStore();

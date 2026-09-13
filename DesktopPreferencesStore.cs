@@ -7,7 +7,7 @@ public enum TaskbarEdge { Bottom, Top, Left, Right }
 public enum TaskbarSize { Small, Standard, Large }
 public enum StartMenuStyle { Modern, Classic, Compact }
 public sealed record PinnedTaskbarApp(string Name, string ExecutablePath);
-public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern);
+public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern, bool TaskbarOnAllDisplays = false);
 
 public sealed class DesktopPreferencesStore
 {
@@ -20,7 +20,7 @@ public sealed class DesktopPreferencesStore
 
     public DesktopPreferences Load()
     {
-        if (!File.Exists(_path)) return new DesktopPreferences(TaskbarEdge.Bottom);
+        if (!File.Exists(_path)) return new DesktopPreferences(TaskbarEdge.Bottom, TaskbarOnAllDisplays: true);
         try
         {
             var value = JsonSerializer.Deserialize<DesktopPreferences>(File.ReadAllText(_path));
