@@ -5,7 +5,7 @@ A native Windows 11 desktop-personalization starter focused on the Start menu, t
 ## What works in this build
 
 - Opens a searchable Start-style app launcher from Ctrl+Alt+Space or the Start settings page. It indexes the user's and shared Start menu shortcuts and can open Documents, Downloads, and Windows Settings.
-- Opens a primary-monitor taskbar overlay on any edge with live top-level window switching, minimize commands, a clock, and a shortcut to the companion Start menu. The chosen edge persists between app launches.
+- Opens a primary-monitor taskbar overlay on any edge with live top-level window switching, minimize commands, a clock, and a shortcut to the companion Start menu. Edge, size, and auto-hide preferences persist between app launches.
 - Adjusts eight per-user Windows settings across Start, taskbar, and File Explorer, including an experimental classic context-menu switch.
 - Saves and imports portable JSON profiles. Import loads choices for review and never applies them automatically.
 - Captures the exact prior registry values before applying and provides one-step undo for the last successful apply.
@@ -24,6 +24,7 @@ Requires the .NET 10 SDK and Windows Desktop targeting pack.
 dotnet restore --configfile NuGet.Config
 dotnet build --no-restore
 dotnet run --no-restore
+dotnet run --project tests/DesktopTuner.Tests.csproj
 ```
 
 The app targets `net10.0-windows` and uses WPF with no third-party package dependencies.

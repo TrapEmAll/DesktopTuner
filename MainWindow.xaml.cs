@@ -28,6 +28,8 @@ public partial class MainWindow : Window
     private StartMenuWindow? _startMenuWindow;
     private TaskbarWindow? _taskbarWindow;
     private TaskbarEdge _taskbarEdge = TaskbarEdge.Bottom;
+    private TaskbarSize _taskbarSize = TaskbarSize.Standard;
+    private bool _taskbarAutoHide;
 
     public MainWindow()
     {
@@ -35,7 +37,10 @@ public partial class MainWindow : Window
         SourceInitialized += MainWindow_SourceInitialized;
         Closed += MainWindow_Closed;
         _settings = new RegistrySettingsService(_profileStore);
-        _taskbarEdge = _preferences.Load().TaskbarEdge;
+        var desktopPreferences = _preferences.Load();
+        _taskbarEdge = desktopPreferences.TaskbarEdge;
+        _taskbarSize = desktopPreferences.TaskbarSize;
+        _taskbarAutoHide = desktopPreferences.AutoHide;
         foreach (var setting in SettingsCatalog.All)
         {
             var value = _settings.Read(setting);
@@ -137,20 +142,35 @@ public partial class MainWindow : Window
             {
                 if (edgeSelector.SelectedItem is not ComboBoxItem { Tag: TaskbarEdge edge }) return;
                 _taskbarEdge = edge;
-                try
-                {
-                    _preferences.Save(new DesktopPreferences(edge));
-                    _taskbarWindow?.SetEdge(edge);
-                    SetStatus($"Taskbar overlay position saved: {edge.ToString().ToLowerInvariant()}.");
-                }
-                catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not save taskbar position", MessageBoxButton.OK, MessageBoxImage.Error); }
+                SaveDesktopPreferences();
             };
             edgeRow.Children.Add(edgeSelector);
             PageContent.Children.Add(edgeRow);
+
+            var densityRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            densityRow.Children.Add(new TextBlock { Text = "Taskbar size", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+            var sizeSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
+            sizeSelector.Items.Add(new ComboBoxItem { Content = "Small", Tag = TaskbarSize.Small });
+            sizeSelector.Items.Add(new ComboBoxItem { Content = "Standard", Tag = TaskbarSize.Standard });
+            sizeSelector.Items.Add(new ComboBoxItem { Content = "Large", Tag = TaskbarSize.Large });
+            sizeSelector.SelectedIndex = (int)_taskbarSize;
+            sizeSelector.SelectionChanged += (_, _) =>
+            {
+                if (sizeSelector.SelectedItem is not ComboBoxItem { Tag: TaskbarSize size }) return;
+                _taskbarSize = size;
+                SaveDesktopPreferences();
+            };
+            densityRow.Children.Add(sizeSelector);
+            PageContent.Children.Add(densityRow);
+
+            var autoHide = new CheckBox { Content = "Automatically hide the custom taskbar", IsChecked = _taskbarAutoHide, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
+            autoHide.Checked += (_, _) => { _taskbarAutoHide = true; SaveDesktopPreferences(); };
+            autoHide.Unchecked += (_, _) => { _taskbarAutoHide = false; SaveDesktopPreferences(); };
+            PageContent.Children.Add(autoHide);
             var launchButton = new Button { Content = "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowTaskbar();
             PageContent.Children.Add(launchButton);
-            var overlayInfo = InfoCard("Live taskbar overlay", "Choose the top, bottom, left, or right edge of the primary display. The overlay lists open windows, activates or minimizes them, opens the companion Start menu, and shows the clock. It covers the Windows taskbar visually while running; closing it reveals the native taskbar again. System tray and multi-monitor support are still parity work.");
+            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, size, and optional auto-hide behavior for the primary display. The overlay lists open windows, activates or minimizes them, opens the companion Start menu, and shows the clock. It covers the Windows taskbar visually while running; closing it reveals the native taskbar again. System tray and multi-monitor support are still parity work.");
             PageContent.Children.Add(overlayInfo);
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);
@@ -380,10 +400,23 @@ public partial class MainWindow : Window
             _taskbarWindow.Activate();
             return;
         }
-        _taskbarWindow = new TaskbarWindow(ShowStartMenu, _taskbarEdge);
+        _taskbarWindow = new TaskbarWindow(ShowStartMenu, () => _startMenuWindow?.IsVisible == true,
+            new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide));
         _taskbarWindow.Closed += (_, _) => _taskbarWindow = null;
         _taskbarWindow.Show();
         SetStatus("Desktop Tuner taskbar overlay is running. Close it to reveal the Windows taskbar.");
+    }
+
+    private void SaveDesktopPreferences()
+    {
+        try
+        {
+            var preferences = new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide);
+            _preferences.Save(preferences);
+            _taskbarWindow?.SetPreferences(preferences);
+            SetStatus("Taskbar preferences saved.");
+        }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not save taskbar preferences", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     [DllImport("user32.dll", SetLastError = true)]

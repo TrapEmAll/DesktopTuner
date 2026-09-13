@@ -4,7 +4,8 @@ using System.Text.Json;
 namespace DesktopTuner;
 
 public enum TaskbarEdge { Bottom, Top, Left, Right }
-public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge);
+public enum TaskbarSize { Small, Standard, Large }
+public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false);
 
 public sealed class DesktopPreferencesStore
 {
@@ -16,7 +17,9 @@ public sealed class DesktopPreferencesStore
         try
         {
             var value = JsonSerializer.Deserialize<DesktopPreferences>(File.ReadAllText(_path));
-            return value is not null && Enum.IsDefined(value.TaskbarEdge) ? value : new DesktopPreferences(TaskbarEdge.Bottom);
+            return value is not null && Enum.IsDefined(value.TaskbarEdge) && Enum.IsDefined(value.TaskbarSize)
+                ? value
+                : new DesktopPreferences(TaskbarEdge.Bottom);
         }
         catch (JsonException) { return new DesktopPreferences(TaskbarEdge.Bottom); }
         catch (IOException) { return new DesktopPreferences(TaskbarEdge.Bottom); }
