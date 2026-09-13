@@ -52,6 +52,7 @@ public partial class MainWindow : Window
     private bool _taskbarAutoHide;
     private bool _taskbarAutoHideWhenMaximized;
     private int _taskbarTransparency = 5;
+    private bool _taskbarDynamicTransparency;
     private List<PinnedTaskbarApp> _pinnedApps = [];
     private List<AppEntry> _pinnedStartApps = [];
     private bool _replaceWindowsKey;
@@ -80,6 +81,7 @@ public partial class MainWindow : Window
         _taskbarAutoHide = desktopPreferences.AutoHide;
         _taskbarAutoHideWhenMaximized = desktopPreferences.AutoHideWhenMaximized;
         _taskbarTransparency = desktopPreferences.TaskbarTransparency;
+        _taskbarDynamicTransparency = desktopPreferences.TaskbarDynamicTransparency;
         _pinnedApps = desktopPreferences.PinnedApps ?? [];
         _pinnedStartApps = StartPinCatalog.Normalize(desktopPreferences.PinnedStartApps).ToList();
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
@@ -309,6 +311,21 @@ public partial class MainWindow : Window
             transparencyRow.Children.Add(transparencySelector);
             PageContent.Children.Add(transparencyRow);
 
+            var dynamicTransparency = new CheckBox
+            {
+                Content = new TextBlock
+                {
+                    Text = "Use selected transparency while a maximized window covers this display; keep the taskbar solid on the desktop",
+                    TextWrapping = TextWrapping.Wrap
+                },
+                IsChecked = _taskbarDynamicTransparency,
+                Margin = new Thickness(0, 0, 0, 16),
+                FontSize = 13
+            };
+            dynamicTransparency.Checked += (_, _) => { _taskbarDynamicTransparency = true; SaveDesktopPreferences(); };
+            dynamicTransparency.Unchecked += (_, _) => { _taskbarDynamicTransparency = false; SaveDesktopPreferences(); };
+            PageContent.Children.Add(dynamicTransparency);
+
             var autoHide = new CheckBox { Content = "Automatically hide the custom taskbar", IsChecked = _taskbarAutoHide, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
             autoHide.Checked += (_, _) => { _taskbarAutoHide = true; SaveDesktopPreferences(); };
             autoHide.Unchecked += (_, _) => { _taskbarAutoHide = false; SaveDesktopPreferences(); };
@@ -353,7 +370,7 @@ public partial class MainWindow : Window
             var launchButton = new Button { Content = _replaceNativeTaskbar ? "Start replacement taskbar" : "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowTaskbar();
             PageContent.Children.Add(launchButton);
-            var overlayInfo = InfoCard(_replaceNativeTaskbar ? "Experimental taskbar replacement" : "Live taskbar overlay", "Choose an edge, bar size and style, transparency, app button labels, icon size, spacing, and optional auto-hide. The custom taskbar lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and opens the native Widgets board. Enable sign-in startup to keep the taskbar running in the background; right-click the bar to reopen Desktop Tuner settings or exit. In replacement mode, the built-in taskbar is hidden only on displays covered by Desktop Tuner and restored when its windows close. Otherwise, the overlay can leave Windows' native notification area visible on supported bottom layouts.");
+            var overlayInfo = InfoCard(_replaceNativeTaskbar ? "Experimental taskbar replacement" : "Live taskbar overlay", "Choose an edge, bar size and style, transparency or dynamic translucency, app button labels, icon size, spacing, and optional auto-hide. The custom taskbar lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and opens the native Widgets board. Enable sign-in startup to keep the taskbar running in the background; right-click the bar to reopen Desktop Tuner settings or exit. In replacement mode, the built-in taskbar is hidden only on displays covered by Desktop Tuner and restored when its windows close. Otherwise, the overlay can leave Windows' native notification area visible on supported bottom layouts.");
             PageContent.Children.Add(overlayInfo);
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);
@@ -788,7 +805,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency);
 
     private bool SavePinnedStartApps(IReadOnlyList<AppEntry> apps)
     {
@@ -834,6 +851,7 @@ public partial class MainWindow : Window
             _taskbarAutoHide = preferences.AutoHide;
             _taskbarAutoHideWhenMaximized = preferences.AutoHideWhenMaximized;
             _taskbarTransparency = preferences.TaskbarTransparency;
+            _taskbarDynamicTransparency = preferences.TaskbarDynamicTransparency;
             _pinnedApps = preferences.PinnedApps ?? [];
             _pinnedStartApps = StartPinCatalog.Normalize(preferences.PinnedStartApps).ToList();
             _replaceWindowsKey = preferences.ReplaceWindowsKey;

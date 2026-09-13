@@ -93,6 +93,9 @@ Check((byte)128, TaskbarTransparencyPolicy.GetAlpha(50), "convert fifty percent 
 Check((byte)77, TaskbarTransparencyPolicy.GetAlpha(100), "bound taskbar transparency to retain a visible backdrop");
 Check(0, TaskbarTransparencyPolicy.Clamp(-10), "clamp negative transparency values");
 Check(70, TaskbarTransparencyPolicy.Clamp(100), "cap transparency to preserve taskbar contrast");
+Check(30, TaskbarTransparencyPolicy.GetEffectiveTransparency(30, dynamicTransparency: false, maximizedWindowOnDisplay: false), "keep the configured transparency when adaptive mode is off");
+Check(0, TaskbarTransparencyPolicy.GetEffectiveTransparency(30, dynamicTransparency: true, maximizedWindowOnDisplay: false), "make the taskbar solid on the desktop in adaptive mode");
+Check(30, TaskbarTransparencyPolicy.GetEffectiveTransparency(30, dynamicTransparency: true, maximizedWindowOnDisplay: true), "apply the selected transparency when a maximized app covers the display");
 var systemAccent = TaskbarTheme.ResolveAccentBrushes(0xFF336699);
 Check("#FF336699", systemAccent.Accent, "read DWM colorization values as Windows accent RGB");
 Check("#FF264C73", systemAccent.Fallback, "darken the Windows accent for white taskbar fallback icons");
@@ -570,7 +573,7 @@ try
     var preferencesStore = new DesktopPreferencesStore(preferencesPath);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk")], ReplaceNativeTaskbar: true);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
@@ -580,6 +583,7 @@ try
     Check(expectedPreferences.TaskbarOnAllDisplays, loadedPreferences.TaskbarOnAllDisplays, "persist taskbar display coverage");
     Check(expectedPreferences.TaskbarLayout, loadedPreferences.TaskbarLayout, "persist floating taskbar style");
     Check(true, loadedPreferences.ReplaceNativeTaskbar, "persist native taskbar replacement mode");
+    Check(true, loadedPreferences.TaskbarDynamicTransparency, "persist adaptive taskbar transparency");
     Check(expectedPreferences.TaskbarGrouping, loadedPreferences.TaskbarGrouping, "persist taskbar grouping mode");
     Check(expectedPreferences.TaskbarButtonAlignment, loadedPreferences.TaskbarButtonAlignment, "persist taskbar button alignment");
     preferencesStore.Save(expectedPreferences with { StartWithWindows = true });
@@ -608,6 +612,7 @@ try
     Check(false, preferencesStore.Load().ReplaceNativeTaskbar, "keep native taskbar replacement disabled for legacy preferences");
     Check(false, preferencesStore.Load().StartWithWindows, "disable sign-in startup for older preference files");
     Check(5, preferencesStore.Load().TaskbarTransparency, "default taskbar transparency for older preference files");
+    Check(false, preferencesStore.Load().TaskbarDynamicTransparency, "disable adaptive transparency for older preference files");
     Check(TaskbarStyle.EdgeToEdge, preferencesStore.Load().TaskbarLayout, "default legacy preferences to a full-edge taskbar");
     Check(TaskbarGroupingMode.Always, preferencesStore.Load().TaskbarGrouping, "default legacy preferences to grouped taskbar buttons");
     Check(TaskbarButtonAlignment.Center, preferencesStore.Load().TaskbarButtonAlignment, "default legacy preferences to centered taskbar buttons");

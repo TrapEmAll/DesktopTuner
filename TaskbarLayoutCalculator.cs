@@ -125,6 +125,9 @@ public static class TaskbarTransparencyPolicy
 
     public static int Clamp(int transparencyPercent) => Math.Clamp(transparencyPercent, 0, MaximumTransparency);
 
+    public static int GetEffectiveTransparency(int transparencyPercent, bool dynamicTransparency, bool maximizedWindowOnDisplay) =>
+        dynamicTransparency && !maximizedWindowOnDisplay ? 0 : Clamp(transparencyPercent);
+
     public static byte GetAlpha(int transparencyPercent) =>
         (byte)Math.Round(byte.MaxValue * (100 - Clamp(transparencyPercent)) / 100d, MidpointRounding.AwayFromZero);
 }

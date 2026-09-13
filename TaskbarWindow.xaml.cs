@@ -95,7 +95,7 @@ public partial class TaskbarWindow : Window
     private void ApplyLayout()
     {
         var layoutPreferences = _preferences with { TaskbarEdge = _edge, TaskbarSize = _size, AutoHide = _autoHide };
-        RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, _preferences.TaskbarTransparency);
+        RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, GetEffectiveTransparency());
         RootBorder.BorderBrush = TaskbarTheme.GetBrush("TaskbarBorderBrush");
         var bounds = TaskbarLayoutCalculator.Calculate(Display, layoutPreferences, _collapsed);
         var trayBounds = _preferences.ReplaceNativeTaskbar ? null : NativeTaskbarTrayService.FindTrayBounds(Display);
@@ -176,7 +176,7 @@ public partial class TaskbarWindow : Window
         if (_preferences.TaskbarLayout == TaskbarStyle.Floating)
         {
             RootBorder.CornerRadius = new CornerRadius(14);
-            RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, _preferences.TaskbarTransparency);
+            RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, GetEffectiveTransparency());
             RootBorder.BorderThickness = new Thickness(1);
             ResetSegments();
         }
@@ -193,7 +193,7 @@ public partial class TaskbarWindow : Window
         else
         {
             RootBorder.CornerRadius = new CornerRadius(0);
-            RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, _preferences.TaskbarTransparency);
+            RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, GetEffectiveTransparency());
             RootBorder.BorderBrush = TaskbarTheme.GetBrush("TaskbarBorderBrush");
             RootBorder.BorderThickness = vertical
                 ? (_edge == TaskbarEdge.Left ? new Thickness(0, 0, 1, 0) : new Thickness(1, 0, 0, 0))
@@ -217,7 +217,7 @@ public partial class TaskbarWindow : Window
 
     private void StyleSegment(Border segment, bool vertical)
     {
-        segment.Background = TaskbarTheme.CreateBackground(_isDark, _preferences.TaskbarTransparency);
+        segment.Background = TaskbarTheme.CreateBackground(_isDark, GetEffectiveTransparency());
         segment.BorderBrush = TaskbarTheme.GetBrush("TaskbarSegmentBorderBrush");
         segment.BorderThickness = new Thickness(1);
         segment.CornerRadius = new CornerRadius(11);
@@ -273,11 +273,13 @@ public partial class TaskbarWindow : Window
         var windows = _windowOrder.Synchronize(_windows.Enumerate());
         var wasMaximizedWindowOnDisplay = _maximizedWindowOnDisplay;
         _maximizedWindowOnDisplay = TaskbarAutoHidePolicy.HasMaximizedWindowOnDisplay(windows, Display);
+        var layoutChanged = _preferences.TaskbarDynamicTransparency && wasMaximizedWindowOnDisplay != _maximizedWindowOnDisplay;
         if (wasMaximizedWindowOnDisplay && !_maximizedWindowOnDisplay && !_autoHide && _collapsed)
         {
             _collapsed = false;
-            ApplyLayout();
+            layoutChanged = true;
         }
+        if (layoutChanged) ApplyLayout();
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         var pinnedApps = _preferences.PinnedApps!;
         PinnedItems.ItemsSource = pinnedApps.Select(app =>
@@ -324,6 +326,9 @@ public partial class TaskbarWindow : Window
         return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / buttonSpan));
     }
 
+    private int GetEffectiveTransparency() => TaskbarTransparencyPolicy.GetEffectiveTransparency(
+        _preferences.TaskbarTransparency, _preferences.TaskbarDynamicTransparency, _maximizedWindowOnDisplay);
+
     private void UpdateClock()
     {
         var now = DateTime.Now;
@@ -351,7 +356,7 @@ public partial class TaskbarWindow : Window
         e.Effects = canPin ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
         RootBorder.BorderBrush = canPin ? TaskbarTheme.GetBrush("TaskbarAccentFallbackBrush") : TaskbarTheme.GetBrush("TaskbarBorderBrush");
-        RootBorder.Background = canPin ? TaskbarTheme.GetBrush("TaskbarHoverBrush") : TaskbarTheme.CreateBackground(_isDark, _preferences.TaskbarTransparency);
+        RootBorder.Background = canPin ? TaskbarTheme.GetBrush("TaskbarHoverBrush") : TaskbarTheme.CreateBackground(_isDark, GetEffectiveTransparency());
     }
 
     private void Window_DragLeave(object sender, DragEventArgs e) => ResetDropHighlight();
@@ -389,7 +394,7 @@ public partial class TaskbarWindow : Window
         else
         {
             RootBorder.BorderBrush = TaskbarTheme.GetBrush("TaskbarBorderBrush");
-            RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, _preferences.TaskbarTransparency);
+            RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, GetEffectiveTransparency());
         }
     }
 
