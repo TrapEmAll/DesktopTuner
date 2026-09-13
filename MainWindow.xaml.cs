@@ -27,10 +27,12 @@ public partial class MainWindow : Window
     private HwndSource? _windowSource;
     private StartMenuWindow? _startMenuWindow;
     private TaskbarWindow? _taskbarWindow;
+    private WindowsKeyStartHook? _windowsKeyHook;
     private TaskbarEdge _taskbarEdge = TaskbarEdge.Bottom;
     private TaskbarSize _taskbarSize = TaskbarSize.Standard;
     private bool _taskbarAutoHide;
     private List<PinnedTaskbarApp> _pinnedApps = [];
+    private bool _replaceWindowsKey;
 
     public MainWindow()
     {
@@ -43,6 +45,7 @@ public partial class MainWindow : Window
         _taskbarSize = desktopPreferences.TaskbarSize;
         _taskbarAutoHide = desktopPreferences.AutoHide;
         _pinnedApps = desktopPreferences.PinnedApps ?? [];
+        _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
         foreach (var setting in SettingsCatalog.All)
         {
             var value = _settings.Read(setting);
@@ -127,7 +130,11 @@ public partial class MainWindow : Window
             var launchButton = new Button { Content = "Open Desktop Tuner Start menu", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowStartMenu();
             PageContent.Children.Add(launchButton);
-            var info = InfoCard("Privacy setting shared with Windows", "The recent-items preference affects Start, Jump Lists, and File Explorer together. Windows does not expose an app API to independently rebuild the built-in Start menu layout.");
+            var replaceStart = new CheckBox { Content = "Use Desktop Tuner Start menu for the Windows key while this app is running", IsChecked = _replaceWindowsKey, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
+            replaceStart.Checked += (_, _) => ToggleWindowsKeyReplacement(replaceStart, true);
+            replaceStart.Unchecked += (_, _) => ToggleWindowsKeyReplacement(replaceStart, false);
+            PageContent.Children.Add(replaceStart);
+            var info = InfoCard("Windows-key integration", "When enabled, tapping either Windows key opens Desktop Tuner Start while this app is running. Win+key combinations such as Win+R are forwarded to Windows. Turn this off at any time to restore the native Start key.");
             PageContent.Children.Add(info);
         }
         if (section == "Taskbar")
@@ -360,6 +367,12 @@ public partial class MainWindow : Window
         _windowSource.AddHook(WindowMessageHook);
         if (!RegisterHotKey(handle, StartMenuHotkeyId, MOD_CONTROL | MOD_ALT, VK_SPACE))
             SetStatus("Global shortcut Ctrl+Alt+Space is unavailable. Open the Start page and use its launcher button.");
+        if (_replaceWindowsKey && !EnableWindowsKeyHook())
+        {
+            _replaceWindowsKey = false;
+            SaveDesktopPreferences();
+            SetStatus("Windows-key replacement could not start; the setting was turned off.");
+        }
     }
 
     private void MainWindow_Closed(object? sender, EventArgs e)
@@ -367,6 +380,8 @@ public partial class MainWindow : Window
         var handle = new WindowInteropHelper(this).Handle;
         UnregisterHotKey(handle, StartMenuHotkeyId);
         _windowSource?.RemoveHook(WindowMessageHook);
+        _windowsKeyHook?.Dispose();
+        _windowsKeyHook = null;
     }
 
     private IntPtr WindowMessageHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -389,8 +404,26 @@ public partial class MainWindow : Window
         _startMenuWindow = new StartMenuWindow();
         _startMenuWindow.Closed += (_, _) => _startMenuWindow = null;
         var workArea = SystemParameters.WorkArea;
-        _startMenuWindow.Left = workArea.Left + 12;
-        _startMenuWindow.Top = Math.Max(workArea.Top + 12, workArea.Bottom - _startMenuWindow.Height - 12);
+        var edge = _taskbarWindow?.IsVisible == true ? _taskbarEdge : TaskbarEdge.Bottom;
+        switch (edge)
+        {
+            case TaskbarEdge.Top:
+                _startMenuWindow.Left = workArea.Left + 12;
+                _startMenuWindow.Top = workArea.Top + (_taskbarWindow?.Height ?? 54) + 12;
+                break;
+            case TaskbarEdge.Left:
+                _startMenuWindow.Left = workArea.Left + (_taskbarWindow?.Width ?? 176) + 12;
+                _startMenuWindow.Top = workArea.Top + 12;
+                break;
+            case TaskbarEdge.Right:
+                _startMenuWindow.Left = workArea.Right - _startMenuWindow.Width - (_taskbarWindow?.Width ?? 176) - 12;
+                _startMenuWindow.Top = workArea.Top + 12;
+                break;
+            default:
+                _startMenuWindow.Left = workArea.Left + 12;
+                _startMenuWindow.Top = Math.Max(workArea.Top + 12, workArea.Bottom - _startMenuWindow.Height - 12);
+                break;
+        }
         _startMenuWindow.Show();
         _startMenuWindow.Activate();
     }
@@ -403,7 +436,7 @@ public partial class MainWindow : Window
             return;
         }
         _taskbarWindow = new TaskbarWindow(ShowStartMenu, () => _startMenuWindow?.IsVisible == true,
-            new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList()), SaveDesktopPreferences);
+            new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey), SaveDesktopPreferences);
         _taskbarWindow.Closed += (_, _) => _taskbarWindow = null;
         _taskbarWindow.Show();
         SetStatus("Desktop Tuner taskbar overlay is running. Close it to reveal the Windows taskbar.");
@@ -413,7 +446,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            SaveDesktopPreferences(new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList()));
+            SaveDesktopPreferences(new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey));
         }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not save taskbar preferences", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
@@ -427,10 +460,46 @@ public partial class MainWindow : Window
             _taskbarSize = preferences.TaskbarSize;
             _taskbarAutoHide = preferences.AutoHide;
             _pinnedApps = preferences.PinnedApps ?? [];
+            _replaceWindowsKey = preferences.ReplaceWindowsKey;
             _taskbarWindow?.SetPreferences(preferences);
             SetStatus("Taskbar preferences saved.");
         }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not save taskbar preferences", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void ToggleWindowsKeyReplacement(CheckBox checkBox, bool enabled)
+    {
+        if (enabled && !EnableWindowsKeyHook())
+        {
+            checkBox.IsChecked = false;
+            MessageBox.Show(this, "Windows-key replacement could not be enabled. The native Start menu remains available.", "Could not replace Start key", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (!enabled)
+        {
+            _windowsKeyHook?.Dispose();
+            _windowsKeyHook = null;
+        }
+        _replaceWindowsKey = enabled;
+        SaveDesktopPreferences();
+        SetStatus(enabled
+            ? "The Windows key now opens Desktop Tuner Start while the app is running. Win+key shortcuts still pass through."
+            : "The native Windows Start key behavior is restored.");
+    }
+
+    private bool EnableWindowsKeyHook()
+    {
+        if (_windowsKeyHook?.IsInstalled == true) return true;
+        var hook = new WindowsKeyStartHook(ShowStartMenu);
+        if (!hook.TryInstall(out var error))
+        {
+            hook.Dispose();
+            SetStatus($"Could not install the Windows-key hook (Windows error {error}).");
+            return false;
+        }
+        _windowsKeyHook = hook;
+        return true;
     }
 
     [DllImport("user32.dll", SetLastError = true)]
