@@ -5,7 +5,12 @@ using System.Text;
 
 namespace DesktopTuner;
 
-public sealed record RunningWindow(nint Handle, string Title, string ApplicationName, string ExecutablePath, bool IsMinimized);
+public sealed record RunningWindow(nint Handle, string Title, string ApplicationName, string ExecutablePath, bool IsMinimized)
+{
+    public bool IsMaximized { get; init; }
+    public bool IsForeground { get; init; }
+    public TaskbarBounds Bounds { get; init; } = new(0, 0, 0, 0);
+}
 
 public sealed class RunningWindowService
 {
@@ -19,6 +24,7 @@ public sealed class RunningWindowService
     {
         var windows = new List<RunningWindow>();
         var shell = GetShellWindow();
+        var foregroundWindow = GetForegroundWindow();
         EnumWindows((handle, _) =>
         {
             if (handle == shell || !IsWindowVisible(handle) || GetWindow(handle, GW_OWNER) != 0) return true;
@@ -43,7 +49,18 @@ public sealed class RunningWindowService
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
             {
             }
-            windows.Add(new RunningWindow(handle, text, appName, executablePath, IsIconic(handle)));
+            var windowBounds = default(NativeRect);
+            if (!GetWindowRect(handle, out windowBounds))
+            {
+                Trace.TraceWarning($"Could not read bounds for taskbar window '{text}' (0x{handle:X}); maximized-window detection will ignore its position.");
+                windowBounds = default;
+            }
+            windows.Add(new RunningWindow(handle, text, appName, executablePath, IsIconic(handle))
+            {
+                IsMaximized = IsZoomed(handle),
+                IsForeground = handle == foregroundWindow,
+                Bounds = new TaskbarBounds(windowBounds.Left, windowBounds.Top, Math.Max(0, windowBounds.Right - windowBounds.Left), Math.Max(0, windowBounds.Bottom - windowBounds.Top))
+            });
             return true;
         }, IntPtr.Zero);
 
@@ -67,12 +84,18 @@ public sealed class RunningWindowService
 
     private delegate bool EnumWindowsProc(nint hWnd, nint lParam);
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect { public int Left; public int Top; public int Right; public int Bottom; }
+
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool EnumWindows(EnumWindowsProc callback, nint lParam);
 
     [DllImport("user32.dll")]
     private static extern nint GetShellWindow();
+
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -93,6 +116,14 @@ public sealed class RunningWindowService
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsIconic(nint hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsZoomed(nint hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(nint hWnd, out NativeRect rect);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

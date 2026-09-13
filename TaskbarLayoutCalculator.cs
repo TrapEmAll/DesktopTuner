@@ -99,4 +99,22 @@ public static class TaskbarAutoHidePolicy
 {
     public static bool ShouldCollapse(bool autoHideEnabled, bool pointerOverTaskbar, bool startMenuVisible) =>
         autoHideEnabled && !pointerOverTaskbar && !startMenuVisible;
+
+    public static bool ShouldCollapse(bool autoHideEnabled, bool autoHideWhenMaximized, bool maximizedWindowOnDisplay, bool pointerOverTaskbar, bool startMenuVisible) =>
+        !startMenuVisible && !pointerOverTaskbar && (autoHideEnabled || autoHideWhenMaximized && maximizedWindowOnDisplay);
+
+    public static bool HasMaximizedWindowOnDisplay(IEnumerable<RunningWindow> windows, TaskbarDisplay display)
+    {
+        ArgumentNullException.ThrowIfNull(windows);
+        ArgumentNullException.ThrowIfNull(display);
+        var right = display.Left + display.Width;
+        var bottom = display.Top + display.Height;
+        return windows.Any(window =>
+        {
+            if (!window.IsMaximized || !window.IsForeground) return false;
+            var overlapWidth = Math.Max(0, Math.Min(window.Bounds.Left + window.Bounds.Width, right) - Math.Max(window.Bounds.Left, display.Left));
+            var overlapHeight = Math.Max(0, Math.Min(window.Bounds.Top + window.Bounds.Height, bottom) - Math.Max(window.Bounds.Top, display.Top));
+            return overlapWidth >= display.Width * 0.8 && overlapHeight >= display.Height * 0.8;
+        });
+    }
 }

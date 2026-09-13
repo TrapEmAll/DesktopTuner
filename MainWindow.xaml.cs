@@ -41,6 +41,7 @@ public partial class MainWindow : Window
     private TaskbarButtonSpacing _taskbarButtonSpacing = TaskbarButtonSpacing.Standard;
     private bool _taskbarShowLabels = true;
     private bool _taskbarAutoHide;
+    private bool _taskbarAutoHideWhenMaximized;
     private List<PinnedTaskbarApp> _pinnedApps = [];
     private bool _replaceWindowsKey;
     private StartMenuStyle _startMenuStyle = StartMenuStyle.Modern;
@@ -65,6 +66,7 @@ public partial class MainWindow : Window
         _taskbarButtonSpacing = desktopPreferences.TaskbarButtonSpacing;
         _taskbarShowLabels = desktopPreferences.TaskbarShowLabels;
         _taskbarAutoHide = desktopPreferences.AutoHide;
+        _taskbarAutoHideWhenMaximized = desktopPreferences.AutoHideWhenMaximized;
         _pinnedApps = desktopPreferences.PinnedApps ?? [];
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
         _startMenuStyle = desktopPreferences.StartMenuStyle;
@@ -278,6 +280,10 @@ public partial class MainWindow : Window
             autoHide.Checked += (_, _) => { _taskbarAutoHide = true; SaveDesktopPreferences(); };
             autoHide.Unchecked += (_, _) => { _taskbarAutoHide = false; SaveDesktopPreferences(); };
             PageContent.Children.Add(autoHide);
+            var autoHideMaximized = new CheckBox { Content = "Hide the taskbar when a maximized app covers this display", IsChecked = _taskbarAutoHideWhenMaximized, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
+            autoHideMaximized.Checked += (_, _) => { _taskbarAutoHideWhenMaximized = true; SaveDesktopPreferences(); };
+            autoHideMaximized.Unchecked += (_, _) => { _taskbarAutoHideWhenMaximized = false; SaveDesktopPreferences(); };
+            PageContent.Children.Add(autoHideMaximized);
             var allDisplays = new CheckBox { Content = "Show the custom taskbar on all displays", IsChecked = _taskbarOnAllDisplays, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
             allDisplays.Checked += (_, _) => { _taskbarOnAllDisplays = true; SaveDesktopPreferences(); };
             allDisplays.Unchecked += (_, _) => { _taskbarOnAllDisplays = false; SaveDesktopPreferences(); };
@@ -574,7 +580,7 @@ public partial class MainWindow : Window
         if (display is not null)
         {
             var bounds = TaskbarLayoutCalculator.CalculateStartMenu(display, _startMenuWindow.Width, _startMenuWindow.Height,
-                new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, TaskbarLayout: _taskbarLayout));
+                new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, TaskbarLayout: _taskbarLayout, AutoHideWhenMaximized: _taskbarAutoHideWhenMaximized));
             if (!TaskbarDisplayService.PositionWindow(_startMenuWindow, bounds))
                 System.Diagnostics.Trace.TraceError($"Could not place Start menu on display {display.DeviceName}.");
             return;
@@ -650,7 +656,7 @@ public partial class MainWindow : Window
         finally { _closingTaskbars = false; }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized);
 
     private void UpdateTaskbarPreferences()
     {
@@ -676,6 +682,7 @@ public partial class MainWindow : Window
             _taskbarEdge = preferences.TaskbarEdge;
             _taskbarSize = preferences.TaskbarSize;
             _taskbarAutoHide = preferences.AutoHide;
+            _taskbarAutoHideWhenMaximized = preferences.AutoHideWhenMaximized;
             _pinnedApps = preferences.PinnedApps ?? [];
             _replaceWindowsKey = preferences.ReplaceWindowsKey;
             _startMenuStyle = preferences.StartMenuStyle;

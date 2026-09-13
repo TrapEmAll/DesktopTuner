@@ -24,6 +24,18 @@ Check<TaskbarBounds?>(null, TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(
 Check<TaskbarBounds?>(null, TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Bottom), new(1500, 700, 420, 50)), "keep shortcut fallback when tray is not at the bottom edge");
 var secondaryDisplay = new TaskbarDisplay("DISPLAY2", -1920, -200, 1920, 1080, false, 1.5, 1.5);
 Check(new TaskbarBounds(-1920, 799, 1320, 81), TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(secondaryDisplay, new(TaskbarEdge.Bottom), new(-600, 835, 600, 45)), "preserve native tray geometry on a scaled secondary display");
+var maximizedOnSecondary = new RunningWindow((nint)4, "Document", "Editor", @"C:\Apps\editor.exe", false)
+{
+    IsMaximized = true,
+    IsForeground = true,
+    Bounds = new TaskbarBounds(-1920, -200, 1920, 1080)
+};
+CheckTrue(TaskbarAutoHidePolicy.HasMaximizedWindowOnDisplay([maximizedOnSecondary], secondaryDisplay), "detect a maximized app covering its own display");
+CheckTrue(!TaskbarAutoHidePolicy.HasMaximizedWindowOnDisplay([maximizedOnSecondary], trayDisplay), "do not hide other displays for a maximized app");
+var halfScreenWindow = maximizedOnSecondary with { Bounds = new TaskbarBounds(-1920, -200, 960, 1080) };
+CheckTrue(!TaskbarAutoHidePolicy.HasMaximizedWindowOnDisplay([halfScreenWindow], secondaryDisplay), "do not treat a half-width window as a display-covering maximized app");
+var backgroundMaximizedWindow = maximizedOnSecondary with { IsForeground = false };
+CheckTrue(!TaskbarAutoHidePolicy.HasMaximizedWindowOnDisplay([backgroundMaximizedWindow], secondaryDisplay), "do not hide for a maximized app behind the foreground window");
 var primaryDisplay = new TaskbarDisplay("DISPLAY1", 0, 0, 2560, 1440, true, 1.25, 1.25);
 var secondaryBar = TaskbarLayoutCalculator.Calculate(secondaryDisplay, new(TaskbarEdge.Bottom), false);
 Check(-1920d, secondaryBar.Left, "place taskbar on a monitor with negative desktop coordinates");
@@ -41,6 +53,10 @@ CheckTrue(TaskbarAutoHidePolicy.ShouldCollapse(true, false, false), "auto-hide c
 CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(false, false, false), "auto-hide respects disabled state");
 CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(true, true, false), "auto-hide stays expanded while pointer is over it");
 CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(true, false, true), "auto-hide stays expanded while Start is open");
+CheckTrue(TaskbarAutoHidePolicy.ShouldCollapse(false, true, true, false, false), "hide when maximize-aware auto-hide is enabled and the display is covered");
+CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(false, true, false, false, false), "keep the taskbar visible without a maximized window on the display");
+CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(false, true, true, true, false), "reveal a hidden taskbar when the pointer reaches its edge");
+CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(false, true, true, false, true), "keep the taskbar visible while its Start menu is open");
 var firstPin = TaskbarPinCatalog.Add([], "Editor", @"C:\Program Files\Editor\editor.exe");
 Check(1, firstPin.Count, "pin a running app executable");
 Check(1, TaskbarPinCatalog.Add(firstPin, "Editor", @"C:\Program Files\Editor\editor.exe").Count, "avoid duplicate pins");
@@ -247,6 +263,8 @@ try
     Check(expectedPreferences.TaskbarButtonAlignment, loadedPreferences.TaskbarButtonAlignment, "persist taskbar button alignment");
     preferencesStore.Save(expectedPreferences with { StartWithWindows = true });
     Check(true, preferencesStore.Load().StartWithWindows, "persist automatic taskbar startup preference");
+    preferencesStore.Save(expectedPreferences with { AutoHideWhenMaximized = true });
+    Check(true, preferencesStore.Load().AutoHideWhenMaximized, "persist maximize-aware taskbar auto-hide preference");
     Check(false, new DesktopPreferences(TaskbarEdge.Bottom).StartWithWindows, "leave automatic taskbar startup disabled for older preferences");
     preferencesStore.Save(expectedPreferences with { TaskbarLayout = TaskbarStyle.Segmented });
     Check(TaskbarStyle.Segmented, preferencesStore.Load().TaskbarLayout, "persist segmented taskbar style");

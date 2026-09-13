@@ -11,6 +11,7 @@
             <MenuItem Header="Open Windows Settings" Click="Settings_Click" />
             <MenuItem Header="Desktop Tuner taskbar settings" Click="ShowSettings_Click" />
             <MenuItem x:Name="AutoHideMenuItem" Header="Automatically hide this taskbar" IsCheckable="True" Click="AutoHideMenuItem_Click" />
+            <MenuItem x:Name="AutoHideWhenMaximizedMenuItem" Header="Hide when an app is maximized" IsCheckable="True" Click="AutoHideWhenMaximizedMenuItem_Click" />
             <Separator />
             <MenuItem Header="Close Desktop Tuner taskbar" Click="CloseBar_Click" />
             <MenuItem Header="Exit Desktop Tuner" Click="Quit_Click" />

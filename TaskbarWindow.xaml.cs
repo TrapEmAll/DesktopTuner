@@ -25,6 +25,8 @@ public partial class TaskbarWindow : Window
     private TaskbarEdge _edge;
     private TaskbarSize _size;
     private bool _autoHide;
+    private bool _autoHideWhenMaximized;
+    private bool _maximizedWindowOnDisplay;
     private bool _collapsed;
     private bool _nativeReady;
     private bool _nativeTrayExposed;
@@ -61,11 +63,12 @@ public partial class TaskbarWindow : Window
         _edge = _preferences.TaskbarEdge;
         _size = _preferences.TaskbarSize;
         _autoHide = _preferences.AutoHide;
-        _collapsed = _autoHide && !_isStartMenuVisible() && !IsMouseOver;
+        _autoHideWhenMaximized = _preferences.AutoHideWhenMaximized;
+        _collapsed = (_autoHide || _autoHideWhenMaximized && _maximizedWindowOnDisplay) && !_isStartMenuVisible() && !IsMouseOver;
         ApplyLayout();
         if (IsLoaded) RefreshWindows();
         if (IsLoaded) Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
-        if (!_autoHide) _autoHideTimer.Stop();
+        if (!_autoHide && !_autoHideWhenMaximized) _autoHideTimer.Stop();
         else if (IsLoaded) _autoHideTimer.Start();
     }
 
@@ -208,7 +211,7 @@ public partial class TaskbarWindow : Window
         ApplyLayout();
         UpdateClock();
         _refreshTimer.Start();
-        if (_autoHide) _autoHideTimer.Start();
+        if (_autoHide || _autoHideWhenMaximized) _autoHideTimer.Start();
     }
 
     private void Window_Closed(object? sender, EventArgs e)
@@ -220,6 +223,13 @@ public partial class TaskbarWindow : Window
     private void RefreshWindows()
     {
         var windows = _windows.Enumerate();
+        var wasMaximizedWindowOnDisplay = _maximizedWindowOnDisplay;
+        _maximizedWindowOnDisplay = TaskbarAutoHidePolicy.HasMaximizedWindowOnDisplay(windows, Display);
+        if (wasMaximizedWindowOnDisplay && !_maximizedWindowOnDisplay && !_autoHide && _collapsed)
+        {
+            _collapsed = false;
+            ApplyLayout();
+        }
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         PinnedItems.ItemsSource = _preferences.PinnedApps!.Select(app => TaskbarButtonViewModel.FromPin(app, _preferences, vertical)).ToList();
         WindowItems.ItemsSource = TaskbarWindowGrouping.Create(windows, _preferences.TaskbarGrouping, GetWindowButtonCapacity())
@@ -275,7 +285,7 @@ public partial class TaskbarWindow : Window
 
     private void Window_MouseLeave(object sender, MouseEventArgs e)
     {
-        if (_autoHide) _autoHideTimer.Start();
+        if (_autoHide || _autoHideWhenMaximized) _autoHideTimer.Start();
     }
 
     private void Window_DragOver(object sender, DragEventArgs e)
@@ -412,7 +422,7 @@ public partial class TaskbarWindow : Window
 
     private void AutoHideTimer_Tick()
     {
-        if (!TaskbarAutoHidePolicy.ShouldCollapse(_autoHide, IsMouseOver, _isStartMenuVisible())) return;
+        if (!TaskbarAutoHidePolicy.ShouldCollapse(_autoHide, _autoHideWhenMaximized, _maximizedWindowOnDisplay, IsMouseOver, _isStartMenuVisible())) return;
         _collapsed = true;
         ApplyLayout();
         _autoHideTimer.Stop();
@@ -539,7 +549,11 @@ public partial class TaskbarWindow : Window
 
     private void Widgets_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWidgets();
 
-    private void TaskbarContextMenu_Opened(object sender, RoutedEventArgs e) => AutoHideMenuItem.IsChecked = _autoHide;
+    private void TaskbarContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        AutoHideMenuItem.IsChecked = _autoHide;
+        AutoHideWhenMaximizedMenuItem.IsChecked = _autoHideWhenMaximized;
+    }
 
     private void ShowSettings_Click(object sender, RoutedEventArgs e) => _showSettings();
 
@@ -548,6 +562,12 @@ public partial class TaskbarWindow : Window
     private void AutoHideMenuItem_Click(object sender, RoutedEventArgs e)
     {
         var preferences = _preferences with { AutoHide = AutoHideMenuItem.IsChecked };
+        _persistPreferences(preferences);
+    }
+
+    private void AutoHideWhenMaximizedMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var preferences = _preferences with { AutoHideWhenMaximized = AutoHideWhenMaximizedMenuItem.IsChecked };
         _persistPreferences(preferences);
     }
 
