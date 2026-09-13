@@ -129,6 +129,12 @@ Check("control.exe", StartMenuPlaceCatalog.ResolveTarget("control-panel"), "open
 Check(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), StartMenuPlaceCatalog.ResolveTarget("music"), "open the user's Music folder from the Start places menu");
 Check(7, StartMenuPlaceCatalog.AdditionalPlaces.Count, "show the supported additional Start system places");
 Throws<ArgumentOutOfRangeException>(() => StartMenuPlaceCatalog.ResolveTarget("unknown"), "reject unknown Start system places");
+Check("lock,sleep,hibernate,sign-out,restart,shutdown", string.Join(',', StartPowerActionCatalog.Actions.Select(action => action.Id)), "offer common Start power actions");
+Check(true, StartPowerActionCatalog.ById("shutdown").RequiresConfirmation, "confirm shutdown before execution");
+Check(true, StartPowerActionCatalog.ById("restart").RequiresConfirmation, "confirm restart before execution");
+Check(true, StartPowerActionCatalog.ById("sign-out").RequiresConfirmation, "confirm sign-out before execution");
+Check(false, StartPowerActionCatalog.ById("lock").RequiresConfirmation, "allow the reversible lock action directly");
+Throws<ArgumentOutOfRangeException>(() => StartPowerActionCatalog.ById("unknown"), "reject unknown power actions");
 var folderCatalog = new[]
 {
     new AppEntry("Word", @"C:\Apps\Word.lnk", CategoryPath: @"Office\Editors"),

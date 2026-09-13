@@ -240,6 +240,27 @@ public partial class StartMenuWindow : Window
     private void QuickLink_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: string action }) return;
+        if (action == "power")
+        {
+            if (sender is Button { ContextMenu: not null } powerButton)
+            {
+                var menu = powerButton.ContextMenu;
+                if (menu.Items.Count == 0)
+                {
+                    foreach (var powerAction in StartPowerActionCatalog.Actions)
+                    {
+                        if (powerAction.Id == "sign-out") menu.Items.Add(new Separator());
+                        var item = new MenuItem { Header = powerAction.Label, Tag = powerAction.Id };
+                        item.Click += PowerAction_Click;
+                        menu.Items.Add(item);
+                    }
+                }
+                menu.PlacementTarget = powerButton;
+                menu.Placement = PlacementMode.Top;
+                menu.IsOpen = true;
+            }
+            return;
+        }
         try
         {
             var target = action switch
@@ -247,7 +268,6 @@ public partial class StartMenuWindow : Window
                 "documents" => Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                 "downloads" => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
                 "settings" => "ms-settings:",
-                "power" => "ms-settings:powersleep",
                 _ => throw new InvalidOperationException("Unknown shortcut.")
             };
             AppCatalogService.OpenLocation(target);
@@ -256,6 +276,32 @@ public partial class StartMenuWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Could not open location", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void PowerAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string actionId }) return;
+        var action = StartPowerActionCatalog.ById(actionId);
+        if (action.RequiresConfirmation)
+        {
+            var choice = MessageBox.Show(this,
+                $"Are you sure you want to {action.Label.ToLowerInvariant()}? Save your work in open apps first.",
+                action.Label,
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No);
+            if (choice != MessageBoxResult.Yes) return;
+        }
+
+        try
+        {
+            StartPowerActionService.Execute(action.Id);
+            Close();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, $"Could not {action.Label.ToLowerInvariant()}", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
