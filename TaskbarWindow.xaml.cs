@@ -17,6 +17,8 @@ public partial class TaskbarWindow : Window
     private readonly TaskbarWindowOrder _windowOrder;
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
     private readonly DispatcherTimer _autoHideTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
+    private readonly DispatcherTimer _previewOpenTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
+    private readonly DispatcherTimer _previewCloseTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
     private readonly Action<TaskbarDisplay> _showStartMenu;
     private readonly Func<bool> _isStartMenuVisible;
     private readonly Action<DesktopPreferences> _persistPreferences;
@@ -36,6 +38,9 @@ public partial class TaskbarWindow : Window
     private Point _pinDragStart;
     private TaskbarWindowGroup? _windowDragCandidate;
     private Point _windowDragStart;
+    private TaskbarWindowGroup? _pendingPreviewGroup;
+    private Button? _pendingPreviewTarget;
+    private TaskbarPreviewWindow? _previewWindow;
 
     public TaskbarDisplay Display { get; private set; }
 
@@ -52,6 +57,8 @@ public partial class TaskbarWindow : Window
         _quitApplication = quitApplication;
         _refreshTimer.Tick += (_, _) => RefreshWindows();
         _autoHideTimer.Tick += (_, _) => AutoHideTimer_Tick();
+        _previewOpenTimer.Tick += (_, _) => OpenPendingPreview();
+        _previewCloseTimer.Tick += (_, _) => ClosePreviewIfPointerOutside();
         SourceInitialized += (_, _) =>
         {
             _nativeReady = true;
@@ -224,6 +231,9 @@ public partial class TaskbarWindow : Window
     {
         _refreshTimer.Stop();
         _autoHideTimer.Stop();
+        _previewOpenTimer.Stop();
+        _previewCloseTimer.Stop();
+        _previewWindow?.Close();
     }
 
     private void RefreshWindows()
@@ -292,6 +302,7 @@ public partial class TaskbarWindow : Window
     private void Window_MouseLeave(object sender, MouseEventArgs e)
     {
         if (_autoHide || _autoHideWhenMaximized) _autoHideTimer.Start();
+        QueuePreviewClose();
     }
 
     private void Window_DragOver(object sender, DragEventArgs e)
@@ -427,6 +438,68 @@ public partial class TaskbarWindow : Window
 
     private void WindowButton_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) => _windowDragCandidate = null;
 
+    private void WindowButton_MouseEnter(object sender, MouseEventArgs e)
+    {
+        if (sender is not Button { Tag: TaskbarWindowGroup group } button) return;
+        _previewCloseTimer.Stop();
+        _pendingPreviewGroup = group;
+        _pendingPreviewTarget = button;
+        _previewOpenTimer.Stop();
+        _previewOpenTimer.Start();
+    }
+
+    private void WindowButton_MouseLeave(object sender, MouseEventArgs e)
+    {
+        _previewOpenTimer.Stop();
+        _pendingPreviewGroup = null;
+        _pendingPreviewTarget = null;
+        QueuePreviewClose();
+    }
+
+    private void OpenPendingPreview()
+    {
+        _previewOpenTimer.Stop();
+        if (_pendingPreviewGroup is not { } group || _pendingPreviewTarget is not { IsMouseOver: true } target) return;
+        if (_previewWindow is { IsVisible: true } existing && existing.Matches(group.Windows)) return;
+
+        ShowWindowPreview(group, target, activate: false);
+    }
+
+    private void ShowWindowPreview(TaskbarWindowGroup group, Button target, bool activate)
+    {
+        if (_previewWindow is { IsVisible: true } existing && existing.Matches(group.Windows))
+        {
+            return;
+        }
+
+        _previewWindow?.Close();
+        var preview = new TaskbarPreviewWindow(group.Windows, Display, _edge, target) { ShowActivated = activate };
+        _previewWindow = preview;
+        preview.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_previewWindow, preview)) _previewWindow = null;
+        };
+        preview.MouseEnter += (_, _) => _previewCloseTimer.Stop();
+        preview.MouseLeave += (_, _) => QueuePreviewClose();
+        preview.Show();
+        if (activate) preview.Activate();
+    }
+
+    private void QueuePreviewClose()
+    {
+        if (_previewWindow is not null)
+        {
+            _previewCloseTimer.Stop();
+            _previewCloseTimer.Start();
+        }
+    }
+
+    private void ClosePreviewIfPointerOutside()
+    {
+        _previewCloseTimer.Stop();
+        if (_previewWindow?.IsMouseOver != true) _previewWindow?.Close();
+    }
+
     private void WindowButton_PreviewMouseMove(object sender, MouseEventArgs e)
     {
         if (_windowDragCandidate is null || e.LeftButton != MouseButtonState.Pressed || sender is not Button button) return;
@@ -498,15 +571,18 @@ public partial class TaskbarWindow : Window
     private void WindowButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: TaskbarWindowGroup group } button) return;
-        if (group.Windows.Count == 1)
+        if (group.Windows.Count > 1)
         {
-            RunningWindowService.Activate(group.Windows[0]);
+            _previewOpenTimer.Stop();
+            _pendingPreviewGroup = null;
+            _pendingPreviewTarget = null;
+            _previewCloseTimer.Stop();
+            ShowWindowPreview(group, button, activate: true);
             return;
         }
 
-        var preview = new TaskbarPreviewWindow(group.Windows, Display, _edge, button);
-        preview.Show();
-        preview.Activate();
+        _previewWindow?.Close();
+        RunningWindowService.Activate(group.Windows[0]);
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e)

@@ -94,6 +94,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Button Style="{StaticResource TaskButton}" Margin="{Binding ButtonMargin}" Tag="{Binding Target}" Click="WindowButton_Click" ToolTip="{Binding ToolTip}"
+                                    MouseEnter="WindowButton_MouseEnter" MouseLeave="WindowButton_MouseLeave"
                                     PreviewMouseLeftButtonDown="WindowButton_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="WindowButton_PreviewMouseLeftButtonUp"
                                     PreviewMouseMove="WindowButton_PreviewMouseMove" DragOver="WindowButton_DragOver" DragLeave="WindowButton_DragLeave" Drop="WindowButton_Drop" AllowDrop="True">
                                 <StackPanel Orientation="Horizontal" MaxWidth="190">

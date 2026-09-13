@@ -70,6 +70,9 @@ public partial class TaskbarPreviewWindow : Window
         Loaded += (_, _) => PlaceNearTarget(placementTarget, edge);
     }
 
+    public bool Matches(IReadOnlyList<RunningWindow> windows) =>
+        _items.Select(item => item.Window.Handle).SequenceEqual(windows.Select(window => window.Handle));
+
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
         var handle = new WindowInteropHelper(this).Handle;
