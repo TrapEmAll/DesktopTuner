@@ -187,6 +187,7 @@ public partial class StartMenuWindow : Window
         AppList.ItemsSource = showFolders ? null : results;
         AppList.SelectedIndex = showFolders || results.Count == 0 ? -1 : 0;
         ResultsHeading.Text = query.Length > 0 ? "Search results" : showFolders ? "Programs" : "All apps";
+        SearchActionPanel.Visibility = query.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         ResultCount.Text = results.Count.ToString();
         EmptyMessage.Visibility = results.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -200,7 +201,10 @@ public partial class StartMenuWindow : Window
         }
         else if (e.Key == Key.Enter)
         {
-            LaunchSelected();
+            if (AppTree.SelectedItem is null && AppList.SelectedItem is null && !string.IsNullOrWhiteSpace(SearchBox.Text))
+                OpenSearch(StartSearchTargetBuilder.WindowsSearch(SearchBox.Text), "Windows Search");
+            else
+                LaunchSelected();
             e.Handled = true;
         }
         else if (e.Key == Key.Down && SearchBox.IsKeyboardFocusWithin && AppTree.Visibility == Visibility.Visible && AppTree.Items.Count > 0)
@@ -302,6 +306,25 @@ public partial class StartMenuWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, $"Could not {action.Label.ToLowerInvariant()}", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void WindowsSearch_Click(object sender, RoutedEventArgs e) =>
+        OpenSearch(StartSearchTargetBuilder.WindowsSearch(SearchBox.Text), "Windows Search");
+
+    private void WebSearch_Click(object sender, RoutedEventArgs e) =>
+        OpenSearch(StartSearchTargetBuilder.WebSearch(SearchBox.Text), "web search");
+
+    private void OpenSearch(string target, string description)
+    {
+        try
+        {
+            AppCatalogService.OpenLocation(target);
+            Close();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Windows could not open {description}.\n\n{ex.Message}", "Could not search", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

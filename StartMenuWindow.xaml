@@ -26,7 +26,11 @@
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <DockPanel Grid.Row="0" Margin="2,0,2,9">
                     <TextBlock x:Name="ResultsHeading" Text="All apps" FontWeight="SemiBold" FontSize="13" />
-                    <TextBlock x:Name="ResultCount" DockPanel.Dock="Right" Foreground="#8992A3" FontSize="11" />
+                    <StackPanel x:Name="SearchActionPanel" DockPanel.Dock="Right" Orientation="Horizontal" Visibility="Collapsed">
+                        <TextBlock x:Name="ResultCount" Foreground="#8992A3" FontSize="11" VerticalAlignment="Center" Margin="0,0,7,0" />
+                        <Button Content="Windows" Click="WindowsSearch_Click" Padding="7,4" Margin="0,0,4,0" Background="White" BorderBrush="#DDE2EB" FontSize="10" ToolTip="Search Windows and indexed files" />
+                        <Button Content="Web" Click="WebSearch_Click" Padding="7,4" Background="White" BorderBrush="#DDE2EB" FontSize="10" ToolTip="Search the web in your default browser" />
+                    </StackPanel>
                 </DockPanel>
                 <ListBox x:Name="AppList" Grid.Row="1" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppList_MouseDoubleClick">
                     <ListBox.ItemContainerStyle>
