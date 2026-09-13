@@ -44,6 +44,12 @@ Check("Editor", droppedPins[0].Name, "derive dropped app name from executable fi
 Check("Editor Shortcut", droppedPins[1].Name, "derive dropped shortcut name without its extension");
 Check(true, droppedPins[2].IsDirectory, "preserve folder pins as folder targets");
 Check(3, TaskbarPinCatalog.AddDroppedFiles(droppedPins, [@"C:\Docs\Projects"], path => path == @"C:\Docs\Projects").Count, "avoid duplicate folder pins");
+var largeAppCatalog = Enumerable.Range(0, 55)
+    .Select(index => new AppEntry($"Application {index:D2}", $@"C:\Apps\application{index:D2}.lnk"))
+    .Append(new AppEntry("Zebra Editor", @"C:\Apps\zebra-editor.lnk"))
+    .ToList();
+Check(56, AppCatalogService.Search(largeAppCatalog).Count, "show every app in a large Start menu catalog");
+Check("Zebra Editor", AppCatalogService.Search(largeAppCatalog, " zebra ").Single().Name, "search apps beyond the first 40 catalog entries");
 var fullPinList = Enumerable.Range(0, TaskbarPinCatalog.MaximumPins)
     .Select(index => new PinnedTaskbarApp($"App {index}", $@"C:\Apps\app{index}.exe"))
     .ToList();

@@ -31,17 +31,24 @@ public sealed class AppCatalogService
             catch (DirectoryNotFoundException) { }
         }
 
+        return Search(entries, query);
+    }
+
+    public static IReadOnlyList<AppEntry> Search(IEnumerable<AppEntry> entries, string? query = null)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
         var matches = entries
             .DistinctBy(entry => entry.ShortcutPath, StringComparer.OrdinalIgnoreCase)
             .OrderBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase);
         if (!string.IsNullOrWhiteSpace(query))
         {
-            var terms = query.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var normalizedQuery = query.Trim();
+            var terms = normalizedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             matches = matches.Where(entry => terms.All(term => entry.Name.Contains(term, StringComparison.CurrentCultureIgnoreCase)))
-                .OrderBy(entry => entry.Name.StartsWith(query, StringComparison.CurrentCultureIgnoreCase) ? 0 : 1)
+                .OrderBy(entry => entry.Name.StartsWith(normalizedQuery, StringComparison.CurrentCultureIgnoreCase) ? 0 : 1)
                 .ThenBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase);
         }
-        return matches.Take(40).ToList();
+        return matches.ToList();
     }
 
     public static void Launch(AppEntry entry) => Process.Start(new ProcessStartInfo(entry.ShortcutPath) { UseShellExecute = true });

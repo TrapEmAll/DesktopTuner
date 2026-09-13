@@ -176,18 +176,10 @@ public partial class StartMenuWindow : Window
     private void RefreshApps()
     {
         var query = SearchBox?.Text.Trim() ?? string.Empty;
-        var results = _apps.AsEnumerable();
-        if (query.Length > 0)
-        {
-            var terms = query.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            results = results.Where(entry => terms.All(term => entry.Name.Contains(term, StringComparison.CurrentCultureIgnoreCase)))
-                .OrderBy(entry => entry.Name.StartsWith(query, StringComparison.CurrentCultureIgnoreCase) ? 0 : 1)
-                .ThenBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase);
-        }
-        var shown = results.Take(40).ToList();
+        var shown = AppCatalogService.Search(_apps, query).ToList();
         AppList.ItemsSource = shown;
         ResultsHeading.Text = query.Length == 0 ? "All apps" : "Search results";
-        ResultCount.Text = shown.Count == 40 ? "40+" : shown.Count.ToString();
+        ResultCount.Text = shown.Count.ToString();
         EmptyMessage.Visibility = shown.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         if (shown.Count > 0 && AppList.SelectedIndex < 0) AppList.SelectedIndex = 0;
     }
