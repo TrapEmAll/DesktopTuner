@@ -658,6 +658,29 @@ try
     var corruptFolderViewPath = Path.Combine(temporaryPreferencesDirectory, "corrupt-folder-views.json");
     File.WriteAllText(corruptFolderViewPath, "invalid-json");
     Check(null, new ExplorerFolderViewStore(corruptFolderViewPath).Load(explorerTestDirectory), "recover from corrupt saved Explorer folder views");
+    var explorerSessionStore = new ExplorerSessionStore(Path.Combine(temporaryPreferencesDirectory, "explorer-session.json"));
+    var savedExplorerSession = new ExplorerSession(1,
+    [
+        new ExplorerTabSession(new ExplorerLocation(explorerTestDirectory), [new ExplorerLocation(null, IsHome: true)], ViewMode: ExplorerViewMode.LargeIcons),
+        new ExplorerTabSession(new ExplorerLocation(null, IsHome: true, SearchQuery: "report"), SortColumn: ExplorerSortColumn.DateModified, SortAscending: false, GroupDrives: false)
+    ]);
+    explorerSessionStore.Save(savedExplorerSession);
+    var loadedExplorerSession = explorerSessionStore.Load();
+    Check(1, loadedExplorerSession!.ActiveTabIndex, "restore the active companion Explorer tab");
+    Check(2, loadedExplorerSession.Tabs.Count, "restore every open companion Explorer tab");
+    Check(ExplorerViewMode.LargeIcons, loadedExplorerSession.Tabs[0].ViewMode, "restore each Explorer tab's view mode");
+    Check(ExplorerSortColumn.DateModified, loadedExplorerSession.Tabs[1].SortColumn, "restore each Explorer tab's sort column");
+    Check(false, loadedExplorerSession.Tabs[1].SortAscending, "restore each Explorer tab's sort direction");
+    Check("report", loadedExplorerSession.Tabs[1].Location.SearchQuery, "restore a companion Explorer tab's search query");
+    Check(new ExplorerLocation(null, IsHome: true), loadedExplorerSession.Tabs[0].Back!.Single(), "restore companion Explorer navigation history");
+    var boundedExplorerSessionStore = new ExplorerSessionStore(Path.Combine(temporaryPreferencesDirectory, "bounded-explorer-session.json"));
+    boundedExplorerSessionStore.Save(new ExplorerSession(99, Enumerable.Range(0, ExplorerSessionStore.MaximumTabs + 1)
+        .Select(_ => new ExplorerTabSession(new ExplorerLocation(null, IsHome: true))).ToList()));
+    Check(ExplorerSessionStore.MaximumTabs, boundedExplorerSessionStore.Load()!.Tabs.Count, "bound the number of restored Explorer tabs");
+    Check(ExplorerSessionStore.MaximumTabs - 1, boundedExplorerSessionStore.Load()!.ActiveTabIndex, "clamp the restored active Explorer tab index");
+    var corruptExplorerSessionPath = Path.Combine(temporaryPreferencesDirectory, "corrupt-explorer-session.json");
+    File.WriteAllText(corruptExplorerSessionPath, "invalid-json");
+    Check(null, new ExplorerSessionStore(corruptExplorerSessionPath).Load(), "recover from a corrupt saved Explorer session");
     Check(0, ExplorerQuickAccessCatalog.Normalize([
         new ExplorerQuickAccessPin("relative", "relative-folder")
     ]).Count, "reject relative paths from imported quick access pins");

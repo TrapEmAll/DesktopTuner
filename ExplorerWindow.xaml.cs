@@ -46,6 +46,7 @@ public partial class ExplorerWindow : Window
     private readonly bool _showRecentItems;
     private readonly ExplorerQuickAccessStore _quickAccessStore;
     private readonly ExplorerFolderViewStore _folderViewStore;
+    private readonly ExplorerSessionStore _sessionStore;
     private ExplorerSortColumn _sortColumn
     {
         get => _tabs.Count == 0 ? ExplorerSortColumn.Name : _location.IsHome ? ActiveTab.HomeSortColumn : ActiveTab.SortColumn;
@@ -73,7 +74,7 @@ public partial class ExplorerWindow : Window
         SystemBackdropService.TryApplyMica(this);
     }
 
-    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null, ExplorerFolderViewStore? folderViewStore = null)
+    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null, ExplorerFolderViewStore? folderViewStore = null, ExplorerSessionStore? sessionStore = null)
     {
         InitializeComponent();
         _navigationRoots = CreateNavigationRoots();
@@ -83,26 +84,77 @@ public partial class ExplorerWindow : Window
         _showRecentItems = showRecentItems;
         _quickAccessStore = quickAccessStore ?? new ExplorerQuickAccessStore();
         _folderViewStore = folderViewStore ?? new ExplorerFolderViewStore();
+        _sessionStore = sessionStore ?? new ExplorerSessionStore();
         RefreshQuickAccessPins();
-        var initialLocation = startInThisPc && string.IsNullOrWhiteSpace(initialPath)
+        var restoreSession = string.IsNullOrWhiteSpace(initialPath) && !startInThisPc ? _sessionStore.Load() : null;
+        var initialLocation = restoreSession is not null
+            ? restoreSession.Tabs[restoreSession.ActiveTabIndex].Location
+            : startInThisPc && string.IsNullOrWhiteSpace(initialPath)
             ? new ExplorerLocation(null, IsDriveList: true)
             : string.IsNullOrWhiteSpace(initialPath)
                 ? new ExplorerLocation(null, IsHome: true)
                 : Directory.Exists(initialPath)
                     ? new ExplorerLocation(Path.GetFullPath(initialPath))
                     : new ExplorerLocation(null, IsHome: true);
-        _tabs.Add(new ExplorerTabState(initialLocation));
-        RestoreFolderViewPreferences(ActiveTab);
+        if (restoreSession is null)
+        {
+            _tabs.Add(new ExplorerTabState(initialLocation));
+            RestoreFolderViewPreferences(ActiveTab);
+        }
+        else
+        {
+            foreach (var savedTab in restoreSession.Tabs)
+            {
+                var tab = new ExplorerTabState(savedTab.Location)
+                {
+                    ViewMode = savedTab.ViewMode,
+                    SortColumn = savedTab.SortColumn,
+                    SortAscending = savedTab.SortAscending,
+                    HomeSortColumn = savedTab.HomeSortColumn,
+                    HomeSortAscending = savedTab.HomeSortAscending,
+                    HomeSortExplicitly = savedTab.HomeSortExplicitly,
+                    GroupDrives = savedTab.GroupDrives,
+                    IsSearchView = !string.IsNullOrWhiteSpace(savedTab.Location.SearchQuery)
+                };
+                tab.Back.AddRange(savedTab.Back ?? []);
+                tab.Forward.AddRange(savedTab.Forward ?? []);
+                _tabs.Add(tab);
+            }
+            _activeTabIndex = restoreSession.ActiveTabIndex;
+        }
         UpdateSortPresentation();
         ApplyExplorerViewMode(ActiveTab.ViewMode);
         SyncExplorerTabs();
         Closed += (_, _) =>
         {
+            SaveExplorerSession();
             _navigationLoadCancellation.Cancel();
             _navigationLoadCancellation.Dispose();
             foreach (var tab in _tabs) CancelSearch(tab);
         };
         RefreshLocation();
+    }
+
+    private void SaveExplorerSession()
+    {
+        try
+        {
+            _sessionStore.Save(new ExplorerSession(_activeTabIndex, _tabs.Select(tab => new ExplorerTabSession(
+                tab.Location,
+                [.. tab.Back],
+                [.. tab.Forward],
+                tab.ViewMode,
+                tab.SortColumn,
+                tab.SortAscending,
+                tab.HomeSortColumn,
+                tab.HomeSortAscending,
+                tab.HomeSortExplicitly,
+                tab.GroupDrives)).ToList()));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, $"Desktop Tuner could not save the open Explorer tabs. They will not be restored next time.\n\n{ex.Message}", "Explorer session not saved", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void SyncExplorerTabs()
