@@ -272,7 +272,7 @@ public partial class MainWindow : Window
             var launchButton = new Button { Content = "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowTaskbar();
             PageContent.Children.Add(launchButton);
-            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, bar size and style, app button labels, icon size, spacing, and optional auto-hide. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and shows the clock. When Windows' native notification area is detected on a bottom full-edge or segmented layout, the overlay stops before it; other layouts keep Tray and Clock shortcuts.");
+            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, bar size and style, app button labels, icon size, spacing, and optional auto-hide. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and opens the native Widgets board. Right-click the bar for Windows Settings, auto-hide, or close. When Windows' native notification area is detected on a bottom full-edge or segmented layout, the overlay stops before it; other layouts keep Tray and Clock shortcuts.");
             PageContent.Children.Add(overlayInfo);
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);

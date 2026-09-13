@@ -6,6 +6,14 @@
         Foreground="#F4F6FA" FontFamily="Segoe UI Variable Text, Segoe UI"
         AllowDrop="True" DragOver="Window_DragOver" DragLeave="Window_DragLeave" Drop="Window_Drop"
         Loaded="Window_Loaded" Closed="Window_Closed" MouseEnter="Window_MouseEnter" MouseLeave="Window_MouseLeave">
+    <Window.ContextMenu>
+        <ContextMenu Opened="TaskbarContextMenu_Opened">
+            <MenuItem Header="Open Windows Settings" Click="Settings_Click" />
+            <MenuItem x:Name="AutoHideMenuItem" Header="Automatically hide this taskbar" IsCheckable="True" Click="AutoHideMenuItem_Click" />
+            <Separator />
+            <MenuItem Header="Close Desktop Tuner taskbar" Click="CloseBar_Click" />
+        </ContextMenu>
+    </Window.ContextMenu>
     <Window.Resources>
         <ItemsPanelTemplate x:Key="HorizontalWindowPanel"><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
         <ItemsPanelTemplate x:Key="VerticalWindowPanel"><StackPanel Orientation="Vertical" /></ItemsPanelTemplate>
@@ -131,6 +139,7 @@
                 <StackPanel x:Name="RightControls" Orientation="Horizontal" VerticalAlignment="Center">
                 <Button x:Name="SettingsButton" Content="Settings" Style="{StaticResource TaskButton}" Click="Settings_Click" FontSize="11" />
                 <Button x:Name="TrayButton" Content="Tray" Style="{StaticResource TaskButton}" Click="Tray_Click" FontSize="11" ToolTip="Focus the Windows notification area" />
+                <Button x:Name="WidgetsButton" Content="Widgets" Style="{StaticResource TaskButton}" Click="Widgets_Click" FontSize="11" ToolTip="Open the Windows Widgets board" />
                 <Button x:Name="ClockButton" Style="{StaticResource TaskButton}" Click="Clock_Click" ToolTip="Open notifications and calendar" Padding="7,4" Margin="3,0,8,0">
                     <Border Background="#30394D" CornerRadius="8" Padding="10,5">
                         <StackPanel HorizontalAlignment="Center">

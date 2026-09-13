@@ -533,5 +533,15 @@ public partial class TaskbarWindow : Window
 
     private void Tray_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.FocusNotificationArea();
 
+    private void Widgets_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWidgets();
+
+    private void TaskbarContextMenu_Opened(object sender, RoutedEventArgs e) => AutoHideMenuItem.IsChecked = _autoHide;
+
+    private void AutoHideMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var preferences = _preferences with { AutoHide = AutoHideMenuItem.IsChecked };
+        _persistPreferences(preferences);
+    }
+
     private void CloseBar_Click(object sender, RoutedEventArgs e) => _closeAllTaskbars();
 }

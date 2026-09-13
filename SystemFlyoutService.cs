@@ -11,6 +11,7 @@ public static class SystemFlyoutService
     private const ushort VK_RWIN = 0x5C;
     private const ushort VK_B = 0x42;
     private const ushort VK_N = 0x4E;
+    private const ushort VK_W = 0x57;
     private const uint INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_KEYUP = 0x0002;
     private static readonly IReadOnlyList<KeyboardKeyEvent> NotificationCenterSequence = Array.AsReadOnly<KeyboardKeyEvent>(
@@ -27,13 +28,23 @@ public static class SystemFlyoutService
         new(VK_B, true),
         new(VK_LWIN, true)
     ]);
+    private static readonly IReadOnlyList<KeyboardKeyEvent> WidgetsSequence = Array.AsReadOnly<KeyboardKeyEvent>(
+    [
+        new(VK_LWIN, false),
+        new(VK_W, false),
+        new(VK_W, true),
+        new(VK_LWIN, true)
+    ]);
 
     public static IReadOnlyList<KeyboardKeyEvent> GetNotificationCenterSequence() => NotificationCenterSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetNotificationAreaSequence() => NotificationAreaSequence;
+    public static IReadOnlyList<KeyboardKeyEvent> GetWidgetsSequence() => WidgetsSequence;
 
     public static bool OpenNotificationCenter() => SendWindowsShortcut(VK_N, NotificationCenterSequence, "notification center");
 
     public static bool FocusNotificationArea() => SendWindowsShortcut(VK_B, NotificationAreaSequence, "notification area");
+
+    public static bool OpenWidgets() => SendWindowsShortcut(VK_W, WidgetsSequence, "Widgets board");
 
     private static bool SendWindowsShortcut(ushort shortcutKey, IReadOnlyList<KeyboardKeyEvent> sequence, string featureName)
     {

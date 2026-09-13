@@ -189,6 +189,13 @@ CheckTrue(SystemFlyoutService.GetNotificationAreaSequence().SequenceEqual(
     new KeyboardKeyEvent((ushort)'B', true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+B notification-area shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetWidgetsSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'W', false),
+    new KeyboardKeyEvent((ushort)'W', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+W Widgets shortcut in balanced key order");
 Throws<ArgumentOutOfRangeException>(() => TaskbarLayoutCalculator.Calculate(0, 1080, new(TaskbarEdge.Bottom), false), "rejects invalid screen bounds");
 var appModeSetting = SettingsCatalog.ById("explorer-app-mode");
 var systemModeSetting = SettingsCatalog.ById("explorer-system-mode");
