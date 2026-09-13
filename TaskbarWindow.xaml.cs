@@ -318,8 +318,8 @@ public partial class TaskbarWindow : Window
             ? Math.Max(44, iconPixels + 18) + gap * 2
             : (_preferences.TaskbarShowLabels ? 140 : iconPixels + 24) + (gap - 2) * 2;
         var reservedControlsLength = vertical
-            ? (_nativeTrayExposed ? 170 : 210)
-            : (_nativeTrayExposed ? 250 : 290);
+            ? (_nativeTrayExposed ? 170 : 210) + 60
+            : (_nativeTrayExposed ? 250 : 290) + 60;
         var reservedLength = reservedControlsLength + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
         return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / buttonSpan));
     }
@@ -836,6 +836,8 @@ public partial class TaskbarWindow : Window
     }
 
     private void Clock_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenNotificationCenter();
+
+    private void ShowDesktop_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.ShowDesktop();
 
     private void Tray_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.FocusNotificationArea();
 

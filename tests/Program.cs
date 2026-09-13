@@ -329,6 +329,13 @@ CheckTrue(SystemFlyoutService.GetWidgetsSequence().SequenceEqual(
     new KeyboardKeyEvent((ushort)'W', true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+W Widgets shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetShowDesktopSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'D', false),
+    new KeyboardKeyEvent((ushort)'D', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+D Show desktop shortcut in balanced key order");
 var appHostStartup = StartupShortcutService.BuildCommand(
     @"C:\Program Files\Desktop Tuner\DesktopTuner.exe",
     @"C:\Program Files\Desktop Tuner\DesktopTuner.dll");
