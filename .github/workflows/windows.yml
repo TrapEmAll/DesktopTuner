@@ -1,0 +1,29 @@
+name: Windows build
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build Desktop Tuner
+        run: dotnet build DesktopTuner.csproj --configuration Release
+
+      - name: Run regression checks
+        run: dotnet run --project tests/DesktopTuner.Tests.csproj --configuration Release
