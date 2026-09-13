@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     private string _activePage = "Overview";
     private HwndSource? _windowSource;
     private StartMenuWindow? _startMenuWindow;
+    private ExplorerWindow? _explorerWindow;
     private TaskbarDisplay? _startMenuDisplay;
     private readonly List<TaskbarWindow> _taskbarWindows = [];
     private WindowsKeyStartHook? _windowsKeyHook;
@@ -177,6 +178,13 @@ public partial class MainWindow : Window
             PageContent.Children.Add(replaceStart);
             var info = InfoCard("Windows-key integration", "When enabled, tapping either Windows key opens Desktop Tuner Start while this app is running. Win+key combinations such as Win+R are forwarded to Windows. Turn this off at any time to restore the native Start key.");
             PageContent.Children.Add(info);
+        }
+        else if (section == "Explorer")
+        {
+            var explorerButton = new Button { Content = "Open Desktop Tuner Explorer", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
+            explorerButton.Click += (_, _) => OpenExplorer();
+            PageContent.Children.Add(explorerButton);
+            PageContent.Children.Add(InfoCard("Classic browsing tools", "The companion Explorer includes a command strip, quick access locations, current-folder search, and a bottom details pane. Double-click folders to browse or files to open them with their default app."));
         }
         if (section == "Taskbar")
         {
@@ -719,6 +727,19 @@ public partial class MainWindow : Window
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         RenderPage("Taskbar");
         Activate();
+    }
+
+    private void OpenExplorer()
+    {
+        if (_explorerWindow is { IsVisible: true })
+        {
+            _explorerWindow.Activate();
+            return;
+        }
+
+        _explorerWindow = new ExplorerWindow { Owner = this };
+        _explorerWindow.Closed += (_, _) => _explorerWindow = null;
+        _explorerWindow.Show();
     }
 
     private void QuitApplication() => Close();
