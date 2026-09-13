@@ -54,6 +54,16 @@ var largeAppCatalog = Enumerable.Range(0, 55)
     .ToList();
 Check(56, AppCatalogService.Search(largeAppCatalog).Count, "show every app in a large Start menu catalog");
 Check("Zebra Editor", AppCatalogService.Search(largeAppCatalog, " zebra ").Single().Name, "search apps beyond the first 40 catalog entries");
+var folderCatalog = new[]
+{
+    new AppEntry("Word", @"C:\Apps\Word.lnk", CategoryPath: @"Office\Editors"),
+    new AppEntry("Mail", @"C:\Apps\Mail.lnk", CategoryPath: "Office"),
+    new AppEntry("Calculator", "Microsoft.WindowsCalculator_8wekyb3d8bbwe!App", IsPackagedApp: true)
+};
+var menuTree = AppCatalogService.BuildTree(folderCatalog);
+Check(2, menuTree.Count, "build Start menu root folders from nested shortcut categories");
+Check("Word", menuTree.Single(node => node.Name == "Office").Children.Single(node => node.Name == "Editors").Children.Single().Name, "preserve nested program folder levels");
+Check("Calculator", menuTree.Single(node => node.Name == "Windows apps").Children.Single().Name, "group packaged apps under Windows apps");
 var packagedApp = new AppEntry("Calculator", "Microsoft.WindowsCalculator_8wekyb3d8bbwe!App", IsPackagedApp: true);
 Check("Windows app", packagedApp.SourceDescription, "label packaged apps without exposing the application ID");
 var discoveredPackagedApps = new AppCatalogService().FindStartMenuApps().Where(entry => entry.IsPackagedApp).ToList();

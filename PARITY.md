@@ -5,7 +5,7 @@ This tracker uses StartAllBack's public product description as the baseline. Its
 | Area | StartAllBack capability | Desktop Tuner status |
 |---|---|---|
 | Start | Search and launch apps | Partial: companion launcher searches Start-menu shortcuts and `shell:AppsFolder` apps, `Ctrl+Alt+Space`, optional Windows-key replacement with Win+key passthrough; ranking, web search, and Windows Search integration remain |
-| Start | Classic menu styles and system-place shortcuts | Partial: Modern, Classic two-column, and Compact layouts with Documents, Downloads, Settings, and power shortcuts; Win7/8-style menus, cascading folders, and richer system actions remain |
+| Start | Classic menu styles and system-place shortcuts | Partial: Modern, Classic two-column, and Compact layouts, nested Start-menu folders, and Documents, Downloads, Settings, and power shortcuts; authentic Win7/8 styling and richer system actions remain |
 | Taskbar | Classic/replacement taskbar and edge placement | Partial: live overlays on the primary display or all connected displays, with per-display placement and window switching; native taskbars remain underneath |
 | Taskbar | Labels, icon size, margins, grouping, drag/drop | Partial: window titles, persistent launch pins, executable/shortcut/folder drag-and-drop, document-to-app drop, and three bar sizes/grouping preference exist; system icon sizing and margins remain |
 | Taskbar | Segmented/floating/translucent styles and auto-hide | Partial: edge-aware auto-hide and a floating inset style; segmented layouts, aura effects, and Windows material translucency remain |

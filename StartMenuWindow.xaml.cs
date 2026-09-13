@@ -10,17 +10,18 @@ public partial class StartMenuWindow : Window
 {
     private readonly AppCatalogService _catalog = new();
     private IReadOnlyList<AppEntry> _apps = [];
+    private StartMenuStyle _style = StartMenuStyle.Modern;
 
     public StartMenuWindow(StartMenuStyle style)
     {
         InitializeComponent();
         _apps = _catalog.FindStartMenuApps();
         SetStyle(style);
-        RefreshApps();
     }
 
     public void SetStyle(StartMenuStyle style)
     {
+        _style = style;
         MenuLayout.RowDefinitions.Clear();
         MenuLayout.ColumnDefinitions.Clear();
         var classic = style == StartMenuStyle.Classic;
@@ -130,6 +131,7 @@ public partial class StartMenuWindow : Window
         }
 
         if (style != StartMenuStyle.Compact) SearchBox.FontSize = 14;
+        RefreshApps();
     }
 
     private void SetQuickLinkAppearance(bool classic)
@@ -176,12 +178,16 @@ public partial class StartMenuWindow : Window
     private void RefreshApps()
     {
         var query = SearchBox?.Text.Trim() ?? string.Empty;
-        var shown = AppCatalogService.Search(_apps, query).ToList();
-        AppList.ItemsSource = shown;
-        ResultsHeading.Text = query.Length == 0 ? "All apps" : "Search results";
-        ResultCount.Text = shown.Count.ToString();
-        EmptyMessage.Visibility = shown.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        if (shown.Count > 0 && AppList.SelectedIndex < 0) AppList.SelectedIndex = 0;
+        var results = AppCatalogService.Search(_apps, query);
+        var showFolders = _style == StartMenuStyle.Classic && query.Length == 0;
+        AppTree.ItemsSource = showFolders ? AppCatalogService.BuildTree(_apps) : null;
+        AppTree.Visibility = showFolders ? Visibility.Visible : Visibility.Collapsed;
+        AppList.Visibility = showFolders ? Visibility.Collapsed : Visibility.Visible;
+        AppList.ItemsSource = showFolders ? null : results;
+        ResultsHeading.Text = query.Length > 0 ? "Search results" : showFolders ? "Programs" : "All apps";
+        ResultCount.Text = results.Count.ToString();
+        EmptyMessage.Visibility = results.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (!showFolders && results.Count > 0 && AppList.SelectedIndex < 0) AppList.SelectedIndex = 0;
     }
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -196,6 +202,11 @@ public partial class StartMenuWindow : Window
             LaunchSelected();
             e.Handled = true;
         }
+        else if (e.Key == Key.Down && SearchBox.IsKeyboardFocusWithin && AppTree.Visibility == Visibility.Visible && AppTree.Items.Count > 0)
+        {
+            AppTree.Focus();
+            e.Handled = true;
+        }
         else if (e.Key == Key.Down && SearchBox.IsKeyboardFocusWithin && AppList.Items.Count > 0)
         {
             AppList.Focus();
@@ -206,9 +217,14 @@ public partial class StartMenuWindow : Window
 
     private void AppList_MouseDoubleClick(object sender, MouseButtonEventArgs e) => LaunchSelected();
 
+    private void AppTree_MouseDoubleClick(object sender, MouseButtonEventArgs e) => LaunchSelected();
+
     private void LaunchSelected()
     {
-        if (AppList.SelectedItem is not AppEntry entry) return;
+        var entry = AppTree.Visibility == Visibility.Visible
+            ? (AppTree.SelectedItem as StartMenuNode)?.Application
+            : AppList.SelectedItem as AppEntry;
+        if (entry is null) return;
         try
         {
             AppCatalogService.Launch(entry);

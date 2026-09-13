@@ -5,9 +5,16 @@ using Microsoft.CSharp.RuntimeBinder;
 
 namespace DesktopTuner;
 
-public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedApp = false)
+public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedApp = false, string CategoryPath = "")
 {
     public string SourceDescription => IsPackagedApp ? "Windows app" : Path.GetDirectoryName(ShortcutPath) ?? ShortcutPath;
+}
+
+public sealed class StartMenuNode(string name, AppEntry? application = null)
+{
+    public string Name { get; } = name;
+    public AppEntry? Application { get; } = application;
+    public List<StartMenuNode> Children { get; } = [];
 }
 
 public sealed class AppCatalogService
@@ -29,7 +36,9 @@ public sealed class AppCatalogService
                 {
                     var name = Path.GetFileNameWithoutExtension(path);
                     if (name.Equals("Uninstall", StringComparison.OrdinalIgnoreCase) || name.Equals("Help", StringComparison.OrdinalIgnoreCase)) continue;
-                    entries.Add(new AppEntry(name, path));
+                    var directory = Path.GetDirectoryName(path)!;
+                    var category = Path.GetRelativePath(root, directory);
+                    entries.Add(new AppEntry(name, path, CategoryPath: category == "." ? string.Empty : category));
                 }
             }
             catch (UnauthorizedAccessException) { }
@@ -55,6 +64,44 @@ public sealed class AppCatalogService
                 .ThenBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase);
         }
         return matches.ToList();
+    }
+
+    public static IReadOnlyList<StartMenuNode> BuildTree(IEnumerable<AppEntry> entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+        var roots = new List<StartMenuNode>();
+        foreach (var entry in entries)
+        {
+            var categoryPath = string.IsNullOrWhiteSpace(entry.CategoryPath) && entry.IsPackagedApp
+                ? "Windows apps"
+                : entry.CategoryPath;
+            var categories = categoryPath.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
+            var currentLevel = roots;
+            foreach (var category in categories)
+            {
+                var node = currentLevel.FirstOrDefault(candidate => candidate.Application is null && string.Equals(candidate.Name, category, StringComparison.OrdinalIgnoreCase));
+                if (node is null)
+                {
+                    node = new StartMenuNode(category);
+                    currentLevel.Add(node);
+                }
+                currentLevel = node.Children;
+            }
+            currentLevel.Add(new StartMenuNode(entry.Name, entry));
+        }
+
+        SortTree(roots);
+        return roots;
+    }
+
+    private static void SortTree(List<StartMenuNode> nodes)
+    {
+        nodes.Sort((left, right) =>
+        {
+            var typeOrder = (left.Application is null ? 0 : 1).CompareTo(right.Application is null ? 0 : 1);
+            return typeOrder != 0 ? typeOrder : StringComparer.CurrentCultureIgnoreCase.Compare(left.Name, right.Name);
+        });
+        foreach (var node in nodes) SortTree(node.Children);
     }
 
     public static void Launch(AppEntry entry)
@@ -99,7 +146,7 @@ public sealed class AppCatalogService
                     var name = (string)shellItem.Name;
                     var applicationId = (string)shellItem.Path;
                     if (!string.IsNullOrWhiteSpace(name) && applicationId.Contains('!'))
-                        entries.Add(new AppEntry(name, applicationId, IsPackagedApp: true));
+                        entries.Add(new AppEntry(name, applicationId, IsPackagedApp: true, CategoryPath: "Windows apps"));
                 }
                 finally
                 {
