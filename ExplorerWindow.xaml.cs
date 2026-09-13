@@ -20,6 +20,8 @@ public partial class ExplorerWindow : Window
     private bool _updatingSortControls;
     private TabItem? _tabDragCandidate;
     private Point _tabDragStart;
+    private ExplorerEntry? _entryDragCandidate;
+    private Point _entryDragStart;
     private ExplorerTabState ActiveTab => _tabs[_activeTabIndex];
     private List<ExplorerLocation> _back => ActiveTab.Back;
     private List<ExplorerLocation> _forward => ActiveTab.Forward;
@@ -203,6 +205,109 @@ public partial class ExplorerWindow : Window
         SyncExplorerTabs();
         e.Handled = true;
     }
+
+    private void EntriesList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (ItemsControl.ContainerFromElement(EntriesList, e.OriginalSource as DependencyObject) is not ListViewItem item
+            || item.Content is not ExplorerEntry { IsDrive: false } entry)
+        {
+            _entryDragCandidate = null;
+            return;
+        }
+
+        _entryDragCandidate = entry;
+        _entryDragStart = e.GetPosition(EntriesList);
+    }
+
+    private void EntriesList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) => _entryDragCandidate = null;
+
+    private void EntriesList_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _entryDragCandidate is not { } candidate) return;
+        var current = e.GetPosition(EntriesList);
+        if (Math.Abs(current.X - _entryDragStart.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(current.Y - _entryDragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+        _entryDragCandidate = null;
+        var paths = EntriesList.SelectedItems.OfType<ExplorerEntry>()
+            .Where(entry => !entry.IsDrive)
+            .Select(entry => entry.FullPath)
+            .ToList();
+        if (!paths.Contains(candidate.FullPath, StringComparer.OrdinalIgnoreCase)) paths = [candidate.FullPath];
+        if (paths.Count == 0) return;
+
+        var data = new DataObject(DataFormats.FileDrop, paths.ToArray());
+        DragDrop.DoDragDrop(EntriesList, data, DragDropEffects.Copy | DragDropEffects.Move);
+    }
+
+    private void EntriesList_DragOver(object sender, DragEventArgs e)
+    {
+        if (!TryGetDropDestination(e, out var destination))
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        var paths = GetDroppedPaths(e.Data);
+        if (paths.Length == 0)
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        var move = ExplorerDragDropPolicy.ResolveMove(paths, destination,
+            e.KeyStates.HasFlag(DragDropKeyStates.ControlKey), e.KeyStates.HasFlag(DragDropKeyStates.ShiftKey));
+        e.Effects = move ? DragDropEffects.Move : DragDropEffects.Copy;
+        e.Handled = true;
+    }
+
+    private void EntriesList_Drop(object sender, DragEventArgs e)
+    {
+        if (!TryGetDropDestination(e, out var destination)) return;
+        var paths = GetDroppedPaths(e.Data);
+        if (paths.Length == 0) return;
+
+        var move = ExplorerDragDropPolicy.ResolveMove(paths, destination,
+            e.KeyStates.HasFlag(DragDropKeyStates.ControlKey), e.KeyStates.HasFlag(DragDropKeyStates.ShiftKey));
+        try
+        {
+            var transferred = ExplorerFileOperationService.Transfer(paths, destination, move);
+            RefreshCurrentView();
+            SetStatus(transferred.Count == 0
+                ? "Those items are already in this folder."
+                : $"{(move ? "Moved" : "Copied")} {transferred.Count:N0} item{(transferred.Count == 1 ? "" : "s")}.");
+            e.Effects = transferred.Count == 0 ? DragDropEffects.None : move ? DragDropEffects.Move : DragDropEffects.Copy;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            ShowFileOperationError("Could not drop items here", ex);
+            e.Effects = DragDropEffects.None;
+        }
+        e.Handled = true;
+    }
+
+    private bool TryGetDropDestination(DragEventArgs e, out string destination)
+    {
+        destination = string.Empty;
+        if (_isSearchView || _location.IsDriveList || _location.IsHome || string.IsNullOrWhiteSpace(_location.Path)) return false;
+        var destinationPath = _location.Path;
+        if (ItemsControl.ContainerFromElement(EntriesList, e.OriginalSource as DependencyObject) is ListViewItem item)
+        {
+            if (item.Content is not ExplorerEntry { IsDirectory: true, IsDrive: false } folder) return false;
+            destinationPath = folder.FullPath;
+        }
+        destination = destinationPath;
+        return true;
+    }
+
+    private static string[] GetDroppedPaths(IDataObject data) => data.GetData(DataFormats.FileDrop, autoConvert: false) switch
+    {
+        string[] paths => paths,
+        System.Collections.Specialized.StringCollection paths => paths.Cast<string>().ToArray(),
+        _ => []
+    };
 
     private static bool IsInsideTabButton(DependencyObject? source, TabItem tab)
     {

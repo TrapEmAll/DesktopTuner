@@ -403,6 +403,10 @@ try
     var movedFile = ExplorerFileOperationService.Transfer([copiedFile], transferMoveDestination, move: true).Single();
     Check("clipboard data", File.ReadAllText(movedFile), "move a file into the destination folder");
     Check(false, File.Exists(copiedFile), "remove a source file after move");
+    Check(true, ExplorerDragDropPolicy.ResolveMove([transferSourceFile], transferDestination, controlPressed: false, shiftPressed: false), "move dragged items by default when source and destination share a volume");
+    Check(false, ExplorerDragDropPolicy.ResolveMove([transferSourceFile], transferDestination, controlPressed: true, shiftPressed: false), "copy dragged items when Control is pressed");
+    Check(true, ExplorerDragDropPolicy.ResolveMove([transferSourceFile], transferDestination, controlPressed: false, shiftPressed: true), "move dragged items when Shift is pressed");
+    Check(false, ExplorerDragDropPolicy.ResolveMove([@"C:\source.txt"], @"D:\destination", controlPressed: false, shiftPressed: false), "copy dragged items by default across volumes");
     var nestedTransferFolder = Path.Combine(transferSource, "Nested");
     Directory.CreateDirectory(nestedTransferFolder);
     File.WriteAllText(Path.Combine(nestedTransferFolder, "nested.txt"), "nested data");
