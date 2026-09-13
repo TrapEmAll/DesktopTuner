@@ -359,6 +359,8 @@ var fullStartPinList = Enumerable.Range(0, StartPinCatalog.MaximumPins)
     .ToList();
 Check(StartPinCatalog.MaximumPins, StartPinCatalog.Pin(fullStartPinList, new AppEntry("Extra", @"C:\Apps\extra.lnk")).Count, "respect the Start pin limit");
 Check(1, StartPinCatalog.Pin([], new AppEntry("Editor", @"C:\Apps\Editor.exe")).Count, "pin executable targets to Start");
+CheckTrue(new StartMenuNode("Editor", new AppEntry("Editor", @"C:\Apps\Editor.lnk")).CanPinApplication, "allow Start app-tree leaves to be pinned");
+Check(false, new StartMenuNode("Tools").CanPinApplication, "keep Start app-tree folders from being pinned as apps");
 var droppedStartPins = StartPinCatalog.AddDroppedFiles([], [@"C:\Apps\Editor.exe", @"C:\Apps\Editor.lnk", @"C:\Apps\Notes.txt", "relative.exe"]);
 Check("Editor,Editor", string.Join(',', droppedStartPins.Select(app => app.Name)), "pin dropped executables and shortcuts while ignoring documents and relative paths");
 Throws<ArgumentException>(() => StartPinCatalog.Pin([], new AppEntry("Unsupported", @"C:\Apps\unsupported.txt")), "reject unsupported Start pin targets");

@@ -21,6 +21,7 @@ public sealed class StartMenuNode(string name, AppEntry? application = null)
 {
     public string Name { get; } = name;
     public AppEntry? Application { get; } = application;
+    public bool CanPinApplication => StartPinCatalog.IsSupported(Application);
     public bool CanRunApplicationAsAdministrator => Application?.CanRunElevated == true;
     public bool CanOpenApplicationFileLocation => Application?.CanOpenFileLocation == true;
     public List<StartMenuNode> Children { get; } = [];

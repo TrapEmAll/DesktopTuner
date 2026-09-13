@@ -324,6 +324,28 @@ public partial class StartMenuWindow : Window
         DragDrop.DoDragDrop(AppList, new DataObject(PinnedStartDragFormat, shortcutPath), DragDropEffects.Move);
     }
 
+    private void AppTree_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _appListDragCandidate = null;
+        if (e.OriginalSource is not DependencyObject source
+            || ItemsControl.ContainerFromElement(AppTree, source) is not TreeViewItem { DataContext: StartMenuNode { Application: { } app } }
+            || !StartPinCatalog.IsSupported(app)) return;
+        _appListDragCandidate = app.ShortcutPath;
+        _appListDrag = e.GetPosition(AppTree);
+    }
+
+    private void AppTree_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _appListDragCandidate is null) return;
+        var current = e.GetPosition(AppTree);
+        if (Math.Abs(current.X - _appListDrag.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(current.Y - _appListDrag.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+        var shortcutPath = _appListDragCandidate;
+        _appListDragCandidate = null;
+        DragDrop.DoDragDrop(AppTree, new DataObject(PinnedStartDragFormat, shortcutPath), DragDropEffects.Move);
+    }
+
     private void AppTree_MouseDoubleClick(object sender, MouseButtonEventArgs e) => LaunchSelected();
 
     private void LaunchSelected()

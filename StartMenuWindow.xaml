@@ -153,12 +153,14 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
-                <TreeView x:Name="AppTree" Grid.Row="2" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppTree_MouseDoubleClick">
+                <TreeView x:Name="AppTree" Grid.Row="2" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppTree_MouseDoubleClick" PreviewMouseLeftButtonDown="AppTree_PreviewMouseLeftButtonDown" PreviewMouseMove="AppTree_PreviewMouseMove">
                     <TreeView.Resources>
                         <HierarchicalDataTemplate DataType="{x:Type local:StartMenuNode}" ItemsSource="{Binding Children}">
                             <StackPanel Orientation="Horizontal">
                                 <StackPanel.ContextMenu>
                                     <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                        <MenuItem Header="Pin to Start" Tag="{Binding Application}" IsEnabled="{Binding CanPinApplication}" Click="PinStartApp_Click" />
+                                        <Separator />
                                         <MenuItem Header="Open file location" Tag="{Binding Application}" IsEnabled="{Binding CanOpenApplicationFileLocation}" Click="OpenFileLocation_Click" />
                                         <Separator />
                                         <MenuItem Header="Run as administrator" Tag="{Binding Application}" IsEnabled="{Binding CanRunApplicationAsAdministrator}" Click="RunAsAdministrator_Click" />
