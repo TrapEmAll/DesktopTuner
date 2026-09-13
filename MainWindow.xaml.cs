@@ -584,6 +584,7 @@ public partial class MainWindow : Window
     private void MainWindow_SourceInitialized(object? sender, EventArgs e)
     {
         var handle = new WindowInteropHelper(this).Handle;
+        SystemBackdropService.TryApplySystemDarkMode(this);
         _windowSource = HwndSource.FromHwnd(handle);
         _windowSource.AddHook(WindowMessageHook);
         var unavailableShortcuts = new List<string>();

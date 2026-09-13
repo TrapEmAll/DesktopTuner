@@ -8,6 +8,7 @@ namespace DesktopTuner;
 
 public static class SystemBackdropService
 {
+    private const int ImmersiveDarkModeAttribute = 20;
     private const int SystemBackdropTypeAttribute = 38;
     private const int WindowCornerPreferenceAttribute = 33;
     private const int MainWindowBackdrop = 2;
@@ -17,6 +18,7 @@ public static class SystemBackdropService
     public static bool TryApplyMica(Window window)
     {
         ArgumentNullException.ThrowIfNull(window);
+        TryApplySystemDarkMode(window);
         var originalBackground = window.Background;
         window.Background = Brushes.Transparent;
 
@@ -41,6 +43,41 @@ public static class SystemBackdropService
 
         window.Background = originalBackground;
         return false;
+    }
+
+    public static bool TryApplySystemDarkMode(Window window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)) return false;
+        var handle = new WindowInteropHelper(window).Handle;
+        if (handle == IntPtr.Zero) return false;
+
+        try
+        {
+            var useDarkMode = TaskbarTheme.ReadSystemDarkMode() ? 1 : 0;
+            var result = DwmSetWindowAttribute(handle, ImmersiveDarkModeAttribute, ref useDarkMode, sizeof(int));
+            if (result == 0) return true;
+            Trace.TraceInformation($"DWM system dark mode is unavailable for '{window.Title}' (HRESULT 0x{result:X8}).");
+        }
+        catch (DllNotFoundException ex)
+        {
+            Trace.TraceInformation($"DWM is unavailable for '{window.Title}': {ex.Message}");
+        }
+        catch (EntryPointNotFoundException ex)
+        {
+            Trace.TraceInformation($"DWM dark mode is unavailable for '{window.Title}': {ex.Message}");
+        }
+        return false;
+    }
+
+    public static void RefreshOpenWindowDarkMode()
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000) || Application.Current is not { } application) return;
+        foreach (Window window in application.Windows)
+        {
+            if (PresentationSource.FromVisual(window) is HwndSource)
+                TryApplySystemDarkMode(window);
+        }
     }
 
     public static bool TryApplyTransientBackdrop(IntPtr windowHandle)

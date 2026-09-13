@@ -40,5 +40,7 @@ public static class DesktopTheme
             resources["DesktopAccentTintBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(tint));
             resources["DesktopAccentTextBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(text));
         }
+
+        SystemBackdropService.RefreshOpenWindowDarkMode();
     }
 }

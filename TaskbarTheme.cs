@@ -95,10 +95,13 @@ public static class TaskbarTheme
             var color = (Color)ColorConverter.ConvertFromString(dark ? colors.Dark : colors.Light);
             resources[key] = new SolidColorBrush(color);
         }
-        if (!SystemAccentColorService.TryRead(out var colorizationColor)) return;
-        var (accent, fallback) = ResolveAccentBrushes(colorizationColor);
-        resources["TaskbarAccentBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(accent));
-        resources["TaskbarAccentFallbackBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(fallback));
+        if (SystemAccentColorService.TryRead(out var colorizationColor))
+        {
+            var (accent, fallback) = ResolveAccentBrushes(colorizationColor);
+            resources["TaskbarAccentBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(accent));
+            resources["TaskbarAccentFallbackBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(fallback));
+        }
+        SystemBackdropService.RefreshOpenWindowDarkMode();
     }
 
     public static Color ReadAccentColor() => GetBrush("TaskbarAccentBrush") is SolidColorBrush brush
