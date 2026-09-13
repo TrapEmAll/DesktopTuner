@@ -223,8 +223,12 @@ Throws<ArgumentException>(() => StartPinCatalog.Pin([], new AppEntry("Unsupporte
 Check("shell:MyComputerFolder", StartMenuPlaceCatalog.ResolveTarget("computer"), "open This PC from the Start places menu");
 Check("control.exe", StartMenuPlaceCatalog.ResolveTarget("control-panel"), "open Control Panel from the Start places menu");
 Check(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), StartMenuPlaceCatalog.ResolveTarget("music"), "open the user's Music folder from the Start places menu");
-Check(7, StartMenuPlaceCatalog.AdditionalPlaces.Count, "show the supported additional Start system places");
+Check(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), StartMenuPlaceCatalog.ResolveTarget("documents"), "resolve Documents from the Start dropdown places");
+Check(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"), StartMenuPlaceCatalog.ResolveTarget("downloads"), "resolve Downloads from the Start dropdown places");
+Check(5, StartMenuPlaceCatalog.DropdownPlaces.Count, "show the supported Start places with dropdown navigation");
+Check(4, StartMenuPlaceCatalog.AdditionalPlaces.Count, "show the remaining additional Start system places");
 Throws<ArgumentOutOfRangeException>(() => StartMenuPlaceCatalog.ResolveTarget("unknown"), "reject unknown Start system places");
+Throws<ArgumentOutOfRangeException>(() => StartMenuPlaceCatalog.ReadChildren("missing", -1), "reject a negative Start place dropdown limit");
 Check("lock,sleep,hibernate,sign-out,restart,shutdown", string.Join(',', StartPowerActionCatalog.Actions.Select(action => action.Id)), "offer common Start power actions");
 Check(true, StartPowerActionCatalog.ById("shutdown").RequiresConfirmation, "confirm shutdown before execution");
 Check(true, StartPowerActionCatalog.ById("restart").RequiresConfirmation, "confirm restart before execution");
@@ -337,6 +341,19 @@ try
 {
     var explorerTestDirectory = Path.Combine(temporaryPreferencesDirectory, "ExplorerOperations");
     Directory.CreateDirectory(explorerTestDirectory);
+    var startPlaceTestDirectory = Path.Combine(temporaryPreferencesDirectory, "StartPlaceFlyout");
+    Directory.CreateDirectory(startPlaceTestDirectory);
+    Directory.CreateDirectory(Path.Combine(startPlaceTestDirectory, "Folder"));
+    var startPlaceFile = Path.Combine(startPlaceTestDirectory, "Notes.txt");
+    var hiddenStartPlaceFile = Path.Combine(startPlaceTestDirectory, "Hidden.txt");
+    File.WriteAllText(startPlaceFile, "notes");
+    File.WriteAllText(hiddenStartPlaceFile, "hidden");
+    File.SetAttributes(hiddenStartPlaceFile, File.GetAttributes(hiddenStartPlaceFile) | FileAttributes.Hidden);
+    var startPlaceEntries = StartMenuPlaceCatalog.ReadChildren(startPlaceTestDirectory);
+    Check("Folder", startPlaceEntries[0].Name, "show folders first in a Start place dropdown");
+    Check("Folder,Notes.txt", string.Join(',', startPlaceEntries.Select(entry => entry.Name)), "hide hidden items from a Start place dropdown");
+    Check(1, StartMenuPlaceCatalog.ReadChildren(startPlaceTestDirectory, 1).Count, "bound the number of entries shown in a Start place dropdown");
+    Check(0, StartMenuPlaceCatalog.ReadChildren(Path.Combine(temporaryPreferencesDirectory, "missing-place")).Count, "return no Start place entries for a missing directory");
     var linkedExecutablePath = Environment.ProcessPath!;
     var taskbarShortcutPath = Path.Combine(explorerTestDirectory, "Test application.lnk");
     object? shortcutShellObject = null;

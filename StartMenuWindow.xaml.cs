@@ -386,9 +386,16 @@ public partial class StartMenuWindow : Window
         var menu = button.ContextMenu;
         if (menu.Items.Count == 0)
         {
+            foreach (var place in StartMenuPlaceCatalog.DropdownPlaces)
+            {
+                var item = new MenuItem { Header = place.Label, Tag = place.Id };
+                item.Click += SystemPlace_Click;
+                item.SubmenuOpened += PlaceFlyout_Opened;
+                menu.Items.Add(item);
+            }
+            menu.Items.Add(new Separator());
             foreach (var place in StartMenuPlaceCatalog.AdditionalPlaces)
             {
-                if (place.Id == "music") menu.Items.Add(new Separator());
                 var item = new MenuItem { Header = place.Label, Tag = place.Id };
                 item.Click += SystemPlace_Click;
                 menu.Items.Add(item);
@@ -397,6 +404,52 @@ public partial class StartMenuWindow : Window
         menu.PlacementTarget = button;
         menu.Placement = PlacementMode.Bottom;
         menu.IsOpen = true;
+    }
+
+    private void PlaceFlyout_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string placeId } menuItem) return;
+        FillPlaceFlyout(menuItem, StartMenuPlaceCatalog.ResolveTarget(placeId), depth: 0);
+    }
+
+    private void NestedPlaceFlyout_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: StartMenuPlaceEntry { IsDirectory: true } entry } menuItem) return;
+        FillPlaceFlyout(menuItem, entry.FullPath, depth: 1);
+    }
+
+    private void FillPlaceFlyout(MenuItem menuItem, string directoryPath, int depth)
+    {
+        menuItem.Items.Clear();
+        var entries = StartMenuPlaceCatalog.ReadChildren(directoryPath);
+        if (entries.Count == 0)
+        {
+            menuItem.Items.Add(new MenuItem { Header = "No items", IsEnabled = false });
+            return;
+        }
+
+        foreach (var entry in entries)
+        {
+            var item = new MenuItem { Header = entry.Name, Tag = entry };
+            item.Click += StartPlaceEntry_Click;
+            if (entry.IsDirectory && !entry.IsReparsePoint && depth < 1)
+                item.SubmenuOpened += NestedPlaceFlyout_Opened;
+            menuItem.Items.Add(item);
+        }
+    }
+
+    private void StartPlaceEntry_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: StartMenuPlaceEntry entry }) return;
+        try
+        {
+            AppCatalogService.OpenLocation(entry.FullPath);
+            Close();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Windows could not open {entry.Name}.\n\n{ex.Message}", "Could not open Start place item", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void SystemPlace_Click(object sender, RoutedEventArgs e)
