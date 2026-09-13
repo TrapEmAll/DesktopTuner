@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -12,6 +13,7 @@ namespace DesktopTuner;
 
 public partial class TaskbarWindow : Window
 {
+    private const int DwmColorizationColorChangedMessage = 0x0320;
     private const string PinnedAppDragFormat = "DesktopTuner.PinnedTaskbarApp";
     private const string WindowGroupDragFormat = "DesktopTuner.RunningTaskbarGroup";
     private readonly RunningWindowService _windows = new();
@@ -67,6 +69,7 @@ public partial class TaskbarWindow : Window
         SourceInitialized += (_, _) =>
         {
             _nativeReady = true;
+            HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(WindowProc);
             ApplyLayout();
             Display = TaskbarDisplayService.ReadWindowDpi(Display, this);
             ApplyLayout();
@@ -236,6 +239,7 @@ public partial class TaskbarWindow : Window
     private void Window_Closed(object? sender, EventArgs e)
     {
         SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
+        HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.RemoveHook(WindowProc);
         _refreshTimer.Stop();
         _autoHideTimer.Stop();
         _previewOpenTimer.Stop();
@@ -243,12 +247,21 @@ public partial class TaskbarWindow : Window
         _previewWindow?.Close();
     }
 
+    private nint WindowProc(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
+    {
+        if (message == DwmColorizationColorChangedMessage)
+        {
+            TaskbarTheme.Apply(_isDark);
+            ApplyLayout();
+        }
+        return 0;
+    }
+
     private void SystemEvents_UserPreferenceChanged(object? sender, UserPreferenceChangedEventArgs e)
     {
         var isDark = TaskbarTheme.ReadSystemDarkMode();
         _ = Dispatcher.BeginInvoke(new Action(() =>
         {
-            if (_isDark == isDark) return;
             _isDark = isDark;
             TaskbarTheme.Apply(_isDark);
             ApplyLayout();

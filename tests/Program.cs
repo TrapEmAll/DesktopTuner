@@ -82,6 +82,9 @@ Check((byte)128, TaskbarTransparencyPolicy.GetAlpha(50), "convert fifty percent 
 Check((byte)77, TaskbarTransparencyPolicy.GetAlpha(100), "bound taskbar transparency to retain a visible backdrop");
 Check(0, TaskbarTransparencyPolicy.Clamp(-10), "clamp negative transparency values");
 Check(70, TaskbarTransparencyPolicy.Clamp(100), "cap transparency to preserve taskbar contrast");
+var systemAccent = TaskbarTheme.ResolveAccentBrushes(0xFF336699);
+Check("#FF336699", systemAccent.Accent, "read DWM colorization values as Windows accent RGB");
+Check("#FF264C73", systemAccent.Fallback, "darken the Windows accent for white taskbar fallback icons");
 var firstPin = TaskbarPinCatalog.Add([], "Editor", @"C:\Program Files\Editor\editor.exe");
 Check(1, firstPin.Count, "pin a running app executable");
 Check(1, TaskbarPinCatalog.Add(firstPin, "Editor", @"C:\Program Files\Editor\editor.exe").Count, "avoid duplicate pins");
