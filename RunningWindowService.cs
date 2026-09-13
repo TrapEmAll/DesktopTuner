@@ -70,8 +70,17 @@ public sealed class RunningWindowService
 
     public static void Activate(RunningWindow window)
     {
-        if (window.IsMinimized) ShowWindow(window.Handle, SW_RESTORE);
+        if (IsIconic(window.Handle)) ShowWindow(window.Handle, SW_RESTORE);
         SetForegroundWindow(window.Handle);
+    }
+
+    public static void ActivateOrMinimize(RunningWindow window)
+    {
+        var isMinimized = IsIconic(window.Handle);
+        if (TaskbarWindowActivationPolicy.ShouldMinimize(window.Handle == GetForegroundWindow(), isMinimized))
+            ShowWindow(window.Handle, SW_MINIMIZE);
+        else
+            Activate(window);
     }
 
     public static void Minimize(RunningWindow window) => ShowWindow(window.Handle, SW_MINIMIZE);
@@ -136,4 +145,9 @@ public sealed class RunningWindowService
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool PostMessage(nint hWnd, uint message, nint wParam, nint lParam);
+}
+
+public static class TaskbarWindowActivationPolicy
+{
+    public static bool ShouldMinimize(bool isForeground, bool isMinimized) => isForeground && !isMinimized;
 }

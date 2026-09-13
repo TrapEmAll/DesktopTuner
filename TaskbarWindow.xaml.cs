@@ -586,7 +586,7 @@ public partial class TaskbarWindow : Window
         }
 
         _previewWindow?.Close();
-        RunningWindowService.Activate(group.Windows[0]);
+        RunningWindowService.ActivateOrMinimize(group.Windows[0]);
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e)
@@ -639,10 +639,17 @@ public partial class TaskbarWindow : Window
     private void PinnedButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: PinnedTaskbarApp app }) return;
-        var openWindow = _windows.Enumerate().FirstOrDefault(window => string.Equals(window.ExecutablePath, app.ExecutablePath, StringComparison.OrdinalIgnoreCase));
-        if (openWindow is not null)
+        var openWindows = _windows.Enumerate()
+            .Where(window => string.Equals(window.ExecutablePath, app.ExecutablePath, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (openWindows.Count > 1)
         {
-            RunningWindowService.Activate(openWindow);
+            ShowWindowPreview(new TaskbarWindowGroup(app.Name, app.Name, openWindows), (Button)sender, activate: true);
+            return;
+        }
+        if (openWindows.Count == 1)
+        {
+            RunningWindowService.ActivateOrMinimize(openWindows[0]);
             return;
         }
         var isDirectory = app.IsDirectory || Directory.Exists(app.ExecutablePath);

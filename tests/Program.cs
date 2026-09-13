@@ -117,6 +117,9 @@ var runningWindows = new[]
     new RunningWindow((nint)3, "Inbox", "Mail", @"C:\Apps\mail.exe", false)
 };
 var alwaysGroupedWindows = TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Always, 10);
+CheckTrue(TaskbarWindowActivationPolicy.ShouldMinimize(isForeground: true, isMinimized: false), "minimize an already active taskbar window on a second click");
+CheckTrue(!TaskbarWindowActivationPolicy.ShouldMinimize(isForeground: true, isMinimized: true), "restore rather than minimize an already minimized taskbar window");
+CheckTrue(!TaskbarWindowActivationPolicy.ShouldMinimize(isForeground: false, isMinimized: false), "activate a taskbar window when another app is foreground");
 Check(2, alwaysGroupedWindows.Count, "always group windows from the same executable");
 Check("Editor (2)", alwaysGroupedWindows[0].Label, "show the app name and window count for a grouped button");
 Check("Document one" + Environment.NewLine + "Document two", alwaysGroupedWindows[0].ToolTip, "list window titles in a grouped button tooltip");
