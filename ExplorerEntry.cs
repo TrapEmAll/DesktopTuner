@@ -8,6 +8,7 @@ public sealed record ExplorerEntry(string Name, string FullPath, bool IsDirector
     public bool IsHidden { get; init; }
     public bool IsSystem { get; init; }
     public bool IsCut { get; init; }
+    public DateTime? RecentAccessed { get; init; }
     public string DisplayName { get; init; } = Name;
     public string Type => IsDrive ? "Local drive" : IsDirectory ? "File folder" : Path.GetExtension(FullPath) is { Length: > 1 } extension ? $"{extension[1..].ToUpperInvariant()} file" : "File";
     public string SizeText => Length is long length ? FormatSize(length) : "";

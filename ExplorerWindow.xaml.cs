@@ -28,21 +28,25 @@ public partial class ExplorerWindow : Window
     private bool _isSearchView { get => ActiveTab.IsSearchView; set => ActiveTab.IsSearchView = value; }
     private readonly bool _showHiddenItems;
     private readonly bool _hideFileExtensions;
+    private readonly bool _showRecentItems;
     private ExplorerSortColumn _sortColumn = ExplorerSortColumn.Name;
     private bool _sortAscending = true;
+    private bool _sortExplicitly;
     private double _detailsPaneHeight = 160;
 
-    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false)
+    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true)
     {
         InitializeComponent();
         _showHiddenItems = showHiddenItems;
         _hideFileExtensions = hideFileExtensions;
-        var startPath = string.IsNullOrWhiteSpace(initialPath) ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) : initialPath;
+        _showRecentItems = showRecentItems;
         var initialLocation = startInThisPc && string.IsNullOrWhiteSpace(initialPath)
             ? new ExplorerLocation(null, IsDriveList: true)
-            : Directory.Exists(startPath)
-                ? new ExplorerLocation(Path.GetFullPath(startPath))
-                : new ExplorerLocation(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+            : string.IsNullOrWhiteSpace(initialPath)
+                ? new ExplorerLocation(null, IsHome: true)
+                : Directory.Exists(initialPath)
+                    ? new ExplorerLocation(Path.GetFullPath(initialPath))
+                    : new ExplorerLocation(null, IsHome: true);
         _tabs.Add(new ExplorerTabState(initialLocation));
         SyncExplorerTabs();
         Closed += (_, _) => { foreach (var tab in _tabs) CancelSearch(tab); };
@@ -87,6 +91,7 @@ public partial class ExplorerWindow : Window
     private static string GetTabTitle(ExplorerTabState tab)
     {
         if (tab.IsSearchView) return $"Search: {tab.Location.SearchQuery}";
+        if (tab.Location.IsHome) return "Home";
         if (tab.Location.IsDriveList) return "This PC";
         var path = tab.Location.Path ?? "Home";
         return Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) is { Length: > 0 } name ? name : path;
@@ -205,8 +210,7 @@ public partial class ExplorerWindow : Window
         return false;
     }
 
-    private void NewTabButton_Click(object sender, RoutedEventArgs e) => AddTab(
-        _location.IsDriveList ? new ExplorerLocation(null, IsDriveList: true) : new ExplorerLocation(_location.Path));
+    private void NewTabButton_Click(object sender, RoutedEventArgs e) => AddTab(_location with { SearchQuery = null });
 
     private void OpenInNewTab_Click(object sender, RoutedEventArgs e)
     {
@@ -233,7 +237,7 @@ public partial class ExplorerWindow : Window
 
     private void Navigate(ExplorerLocation target, bool addHistory = true)
     {
-        if (!target.IsDriveList && (string.IsNullOrWhiteSpace(target.Path) || !Directory.Exists(target.Path)))
+        if (!target.IsDriveList && !target.IsHome && (string.IsNullOrWhiteSpace(target.Path) || !Directory.Exists(target.Path)))
         {
             SetStatus("That folder is unavailable or no longer exists.");
             return;
@@ -245,7 +249,7 @@ public partial class ExplorerWindow : Window
         }
         CancelSearch();
         _isSearchView = false;
-        _location = target.IsDriveList ? target : new ExplorerLocation(Path.GetFullPath(target.Path!), SearchQuery: target.SearchQuery);
+        _location = target.IsDriveList || target.IsHome ? target : new ExplorerLocation(Path.GetFullPath(target.Path!), SearchQuery: target.SearchQuery);
         SearchBox.Text = target.SearchQuery ?? "";
         if (string.IsNullOrWhiteSpace(target.SearchQuery)) RefreshLocation();
         else _ = SearchCurrentFolderAsync(target.SearchQuery);
@@ -271,7 +275,9 @@ public partial class ExplorerWindow : Window
         string? loadError = null;
         try
         {
-            entries = _location.IsDriveList ? ReadDrives() : ReadDirectory(_location.Path!);
+            entries = _location.IsHome
+                ? ExplorerHomeService.ReadHomeFiles(_showRecentItems, _showHiddenItems).Select(ApplyDisplayName).ToList()
+                : _location.IsHome ? [] : _location.IsDriveList ? ReadDrives() : ReadDirectory(_location.Path!);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
@@ -283,17 +289,22 @@ public partial class ExplorerWindow : Window
         ApplySort();
         EntriesList.SelectedItem = null;
         UpdateSelectionCommands();
-        NewFolderButton.IsEnabled = !_location.IsDriveList;
-        var title = _location.IsDriveList ? "This PC" : Path.GetFileName(_location.Path!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome;
+        SearchBox.IsEnabled = SearchButton.IsEnabled = !_location.IsDriveList && !_location.IsHome;
+        var title = _location.IsHome ? "Home" : _location.IsDriveList ? "This PC" : Path.GetFileName(_location.Path!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         if (string.IsNullOrEmpty(title)) title = _location.Path ?? "Home";
         LocationTitle.Text = title;
-        LocationSubtitle.Text = _location.IsDriveList ? "Browse available drives" : _location.Path;
-        AddressBox.Text = _location.IsDriveList ? "This PC" : _location.Path;
+        LocationSubtitle.Text = _location.IsHome
+            ? _showRecentItems ? "Recently opened files · newest first" : "Recent activity is disabled in Windows"
+            : _location.IsDriveList ? "Browse available drives" : _location.Path;
+        AddressBox.Text = _location.IsHome ? "Home" : _location.IsDriveList ? "This PC" : _location.Path;
         UpdateExplorerTabTitles();
         BackButton.IsEnabled = _back.Count > 0;
         ForwardButton.IsEnabled = _forward.Count > 0;
-        UpButton.IsEnabled = !_location.IsDriveList && Directory.GetParent(_location.Path!) is not null;
-        EmptyMessage.Text = "This folder is empty.";
+        UpButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && Directory.GetParent(_location.Path!) is not null;
+        EmptyMessage.Text = _location.IsHome
+            ? _showRecentItems ? "No recent files are available." : "Recent items are turned off in Windows."
+            : "This folder is empty.";
         EmptyMessage.Visibility = entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         SetFolderDetails(entries.Count);
         if (loadError is not null) SetStatus(loadError);
@@ -355,7 +366,7 @@ public partial class ExplorerWindow : Window
 
     private void Up_Click(object sender, RoutedEventArgs e)
     {
-        if (!_location.IsDriveList && Directory.GetParent(_location.Path!) is { } parent) Navigate(new ExplorerLocation(parent.FullName));
+        if (!_location.IsDriveList && !_location.IsHome && Directory.GetParent(_location.Path!) is { } parent) Navigate(new ExplorerLocation(parent.FullName));
     }
 
     private void Go_Click(object sender, RoutedEventArgs e) => NavigateFromAddress();
@@ -364,6 +375,11 @@ public partial class ExplorerWindow : Window
     private void NavigateFromAddress()
     {
         var entered = AddressBox.Text.Trim();
+        if (string.Equals(entered, "Home", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigate(new ExplorerLocation(null, IsHome: true));
+            return;
+        }
         if (string.Equals(entered, "This PC", StringComparison.OrdinalIgnoreCase))
         {
             Navigate(new ExplorerLocation(null, IsDriveList: true));
@@ -376,10 +392,10 @@ public partial class ExplorerWindow : Window
     private void QuickLocation_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: string target }) return;
+        if (target == "home") { Navigate(new ExplorerLocation(null, IsHome: true)); return; }
         if (target == "drives") { Navigate(new ExplorerLocation(null, IsDriveList: true)); return; }
         var specialFolder = target switch
         {
-            "home" => Environment.SpecialFolder.UserProfile,
             "desktop" => Environment.SpecialFolder.DesktopDirectory,
             "documents" => Environment.SpecialFolder.MyDocuments,
             "downloads" => Environment.SpecialFolder.UserProfile,
@@ -411,7 +427,7 @@ public partial class ExplorerWindow : Window
             if (ReferenceEquals(ActiveTab, tab)) RefreshLocation();
             return;
         }
-        if (tab.Location.IsDriveList || string.IsNullOrWhiteSpace(tab.Location.Path))
+        if (tab.Location.IsDriveList || tab.Location.IsHome || string.IsNullOrWhiteSpace(tab.Location.Path))
         {
             SetStatus("Open a folder before searching its contents.");
             return;
@@ -488,6 +504,7 @@ public partial class ExplorerWindow : Window
         if (sender is not GridViewColumnHeader { Tag: string columnName }
             || !Enum.TryParse(columnName, out ExplorerSortColumn column)) return;
 
+        _sortExplicitly = true;
         if (_sortColumn == column) _sortAscending = !_sortAscending;
         else
         {
@@ -515,7 +532,13 @@ public partial class ExplorerWindow : Window
         return sorted ? $"{label} {(ascending ? "↑" : "↓")}" : label;
     }
 
-    private void ApplySort() => EntriesList.ItemsSource = ExplorerSortPolicy.Sort(_entries, _sortColumn, _sortAscending);
+    private void ApplySort()
+    {
+        var entries = _location.IsHome && !_sortExplicitly
+            ? _entries.OrderByDescending(entry => entry.RecentAccessed ?? entry.Modified).ToList()
+            : ExplorerSortPolicy.Sort(_entries, _sortColumn, _sortAscending);
+        EntriesList.ItemsSource = entries;
+    }
 
     private void DetailsPaneToggle_Click(object sender, RoutedEventArgs e)
     {
@@ -567,7 +590,7 @@ public partial class ExplorerWindow : Window
         CopyButton.IsEnabled = CutButton.IsEnabled = canTransferSelection;
         RenameButton.IsEnabled = selection.Count == 1 && !selection[0].IsDrive;
         DeleteButton.IsEnabled = selection.Count > 0 && selection.All(entry => !entry.IsDrive);
-        PasteButton.IsEnabled = !ActiveTab.Location.IsDriveList && ClipboardHasFileDrop();
+        PasteButton.IsEnabled = !ActiveTab.Location.IsDriveList && !ActiveTab.Location.IsHome && ClipboardHasFileDrop();
     }
 
     private void Copy_Click(object sender, RoutedEventArgs e) => CopyOrCutSelection(move: false);
@@ -604,7 +627,7 @@ public partial class ExplorerWindow : Window
 
     private void PasteClipboardItems()
     {
-        if (_location.IsDriveList || string.IsNullOrWhiteSpace(_location.Path)) return;
+        if (_location.IsDriveList || _location.IsHome || string.IsNullOrWhiteSpace(_location.Path)) return;
         try
         {
             var (paths, move) = ReadClipboardTransfer();
@@ -703,7 +726,7 @@ public partial class ExplorerWindow : Window
             OpenEntry(selectedEntry);
             e.Handled = true;
         }
-        else if (e.Key == Key.Back && !_location.IsDriveList)
+        else if (e.Key == Key.Back && !_location.IsDriveList && !_location.IsHome)
         {
             Up_Click(this, new RoutedEventArgs());
             e.Handled = true;
@@ -733,7 +756,7 @@ public partial class ExplorerWindow : Window
             RefreshCurrentView();
             e.Handled = true;
         }
-        else if (e.Key == Key.N && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift) && !_location.IsDriveList)
+        else if (e.Key == Key.N && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift) && !_location.IsDriveList && !_location.IsHome)
         {
             CreateFolder();
             e.Handled = true;
@@ -752,15 +775,15 @@ public partial class ExplorerWindow : Window
         var hasTransferableSelection = selection.Count > 0 && selection.All(entry => !entry.IsDrive);
         var hasSingleSelection = selection.Count == 1;
         CopyMenuItem.IsEnabled = CutMenuItem.IsEnabled = hasTransferableSelection;
-        PasteMenuItem.IsEnabled = !_location.IsDriveList && ClipboardHasFileDrop();
+        PasteMenuItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && ClipboardHasFileDrop();
         OpenInNewTabMenuItem.IsEnabled = hasSingleSelection && selection[0].IsDirectory;
         RenameMenuItem.IsEnabled = hasSingleSelection && !selection[0].IsDrive;
         DeleteMenuItem.IsEnabled = hasTransferableSelection;
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open")) is { } openItem)
             openItem.IsEnabled = hasSingleSelection;
-        NewFolderButton.IsEnabled = !_location.IsDriveList && !_isSearchView;
+        NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_isSearchView;
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "New folder")) is { } newFolderItem)
-            newFolderItem.IsEnabled = !_location.IsDriveList && !_isSearchView;
+            newFolderItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_isSearchView;
     }
 
     private void NewFolder_Click(object sender, RoutedEventArgs e) => CreateFolder();
@@ -775,7 +798,7 @@ public partial class ExplorerWindow : Window
 
     private void CreateFolder()
     {
-        if (_location.IsDriveList || _isSearchView) return;
+        if (_location.IsDriveList || _location.IsHome || _isSearchView) return;
         try
         {
             var createdPath = ExplorerFileOperationService.CreateFolder(_location.Path!);
@@ -887,6 +910,15 @@ public partial class ExplorerWindow : Window
             DetailsLocation.Text = _location.Path;
             DetailsSize.Text = FormatItemCount(itemCount);
             DetailsModified.Text = $"Name contains “{SearchBox.Text.Trim()}”.";
+            return;
+        }
+        if (_location.IsHome)
+        {
+            DetailsName.Text = "Home";
+            DetailsType.Text = "Recent files";
+            DetailsLocation.Text = "Opened recently";
+            DetailsSize.Text = FormatItemCount(itemCount);
+            DetailsModified.Text = "Select an item to see its modified date.";
             return;
         }
         DetailsName.Text = _location.IsDriveList ? "This PC" : Path.GetFileName(_location.Path!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));

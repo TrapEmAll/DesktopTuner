@@ -821,7 +821,8 @@ public partial class MainWindow : Window
         _explorerWindow = new ExplorerWindow(
             showHiddenItems: _currentValues["explorer-hidden"] == 1,
             hideFileExtensions: _currentValues["explorer-extensions"] == 1,
-            startInThisPc: _currentValues["explorer-launch"] == 1)
+            startInThisPc: _currentValues["explorer-launch"] == 1,
+            showRecentItems: _currentValues["start-recent"] == 1)
         { Owner = this };
         _explorerWindow.Closed += (_, _) => _explorerWindow = null;
         _explorerWindow.Show();

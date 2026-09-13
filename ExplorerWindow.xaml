@@ -45,7 +45,7 @@
                 </StackPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
                     <TextBox x:Name="SearchBox" Width="230" Height="36" VerticalContentAlignment="Center" Padding="10,0" ToolTip="Search this folder and its subfolders" KeyDown="SearchBox_KeyDown" />
-                    <Button Content="Search" Margin="6,0,0,0" Padding="14,0" Click="Search_Click" />
+                    <Button x:Name="SearchButton" Content="Search" Margin="6,0,0,0" Padding="14,0" Click="Search_Click" />
                 </StackPanel>
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Left" Text="Location" Foreground="{DynamicResource DesktopMutedTextBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -113,7 +113,7 @@
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Width="360" DisplayMemberBinding="{Binding DisplayName}">
-                                    <GridViewColumn.Header><GridViewColumnHeader x:Name="NameColumnHeader" Tag="Name" Click="SortColumn_Click">Name ↑</GridViewColumnHeader></GridViewColumn.Header>
+                                    <GridViewColumn.Header><GridViewColumnHeader x:Name="NameColumnHeader" Tag="Name" Click="SortColumn_Click">Name</GridViewColumnHeader></GridViewColumn.Header>
                                 </GridViewColumn>
                                 <GridViewColumn Width="155" DisplayMemberBinding="{Binding ModifiedText}">
                                     <GridViewColumn.Header><GridViewColumnHeader x:Name="DateModifiedColumnHeader" Tag="DateModified" Click="SortColumn_Click">Date modified</GridViewColumnHeader></GridViewColumn.Header>

@@ -350,6 +350,21 @@ try
     Check(0, ExplorerSearchService.SearchAsync(explorerTestDirectory, "classified").GetAwaiter().GetResult().Entries.Count, "respect hidden-item preferences during search");
     Check(1, ExplorerSearchService.SearchAsync(explorerTestDirectory, "classified", showHiddenItems: true).GetAwaiter().GetResult().Entries.Count, "include hidden items when the preference allows them");
     Check("report", new ExplorerEntry("report.txt", Path.Combine(explorerTestDirectory, "report.txt"), false, false, 0, DateTime.MinValue).GetDisplayName(true), "hide only the displayed extension while retaining the full file name");
+    var recentExplorerFiles = ExplorerHomeService.SelectRecentFiles(
+    [
+        new ExplorerEntry("older.txt", @"C:\items\older.txt", false, false, 10, new DateTime(2024, 1, 3)) { RecentAccessed = new DateTime(2024, 1, 1) },
+        new ExplorerEntry("newer.txt", @"C:\items\newer.txt", false, false, 20, new DateTime(2024, 1, 1)) { RecentAccessed = new DateTime(2024, 1, 3) },
+        new ExplorerEntry("folder", @"C:\items\folder", true, false, null, new DateTime(2024, 1, 4)),
+        new ExplorerEntry("hidden.txt", @"C:\items\hidden.txt", false, false, 5, new DateTime(2024, 1, 5)) { IsHidden = true },
+        new ExplorerEntry("duplicate.txt", @"C:\items\newer.txt", false, false, 20, new DateTime(2024, 1, 1)) { RecentAccessed = new DateTime(2024, 1, 3) }
+    ], showHiddenItems: false, maximum: 2);
+    Check("newer.txt,older.txt", string.Join(',', recentExplorerFiles.Select(entry => entry.Name)), "show deduplicated recent files newest-first and exclude folders and hidden entries");
+    Check(0, ExplorerHomeService.SelectHomeFiles(recentExplorerFiles, showRecentItems: false, showHiddenItems: false).Count, "respect the Windows recent-items privacy setting in Explorer Home");
+    Check(2, ExplorerHomeService.SelectRecentFiles(
+    [
+        new ExplorerEntry("visible.txt", @"C:\items\visible.txt", false, false, 5, new DateTime(2024, 1, 1)),
+        new ExplorerEntry("hidden.txt", @"C:\items\hidden.txt", false, false, 5, new DateTime(2024, 1, 2)) { IsHidden = true }
+    ], showHiddenItems: true).Count, "honor the hidden-item setting in Explorer Home recent files");
     var explorerSortEntries = new[]
     {
         new ExplorerEntry("z-folder", @"C:\items\z-folder", true, false, null, new DateTime(2024, 1, 1)),
