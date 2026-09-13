@@ -130,9 +130,14 @@
             <Border x:Name="SystemSegment" Grid.Column="2">
                 <StackPanel x:Name="RightControls" Orientation="Horizontal" VerticalAlignment="Center">
                 <Button Content="Settings" Style="{StaticResource TaskButton}" Click="Settings_Click" FontSize="11" />
-                <Border Background="#30394D" CornerRadius="8" Padding="10,6" Margin="3,0,8,0">
-                    <TextBlock x:Name="ClockText" FontSize="12" FontWeight="SemiBold" />
-                </Border>
+                <Button Style="{StaticResource TaskButton}" Click="Clock_Click" ToolTip="Open notifications and calendar" Padding="7,4" Margin="3,0,8,0">
+                    <Border Background="#30394D" CornerRadius="8" Padding="10,5">
+                        <StackPanel HorizontalAlignment="Center">
+                            <TextBlock x:Name="ClockText" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="DateText" FontSize="9" Foreground="#B9C2D5" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                </Button>
                 <Button Content="×" Style="{StaticResource TaskButton}" Click="CloseBar_Click" FontSize="16" ToolTip="Close this taskbar" />
                 </StackPanel>
             </Border>

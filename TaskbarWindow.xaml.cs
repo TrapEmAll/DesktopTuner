@@ -239,7 +239,12 @@ public partial class TaskbarWindow : Window
         return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / buttonSpan));
     }
 
-    private void UpdateClock() => ClockText.Text = DateTime.Now.ToString("h:mm tt");
+    private void UpdateClock()
+    {
+        var now = DateTime.Now;
+        ClockText.Text = now.ToString("h:mm tt");
+        DateText.Text = now.ToString("ddd, MMM d");
+    }
 
     private void Window_MouseEnter(object sender, MouseEventArgs e)
     {
@@ -508,6 +513,8 @@ public partial class TaskbarWindow : Window
         try { Process.Start(new ProcessStartInfo("ms-settings:") { UseShellExecute = true }); }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open Settings", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
+
+    private void Clock_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenNotificationCenter();
 
     private void CloseBar_Click(object sender, RoutedEventArgs e) => _closeAllTaskbars();
 }

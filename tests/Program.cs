@@ -155,6 +155,13 @@ cancelGesture.KeyDown(0x5b);
 cancelGesture.KeyDown('E');
 Check((uint?)0x5b, cancelGesture.Cancel(), "release a forwarded modifier when disabling the hook");
 Check<uint?>(null, cancelGesture.Cancel(), "cancel clears gesture state");
+CheckTrue(SystemFlyoutService.GetNotificationCenterSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'N', false),
+    new KeyboardKeyEvent((ushort)'N', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+N notification-center shortcut in balanced key order");
 Throws<ArgumentOutOfRangeException>(() => TaskbarLayoutCalculator.Calculate(0, 1080, new(TaskbarEdge.Bottom), false), "rejects invalid screen bounds");
 var appModeSetting = SettingsCatalog.ById("explorer-app-mode");
 var systemModeSetting = SettingsCatalog.ById("explorer-system-mode");
