@@ -45,13 +45,28 @@
                 <ItemsControl x:Name="PinnedItems" VerticalAlignment="Center" ItemsPanel="{StaticResource HorizontalWindowPanel}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Style="{StaticResource TaskButton}" Tag="{Binding}" Click="PinnedButton_Click" ToolTip="{Binding ExecutablePath}"
+                            <Button Style="{StaticResource TaskButton}" Tag="{Binding Target}" Click="PinnedButton_Click" ToolTip="{Binding ToolTip}"
                                     AllowDrop="True" DragOver="PinnedButton_DragOver" DragLeave="PinnedButton_DragLeave" Drop="PinnedButton_Drop">
                                 <StackPanel Orientation="Horizontal" MaxWidth="190">
-                                    <Border Width="20" Height="20" CornerRadius="6" Background="#6258D9" VerticalAlignment="Center" Margin="0,0,8,0">
-                                        <TextBlock Text="{Binding Name}" MaxWidth="17" TextTrimming="CharacterEllipsis" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                    <TextBlock Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="130" />
+                                    <Grid Width="{Binding IconPixels}" Height="{Binding IconPixels}" VerticalAlignment="Center" Margin="0,0,8,0">
+                                        <Image Source="{Binding Icon}" Width="{Binding IconPixels}" Height="{Binding IconPixels}" />
+                                        <Border CornerRadius="6" Background="#6258D9">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers><DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding Initial}" TextTrimming="CharacterEllipsis" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock Text="{Binding Label}" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="130">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers><DataTrigger Binding="{Binding ShowLabel}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
                                 <Button.ContextMenu>
                                     <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
@@ -66,10 +81,33 @@
                 <ItemsControl x:Name="WindowItems" VerticalAlignment="Center" ItemsPanel="{StaticResource HorizontalWindowPanel}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Style="{StaticResource TaskButton}" Tag="{Binding}" Click="WindowButton_Click" ToolTip="{Binding ToolTip}">
+                            <Button Style="{StaticResource TaskButton}" Tag="{Binding Target}" Click="WindowButton_Click" ToolTip="{Binding ToolTip}">
                                 <StackPanel Orientation="Horizontal" MaxWidth="190">
-                                    <Border Width="7" Height="7" CornerRadius="4" Background="#8D86FF" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                    <TextBlock Text="{Binding Label}" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                                    <Grid Width="{Binding IconPixels}" Height="{Binding IconPixels}" VerticalAlignment="Center" Margin="0,0,8,0">
+                                        <Image Source="{Binding Icon}" Width="{Binding IconPixels}" Height="{Binding IconPixels}">
+                                            <Image.Style>
+                                                <Style TargetType="Image">
+                                                    <Style.Triggers><DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                                                </Style>
+                                            </Image.Style>
+                                        </Image>
+                                        <Border CornerRadius="4" Background="#8D86FF">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers><DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding Initial}" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock Text="{Binding Label}" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="160">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers><DataTrigger Binding="{Binding ShowLabel}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
                                 <Button.ContextMenu>
                                     <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">

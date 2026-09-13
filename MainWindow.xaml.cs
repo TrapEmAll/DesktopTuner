@@ -35,6 +35,8 @@ public partial class MainWindow : Window
     private TaskbarStyle _taskbarLayout = TaskbarStyle.EdgeToEdge;
     private TaskbarGroupingMode _taskbarGrouping = TaskbarGroupingMode.Always;
     private TaskbarButtonAlignment _taskbarButtonAlignment = TaskbarButtonAlignment.Center;
+    private TaskbarIconSize _taskbarIconSize = TaskbarIconSize.Standard;
+    private bool _taskbarShowLabels = true;
     private bool _taskbarAutoHide;
     private List<PinnedTaskbarApp> _pinnedApps = [];
     private bool _replaceWindowsKey;
@@ -53,6 +55,8 @@ public partial class MainWindow : Window
         _taskbarEdge = desktopPreferences.TaskbarEdge;
         _taskbarSize = desktopPreferences.TaskbarSize;
         _taskbarLayout = desktopPreferences.TaskbarLayout;
+        _taskbarIconSize = desktopPreferences.TaskbarIconSize;
+        _taskbarShowLabels = desktopPreferences.TaskbarShowLabels;
         _taskbarAutoHide = desktopPreferences.AutoHide;
         _pinnedApps = desktopPreferences.PinnedApps ?? [];
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
@@ -201,6 +205,27 @@ public partial class MainWindow : Window
             };
             densityRow.Children.Add(sizeSelector);
             PageContent.Children.Add(densityRow);
+
+            var iconSizeRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            iconSizeRow.Children.Add(new TextBlock { Text = "Button icon size", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+            var iconSizeSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
+            iconSizeSelector.Items.Add(new ComboBoxItem { Content = "Small", Tag = TaskbarIconSize.Small });
+            iconSizeSelector.Items.Add(new ComboBoxItem { Content = "Standard", Tag = TaskbarIconSize.Standard });
+            iconSizeSelector.Items.Add(new ComboBoxItem { Content = "Large", Tag = TaskbarIconSize.Large });
+            iconSizeSelector.SelectedIndex = (int)_taskbarIconSize;
+            iconSizeSelector.SelectionChanged += (_, _) =>
+            {
+                if (iconSizeSelector.SelectedItem is not ComboBoxItem { Tag: TaskbarIconSize size }) return;
+                _taskbarIconSize = size;
+                SaveDesktopPreferences();
+            };
+            iconSizeRow.Children.Add(iconSizeSelector);
+            PageContent.Children.Add(iconSizeRow);
+
+            var showLabels = new CheckBox { Content = "Show app names on taskbar buttons", IsChecked = _taskbarShowLabels, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
+            showLabels.Checked += (_, _) => { _taskbarShowLabels = true; SaveDesktopPreferences(); };
+            showLabels.Unchecked += (_, _) => { _taskbarShowLabels = false; SaveDesktopPreferences(); };
+            PageContent.Children.Add(showLabels);
 
             var styleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
             styleRow.Children.Add(new TextBlock { Text = "Taskbar style", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
@@ -566,7 +591,7 @@ public partial class MainWindow : Window
         finally { _closingTaskbars = false; }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize);
 
     private void UpdateTaskbarPreferences()
     {
@@ -599,6 +624,8 @@ public partial class MainWindow : Window
             _taskbarLayout = preferences.TaskbarLayout;
             _taskbarGrouping = preferences.TaskbarGrouping;
             _taskbarButtonAlignment = preferences.TaskbarButtonAlignment;
+            _taskbarShowLabels = preferences.TaskbarShowLabels;
+            _taskbarIconSize = preferences.TaskbarIconSize;
             if (displayModeChanged && _taskbarWindows.Any(window => window.IsVisible))
             {
                 CloseTaskbars();

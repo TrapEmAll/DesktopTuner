@@ -55,6 +55,7 @@ public partial class TaskbarWindow : Window
         _autoHide = _preferences.AutoHide;
         _collapsed = _autoHide && !_isStartMenuVisible() && !IsMouseOver;
         ApplyLayout();
+        if (IsLoaded) RefreshWindows();
         if (IsLoaded) Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
         if (!_autoHide) _autoHideTimer.Stop();
         else if (IsLoaded) _autoHideTimer.Start();
@@ -197,8 +198,9 @@ public partial class TaskbarWindow : Window
     private void RefreshWindows()
     {
         var windows = _windows.Enumerate();
-        PinnedItems.ItemsSource = _preferences.PinnedApps;
-        WindowItems.ItemsSource = TaskbarWindowGrouping.Create(windows, _preferences.TaskbarGrouping, GetWindowButtonCapacity());
+        PinnedItems.ItemsSource = _preferences.PinnedApps!.Select(app => TaskbarButtonViewModel.FromPin(app, _preferences)).ToList();
+        WindowItems.ItemsSource = TaskbarWindowGrouping.Create(windows, _preferences.TaskbarGrouping, GetWindowButtonCapacity())
+            .Select(group => TaskbarButtonViewModel.FromWindowGroup(group, _preferences)).ToList();
         EmptyText.Visibility = windows.Count == 0 && _preferences.PinnedApps!.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
         UpdateClock();
@@ -224,8 +226,10 @@ public partial class TaskbarWindow : Window
         var bounds = TaskbarLayoutCalculator.Calculate(Display, _preferences, collapsed: false);
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         var availableLength = vertical ? bounds.Height / Display.ScaleY : bounds.Width / Display.ScaleX;
-        var reservedLength = vertical ? 170 : 250 + (_preferences.PinnedApps?.Count ?? 0) * 120;
-        return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / 140));
+        var iconPixels = TaskbarIconSizePolicy.GetPixels(_preferences.TaskbarIconSize);
+        var buttonSpan = vertical ? Math.Max(44, iconPixels + 18) : _preferences.TaskbarShowLabels ? 140 : iconPixels + 24;
+        var reservedLength = vertical ? 170 + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan : 250 + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
+        return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / buttonSpan));
     }
 
     private void UpdateClock() => ClockText.Text = DateTime.Now.ToString("h:mm tt");

@@ -66,6 +66,16 @@ Check(2, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFu
 Check(120d, TaskbarButtonAlignmentPolicy.CalculateLeadingSpacer(500, 260, TaskbarButtonAlignment.Center), "center taskbar buttons within the free app area");
 Check(0d, TaskbarButtonAlignmentPolicy.CalculateLeadingSpacer(500, 260, TaskbarButtonAlignment.Left), "keep left-aligned taskbar buttons at the start of the app area");
 Check(0d, TaskbarButtonAlignmentPolicy.CalculateLeadingSpacer(260, 500, TaskbarButtonAlignment.Center), "keep overflowing taskbar buttons reachable from the start");
+Check(16, TaskbarIconSizePolicy.GetPixels(TaskbarIconSize.Small), "use small taskbar app icons");
+Check(20, TaskbarIconSizePolicy.GetPixels(TaskbarIconSize.Standard), "use standard taskbar app icons");
+Check(24, TaskbarIconSizePolicy.GetPixels(TaskbarIconSize.Large), "use large taskbar app icons");
+Throws<ArgumentOutOfRangeException>(() => TaskbarIconSizePolicy.GetPixels((TaskbarIconSize)99), "reject unknown taskbar icon sizes");
+CheckTrue(TaskbarIconService.LoadIcon(Environment.ProcessPath!) is not null, "extract a taskbar icon from an executable file");
+var presentationPreferences = new DesktopPreferences(TaskbarEdge.Bottom, TaskbarShowLabels: false, TaskbarIconSize: TaskbarIconSize.Large);
+var pinPresentation = TaskbarButtonViewModel.FromPin(new PinnedTaskbarApp("Editor", Environment.ProcessPath!), presentationPreferences);
+Check("Editor", pinPresentation.Label, "retain pinned app labels in taskbar presentation data");
+Check(false, pinPresentation.ShowLabel, "hide pinned app labels when the option is disabled");
+Check(24, pinPresentation.IconPixels, "apply the selected icon size to pinned taskbar buttons");
 var largeAppCatalog = Enumerable.Range(0, 55)
     .Select(index => new AppEntry($"Application {index:D2}", $@"C:\Apps\application{index:D2}.lnk"))
     .Append(new AppEntry("Zebra Editor", @"C:\Apps\zebra-editor.lnk"))
@@ -164,6 +174,9 @@ try
     Check(TaskbarGroupingMode.Never, preferencesStore.Load().TaskbarGrouping, "persist ungrouped taskbar mode");
     preferencesStore.Save(expectedPreferences with { TaskbarButtonAlignment = TaskbarButtonAlignment.Left });
     Check(TaskbarButtonAlignment.Left, preferencesStore.Load().TaskbarButtonAlignment, "persist left-aligned taskbar buttons");
+    preferencesStore.Save(expectedPreferences with { TaskbarShowLabels = false, TaskbarIconSize = TaskbarIconSize.Large });
+    Check(false, preferencesStore.Load().TaskbarShowLabels, "persist hidden taskbar labels");
+    Check(TaskbarIconSize.Large, preferencesStore.Load().TaskbarIconSize, "persist large taskbar icons");
     Check(true, loadedPreferences.PinnedApps!.Single().IsDirectory, "persist folder pin type");
 
     File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"PinnedApps":[{"Name":"Legacy app","ExecutablePath":"C:\\Apps\\Editor.exe"}]}""");
@@ -172,6 +185,8 @@ try
     Check(TaskbarStyle.EdgeToEdge, preferencesStore.Load().TaskbarLayout, "default legacy preferences to a full-edge taskbar");
     Check(TaskbarGroupingMode.Always, preferencesStore.Load().TaskbarGrouping, "default legacy preferences to grouped taskbar buttons");
     Check(TaskbarButtonAlignment.Center, preferencesStore.Load().TaskbarButtonAlignment, "default legacy preferences to centered taskbar buttons");
+    Check(true, preferencesStore.Load().TaskbarShowLabels, "default legacy preferences to visible taskbar labels");
+    Check(TaskbarIconSize.Standard, preferencesStore.Load().TaskbarIconSize, "default legacy preferences to standard taskbar icons");
     Check(false, preferencesStore.Load().PinnedApps!.Single().IsDirectory, "default old pin records to app launch behavior");
 
     var profilePath = Path.Combine(temporaryPreferencesDirectory, "appearance-profile.json");
