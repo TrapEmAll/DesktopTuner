@@ -64,6 +64,25 @@
                 <TextBlock Text="{Binding DriveSpaceText}" Style="{StaticResource DriveSpaceTextStyle}" TextAlignment="Center" />
             </StackPanel>
         </DataTemplate>
+        <DataTemplate x:Key="ExplorerSmallIconTemplate">
+            <StackPanel Orientation="Horizontal" MinHeight="24" Margin="4,1" VerticalAlignment="Center">
+                <Image Source="{Binding Icon}" Width="16" Height="16" Margin="5,0,8,0" Stretch="Uniform" />
+                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="ExplorerTilesTemplate">
+            <StackPanel Width="286" MinHeight="66" Margin="5" Orientation="Horizontal" VerticalAlignment="Center">
+                <Image Source="{Binding Icon}" Width="40" Height="40" Margin="8,0,12,0" Stretch="Uniform" VerticalAlignment="Center" />
+                <StackPanel VerticalAlignment="Center" MinWidth="190">
+                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Type}" Foreground="{DynamicResource DesktopMutedTextBrush}" FontSize="11" Margin="0,2,0,0" />
+                    <TextBlock Text="{Binding ModifiedText}" Foreground="{DynamicResource DesktopMutedTextBrush}" FontSize="10" Margin="0,2,0,0" />
+                    <TextBlock Text="{Binding SizeText}" Foreground="{DynamicResource DesktopMutedTextBrush}" FontSize="10" Margin="0,2,0,0" />
+                    <ProgressBar Style="{StaticResource DriveCapacityProgressStyle}" Value="{Binding DriveUsagePercent}" />
+                    <TextBlock Text="{Binding DriveSpaceText}" Style="{StaticResource DriveSpaceTextStyle}" />
+                </StackPanel>
+            </StackPanel>
+        </DataTemplate>
         <DataTemplate x:Key="ExplorerLargeIconTemplate">
             <StackPanel Width="220" MinHeight="142" Margin="6" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Image Source="{Binding Icon}" Width="72" Height="72" Margin="0,4,0,9" HorizontalAlignment="Center" Stretch="Uniform" />
@@ -167,8 +186,10 @@
                         <ComboBox x:Name="ViewModeSelector" Width="138" Height="32" VerticalContentAlignment="Center" SelectionChanged="ViewModeSelector_SelectionChanged">
                             <ComboBoxItem Content="Details" Tag="Details" />
                             <ComboBoxItem Content="List" Tag="List" />
+                            <ComboBoxItem Content="Small icons" Tag="SmallIcons" />
                             <ComboBoxItem Content="Medium icons" Tag="MediumIcons" />
                             <ComboBoxItem Content="Large icons" Tag="LargeIcons" />
+                            <ComboBoxItem Content="Tiles" Tag="Tiles" />
                         </ComboBox>
                         <Border Width="1" Background="{DynamicResource DesktopDividerBrush}" Margin="12,2,12,2" />
                         <TextBlock Text="Sort by" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource DesktopMutedTextBrush}" />

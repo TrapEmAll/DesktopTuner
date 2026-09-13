@@ -54,9 +54,11 @@ Check(6.5d, TaskbarBatteryService.GetFillWidth(50, 13), "scale the battery glyph
 Check(0d, TaskbarBatteryService.GetFillWidth(-1, 13), "clamp battery glyph fill below zero");
 Check(13d, TaskbarBatteryService.GetFillWidth(150, 13), "clamp battery glyph fill above one hundred percent");
 Throws<ArgumentOutOfRangeException>(() => TaskbarBatteryService.GetFillWidth(50, double.NaN), "reject invalid battery glyph width");
-Check("Details,List,MediumIcons,LargeIcons", string.Join(',', ExplorerViewModeCatalog.Options.Select(option => option.Mode)), "offer familiar Explorer details, list, and icon layouts");
+Check("Details,List,SmallIcons,MediumIcons,LargeIcons,Tiles", string.Join(',', ExplorerViewModeCatalog.Options.Select(option => option.Mode)), "offer familiar Explorer details, list, small, medium, large, and tile layouts");
 Check("ExplorerMediumIconTemplate", ExplorerViewModeCatalog.Get(ExplorerViewMode.MediumIcons).ItemTemplateKey, "map the medium icon layout to its item template");
 CheckTrue(ExplorerViewModeCatalog.Get(ExplorerViewMode.LargeIcons).WrapItems, "wrap large Explorer icons to the available viewport");
+Check("ExplorerSmallIconTemplate", ExplorerViewModeCatalog.Get(ExplorerViewMode.SmallIcons).ItemTemplateKey, "map the small icon layout to its item template");
+CheckTrue(ExplorerViewModeCatalog.Get(ExplorerViewMode.Tiles).WrapItems, "wrap Explorer tiles to the available viewport");
 CheckTrue(NativeTaskbarWatchdog.IsWatchdogInvocation(["--taskbar-watchdog", "123", "snapshot.json"]), "recognize the taskbar recovery process entry point");
 CheckTrue(NativeTaskbarWatchdog.TryReadInvocation(["--taskbar-watchdog", "123", "snapshot.json"], out var watchdogOwner, out var watchdogSnapshot), "parse taskbar recovery process arguments");
 Check((123, "snapshot.json"), (watchdogOwner, watchdogSnapshot), "recover the watchdog owner and snapshot path");
