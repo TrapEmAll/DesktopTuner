@@ -133,6 +133,9 @@ Check(3, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFu
 Check(2, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFull, 2).Count, "group windows when the taskbar is full");
 var editorPin = new PinnedTaskbarApp("Editor", @"C:\Apps\editor.exe");
 CheckTrue(TaskbarWindowGrouping.MatchesPinnedApp(editorPin, runningWindows[1]), "match a running window to its pinned app without case-sensitive path differences");
+var editorShortcutPin = new PinnedTaskbarApp("Editor shortcut", @"C:\Apps\Editor.lnk");
+CheckTrue(TaskbarPinIdentityService.Matches(editorShortcutPin, runningWindows[0], _ => @"C:\Apps\Editor.exe"), "match a running app to the executable target of its pinned shortcut");
+CheckTrue(!TaskbarPinIdentityService.Matches(editorShortcutPin, runningWindows[0], _ => @"C:\Apps\Other.exe"), "keep a shortcut separate when its target is a different executable");
 Check(1, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Never, 10, [editorPin]).Count, "show pinned apps only once instead of duplicating their running windows");
 Check("Mail", TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Never, 10, [editorPin]).Single().ApplicationName, "retain unrelated running apps when hiding pinned duplicates");
 CheckTrue(!TaskbarWindowGrouping.MatchesPinnedApp(editorPin with { IsDirectory = true }, runningWindows[0]), "do not associate a folder pin with an app window");
@@ -325,6 +328,27 @@ try
 {
     var explorerTestDirectory = Path.Combine(temporaryPreferencesDirectory, "ExplorerOperations");
     Directory.CreateDirectory(explorerTestDirectory);
+    var linkedExecutablePath = Environment.ProcessPath!;
+    var taskbarShortcutPath = Path.Combine(explorerTestDirectory, "Test application.lnk");
+    object? shortcutShellObject = null;
+    object? shortcutObject = null;
+    try
+    {
+        var shellType = Type.GetTypeFromProgID("WScript.Shell") ?? throw new InvalidOperationException("Windows Script Host is unavailable for shortcut integration tests.");
+        shortcutShellObject = Activator.CreateInstance(shellType) ?? throw new InvalidOperationException("Could not create the Windows Script Host automation object.");
+        dynamic shortcutShell = shortcutShellObject;
+        shortcutObject = shortcutShell.CreateShortcut(taskbarShortcutPath);
+        dynamic testShortcut = shortcutObject;
+        testShortcut.TargetPath = linkedExecutablePath;
+        testShortcut.Save();
+    }
+    finally
+    {
+        if (shortcutObject is not null && System.Runtime.InteropServices.Marshal.IsComObject(shortcutObject)) System.Runtime.InteropServices.Marshal.ReleaseComObject(shortcutObject);
+        if (shortcutShellObject is not null && System.Runtime.InteropServices.Marshal.IsComObject(shortcutShellObject)) System.Runtime.InteropServices.Marshal.ReleaseComObject(shortcutShellObject);
+    }
+    var linkedExecutableWindow = new RunningWindow((nint)90, "Test process", "Test app", linkedExecutablePath, false);
+    CheckTrue(TaskbarPinIdentityService.Matches(new PinnedTaskbarApp("Test application", taskbarShortcutPath), linkedExecutableWindow), "resolve a Windows shortcut target when matching a running taskbar app");
     var firstCreatedFolder = ExplorerFileOperationService.CreateFolder(explorerTestDirectory);
     var secondCreatedFolder = ExplorerFileOperationService.CreateFolder(explorerTestDirectory);
     Check("New folder", Path.GetFileName(firstCreatedFolder), "create a new folder using the familiar default name");

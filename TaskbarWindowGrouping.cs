@@ -1,5 +1,3 @@
-using System.IO;
-
 namespace DesktopTuner;
 
 public sealed record TaskbarWindowGroup(string Label, string ApplicationName, IReadOnlyList<RunningWindow> Windows)
@@ -26,19 +24,7 @@ public static class TaskbarWindowGrouping
             .ToList();
     }
 
-    public static bool MatchesPinnedApp(PinnedTaskbarApp app, RunningWindow window)
-    {
-        ArgumentNullException.ThrowIfNull(app);
-        ArgumentNullException.ThrowIfNull(window);
-        if (app.IsDirectory || string.IsNullOrWhiteSpace(app.ExecutablePath) || string.IsNullOrWhiteSpace(window.ExecutablePath)) return false;
-        return string.Equals(NormalizePath(app.ExecutablePath), NormalizePath(window.ExecutablePath), StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string NormalizePath(string path)
-    {
-        try { return Path.GetFullPath(path); }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { return path; }
-    }
+    public static bool MatchesPinnedApp(PinnedTaskbarApp app, RunningWindow window) => TaskbarPinIdentityService.Matches(app, window);
 
     private static TaskbarWindowGroup CreateGroup(IReadOnlyList<RunningWindow> windows)
     {
