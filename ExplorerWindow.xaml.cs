@@ -648,14 +648,18 @@ public partial class ExplorerWindow : Window
     private void EntriesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         UpdateSelectionCommands();
-        if (EntriesList.SelectedItems.OfType<ExplorerEntry>().FirstOrDefault() is { } entry)
+        var selection = EntriesList.SelectedItems.OfType<ExplorerEntry>().ToArray();
+        if (selection.Length > 0)
         {
-            DetailsName.Text = entry.DisplayName;
-            DetailsType.Text = entry.Type;
-            DetailsLocation.Text = entry.FullPath;
-            DetailsSize.Text = entry.SizeText.Length == 0 ? (entry.IsDirectory ? "Folder" : "—") : entry.SizeText;
-            DetailsModified.Text = entry.Modified == DateTime.MinValue ? "—" : entry.Modified.ToString("f");
-            SetStatus(entry.IsDirectory ? $"{entry.DisplayName} · folder" : $"{entry.DisplayName} · {entry.SizeText}");
+            var summary = ExplorerSelectionSummaryService.Resolve(selection);
+            DetailsName.Text = summary.Name;
+            DetailsType.Text = summary.Type;
+            DetailsLocation.Text = summary.Location;
+            DetailsSize.Text = summary.Size;
+            DetailsModified.Text = summary.Modified;
+            SetStatus(selection.Length == 1
+                ? selection[0].IsDirectory ? $"{selection[0].DisplayName} · folder" : $"{selection[0].DisplayName} · {selection[0].SizeText}"
+                : summary.Name);
         }
         else
         {

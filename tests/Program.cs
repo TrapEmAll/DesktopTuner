@@ -446,6 +446,31 @@ try
         new ExplorerEntry("visible.txt", @"C:\items\visible.txt", false, false, 5, new DateTime(2024, 1, 1)),
         new ExplorerEntry("hidden.txt", @"C:\items\hidden.txt", false, false, 5, new DateTime(2024, 1, 2)) { IsHidden = true }
     ], showHiddenItems: true).Count, "honor the hidden-item setting in Explorer Home recent files");
+    var sharedModifiedDate = new DateTime(2025, 2, 3, 16, 30, 0);
+    var selectedFiles = new[]
+    {
+        new ExplorerEntry("first.txt", @"C:\Docs\first.txt", false, false, 5, sharedModifiedDate),
+        new ExplorerEntry("second.txt", @"C:\Docs\second.txt", false, false, 7, sharedModifiedDate)
+    };
+    var fileSelectionSummary = ExplorerSelectionSummaryService.Resolve(selectedFiles);
+    Check("2 items selected", fileSelectionSummary.Name, "summarize a multi-file Explorer selection");
+    Check("2 files", fileSelectionSummary.Type, "show selected file counts in Explorer details");
+    Check(@"C:\Docs", fileSelectionSummary.Location, "show the common parent for a multi-file Explorer selection");
+    Check("12 B", fileSelectionSummary.Size, "sum known file sizes in Explorer details");
+    Check(sharedModifiedDate.ToString("f"), fileSelectionSummary.Modified, "show a shared modified date for selected files");
+    var mixedSelectionSummary = ExplorerSelectionSummaryService.Resolve(
+    [
+        .. selectedFiles,
+        new ExplorerEntry("folder", @"C:\Docs\folder", true, false, null, sharedModifiedDate)
+    ]);
+    Check("2 files, 1 folder", mixedSelectionSummary.Type, "summarize mixed file and folder selections");
+    Check("12 B · folder sizes not included", mixedSelectionSummary.Size, "state explicitly that selected folder sizes are not included");
+    Check("Multiple locations", ExplorerSelectionSummaryService.Resolve(
+    [
+        selectedFiles[0],
+        new ExplorerEntry("other.txt", @"D:\Other\other.txt", false, false, 1, new DateTime(2025, 2, 4))
+    ]).Location, "report when selected Explorer items come from different locations");
+    Throws<ArgumentException>(() => ExplorerSelectionSummaryService.Resolve([]), "reject an empty Explorer selection summary");
     var explorerSortEntries = new[]
     {
         new ExplorerEntry("z-folder", @"C:\items\z-folder", true, false, null, new DateTime(2024, 1, 1)),
