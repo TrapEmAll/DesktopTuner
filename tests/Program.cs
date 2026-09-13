@@ -57,6 +57,11 @@ CheckTrue(TaskbarAutoHidePolicy.ShouldCollapse(false, true, true, false, false),
 CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(false, true, false, false, false), "keep the taskbar visible without a maximized window on the display");
 CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(false, true, true, true, false), "reveal a hidden taskbar when the pointer reaches its edge");
 CheckTrue(!TaskbarAutoHidePolicy.ShouldCollapse(false, true, true, false, true), "keep the taskbar visible while its Start menu is open");
+Check((byte)255, TaskbarTransparencyPolicy.GetAlpha(0), "make a zero-transparency taskbar fully opaque");
+Check((byte)128, TaskbarTransparencyPolicy.GetAlpha(50), "convert fifty percent transparency to the expected alpha");
+Check((byte)77, TaskbarTransparencyPolicy.GetAlpha(100), "bound taskbar transparency to retain a visible backdrop");
+Check(0, TaskbarTransparencyPolicy.Clamp(-10), "clamp negative transparency values");
+Check(70, TaskbarTransparencyPolicy.Clamp(100), "cap transparency to preserve taskbar contrast");
 var firstPin = TaskbarPinCatalog.Add([], "Editor", @"C:\Program Files\Editor\editor.exe");
 Check(1, firstPin.Count, "pin a running app executable");
 Check(1, TaskbarPinCatalog.Add(firstPin, "Editor", @"C:\Program Files\Editor\editor.exe").Count, "avoid duplicate pins");
@@ -265,6 +270,8 @@ try
     Check(true, preferencesStore.Load().StartWithWindows, "persist automatic taskbar startup preference");
     preferencesStore.Save(expectedPreferences with { AutoHideWhenMaximized = true });
     Check(true, preferencesStore.Load().AutoHideWhenMaximized, "persist maximize-aware taskbar auto-hide preference");
+    preferencesStore.Save(expectedPreferences with { TaskbarTransparency = 30 });
+    Check(30, preferencesStore.Load().TaskbarTransparency, "persist taskbar transparency");
     Check(false, new DesktopPreferences(TaskbarEdge.Bottom).StartWithWindows, "leave automatic taskbar startup disabled for older preferences");
     preferencesStore.Save(expectedPreferences with { TaskbarLayout = TaskbarStyle.Segmented });
     Check(TaskbarStyle.Segmented, preferencesStore.Load().TaskbarLayout, "persist segmented taskbar style");
@@ -283,6 +290,7 @@ try
     Check(StartMenuStyle.Modern, preferencesStore.Load().StartMenuStyle, "default legacy preferences to the Modern Start menu");
     Check(false, preferencesStore.Load().TaskbarOnAllDisplays, "keep legacy taskbar preferences on the primary display");
     Check(false, preferencesStore.Load().StartWithWindows, "disable sign-in startup for older preference files");
+    Check(5, preferencesStore.Load().TaskbarTransparency, "default taskbar transparency for older preference files");
     Check(TaskbarStyle.EdgeToEdge, preferencesStore.Load().TaskbarLayout, "default legacy preferences to a full-edge taskbar");
     Check(TaskbarGroupingMode.Always, preferencesStore.Load().TaskbarGrouping, "default legacy preferences to grouped taskbar buttons");
     Check(TaskbarButtonAlignment.Center, preferencesStore.Load().TaskbarButtonAlignment, "default legacy preferences to centered taskbar buttons");

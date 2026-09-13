@@ -118,3 +118,13 @@ public static class TaskbarAutoHidePolicy
         });
     }
 }
+
+public static class TaskbarTransparencyPolicy
+{
+    public const int MaximumTransparency = 70;
+
+    public static int Clamp(int transparencyPercent) => Math.Clamp(transparencyPercent, 0, MaximumTransparency);
+
+    public static byte GetAlpha(int transparencyPercent) =>
+        (byte)Math.Round(byte.MaxValue * (100 - Clamp(transparencyPercent)) / 100d, MidpointRounding.AwayFromZero);
+}

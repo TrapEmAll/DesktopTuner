@@ -75,6 +75,7 @@ public partial class TaskbarWindow : Window
     private void ApplyLayout()
     {
         var layoutPreferences = _preferences with { TaskbarEdge = _edge, TaskbarSize = _size, AutoHide = _autoHide };
+        RootBorder.Background = new SolidColorBrush(Color.FromArgb(TaskbarTransparencyPolicy.GetAlpha(_preferences.TaskbarTransparency), 0x17, 0x1D, 0x2A));
         var bounds = TaskbarLayoutCalculator.Calculate(Display, layoutPreferences, _collapsed);
         var trayBounds = NativeTaskbarTrayService.FindTrayBounds(Display);
         var integratedBounds = TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(Display, layoutPreferences, trayBounds, _collapsed);

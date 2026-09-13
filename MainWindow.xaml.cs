@@ -42,6 +42,7 @@ public partial class MainWindow : Window
     private bool _taskbarShowLabels = true;
     private bool _taskbarAutoHide;
     private bool _taskbarAutoHideWhenMaximized;
+    private int _taskbarTransparency = 5;
     private List<PinnedTaskbarApp> _pinnedApps = [];
     private bool _replaceWindowsKey;
     private StartMenuStyle _startMenuStyle = StartMenuStyle.Modern;
@@ -67,6 +68,7 @@ public partial class MainWindow : Window
         _taskbarShowLabels = desktopPreferences.TaskbarShowLabels;
         _taskbarAutoHide = desktopPreferences.AutoHide;
         _taskbarAutoHideWhenMaximized = desktopPreferences.AutoHideWhenMaximized;
+        _taskbarTransparency = desktopPreferences.TaskbarTransparency;
         _pinnedApps = desktopPreferences.PinnedApps ?? [];
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
         _startMenuStyle = desktopPreferences.StartMenuStyle;
@@ -276,6 +278,22 @@ public partial class MainWindow : Window
             styleRow.Children.Add(styleSelector);
             PageContent.Children.Add(styleRow);
 
+            var transparencyRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            transparencyRow.Children.Add(new TextBlock { Text = "Taskbar transparency", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+            var transparencySelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
+            foreach (var transparency in new[] { 0, 5, 15, 30, 50, 70 })
+                transparencySelector.Items.Add(new ComboBoxItem { Content = $"{transparency}%", Tag = transparency });
+            transparencySelector.SelectedItem = transparencySelector.Items.Cast<ComboBoxItem>().FirstOrDefault(item => (int)item.Tag == _taskbarTransparency);
+            if (transparencySelector.SelectedIndex < 0) transparencySelector.SelectedIndex = 1;
+            transparencySelector.SelectionChanged += (_, _) =>
+            {
+                if (transparencySelector.SelectedItem is not ComboBoxItem { Tag: int transparency }) return;
+                _taskbarTransparency = transparency;
+                SaveDesktopPreferences();
+            };
+            transparencyRow.Children.Add(transparencySelector);
+            PageContent.Children.Add(transparencyRow);
+
             var autoHide = new CheckBox { Content = "Automatically hide the custom taskbar", IsChecked = _taskbarAutoHide, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
             autoHide.Checked += (_, _) => { _taskbarAutoHide = true; SaveDesktopPreferences(); };
             autoHide.Unchecked += (_, _) => { _taskbarAutoHide = false; SaveDesktopPreferences(); };
@@ -295,7 +313,7 @@ public partial class MainWindow : Window
             var launchButton = new Button { Content = "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowTaskbar();
             PageContent.Children.Add(launchButton);
-            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, bar size and style, app button labels, icon size, spacing, and optional auto-hide. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and opens the native Widgets board. Enable sign-in startup to keep the taskbar running in the background; right-click the bar to reopen Desktop Tuner settings or exit. When Windows' native notification area is detected on a bottom full-edge or segmented layout, the overlay stops before it; other layouts keep Tray and Clock shortcuts.");
+            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, bar size and style, transparency, app button labels, icon size, spacing, and optional auto-hide. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and opens the native Widgets board. Enable sign-in startup to keep the taskbar running in the background; right-click the bar to reopen Desktop Tuner settings or exit. When Windows' native notification area is detected on a bottom full-edge or segmented layout, the overlay stops before it; other layouts keep Tray and Clock shortcuts.");
             PageContent.Children.Add(overlayInfo);
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);
@@ -656,7 +674,7 @@ public partial class MainWindow : Window
         finally { _closingTaskbars = false; }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency);
 
     private void UpdateTaskbarPreferences()
     {
@@ -683,6 +701,7 @@ public partial class MainWindow : Window
             _taskbarSize = preferences.TaskbarSize;
             _taskbarAutoHide = preferences.AutoHide;
             _taskbarAutoHideWhenMaximized = preferences.AutoHideWhenMaximized;
+            _taskbarTransparency = preferences.TaskbarTransparency;
             _pinnedApps = preferences.PinnedApps ?? [];
             _replaceWindowsKey = preferences.ReplaceWindowsKey;
             _startMenuStyle = preferences.StartMenuStyle;
