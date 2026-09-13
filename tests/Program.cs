@@ -693,6 +693,17 @@ try
     firstExplorerTab.PushHistory(new ExplorerLocation(explorerTestDirectory, SearchQuery: "draft"));
     firstExplorerTab.Location = new ExplorerLocation(firstCreatedFolder);
     var secondExplorerTab = new ExplorerTabState(new ExplorerLocation(nestedExplorerFolder));
+    var thirdExplorerTab = new ExplorerTabState(new ExplorerLocation(null, IsHome: true));
+    var explorerTabs = new[] { firstExplorerTab, secondExplorerTab, thirdExplorerTab };
+    Check(2, ExplorerTabManagement.GetTabsToClose(explorerTabs, firstExplorerTab, closeOtherTabs: true).Count, "close every Explorer tab except the selected tab");
+    Check(true, ExplorerTabManagement.GetTabsToClose(explorerTabs, secondExplorerTab, closeOtherTabs: false).Single().Location.IsHome, "close only Explorer tabs to the right of the selected tab");
+    Check(0, ExplorerTabManagement.GetTabsToClose(explorerTabs, new ExplorerTabState(new ExplorerLocation(null, IsHome: true)), closeOtherTabs: true).Count, "leave tabs unchanged when a stale tab is not in the strip");
+    var duplicatedExplorerTab = firstExplorerTab.Duplicate();
+    Check(firstExplorerTab.Location, duplicatedExplorerTab.Location, "duplicate an Explorer tab at its current location");
+    Check(firstExplorerTab.ViewMode, duplicatedExplorerTab.ViewMode, "duplicate an Explorer tab with its view layout");
+    Check(firstExplorerTab.GroupDrives, duplicatedExplorerTab.GroupDrives, "duplicate an Explorer tab with its drive grouping preference");
+    Check(1, duplicatedExplorerTab.Back.Count, "copy an Explorer tab's back history when duplicating");
+    Check(true, !ReferenceEquals(firstExplorerTab.Back, duplicatedExplorerTab.Back), "keep duplicated Explorer navigation history independent");
     Check(true, secondExplorerTab.GroupDrives, "keep drive grouping preferences isolated per tab");
     Check(0, secondExplorerTab.Back.Count, "keep Explorer tab history isolated per tab");
     Check(ExplorerViewMode.Details, secondExplorerTab.ViewMode, "keep Explorer view layout state isolated per tab");

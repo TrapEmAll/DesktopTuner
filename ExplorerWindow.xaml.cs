@@ -92,8 +92,10 @@ public partial class ExplorerWindow : Window
                 tabItem.PreviewMouseMove += ExplorerTab_PreviewMouseMove;
                 tabItem.PreviewMouseLeftButtonUp += ExplorerTab_PreviewMouseLeftButtonUp;
                 tabItem.PreviewMouseDown += ExplorerTab_PreviewMouseDown;
+                tabItem.PreviewMouseRightButtonDown += ExplorerTab_PreviewMouseRightButtonDown;
                 tabItem.DragOver += ExplorerTab_DragOver;
                 tabItem.Drop += ExplorerTab_Drop;
+                tabItem.ContextMenu = CreateTabContextMenu(tab);
                 ExplorerTabs.Items.Add(tabItem);
             }
             ExplorerTabs.SelectedIndex = _activeTabIndex;
@@ -201,6 +203,77 @@ public partial class ExplorerWindow : Window
         if (e.ChangedButton != MouseButton.Middle || sender is not TabItem { Tag: ExplorerTabState tab }) return;
         CloseTab(tab);
         e.Handled = true;
+    }
+
+    private void ExplorerTab_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is TabItem { Tag: ExplorerTabState tab }) ExplorerTabs.SelectedItem = sender;
+    }
+
+    private ContextMenu CreateTabContextMenu(ExplorerTabState tab)
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(CreateTabMenuItem("Duplicate tab", tab, DuplicateTab_Click));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(CreateTabMenuItem("Close tab", tab, CloseTab_Click));
+        menu.Items.Add(CreateTabMenuItem("Close other tabs", tab, CloseOtherTabs_Click));
+        menu.Items.Add(CreateTabMenuItem("Close tabs to the right", tab, CloseTabsToRight_Click));
+        menu.Opened += (_, _) =>
+        {
+            var anchorIndex = _tabs.IndexOf(tab);
+            if (menu.Items[3] is MenuItem closeOthers) closeOthers.IsEnabled = _tabs.Count > 1;
+            if (menu.Items[4] is MenuItem closeRight) closeRight.IsEnabled = anchorIndex >= 0 && anchorIndex < _tabs.Count - 1;
+        };
+        return menu;
+    }
+
+    private static MenuItem CreateTabMenuItem(string header, ExplorerTabState tab, RoutedEventHandler handler)
+    {
+        var item = new MenuItem { Header = header, Tag = tab };
+        item.Click += handler;
+        return item;
+    }
+
+    private void DuplicateTab_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: ExplorerTabState tab } || !_tabs.Contains(tab)) return;
+        var duplicate = tab.Duplicate();
+        _tabs.Insert(_tabs.IndexOf(tab) + 1, duplicate);
+        _activeTabIndex = _tabs.IndexOf(duplicate);
+        SyncExplorerTabs();
+        ShowActiveTab();
+    }
+
+    private void CloseTab_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: ExplorerTabState tab }) CloseTab(tab);
+    }
+
+    private void CloseOtherTabs_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: ExplorerTabState tab }) CloseTabs(tab, closeOtherTabs: true);
+    }
+
+    private void CloseTabsToRight_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: ExplorerTabState tab }) CloseTabs(tab, closeOtherTabs: false);
+    }
+
+    private void CloseTabs(ExplorerTabState anchor, bool closeOtherTabs)
+    {
+        var closing = ExplorerTabManagement.GetTabsToClose(_tabs, anchor, closeOtherTabs);
+        if (closing.Count == 0) return;
+        var activeTab = ActiveTab;
+        var oldActiveIndex = _activeTabIndex;
+        foreach (var tab in closing)
+        {
+            CancelSearch(tab);
+            ExplorerClosedTabHistory.Remember(_closedTabs, tab);
+            _tabs.Remove(tab);
+        }
+        _activeTabIndex = _tabs.Contains(activeTab) ? _tabs.IndexOf(activeTab) : Math.Min(oldActiveIndex, _tabs.Count - 1);
+        SyncExplorerTabs();
+        ShowActiveTab();
     }
 
     private void ExplorerTab_DragOver(object sender, DragEventArgs e)

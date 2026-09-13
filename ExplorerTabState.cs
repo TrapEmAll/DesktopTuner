@@ -13,6 +13,19 @@ public sealed class ExplorerTabState(ExplorerLocation location)
     public ExplorerViewMode ViewMode { get; set; } = ExplorerViewMode.Details;
     public bool GroupDrives { get; set; } = true;
 
+    public ExplorerTabState Duplicate()
+    {
+        var duplicate = new ExplorerTabState(Location)
+        {
+            ViewMode = ViewMode,
+            GroupDrives = GroupDrives,
+            IsSearchView = IsSearchView
+        };
+        duplicate.Back.AddRange(Back);
+        duplicate.Forward.AddRange(Forward);
+        return duplicate;
+    }
+
     public void PushHistory(ExplorerLocation current)
     {
         Back.Add(current);
