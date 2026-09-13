@@ -2,6 +2,10 @@ namespace DesktopTuner;
 
 public static class ExplorerTabManagement
 {
+    public static ExplorerLocation? GetNewTabLocation(ExplorerEntry? entry) => entry is { IsDirectory: true }
+        ? entry.IsDrive ? new ExplorerLocation(null, IsDriveList: true) : new ExplorerLocation(entry.FullPath)
+        : null;
+
     public static IReadOnlyList<ExplorerTabState> GetTabsToClose(
         IReadOnlyList<ExplorerTabState> tabs,
         ExplorerTabState anchor,

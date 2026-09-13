@@ -764,6 +764,10 @@ try
     var secondExplorerTab = new ExplorerTabState(new ExplorerLocation(nestedExplorerFolder));
     var thirdExplorerTab = new ExplorerTabState(new ExplorerLocation(null, IsHome: true));
     var explorerTabs = new[] { firstExplorerTab, secondExplorerTab, thirdExplorerTab };
+    var folderEntryForTab = new ExplorerEntry("Documents", @"C:\Users\test\Documents", true, false, null, DateTime.MinValue);
+    Check(@"C:\Users\test\Documents", ExplorerTabManagement.GetNewTabLocation(folderEntryForTab)!.Path, "open an Explorer folder in a new tab");
+    Check(true, ExplorerTabManagement.GetNewTabLocation(new ExplorerEntry("C:", @"C:\", true, true, null, DateTime.MinValue))!.IsDriveList, "open a drive in a new This PC tab");
+    CheckTrue(ExplorerTabManagement.GetNewTabLocation(new ExplorerEntry("notes.txt", @"C:\notes.txt", false, false, 10, DateTime.MinValue)) is null, "do not offer a new tab for files");
     Check(2, ExplorerTabManagement.GetTabsToClose(explorerTabs, firstExplorerTab, closeOtherTabs: true).Count, "close every Explorer tab except the selected tab");
     Check(true, ExplorerTabManagement.GetTabsToClose(explorerTabs, secondExplorerTab, closeOtherTabs: false).Single().Location.IsHome, "close only Explorer tabs to the right of the selected tab");
     Check(0, ExplorerTabManagement.GetTabsToClose(explorerTabs, new ExplorerTabState(new ExplorerLocation(null, IsHome: true)), closeOtherTabs: true).Count, "leave tabs unchanged when a stale tab is not in the strip");

@@ -448,8 +448,17 @@ public partial class ExplorerWindow : Window
 
     private void OpenInNewTab_Click(object sender, RoutedEventArgs e)
     {
-        if (EntriesList.SelectedItem is ExplorerEntry { IsDirectory: true } entry)
-            AddTab(entry.IsDrive ? new ExplorerLocation(null, IsDriveList: true) : new ExplorerLocation(entry.FullPath));
+        if (ExplorerTabManagement.GetNewTabLocation(EntriesList.SelectedItem as ExplorerEntry) is { } location)
+            AddTab(location);
+    }
+
+    private void EntriesList_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle
+            || ItemsControl.ContainerFromElement(EntriesList, e.OriginalSource as DependencyObject) is not ListViewItem { Content: ExplorerEntry entry }
+            || ExplorerTabManagement.GetNewTabLocation(entry) is not { } location) return;
+        AddTab(location);
+        e.Handled = true;
     }
 
     private void ExplorerWindow_PreviewKeyDown(object sender, KeyEventArgs e)
