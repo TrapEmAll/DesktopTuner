@@ -41,7 +41,7 @@
             </StackPanel>
             <TextBox x:Name="SearchBox" Grid.Row="1" Height="46" FontSize="14" Padding="14,9" BorderBrush="{DynamicResource DesktopInputBorderBrush}" Background="{DynamicResource DesktopSurfaceBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}" VerticalContentAlignment="Center" TextChanged="SearchBox_TextChanged" ToolTip="Search installed Start menu apps" />
             <Grid x:Name="AppPanel" Grid.Row="2" Margin="0,16,0,10">
-                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <DockPanel Grid.Row="0" Margin="2,0,2,9">
                     <TextBlock x:Name="ResultsHeading" Text="All apps" FontWeight="SemiBold" FontSize="13" />
                     <StackPanel x:Name="SearchActionPanel" DockPanel.Dock="Right" Orientation="Horizontal" Visibility="Collapsed">
@@ -179,7 +179,30 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </StackPanel>
-                <ListBox x:Name="AppList" Grid.Row="2" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppList_MouseDoubleClick" PreviewMouseLeftButtonDown="AppList_PreviewMouseLeftButtonDown" PreviewMouseMove="AppList_PreviewMouseMove">
+                <StackPanel x:Name="RecentStartPanel" Grid.Row="2" Margin="0,0,0,8" Visibility="Collapsed">
+                    <DockPanel Margin="3,0,3,4">
+                        <TextBlock Text="Recently used" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DesktopMutedTextBrush}" VerticalAlignment="Center" />
+                        <Button Content="Clear" DockPanel.Dock="Right" Click="ClearRecentStartApps_Click" Padding="5,2" FontSize="10" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource DesktopMutedTextBrush}" ToolTip="Clear recently used apps from this menu" />
+                    </DockPanel>
+                    <ScrollViewer Height="42" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="RecentStartItems">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Tag="{Binding}" Click="RecentStartApp_Click" Width="126" Height="36" Margin="2,0,4,0" Padding="6,3" HorizontalContentAlignment="Left" ToolTip="{Binding Name}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Image Source="{Binding Icon}" Width="20" Height="20" Margin="0,0,6,0" />
+                                            <TextBlock Text="{Binding Name}" FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+                <ListBox x:Name="AppList" Grid.Row="3" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppList_MouseDoubleClick" PreviewMouseLeftButtonDown="AppList_PreviewMouseLeftButtonDown" PreviewMouseMove="AppList_PreviewMouseMove">
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
                             <Setter Property="Padding" Value="11,10" />

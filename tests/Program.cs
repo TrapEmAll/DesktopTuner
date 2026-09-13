@@ -332,6 +332,29 @@ Check("Documents", AppCatalogService.Search([new AppEntry("Documents", "document
 var startPins = StartPinCatalog.Pin([], new AppEntry("Editor", @"C:\Apps\Editor.lnk", CategoryPath: "Tools"));
 Check("Editor", startPins.Single().Name, "pin a Start menu shortcut to the Start favorites list");
 Check(1, StartPinCatalog.Pin(startPins, new AppEntry("Editor", @"c:\apps\editor.LNK")).Count, "avoid duplicate Start pins regardless of path casing");
+var recentHistoryPath = Path.Combine(Path.GetTempPath(), $"desktop-tuner-recent-start-{Guid.NewGuid():N}.json");
+try
+{
+    var recentApps = new StartRecentAppsStore(recentHistoryPath);
+    var editorApp = new AppEntry("Editor", @"C:\Apps\Editor.lnk");
+    var browserApp = new AppEntry("Browser", @"C:\Apps\Browser.lnk");
+    CheckTrue(recentApps.TryRecordLaunch(editorApp), "save a locally launched Start app to recent history");
+    CheckTrue(recentApps.TryRecordLaunch(browserApp), "save a second locally launched Start app to recent history");
+    CheckTrue(recentApps.TryRecordLaunch(new AppEntry("Editor", @"c:\apps\editor.LNK")), "update recent app history without duplicating a path with different casing");
+    Check(@"c:\apps\editor.LNK,C:\Apps\Browser.lnk", string.Join(',', recentApps.LoadPaths()), "put the latest app launch first in Start recent history");
+    Check("Editor,Browser", string.Join(',', recentApps.Resolve([browserApp, editorApp]).Select(app => app.Name)), "resolve recent history against currently installed apps");
+    Check("Browser", string.Join(',', recentApps.Resolve([browserApp]).Select(app => app.Name)), "skip Start history entries for apps no longer in the catalog");
+    foreach (var index in Enumerable.Range(0, StartRecentAppsStore.MaximumEntries + 3))
+        CheckTrue(recentApps.TryRecordLaunch(new AppEntry($"Recent {index}", $@"C:\Apps\recent{index}.lnk")), "record bounded Start recent-app history entries");
+    Check(StartRecentAppsStore.MaximumEntries, recentApps.LoadPaths().Count, "bound the locally stored Start recent-app history");
+    Check($@"C:\Apps\recent{StartRecentAppsStore.MaximumEntries + 2}.lnk", recentApps.LoadPaths()[0], "retain the newest apps at the top of bounded Start history");
+    CheckTrue(recentApps.TryClear(), "clear the locally stored Start recent-app history");
+    Check(0, recentApps.LoadPaths().Count, "remove all entries when Start recent history is cleared");
+}
+finally
+{
+    if (File.Exists(recentHistoryPath)) File.Delete(recentHistoryPath);
+}
 var packagedStartPin = new AppEntry("Calculator", "Microsoft.WindowsCalculator_8wekyb3d8bbwe!App", IsPackagedApp: true);
 Check("Calculator", StartPinCatalog.Pin(startPins, packagedStartPin).Last().Name, "pin a packaged Windows app to Start");
 Check(0, StartPinCatalog.Unpin(startPins, @"C:\Apps\Editor.lnk").Count, "remove an app from Start favorites");

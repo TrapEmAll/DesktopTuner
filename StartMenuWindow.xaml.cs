@@ -12,6 +12,7 @@ public partial class StartMenuWindow : Window
 {
     private const string PinnedStartDragFormat = "DesktopTuner.StartPinnedApp";
     private readonly AppCatalogService _catalog = new();
+    private readonly StartRecentAppsStore _recentAppsStore;
     private readonly Func<IReadOnlyList<AppEntry>, bool>? _savePinnedApps;
     private IReadOnlyList<AppEntry> _apps = [];
     private IReadOnlyList<AppEntry> _pinnedApps = [];
@@ -24,11 +25,12 @@ public partial class StartMenuWindow : Window
     private Point _pinnedStartDrag;
     private bool _suppressPinnedStartClick;
 
-    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null)
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null)
     {
         InitializeComponent();
         _pinnedApps = StartPinCatalog.Normalize(pinnedApps);
         _savePinnedApps = savePinnedApps;
+        _recentAppsStore = recentAppsStore ?? new StartRecentAppsStore();
         SetStyle(style);
     }
 
@@ -265,8 +267,10 @@ public partial class StartMenuWindow : Window
         PinnedStartPanel.Visibility = showPinnedPanel ? Visibility.Visible : Visibility.Collapsed;
         PinnedStartEmptyHint.Visibility = showPinnedPanel && _pinnedApps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         PinnedStartScrollViewer.Visibility = _pinnedApps.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        RecentStartPanel.Visibility = query.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         if (!_catalogLoaded)
         {
+            RecentStartPanel.Visibility = Visibility.Collapsed;
             AppTree.ItemsSource = null;
             AppTree.Visibility = Visibility.Collapsed;
             AppList.ItemsSource = null;
@@ -280,6 +284,14 @@ public partial class StartMenuWindow : Window
         }
 
         var results = _catalogLoadError is null ? AppCatalogService.Search(_apps, query) : Array.Empty<AppEntry>();
+        var recentApps = query.Length == 0
+            ? _recentAppsStore.Resolve(_apps)
+                .Where(app => !_pinnedApps.Any(pinned => string.Equals(pinned.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase)))
+                .Take(4)
+                .ToList()
+            : [];
+        RecentStartItems.ItemsSource = recentApps;
+        RecentStartPanel.Visibility = recentApps.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         var showFolders = _style == StartMenuStyle.Classic && query.Length == 0;
         AppTree.ItemsSource = showFolders ? AppCatalogService.BuildTree(_apps) : null;
         AppTree.Visibility = showFolders ? Visibility.Visible : Visibility.Collapsed;
@@ -399,12 +411,31 @@ public partial class StartMenuWindow : Window
         try
         {
             AppCatalogService.Launch(entry);
+            if (!_recentAppsStore.TryRecordLaunch(entry))
+            {
+                MessageBox.Show(this, "The app opened, but Desktop Tuner could not save recently used app history.", "Recent app history unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
             Close();
         }
         catch (Exception ex)
         {
             MessageBox.Show(this, $"Windows could not open {entry.Name}.\n\n{ex.Message}", "Could not launch app", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void RecentStartApp_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: AppEntry app }) LaunchEntry(app);
+    }
+
+    private void ClearRecentStartApps_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_recentAppsStore.TryClear())
+        {
+            MessageBox.Show(this, "Desktop Tuner could not clear recently used app history.", "Recent app history unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        RefreshApps();
     }
 
     private void RunAsAdministrator_Click(object sender, RoutedEventArgs e)
