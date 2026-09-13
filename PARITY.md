@@ -12,6 +12,7 @@ This tracker uses StartAllBack's public product description as the baseline. Its
 | Taskbar | Tray, taskbar context menus, widgets, flyouts, and multi-monitor behavior | Partial: per-window and grouped minimize/close menus; on supported bottom edge-to-edge and segmented layouts, the overlay stops at the detected native notification-area boundary so Windows' tray icons, clock, and flyouts remain visible and clickable; other layouts retain Tray and Clock shortcuts; widgets and other shell flyouts remain |
 | Explorer | Restyled ribbon/command bar and translucent menus | Missing |
 | Explorer | Bottom details pane and classic search | Missing |
+| Explorer | Folder defaults and legacy view options | Partial: Home/This PC startup, file-extension and hidden-item visibility, compact spacing, full-path title bars, and separate folder processes; modern ribbon/command-bar styling and bottom details-pane placement remain |
 | Explorer | Dark mode and common-dialog styling | Partial: shared Windows app/system color mode and transparency preferences; dark common-dialog restyling remains |
 | Explorer | Context-menu appearance and behavior | Partial: per-user classic full-menu switch; custom acrylic styling and taskbar menus remain |
 | Shell-wide | Classic applet behavior, fonts, colors, and UI consistency | Missing |

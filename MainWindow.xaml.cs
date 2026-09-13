@@ -272,7 +272,7 @@ public partial class MainWindow : Window
             var launchButton = new Button { Content = "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowTaskbar();
             PageContent.Children.Add(launchButton);
-            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, bar size and style, app button labels, icon size, spacing, and optional auto-hide. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and shows the clock. It covers the Windows taskbar visually while running; closing it reveals the native taskbar again. Native notification-area integration remains parity work.");
+            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, bar size and style, app button labels, icon size, spacing, and optional auto-hide. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and shows the clock. When Windows' native notification area is detected on a bottom full-edge or segmented layout, the overlay stops before it; other layouts keep Tray and Clock shortcuts.");
             PageContent.Children.Add(overlayInfo);
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);
@@ -283,6 +283,8 @@ public partial class MainWindow : Window
             PageContent.Children.Add(appearanceInfo);
             var info = InfoCard("Classic context menu is experimental", "Windows 11 does not offer a supported switch for the classic full menu. This compatibility setting writes a per-user shell registration and may require File Explorer to restart or Windows to sign out.");
             PageContent.Children.Add(info);
+            var explorerCompatibilityInfo = InfoCard("Legacy folder options depend on Windows", "Full-path title bars and separate folder processes use per-user Explorer preferences. Current tabbed File Explorer builds may ignore some legacy view settings; changes remain reversible from Profiles & restore.");
+            PageContent.Children.Add(explorerCompatibilityInfo);
         }
 
         foreach (var setting in settings)

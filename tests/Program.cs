@@ -193,11 +193,18 @@ Throws<ArgumentOutOfRangeException>(() => TaskbarLayoutCalculator.Calculate(0, 1
 var appModeSetting = SettingsCatalog.ById("explorer-app-mode");
 var systemModeSetting = SettingsCatalog.ById("explorer-system-mode");
 var transparencySetting = SettingsCatalog.ById("explorer-transparency");
+var fullPathSetting = SettingsCatalog.ById("explorer-full-path");
+var separateExplorerProcessesSetting = SettingsCatalog.ById("explorer-separate-process");
 var alignmentSetting = SettingsCatalog.ById("taskbar-alignment");
 Check(SettingsCatalog.Personalize, appModeSetting.RegistryPath, "use shared Windows personalization registry location for app color mode");
 Check("AppsUseLightTheme", appModeSetting.ValueName, "target Windows app color mode value");
 Check("SystemUsesLightTheme", systemModeSetting.ValueName, "target Windows system color mode value");
 Check("EnableTransparency", transparencySetting.ValueName, "target Windows transparency setting");
+Check(SettingsCatalog.ExplorerCabinetState, fullPathSetting.RegistryPath, "use Windows Explorer's cabinet-state registry location");
+Check("FullPath", fullPathSetting.ValueName, "target the documented full-path title-bar preference");
+Check(1, fullPathSetting.Choices.Single(choice => choice.Label == "Show full path").Value, "map full-path title bars to the Explorer option");
+Check("SeparateProcess", separateExplorerProcessesSetting.ValueName, "target separate Explorer folder processes");
+Check(1, separateExplorerProcessesSetting.Choices.Single(choice => choice.Label == "Enabled").Value, "map process isolation to the Explorer option");
 Check(0, appModeSetting.Choices.Single(choice => choice.Label == "Dark").Value, "map dark app mode to the Windows registry value");
 Check(1, transparencySetting.Choices.Single(choice => choice.Label == "On").Value, "map enabled transparency to the Windows registry value");
 Check((int)TaskbarButtonAlignment.Left, alignmentSetting.Choices.Single(choice => choice.Label == "Left").Value, "map left taskbar alignment to the overlay setting");

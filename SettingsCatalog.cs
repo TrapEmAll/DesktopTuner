@@ -16,6 +16,7 @@ public sealed record SettingDefinition(
 public static class SettingsCatalog
 {
     public const string ExplorerAdvanced = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
+    public const string ExplorerCabinetState = @"Software\Microsoft\Windows\CurrentVersion\Explorer\CabinetState";
     public const string Personalize = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
 
     public static IReadOnlyList<SettingDefinition> All { get; } =
@@ -28,6 +29,10 @@ public static class SettingsCatalog
             [new("Always", 0), new("When taskbar is full", 1), new("Never", 2)], 0, true),
         new("explorer-launch", "Explorer", "Open File Explorer to", "Choose the first page shown in a new File Explorer window.", ExplorerAdvanced, "LaunchTo",
             [new("Home", 2), new("This PC", 1)], 2),
+        new("explorer-full-path", "Explorer", "Full path in title bar", "Display the full folder path in the title bar where File Explorer supports it.", ExplorerCabinetState, "FullPath",
+            [new("Show full path", 1), new("Show folder name", 0)], 0, true),
+        new("explorer-separate-process", "Explorer", "Separate folder processes", "Open folder windows in separate Explorer processes to isolate crashes.", ExplorerAdvanced, "SeparateProcess",
+            [new("Enabled", 1), new("Disabled", 0)], 0, true),
         new("explorer-extensions", "Explorer", "File name extensions", "Show or hide extensions such as .txt and .png.", ExplorerAdvanced, "HideFileExt",
             [new("Show extensions", 0), new("Hide extensions", 1)], 1),
         new("explorer-hidden", "Explorer", "Hidden files", "Show or hide files marked as hidden.", ExplorerAdvanced, "Hidden",
