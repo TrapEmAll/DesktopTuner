@@ -5,6 +5,7 @@ namespace DesktopTuner;
 public sealed record TaskbarWindowGroup(string Label, string ApplicationName, IReadOnlyList<RunningWindow> Windows)
 {
     public string ToolTip => string.Join(Environment.NewLine, Windows.Select(window => window.Title));
+    public bool IsActive => Windows.Any(window => window.IsForeground);
 }
 
 public static class TaskbarWindowGrouping

@@ -115,7 +115,7 @@ Check(true, droppedPins[2].IsDirectory, "preserve folder pins as folder targets"
 Check(3, TaskbarPinCatalog.AddDroppedFiles(droppedPins, [@"C:\Docs\Projects"], path => path == @"C:\Docs\Projects").Count, "avoid duplicate folder pins");
 var runningWindows = new[]
 {
-    new RunningWindow((nint)1, "Document one", "Editor", @"C:\Apps\editor.exe", false),
+    new RunningWindow((nint)1, "Document one", "Editor", @"C:\Apps\editor.exe", false) { IsForeground = true },
     new RunningWindow((nint)2, "Document two", "Editor", @"C:\Apps\EDITOR.exe", false),
     new RunningWindow((nint)3, "Inbox", "Mail", @"C:\Apps\mail.exe", false)
 };
@@ -125,6 +125,7 @@ CheckTrue(!TaskbarWindowActivationPolicy.ShouldMinimize(isForeground: true, isMi
 CheckTrue(!TaskbarWindowActivationPolicy.ShouldMinimize(isForeground: false, isMinimized: false), "activate a taskbar window when another app is foreground");
 Check(2, alwaysGroupedWindows.Count, "always group windows from the same executable");
 Check("Editor (2)", alwaysGroupedWindows[0].Label, "show the app name and window count for a grouped button");
+CheckTrue(alwaysGroupedWindows[0].IsActive, "mark an app group active when one of its windows is foreground");
 Check("Document one" + Environment.NewLine + "Document two", alwaysGroupedWindows[0].ToolTip, "list window titles in a grouped button tooltip");
 Check(3, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Never, 1).Count, "never group taskbar windows");
 Check(3, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFull, 3).Count, "keep windows separate while the taskbar has capacity");
@@ -160,6 +161,8 @@ Check(false, pinPresentation.ShowLabel, "hide pinned app labels when the option 
 Check(24, pinPresentation.IconPixels, "apply the selected icon size to pinned taskbar buttons");
 Check(new Thickness(0), pinPresentation.IconMargin, "remove the icon-to-label gap when labels are hidden");
 CheckTrue(TaskbarButtonViewModel.FromPin(editorPin, presentationPreferences, vertical: false, isRunning: true).IsRunning, "show a running indicator for an app absorbed into its pinned taskbar button");
+CheckTrue(TaskbarButtonViewModel.FromPin(editorPin, presentationPreferences, vertical: false, isRunning: true, isActive: true).IsActive, "mark a running pinned app active when one of its windows is foreground");
+Check("#7A8497", TaskbarTheme.Resolve(dark: false).RunningIndicator, "use a subdued indicator for running apps in light mode");
 var verticalPinPresentation = TaskbarButtonViewModel.FromPin(new PinnedTaskbarApp("Editor", Environment.ProcessPath!), presentationPreferences with { TaskbarButtonSpacing = TaskbarButtonSpacing.Relaxed }, vertical: true);
 Check(new Thickness(0, 4, 0, 4), verticalPinPresentation.ButtonMargin, "apply selected vertical button spacing in taskbar presentation data");
 var largeAppCatalog = Enumerable.Range(0, 55)

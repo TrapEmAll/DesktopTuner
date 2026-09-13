@@ -267,8 +267,11 @@ public partial class TaskbarWindow : Window
         }
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         var pinnedApps = _preferences.PinnedApps!;
-        PinnedItems.ItemsSource = pinnedApps.Select(app => TaskbarButtonViewModel.FromPin(
-            app, _preferences, vertical, windows.Any(window => TaskbarWindowGrouping.MatchesPinnedApp(app, window)))).ToList();
+        PinnedItems.ItemsSource = pinnedApps.Select(app =>
+        {
+            var appWindows = windows.Where(window => TaskbarWindowGrouping.MatchesPinnedApp(app, window)).ToList();
+            return TaskbarButtonViewModel.FromPin(app, _preferences, vertical, appWindows.Count > 0, appWindows.Any(window => window.IsForeground));
+        }).ToList();
         WindowItems.ItemsSource = TaskbarWindowGrouping.Create(windows, _preferences.TaskbarGrouping, GetWindowButtonCapacity(), pinnedApps)
             .Select(group => TaskbarButtonViewModel.FromWindowGroup(group, _preferences, vertical)).ToList();
         EmptyText.Visibility = windows.Count == 0 && _preferences.PinnedApps!.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
