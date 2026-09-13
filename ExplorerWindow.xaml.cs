@@ -19,6 +19,8 @@ public partial class ExplorerWindow : Window
     private bool _isSearchView;
     private readonly bool _showHiddenItems;
     private readonly bool _hideFileExtensions;
+    private ExplorerSortColumn _sortColumn = ExplorerSortColumn.Name;
+    private bool _sortAscending = true;
 
     public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false)
     {
@@ -81,7 +83,7 @@ public partial class ExplorerWindow : Window
         }
 
         _entries = entries;
-        EntriesList.ItemsSource = entries;
+        ApplySort();
         EntriesList.SelectedItem = null;
         NewFolderButton.IsEnabled = !_location.IsDriveList;
         var title = _location.IsDriveList ? "This PC" : Path.GetFileName(_location.Path!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
@@ -236,7 +238,7 @@ public partial class ExplorerWindow : Window
             var result = await ExplorerSearchService.SearchAsync(_location.Path, searchTerm, cancellation.Token, _showHiddenItems);
             if (!ReferenceEquals(_searchCancellation, cancellation)) return;
             _entries = result.Entries.Select(ApplyDisplayName).ToList();
-            EntriesList.ItemsSource = _entries;
+            ApplySort();
             LocationSubtitle.Text = $"Search in {_location.Path}";
             EmptyMessage.Text = $"No items match “{searchTerm}”.";
             EmptyMessage.Visibility = _entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -274,6 +276,40 @@ public partial class ExplorerWindow : Window
         if (_isSearchView) _ = SearchCurrentFolderAsync(SearchBox.Text);
         else RefreshLocation();
     }
+
+    private void SortColumn_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not GridViewColumnHeader { Tag: string columnName }
+            || !Enum.TryParse(columnName, out ExplorerSortColumn column)) return;
+
+        if (_sortColumn == column) _sortAscending = !_sortAscending;
+        else
+        {
+            _sortColumn = column;
+            _sortAscending = true;
+        }
+
+        NameColumnHeader.Content = HeaderLabel("Name", _sortColumn == ExplorerSortColumn.Name, _sortAscending);
+        DateModifiedColumnHeader.Content = HeaderLabel("DateModified", _sortColumn == ExplorerSortColumn.DateModified, _sortAscending);
+        TypeColumnHeader.Content = HeaderLabel("Type", _sortColumn == ExplorerSortColumn.Type, _sortAscending);
+        SizeColumnHeader.Content = HeaderLabel("Size", _sortColumn == ExplorerSortColumn.Size, _sortAscending);
+        ApplySort();
+    }
+
+    private static string HeaderLabel(string key, bool sorted, bool ascending)
+    {
+        var label = key switch
+        {
+            "Name" => "Name",
+            "DateModified" => "Date modified",
+            "Type" => "Type",
+            "Size" => "Size",
+            _ => key
+        };
+        return sorted ? $"{label} {(ascending ? "↑" : "↓")}" : label;
+    }
+
+    private void ApplySort() => EntriesList.ItemsSource = ExplorerSortPolicy.Sort(_entries, _sortColumn, _sortAscending);
 
     private void EntriesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {

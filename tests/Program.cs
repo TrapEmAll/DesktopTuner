@@ -276,6 +276,17 @@ try
     Check(0, ExplorerSearchService.SearchAsync(explorerTestDirectory, "classified").GetAwaiter().GetResult().Entries.Count, "respect hidden-item preferences during search");
     Check(1, ExplorerSearchService.SearchAsync(explorerTestDirectory, "classified", showHiddenItems: true).GetAwaiter().GetResult().Entries.Count, "include hidden items when the preference allows them");
     Check("report", new ExplorerEntry("report.txt", Path.Combine(explorerTestDirectory, "report.txt"), false, false, 0, DateTime.MinValue).GetDisplayName(true), "hide only the displayed extension while retaining the full file name");
+    var explorerSortEntries = new[]
+    {
+        new ExplorerEntry("z-folder", @"C:\items\z-folder", true, false, null, new DateTime(2024, 1, 1)),
+        new ExplorerEntry("a.txt", @"C:\items\a.txt", false, false, 20, new DateTime(2024, 1, 2)),
+        new ExplorerEntry("b-folder", @"C:\items\b-folder", true, false, null, new DateTime(2024, 1, 3)),
+        new ExplorerEntry("b.log", @"C:\items\b.log", false, false, 5, new DateTime(2024, 1, 4))
+    };
+    Check("z-folder,b-folder,b.log,a.txt", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.Name, ascending: false).Select(entry => entry.Name)), "sort names descending while keeping folders grouped first");
+    Check("b-folder,z-folder,b.log,a.txt", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.DateModified, ascending: false).Select(entry => entry.Name)), "sort by modification date with directory grouping");
+    Check("b-folder,z-folder,a.txt,b.log", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.Type, ascending: false).Select(entry => entry.Name)), "sort by type with folders grouped first");
+    Check("b-folder,z-folder,a.txt,b.log", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.Size, ascending: false).Select(entry => entry.Name)), "sort files by numeric size instead of formatted size text");
 
     var freshPreferencesStore = new DesktopPreferencesStore(Path.Combine(temporaryPreferencesDirectory, "new-install.json"));
     Check(true, freshPreferencesStore.Load().TaskbarOnAllDisplays, "enable all displays by default for a new installation");
