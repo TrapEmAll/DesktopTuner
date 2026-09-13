@@ -39,7 +39,12 @@ public partial class StartMenuWindow : Window
         MenuLayout.RowDefinitions.Clear();
         MenuLayout.ColumnDefinitions.Clear();
         var windows7 = style == StartMenuStyle.Windows7;
+        var windows8 = style == StartMenuStyle.Windows8;
         var classic = style is StartMenuStyle.Classic or StartMenuStyle.Windows7;
+        PinnedStartScrollViewer.Height = windows8 ? 220 : 82;
+        PinnedStartScrollViewer.HorizontalScrollBarVisibility = windows8 ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
+        PinnedStartScrollViewer.VerticalScrollBarVisibility = windows8 ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
+        PinnedStartItems.ItemsPanel = (ItemsPanelTemplate)FindResource(windows8 ? "Windows8TilePanel" : "PinnedStartHorizontalPanel");
         MenuLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         if (classic) MenuLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(176) });
 
@@ -143,16 +148,23 @@ public partial class StartMenuWindow : Window
             {
                 Width = 470;
                 Height = 650;
-                OuterBorder.CornerRadius = new CornerRadius(18);
-                OuterBorder.BorderBrush = Brush("#DDE2EB");
-                OuterBorder.Background = Brush("#F9FAFD");
-                HeaderTitle.Text = "Good to see you";
-                HeaderSubtitle.Text = "Search apps or open a favorite place";
+                Width = windows8 ? 700 : 470;
+                Height = windows8 ? 740 : 650;
+                OuterBorder.CornerRadius = new CornerRadius(windows8 ? 8 : 18);
+                OuterBorder.BorderBrush = windows8 ? Brush("#27486A") : Brush("#DDE2EB");
+                OuterBorder.Background = windows8 ? Brush("#F1F4F8") : Brush("#F9FAFD");
+                if (windows8)
+                {
+                    OuterBorder.SetResourceReference(Border.BorderBrushProperty, "DesktopBorderBrush");
+                    OuterBorder.SetResourceReference(Border.BackgroundProperty, "DesktopWindowBrush");
+                }
+                HeaderTitle.Text = windows8 ? "Start" : "Good to see you";
+                HeaderSubtitle.Text = windows8 ? "Pinned tiles and all apps" : "Search apps or open a favorite place";
                 HeaderSubtitle.Visibility = Visibility.Visible;
-                HeaderPanel.Margin = new Thickness(2, 0, 0, 18);
-                SearchBox.Height = 46;
+                HeaderPanel.Margin = new Thickness(2, 0, 0, windows8 ? 10 : 18);
+                SearchBox.Height = windows8 ? 42 : 46;
                 SearchBox.FontSize = 14;
-                AppPanel.Margin = new Thickness(0, 16, 0, 10);
+                AppPanel.Margin = new Thickness(0, windows8 ? 10 : 16, 0, 10);
                 ResultsHeading.Text = "All apps";
                 foreach (var button in QuickLinksStack.Children.OfType<Button>())
                 {

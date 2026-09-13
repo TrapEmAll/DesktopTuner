@@ -27,6 +27,10 @@ public static class DesktopTheme
         ["DesktopAccentTintBrush"] = ("#ECEBFA", "#312E4D"),
         ["DesktopAccentTextBrush"] = ("#5148C7", "#B9B4FF"),
         ["DesktopAccentButtonBrush"] = ("#6258D9", "#6258D9"),
+        ["DesktopTileBlueBrush"] = ("#0078D4", "#0078D4"),
+        ["DesktopTileGreenBrush"] = ("#107C10", "#107C10"),
+        ["DesktopTileOrangeBrush"] = ("#D83B01", "#D83B01"),
+        ["DesktopTilePurpleBrush"] = ("#5C2D91", "#5C2D91"),
         ["DesktopDividerBrush"] = ("#E7E9EF", "#353C48")
     };
 

@@ -7,6 +7,8 @@
         Background="{DynamicResource DesktopSurfaceAltBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}" FontFamily="Segoe UI Variable Text, Segoe UI"
         PreviewKeyDown="Window_PreviewKeyDown" Loaded="Window_Loaded">
     <Window.Resources>
+        <ItemsPanelTemplate x:Key="PinnedStartHorizontalPanel"><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="Windows8TilePanel"><WrapPanel ItemWidth="144" ItemHeight="104" /></ItemsPanelTemplate>
         <Style TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
@@ -52,13 +54,59 @@
                     <TextBlock Text="Pinned" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DesktopMutedTextBrush}" Margin="4,0,0,3" />
                     <TextBlock x:Name="PinnedStartEmptyHint" Text="Drag apps here to pin them" FontSize="10" Foreground="{DynamicResource DesktopFaintTextBrush}" Margin="4,2,0,4" Visibility="Collapsed" />
                     <ScrollViewer x:Name="PinnedStartScrollViewer" Height="82" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                        <ItemsControl x:Name="PinnedStartItems">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
+                        <ItemsControl x:Name="PinnedStartItems" AlternationCount="4" ItemsPanel="{StaticResource PinnedStartHorizontalPanel}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Width="76" Height="76" Margin="2,0,3,0" Padding="3" Tag="{Binding}" Click="PinnedStartApp_Click" PreviewMouseLeftButtonDown="PinnedStartApp_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="PinnedStartApp_PreviewMouseLeftButtonUp" PreviewMouseMove="PinnedStartApp_PreviewMouseMove" AllowDrop="True" DragOver="PinnedStartApp_DragOver" Drop="PinnedStartApp_Drop" ToolTip="{Binding Name}">
+                                    <Button Tag="{Binding}" Click="PinnedStartApp_Click" PreviewMouseLeftButtonDown="PinnedStartApp_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="PinnedStartApp_PreviewMouseLeftButtonUp" PreviewMouseMove="PinnedStartApp_PreviewMouseMove" AllowDrop="True" DragOver="PinnedStartApp_DragOver" Drop="PinnedStartApp_Drop" ToolTip="{Binding Name}">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource DesktopBorderBrush}" />
+                                                <Setter Property="Width" Value="76" />
+                                                <Setter Property="Height" Value="76" />
+                                                <Setter Property="Margin" Value="2,0,3,0" />
+                                                <Setter Property="Padding" Value="3" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows8}">
+                                                        <Setter Property="Width" Value="136" />
+                                                        <Setter Property="Height" Value="96" />
+                                                        <Setter Property="Margin" Value="4" />
+                                                        <Setter Property="Padding" Value="10" />
+                                                        <Setter Property="BorderThickness" Value="0" />
+                                                        <Setter Property="Foreground" Value="White" />
+                                                    </DataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows8}" />
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex)}" Value="0" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Background" Value="{DynamicResource DesktopTileBlueBrush}" />
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows8}" />
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex)}" Value="1" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Background" Value="{DynamicResource DesktopTileGreenBrush}" />
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows8}" />
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex)}" Value="2" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Background" Value="{DynamicResource DesktopTileOrangeBrush}" />
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows8}" />
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex)}" Value="3" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Background" Value="{DynamicResource DesktopTilePurpleBrush}" />
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
                                         <Button.ContextMenu>
                                             <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
                                                 <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenFileLocation}" Click="OpenFileLocation_Click" />
@@ -71,9 +119,30 @@
                                                 <MenuItem Header="Unpin from Start" Tag="{Binding}" Click="UnpinStartApp_Click" />
                                             </ContextMenu>
                                         </Button.ContextMenu>
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Grid Width="34" Height="34" HorizontalAlignment="Center">
-                                                <Image Source="{Binding Icon}" Width="32" Height="32" />
+                                        <StackPanel x:Name="PinnedStartTileContent" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Orientation" Value="Vertical" />
+                                                    <Style.Triggers><DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows8}"><Setter Property="Orientation" Value="Horizontal" /></DataTrigger></Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <Grid x:Name="PinnedStartTileIcon" HorizontalAlignment="Center">
+                                                <Grid.Style>
+                                                    <Style TargetType="Grid">
+                                                        <Setter Property="Width" Value="34" />
+                                                        <Setter Property="Height" Value="34" />
+                                                        <Style.Triggers><DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows8}"><Setter Property="Width" Value="42" /><Setter Property="Height" Value="42" /></DataTrigger></Style.Triggers>
+                                                    </Style>
+                                                </Grid.Style>
+                                                <Image Source="{Binding Icon}">
+                                                    <Image.Style>
+                                                        <Style TargetType="Image">
+                                                            <Setter Property="Width" Value="32" />
+                                                            <Setter Property="Height" Value="32" />
+                                                            <Style.Triggers><DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows8}"><Setter Property="Width" Value="40" /><Setter Property="Height" Value="40" /></DataTrigger></Style.Triggers>
+                                                        </Style>
+                                                    </Image.Style>
+                                                </Image>
                                                 <Border CornerRadius="8" Background="{DynamicResource DesktopAccentTintBrush}">
                                                     <Border.Style>
                                                         <Style TargetType="Border">
@@ -84,7 +153,25 @@
                                                     <TextBlock Text="{Binding Name}" MaxWidth="30" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource DesktopAccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                 </Border>
                                             </Grid>
-                                            <TextBlock Text="{Binding Name}" FontSize="9" TextWrapping="Wrap" TextAlignment="Center" MaxHeight="28" Margin="0,3,0,0" />
+                                            <TextBlock Text="{Binding Name}" TextWrapping="Wrap" MaxHeight="36">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
+                                                        <Setter Property="FontSize" Value="9" />
+                                                        <Setter Property="Margin" Value="0,3,0,0" />
+                                                        <Setter Property="TextAlignment" Value="Center" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows8}">
+                                                                <Setter Property="Foreground" Value="White" />
+                                                                <Setter Property="FontSize" Value="11" />
+                                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                                                <Setter Property="TextAlignment" Value="Left" />
+                                                                <Setter Property="Margin" Value="10,0,0,0" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
                                         </StackPanel>
                                     </Button>
                                 </DataTemplate>

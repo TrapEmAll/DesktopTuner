@@ -906,6 +906,8 @@ try
     Check(TaskbarButtonEffect.DynamicAura, loadedPreferences.TaskbarButtonEffect, "persist the Dynamic Aura button effect");
     preferencesStore.Save(expectedPreferences with { StartMenuStyle = StartMenuStyle.Windows7 });
     Check(StartMenuStyle.Windows7, preferencesStore.Load().StartMenuStyle, "persist the Windows 7-inspired Start menu style");
+    preferencesStore.Save(expectedPreferences with { StartMenuStyle = StartMenuStyle.Windows8 });
+    Check(StartMenuStyle.Windows8, preferencesStore.Load().StartMenuStyle, "persist the Windows 8-inspired Start tile style");
     Check(expectedPreferences.TaskbarGrouping, loadedPreferences.TaskbarGrouping, "persist taskbar grouping mode");
     Check(expectedPreferences.TaskbarButtonAlignment, loadedPreferences.TaskbarButtonAlignment, "persist taskbar button alignment");
     preferencesStore.Save(expectedPreferences with { StartWithWindows = true });
