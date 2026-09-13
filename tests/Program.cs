@@ -275,6 +275,17 @@ CheckTrue(ExplorerTabOrdering.Move(explorerTabOrder, 2, 0), "move an Explorer ta
 Check("Home,Documents,Downloads", string.Join(',', explorerTabOrder), "preserve Explorer tab order when dragging a tab to the beginning");
 CheckTrue(!ExplorerTabOrdering.Move(explorerTabOrder, 1, 2), "ignore an Explorer tab drop that keeps it in the same position");
 CheckTrue(!ExplorerTabOrdering.Move(explorerTabOrder, -1, 0), "ignore an invalid Explorer tab drag source");
+var closedExplorerTabs = new List<ExplorerTabState>();
+var closedDocumentsTab = new ExplorerTabState(new ExplorerLocation(@"C:\Users\test\Documents"));
+var closedDownloadsTab = new ExplorerTabState(new ExplorerLocation(@"C:\Users\test\Downloads"));
+var closedPicturesTab = new ExplorerTabState(new ExplorerLocation(@"C:\Users\test\Pictures"));
+ExplorerClosedTabHistory.Remember(closedExplorerTabs, closedDocumentsTab, maximum: 2);
+ExplorerClosedTabHistory.Remember(closedExplorerTabs, closedDownloadsTab, maximum: 2);
+ExplorerClosedTabHistory.Remember(closedExplorerTabs, closedPicturesTab, maximum: 2);
+Check(@"C:\Users\test\Pictures", ExplorerClosedTabHistory.RestoreLast(closedExplorerTabs)?.Location.Path, "reopen Explorer tabs in last-closed order");
+Check(@"C:\Users\test\Downloads", ExplorerClosedTabHistory.RestoreLast(closedExplorerTabs)?.Location.Path, "retain the next most recently closed Explorer tab");
+Check(null, ExplorerClosedTabHistory.RestoreLast(closedExplorerTabs), "return no Explorer tab when the closed-tab history is empty");
+Throws<ArgumentOutOfRangeException>(() => ExplorerClosedTabHistory.Remember(closedExplorerTabs, closedDocumentsTab, maximum: -1), "reject negative Explorer closed-tab history limits");
 var fullStartPinList = Enumerable.Range(0, StartPinCatalog.MaximumPins)
     .Select(index => new AppEntry($"App {index}", $@"C:\Apps\app{index}.lnk"))
     .ToList();
@@ -303,6 +314,7 @@ Throws<ArgumentException>(() => StartSearchTargetBuilder.WebSearch(string.Empty)
 Check(ExplorerKeyboardAction.FocusAddress, ExplorerKeyboardPolicy.Resolve(Key.L, ModifierKeys.Control), "focus the Explorer address field with Ctrl+L");
 Check(ExplorerKeyboardAction.FocusAddress, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.D), "focus the Explorer address field with Alt+D system-key events");
 Check(ExplorerKeyboardAction.FocusSearch, ExplorerKeyboardPolicy.Resolve(Key.F, ModifierKeys.Control), "focus Explorer search with Ctrl+F");
+Check(ExplorerKeyboardAction.ReopenClosedTab, ExplorerKeyboardPolicy.Resolve(Key.T, ModifierKeys.Control | ModifierKeys.Shift), "reopen the last closed Explorer tab with Ctrl+Shift+T");
 Check(ExplorerKeyboardAction.NextPane, ExplorerKeyboardPolicy.Resolve(Key.F6, ModifierKeys.None), "cycle Explorer navigation panes with F6");
 Check(ExplorerKeyboardAction.PreviousPane, ExplorerKeyboardPolicy.Resolve(Key.F6, ModifierKeys.Shift), "cycle Explorer navigation panes in reverse with Shift+F6");
 Check(ExplorerKeyboardAction.None, ExplorerKeyboardPolicy.Resolve(Key.L, ModifierKeys.Control | ModifierKeys.Shift), "leave modified Ctrl+L combinations untouched");

@@ -196,7 +196,13 @@
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
                         <DockPanel Margin="0,0,0,10">
                             <Button Content="+" DockPanel.Dock="Right" Width="34" Height="30" Margin="6,0,0,0" ToolTip="New tab (Ctrl+T)" Click="NewTabButton_Click" />
-                            <TabControl x:Name="ExplorerTabs" Height="32" SelectionChanged="ExplorerTabs_SelectionChanged" BorderThickness="0" Background="Transparent" />
+                            <TabControl x:Name="ExplorerTabs" Height="32" SelectionChanged="ExplorerTabs_SelectionChanged" BorderThickness="0" Background="Transparent">
+                                <TabControl.ContextMenu>
+                                    <ContextMenu Opened="ExplorerTabsContextMenu_Opened">
+                                        <MenuItem x:Name="ReopenClosedTabMenuItem" Header="Reopen closed tab" InputGestureText="Ctrl+Shift+T" IsEnabled="False" Click="ReopenClosedTab_Click" />
+                                    </ContextMenu>
+                                </TabControl.ContextMenu>
+                            </TabControl>
                         </DockPanel>
                         <TextBlock x:Name="LocationTitle" Text="Home" FontSize="21" FontWeight="SemiBold" Foreground="{DynamicResource DesktopPrimaryTextBrush}" />
                         <TextBlock x:Name="LocationSubtitle" Foreground="{DynamicResource DesktopMutedTextBrush}" FontSize="12" Margin="0,3,0,0" />

@@ -16,6 +16,7 @@ public partial class ExplorerWindow : Window
     private const string ExplorerTabDragFormat = "DesktopTuner.ExplorerTabState";
     private const string QuickAccessPinDragFormat = "DesktopTuner.ExplorerQuickAccessPin";
     private readonly List<ExplorerTabState> _tabs = [];
+    private readonly List<ExplorerTabState> _closedTabs = [];
     private readonly HashSet<string> _cutPaths = new(StringComparer.OrdinalIgnoreCase);
     private int _activeTabIndex;
     private bool _syncingTabs;
@@ -90,6 +91,7 @@ public partial class ExplorerWindow : Window
                 tabItem.PreviewMouseLeftButtonDown += ExplorerTab_PreviewMouseLeftButtonDown;
                 tabItem.PreviewMouseMove += ExplorerTab_PreviewMouseMove;
                 tabItem.PreviewMouseLeftButtonUp += ExplorerTab_PreviewMouseLeftButtonUp;
+                tabItem.PreviewMouseDown += ExplorerTab_PreviewMouseDown;
                 tabItem.DragOver += ExplorerTab_DragOver;
                 tabItem.Drop += ExplorerTab_Drop;
                 ExplorerTabs.Items.Add(tabItem);
@@ -137,6 +139,7 @@ public partial class ExplorerWindow : Window
             return;
         }
         CancelSearch(tab);
+        ExplorerClosedTabHistory.Remember(_closedTabs, tab);
         _tabs.RemoveAt(index);
         if (index < _activeTabIndex) _activeTabIndex--;
         else if (index == _activeTabIndex) _activeTabIndex = Math.Min(index, _tabs.Count - 1);
@@ -191,6 +194,13 @@ public partial class ExplorerWindow : Window
     private void ExplorerTab_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (ReferenceEquals(sender, _tabDragCandidate)) _tabDragCandidate = null;
+    }
+
+    private void ExplorerTab_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle || sender is not TabItem { Tag: ExplorerTabState tab }) return;
+        CloseTab(tab);
+        e.Handled = true;
     }
 
     private void ExplorerTab_DragOver(object sender, DragEventArgs e)
@@ -337,6 +347,21 @@ public partial class ExplorerWindow : Window
 
     private void NewTabButton_Click(object sender, RoutedEventArgs e) => AddTab(_location with { SearchQuery = null });
 
+    private void ExplorerTabsContextMenu_Opened(object sender, RoutedEventArgs e) =>
+        ReopenClosedTabMenuItem.IsEnabled = _closedTabs.Count > 0;
+
+    private void ReopenClosedTab_Click(object sender, RoutedEventArgs e) => ReopenClosedTab();
+
+    private void ReopenClosedTab()
+    {
+        var tab = ExplorerClosedTabHistory.RestoreLast(_closedTabs);
+        if (tab is null) return;
+        _tabs.Add(tab);
+        _activeTabIndex = _tabs.Count - 1;
+        SyncExplorerTabs();
+        ShowActiveTab();
+    }
+
     private void OpenInNewTab_Click(object sender, RoutedEventArgs e)
     {
         if (EntriesList.SelectedItem is ExplorerEntry { IsDirectory: true } entry)
@@ -350,6 +375,9 @@ public partial class ExplorerWindow : Window
         {
             switch (explorerAction)
             {
+                case ExplorerKeyboardAction.ReopenClosedTab:
+                    ReopenClosedTab();
+                    break;
                 case ExplorerKeyboardAction.FocusAddress:
                     FocusAndSelect(AddressBox);
                     break;
