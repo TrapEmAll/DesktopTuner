@@ -37,16 +37,54 @@ public partial class StartMenuWindow : Window
     public void SetStyle(StartMenuStyle style)
     {
         _style = style;
-        Tag = style;
+        Tag = style == StartMenuStyle.Windows10 ? StartMenuStyle.Windows8 : style;
         MenuLayout.RowDefinitions.Clear();
         MenuLayout.ColumnDefinitions.Clear();
         var windows7 = style == StartMenuStyle.Windows7;
         var windows8 = style == StartMenuStyle.Windows8;
+        var windows10 = style == StartMenuStyle.Windows10;
+        var tileGrid = windows8 || windows10;
         var classic = style is StartMenuStyle.Classic or StartMenuStyle.Windows7;
-        PinnedStartScrollViewer.Height = windows8 ? 220 : 82;
-        PinnedStartScrollViewer.HorizontalScrollBarVisibility = windows8 ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
-        PinnedStartScrollViewer.VerticalScrollBarVisibility = windows8 ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
-        PinnedStartItems.ItemsPanel = (ItemsPanelTemplate)FindResource(windows8 ? "Windows8TilePanel" : "PinnedStartHorizontalPanel");
+        AppPanel.RowDefinitions.Clear();
+        AppPanel.ColumnDefinitions.Clear();
+        if (windows10)
+        {
+            AppPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            AppPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            AppPanel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            AppPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            AppPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star) });
+            Grid.SetColumnSpan(AppPanelHeading, 2);
+            Grid.SetRow(RecentStartPanel, 1);
+            Grid.SetColumn(RecentStartPanel, 0);
+            Grid.SetRow(AppList, 2);
+            Grid.SetColumn(AppList, 0);
+            Grid.SetRow(AppTree, 2);
+            Grid.SetColumn(AppTree, 0);
+            Grid.SetRow(PinnedStartPanel, 1);
+            Grid.SetColumn(PinnedStartPanel, 1);
+            Grid.SetRowSpan(PinnedStartPanel, 2);
+        }
+        else
+        {
+            foreach (var height in new[] { GridLength.Auto, GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star) })
+                AppPanel.RowDefinitions.Add(new RowDefinition { Height = height });
+            AppPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            Grid.SetColumnSpan(AppPanelHeading, 1);
+            Grid.SetRow(PinnedStartPanel, 1);
+            Grid.SetColumn(PinnedStartPanel, 0);
+            Grid.SetRowSpan(PinnedStartPanel, 1);
+            Grid.SetRow(RecentStartPanel, 2);
+            Grid.SetColumn(RecentStartPanel, 0);
+            Grid.SetRow(AppList, 3);
+            Grid.SetColumn(AppList, 0);
+            Grid.SetRow(AppTree, 2);
+            Grid.SetColumn(AppTree, 0);
+        }
+        PinnedStartScrollViewer.Height = windows10 ? 360 : windows8 ? 220 : 82;
+        PinnedStartScrollViewer.HorizontalScrollBarVisibility = tileGrid ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
+        PinnedStartScrollViewer.VerticalScrollBarVisibility = tileGrid ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
+        PinnedStartItems.ItemsPanel = (ItemsPanelTemplate)FindResource(tileGrid ? "Windows8TilePanel" : "PinnedStartHorizontalPanel");
         MenuLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         if (classic) MenuLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(176) });
 
@@ -150,23 +188,23 @@ public partial class StartMenuWindow : Window
             {
                 Width = 470;
                 Height = 650;
-                Width = windows8 ? 700 : 470;
-                Height = windows8 ? 740 : 650;
-                OuterBorder.CornerRadius = new CornerRadius(windows8 ? 8 : 18);
-                OuterBorder.BorderBrush = windows8 ? Brush("#27486A") : Brush("#DDE2EB");
-                OuterBorder.Background = windows8 ? Brush("#F1F4F8") : Brush("#F9FAFD");
-                if (windows8)
+                Width = windows10 ? 820 : windows8 ? 700 : 470;
+                Height = windows10 ? 700 : windows8 ? 740 : 650;
+                OuterBorder.CornerRadius = new CornerRadius(tileGrid ? 8 : 18);
+                OuterBorder.BorderBrush = tileGrid ? Brush("#27486A") : Brush("#DDE2EB");
+                OuterBorder.Background = tileGrid ? Brush("#F1F4F8") : Brush("#F9FAFD");
+                if (tileGrid)
                 {
                     OuterBorder.SetResourceReference(Border.BorderBrushProperty, "DesktopBorderBrush");
                     OuterBorder.SetResourceReference(Border.BackgroundProperty, "DesktopWindowBrush");
                 }
-                HeaderTitle.Text = windows8 ? "Start" : "Good to see you";
-                HeaderSubtitle.Text = windows8 ? "Pinned tiles and all apps" : "Search apps or open a favorite place";
+                HeaderTitle.Text = tileGrid ? "Start" : "Good to see you";
+                HeaderSubtitle.Text = windows10 ? "Apps and pinned tiles" : windows8 ? "Pinned tiles and all apps" : "Search apps or open a favorite place";
                 HeaderSubtitle.Visibility = Visibility.Visible;
-                HeaderPanel.Margin = new Thickness(2, 0, 0, windows8 ? 10 : 18);
-                SearchBox.Height = windows8 ? 42 : 46;
+                HeaderPanel.Margin = new Thickness(2, 0, 0, tileGrid ? 10 : 18);
+                SearchBox.Height = tileGrid ? 42 : 46;
                 SearchBox.FontSize = 14;
-                AppPanel.Margin = new Thickness(0, windows8 ? 10 : 16, 0, 10);
+                AppPanel.Margin = new Thickness(0, tileGrid ? 10 : 16, 0, 10);
                 ResultsHeading.Text = "All apps";
                 foreach (var button in QuickLinksStack.Children.OfType<Button>())
                 {
@@ -301,6 +339,7 @@ public partial class StartMenuWindow : Window
             : query.Length == 0
                 ? StartMenuAppListPolicy.AddAlphabetMarkers(results)
                 : results.Select(application => new StartMenuAppListItem(application, null)).ToList();
+        Grid.SetColumnSpan(AppList, _style == StartMenuStyle.Windows10 && query.Length > 0 ? 2 : 1);
         AppList.SelectedIndex = showFolders || results.Count == 0 ? -1 : 0;
         ResultsHeading.Text = query.Length > 0 ? "Search results" : showFolders ? "Programs" : "All apps";
         SearchActionPanel.Visibility = query.Length > 0 ? Visibility.Visible : Visibility.Collapsed;

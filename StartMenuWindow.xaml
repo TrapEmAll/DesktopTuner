@@ -42,7 +42,7 @@
             <TextBox x:Name="SearchBox" Grid.Row="1" Height="46" FontSize="14" Padding="14,9" BorderBrush="{DynamicResource DesktopInputBorderBrush}" Background="{DynamicResource DesktopSurfaceBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}" VerticalContentAlignment="Center" TextChanged="SearchBox_TextChanged" ToolTip="Search installed Start menu apps" />
             <Grid x:Name="AppPanel" Grid.Row="2" Margin="0,16,0,10">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <DockPanel Grid.Row="0" Margin="2,0,2,9">
+                <DockPanel x:Name="AppPanelHeading" Grid.Row="0" Margin="2,0,2,9">
                     <TextBlock x:Name="ResultsHeading" Text="All apps" FontWeight="SemiBold" FontSize="13" />
                     <StackPanel x:Name="SearchActionPanel" DockPanel.Dock="Right" Orientation="Horizontal" Visibility="Collapsed">
                         <TextBlock x:Name="ResultCount" Foreground="{DynamicResource DesktopFaintTextBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,7,0" />
