@@ -59,6 +59,9 @@
                                     <Button Width="76" Height="76" Margin="2,0,3,0" Padding="3" Tag="{Binding}" Click="PinnedStartApp_Click" ToolTip="{Binding Name}">
                                         <Button.ContextMenu>
                                             <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem Header="Move earlier" Tag="{Binding}" Click="MoveStartAppEarlier_Click" />
+                                                <MenuItem Header="Move later" Tag="{Binding}" Click="MoveStartAppLater_Click" />
+                                                <Separator />
                                                 <MenuItem Header="Unpin from Start" Tag="{Binding}" Click="UnpinStartApp_Click" />
                                             </ContextMenu>
                                         </Button.ContextMenu>

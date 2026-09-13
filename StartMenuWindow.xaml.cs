@@ -276,6 +276,16 @@ public partial class StartMenuWindow : Window
         SavePinnedApps(StartPinCatalog.Unpin(_pinnedApps, app.ShortcutPath));
     }
 
+    private void MoveStartAppEarlier_Click(object sender, RoutedEventArgs e) => MovePinnedStartApp(sender, -1);
+
+    private void MoveStartAppLater_Click(object sender, RoutedEventArgs e) => MovePinnedStartApp(sender, 1);
+
+    private void MovePinnedStartApp(object sender, int offset)
+    {
+        if (sender is not MenuItem { Tag: AppEntry app }) return;
+        SavePinnedApps(StartPinCatalog.Move(_pinnedApps, app.ShortcutPath, offset));
+    }
+
     private void SavePinnedApps(IReadOnlyList<AppEntry> apps)
     {
         if (_savePinnedApps?.Invoke(apps) == false) return;

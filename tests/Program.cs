@@ -168,6 +168,11 @@ Check(1, StartPinCatalog.Pin(startPins, new AppEntry("Editor", @"c:\apps\editor.
 var packagedStartPin = new AppEntry("Calculator", "Microsoft.WindowsCalculator_8wekyb3d8bbwe!App", IsPackagedApp: true);
 Check("Calculator", StartPinCatalog.Pin(startPins, packagedStartPin).Last().Name, "pin a packaged Windows app to Start");
 Check(0, StartPinCatalog.Unpin(startPins, @"C:\Apps\Editor.lnk").Count, "remove an app from Start favorites");
+var orderedStartPins = StartPinCatalog.Pin(startPins, new AppEntry("Browser", @"C:\Apps\Browser.lnk"));
+Check("Browser,Editor", string.Join(',', StartPinCatalog.Move(orderedStartPins, @"C:\Apps\Browser.lnk", -1).Select(app => app.Name)), "move a Start favorite earlier");
+Check("Browser,Editor", string.Join(',', StartPinCatalog.Move(orderedStartPins, @"C:\Apps\Editor.lnk", 1).Select(app => app.Name)), "move a Start favorite later");
+Check("Editor,Browser", string.Join(',', StartPinCatalog.Move(orderedStartPins, @"C:\Apps\Editor.lnk", -1).Select(app => app.Name)), "keep the first Start favorite in place at the list boundary");
+Throws<ArgumentOutOfRangeException>(() => StartPinCatalog.Move(orderedStartPins, @"C:\Apps\Editor.lnk", 2), "reject multi-position Start favorite moves");
 var fullStartPinList = Enumerable.Range(0, StartPinCatalog.MaximumPins)
     .Select(index => new AppEntry($"App {index}", $@"C:\Apps\app{index}.lnk"))
     .ToList();
