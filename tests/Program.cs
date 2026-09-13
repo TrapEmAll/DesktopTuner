@@ -663,7 +663,7 @@ try
     [
         new ExplorerTabSession(new ExplorerLocation(explorerTestDirectory), [new ExplorerLocation(null, IsHome: true)], ViewMode: ExplorerViewMode.LargeIcons),
         new ExplorerTabSession(new ExplorerLocation(null, IsHome: true, SearchQuery: "report"), SortColumn: ExplorerSortColumn.DateModified, SortAscending: false, GroupDrives: false)
-    ]);
+    ], DetailsPaneHeight: 245, DetailsPaneVisible: false);
     explorerSessionStore.Save(savedExplorerSession);
     var loadedExplorerSession = explorerSessionStore.Load();
     Check(1, loadedExplorerSession!.ActiveTabIndex, "restore the active companion Explorer tab");
@@ -673,7 +673,11 @@ try
     Check(false, loadedExplorerSession.Tabs[1].SortAscending, "restore each Explorer tab's sort direction");
     Check("report", loadedExplorerSession.Tabs[1].Location.SearchQuery, "restore a companion Explorer tab's search query");
     Check(new ExplorerLocation(null, IsHome: true), loadedExplorerSession.Tabs[0].Back!.Single(), "restore companion Explorer navigation history");
+    Check(245d, loadedExplorerSession.DetailsPaneHeight, "restore the companion Explorer details pane height");
+    Check(false, loadedExplorerSession.DetailsPaneVisible, "restore a hidden companion Explorer details pane");
     var boundedExplorerSessionStore = new ExplorerSessionStore(Path.Combine(temporaryPreferencesDirectory, "bounded-explorer-session.json"));
+    boundedExplorerSessionStore.Save(new ExplorerSession(0, [new ExplorerTabSession(new ExplorerLocation(null, IsHome: true))], DetailsPaneHeight: 9000));
+    Check(8000d, boundedExplorerSessionStore.Load()!.DetailsPaneHeight, "bound the restored Explorer details pane height");
     boundedExplorerSessionStore.Save(new ExplorerSession(99, Enumerable.Range(0, ExplorerSessionStore.MaximumTabs + 1)
         .Select(_ => new ExplorerTabSession(new ExplorerLocation(null, IsHome: true))).ToList()));
     Check(ExplorerSessionStore.MaximumTabs, boundedExplorerSessionStore.Load()!.Tabs.Count, "bound the number of restored Explorer tabs");

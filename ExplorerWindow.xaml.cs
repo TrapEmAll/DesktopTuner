@@ -121,6 +121,9 @@ public partial class ExplorerWindow : Window
                 _tabs.Add(tab);
             }
             _activeTabIndex = restoreSession.ActiveTabIndex;
+            _detailsPaneHeight = restoreSession.DetailsPaneHeight;
+            DetailsPaneToggle.IsChecked = restoreSession.DetailsPaneVisible;
+            SetDetailsPaneVisibility(restoreSession.DetailsPaneVisible, captureCurrentHeight: false);
         }
         UpdateSortPresentation();
         ApplyExplorerViewMode(ActiveTab.ViewMode);
@@ -149,7 +152,7 @@ public partial class ExplorerWindow : Window
                 tab.HomeSortColumn,
                 tab.HomeSortAscending,
                 tab.HomeSortExplicitly,
-                tab.GroupDrives)).ToList()));
+                tab.GroupDrives)).ToList(), _detailsPaneHeight, DetailsPaneToggle.IsChecked == true));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -1519,8 +1522,14 @@ public partial class ExplorerWindow : Window
 
     private void DetailsPaneToggle_Click(object sender, RoutedEventArgs e)
     {
-        if (DetailsPaneToggle.IsChecked == true)
+        SetDetailsPaneVisibility(DetailsPaneToggle.IsChecked == true);
+    }
+
+    private void SetDetailsPaneVisibility(bool visible, bool captureCurrentHeight = true)
+    {
+        if (visible)
         {
+            DetailsPaneToggle.IsChecked = true;
             DetailsPane.Visibility = Visibility.Visible;
             DetailsPaneSplitter.Visibility = Visibility.Visible;
             DetailsPaneSplitterRow.Height = new GridLength(8);
@@ -1528,7 +1537,8 @@ public partial class ExplorerWindow : Window
         }
         else
         {
-            if (DetailsPane.ActualHeight > 0) _detailsPaneHeight = DetailsPane.ActualHeight;
+            DetailsPaneToggle.IsChecked = false;
+            if (captureCurrentHeight && DetailsPane.ActualHeight > 0) _detailsPaneHeight = DetailsPane.ActualHeight;
             DetailsPane.Visibility = Visibility.Collapsed;
             DetailsPaneSplitter.Visibility = Visibility.Collapsed;
             DetailsPaneSplitterRow.Height = new GridLength(0);
