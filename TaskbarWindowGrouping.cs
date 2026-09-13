@@ -15,7 +15,10 @@ public static class TaskbarWindowGrouping
 
         var entries = windows.ToList();
         var remaining = entries.Where(window => pinnedApps is null || !pinnedApps.Any(app => MatchesPinnedApp(app, window))).ToList();
-        if (mode == TaskbarGroupingMode.Never || (mode == TaskbarGroupingMode.WhenFull && entries.Count <= Math.Max(1, buttonCapacity)))
+        var capacity = Math.Max(1, buttonCapacity);
+        var shouldGroup = mode == TaskbarGroupingMode.Always
+            || mode == TaskbarGroupingMode.WhenFull && remaining.Count > capacity;
+        if (!shouldGroup)
             return remaining.Select(window => CreateGroup([window])).ToList();
 
         return remaining

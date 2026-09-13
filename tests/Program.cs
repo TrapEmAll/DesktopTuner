@@ -172,6 +172,14 @@ CheckTrue(TaskbarPinIdentityService.Matches(editorShortcutPin, runningWindows[0]
 CheckTrue(!TaskbarPinIdentityService.Matches(editorShortcutPin, runningWindows[0], _ => @"C:\Apps\Other.exe"), "keep a shortcut separate when its target is a different executable");
 Check(1, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Never, 10, [editorPin]).Count, "show pinned apps only once instead of duplicating their running windows");
 Check("Mail", TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Never, 10, [editorPin]).Single().ApplicationName, "retain unrelated running apps when hiding pinned duplicates");
+RunningWindow[] twoMailWindows =
+[
+    .. runningWindows,
+    new RunningWindow((nint)4, "Sent", "Mail", @"C:\Apps\mail.exe", false)
+];
+var pinnedWindowsBelowCapacity = TaskbarWindowGrouping.Create(twoMailWindows, TaskbarGroupingMode.WhenFull, 2, [editorPin]);
+Check(2, pinnedWindowsBelowCapacity.Count, "keep unpinned windows separate until their own taskbar area is full");
+Check("Inbox,Sent", string.Join(',', pinnedWindowsBelowCapacity.Select(group => group.Windows.Single().Title)), "exclude windows already shown by pinned apps from grouping capacity");
 CheckTrue(!TaskbarWindowGrouping.MatchesPinnedApp(editorPin with { IsDirectory = true }, runningWindows[0]), "do not associate a folder pin with an app window");
 var windowOrder = new TaskbarWindowOrder();
 Check("1,2,3", string.Join(',', windowOrder.Synchronize(runningWindows).Select(window => window.Handle)), "initialize running-window order from the current enumeration");
