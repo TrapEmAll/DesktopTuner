@@ -700,6 +700,15 @@ public partial class TaskbarWindow : Window
         RunningWindowService.ActivateOrMinimize(group.Windows[0]);
     }
 
+    private void WindowButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle
+            || sender is not Button { Tag: TaskbarWindowGroup group }
+            || TaskbarWindowGrouping.SelectCloseTarget(group) is not { } target) return;
+        RunningWindowService.Close(target);
+        e.Handled = true;
+    }
+
     private void TaskbarAppButton_MouseMove(object sender, MouseEventArgs e)
     {
         if (sender is not Button button || button.DataContext is not TaskbarButtonViewModel { DynamicAura: true, AuraBrush: RadialGradientBrush brush } ||

@@ -207,6 +207,10 @@ Check(2, alwaysGroupedWindows.Count, "always group windows from the same executa
 Check("Editor (2)", alwaysGroupedWindows[0].Label, "show the app name and window count for a grouped button");
 CheckTrue(alwaysGroupedWindows[0].IsActive, "mark an app group active when one of its windows is foreground");
 Check("Document one" + Environment.NewLine + "Document two", alwaysGroupedWindows[0].ToolTip, "list window titles in a grouped button tooltip");
+Check((nint)1, TaskbarWindowGrouping.SelectCloseTarget(alwaysGroupedWindows[0])!.Handle, "middle-click closes the foreground window in a taskbar group");
+var inactiveWindowGroup = new TaskbarWindowGroup("Editor", "Editor", [runningWindows[1]]);
+Check((nint)2, TaskbarWindowGrouping.SelectCloseTarget(inactiveWindowGroup)!.Handle, "middle-click closes the only window when no group member is foreground");
+CheckTrue(TaskbarWindowGrouping.SelectCloseTarget(new TaskbarWindowGroup("Empty", "Empty", [])) is null, "ignore middle-click when a taskbar group has no live windows");
 Check(3, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Never, 1).Count, "never group taskbar windows");
 Check(3, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFull, 3).Count, "keep windows separate while the taskbar has capacity");
 Check(2, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFull, 2).Count, "group windows when the taskbar is full");

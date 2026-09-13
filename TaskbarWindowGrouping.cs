@@ -8,6 +8,12 @@ public sealed record TaskbarWindowGroup(string Label, string ApplicationName, IR
 
 public static class TaskbarWindowGrouping
 {
+    public static RunningWindow? SelectCloseTarget(TaskbarWindowGroup group)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        return group.Windows.FirstOrDefault(window => window.IsForeground) ?? group.Windows.FirstOrDefault();
+    }
+
     public static IReadOnlyList<TaskbarWindowGroup> Create(IEnumerable<RunningWindow> windows, TaskbarGroupingMode mode, int buttonCapacity, IEnumerable<PinnedTaskbarApp>? pinnedApps = null)
     {
         ArgumentNullException.ThrowIfNull(windows);
