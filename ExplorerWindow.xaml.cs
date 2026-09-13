@@ -45,9 +45,9 @@ public partial class ExplorerWindow : Window
     private readonly bool _hideFileExtensions;
     private readonly bool _showRecentItems;
     private readonly ExplorerQuickAccessStore _quickAccessStore;
-    private ExplorerSortColumn _sortColumn = ExplorerSortColumn.Name;
-    private bool _sortAscending = true;
-    private bool _sortExplicitly;
+    private ExplorerSortColumn _sortColumn { get => ActiveTab.SortColumn; set => ActiveTab.SortColumn = value; }
+    private bool _sortAscending { get => ActiveTab.SortAscending; set => ActiveTab.SortAscending = value; }
+    private bool _sortExplicitly { get => ActiveTab.SortExplicitly; set => ActiveTab.SortExplicitly = value; }
     private double _detailsPaneHeight = 160;
 
     private void Window_SourceInitialized(object? sender, EventArgs e)
@@ -163,6 +163,7 @@ public partial class ExplorerWindow : Window
     private void ShowActiveTab()
     {
         SearchBox.Text = _location.SearchQuery ?? string.Empty;
+        UpdateSortPresentation();
         ApplyExplorerViewMode(ActiveTab.ViewMode);
         if (_isSearchView && !string.IsNullOrWhiteSpace(_location.SearchQuery))
             _ = SearchCurrentFolderAsync(_location.SearchQuery);

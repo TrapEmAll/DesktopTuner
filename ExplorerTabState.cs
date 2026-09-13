@@ -11,6 +11,9 @@ public sealed class ExplorerTabState(ExplorerLocation location)
     public CancellationTokenSource? SearchCancellation { get; set; }
     public bool IsSearchView { get; set; }
     public ExplorerViewMode ViewMode { get; set; } = ExplorerViewMode.Details;
+    public ExplorerSortColumn SortColumn { get; set; } = ExplorerSortColumn.Name;
+    public bool SortAscending { get; set; } = true;
+    public bool SortExplicitly { get; set; }
     public bool GroupDrives { get; set; } = true;
 
     public ExplorerTabState Duplicate()
@@ -18,6 +21,9 @@ public sealed class ExplorerTabState(ExplorerLocation location)
         var duplicate = new ExplorerTabState(Location)
         {
             ViewMode = ViewMode,
+            SortColumn = SortColumn,
+            SortAscending = SortAscending,
+            SortExplicitly = SortExplicitly,
             GroupDrives = GroupDrives,
             IsSearchView = IsSearchView
         };

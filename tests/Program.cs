@@ -791,6 +791,9 @@ try
     Check(true, firstExplorerTab.GroupDrives, "enable This PC drive grouping by default per Explorer tab");
     firstExplorerTab.GroupDrives = false;
     firstExplorerTab.ViewMode = ExplorerViewMode.LargeIcons;
+    firstExplorerTab.SortColumn = ExplorerSortColumn.DateModified;
+    firstExplorerTab.SortAscending = false;
+    firstExplorerTab.SortExplicitly = true;
     firstExplorerTab.PushHistory(new ExplorerLocation(explorerTestDirectory, SearchQuery: "draft"));
     firstExplorerTab.Location = new ExplorerLocation(firstCreatedFolder);
     var secondExplorerTab = new ExplorerTabState(new ExplorerLocation(nestedExplorerFolder));
@@ -806,12 +809,18 @@ try
     var duplicatedExplorerTab = firstExplorerTab.Duplicate();
     Check(firstExplorerTab.Location, duplicatedExplorerTab.Location, "duplicate an Explorer tab at its current location");
     Check(firstExplorerTab.ViewMode, duplicatedExplorerTab.ViewMode, "duplicate an Explorer tab with its view layout");
+    Check(firstExplorerTab.SortColumn, duplicatedExplorerTab.SortColumn, "duplicate an Explorer tab with its sort column");
+    Check(firstExplorerTab.SortAscending, duplicatedExplorerTab.SortAscending, "duplicate an Explorer tab with its sort direction");
+    Check(firstExplorerTab.SortExplicitly, duplicatedExplorerTab.SortExplicitly, "duplicate an Explorer tab with its explicit-sort preference");
     Check(firstExplorerTab.GroupDrives, duplicatedExplorerTab.GroupDrives, "duplicate an Explorer tab with its drive grouping preference");
     Check(1, duplicatedExplorerTab.Back.Count, "copy an Explorer tab's back history when duplicating");
     Check(true, !ReferenceEquals(firstExplorerTab.Back, duplicatedExplorerTab.Back), "keep duplicated Explorer navigation history independent");
     Check(true, secondExplorerTab.GroupDrives, "keep drive grouping preferences isolated per tab");
     Check(0, secondExplorerTab.Back.Count, "keep Explorer tab history isolated per tab");
     Check(ExplorerViewMode.Details, secondExplorerTab.ViewMode, "keep Explorer view layout state isolated per tab");
+    Check(ExplorerSortColumn.Name, secondExplorerTab.SortColumn, "keep Explorer sort columns isolated per tab");
+    Check(true, secondExplorerTab.SortAscending, "keep Explorer sort directions isolated per tab");
+    Check(false, secondExplorerTab.SortExplicitly, "keep the Home recent-order preference isolated per tab");
     Check("draft", firstExplorerTab.GoBack(new ExplorerLocation(firstCreatedFolder))!.SearchQuery, "navigate back to a tab's previous search query");
     Check(firstCreatedFolder, firstExplorerTab.GoForward(new ExplorerLocation(explorerTestDirectory, SearchQuery: "draft"))!.Path, "navigate forward to a tab's previous folder");
     firstExplorerTab.PushHistory(new ExplorerLocation(firstCreatedFolder));
