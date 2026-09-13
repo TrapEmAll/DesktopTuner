@@ -31,6 +31,9 @@ public partial class ExplorerWindow : Window
     private string? _quickAccessDragCandidate;
     private Point _quickAccessDragStart;
     private bool _suppressQuickAccessClick;
+    private bool _syncingNavigationSelection;
+    private int _navigationSyncGeneration;
+    private IReadOnlyList<ExplorerNavigationNode> _navigationRoots = [];
     private ExplorerTabState ActiveTab => _tabs[_activeTabIndex];
     private List<ExplorerLocation> _back => ActiveTab.Back;
     private List<ExplorerLocation> _forward => ActiveTab.Forward;
@@ -55,7 +58,8 @@ public partial class ExplorerWindow : Window
     public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null)
     {
         InitializeComponent();
-        NavigationTree.ItemsSource = CreateNavigationRoots();
+        _navigationRoots = CreateNavigationRoots();
+        NavigationTree.ItemsSource = _navigationRoots;
         _showHiddenItems = showHiddenItems;
         _hideFileExtensions = hideFileExtensions;
         _showRecentItems = showRecentItems;
@@ -525,7 +529,11 @@ public partial class ExplorerWindow : Window
         _location = target.IsDriveList || target.IsHome ? target : new ExplorerLocation(Path.GetFullPath(target.Path!), SearchQuery: target.SearchQuery);
         SearchBox.Text = target.SearchQuery ?? "";
         if (string.IsNullOrWhiteSpace(target.SearchQuery)) RefreshLocation();
-        else _ = SearchCurrentFolderAsync(target.SearchQuery);
+        else
+        {
+            _ = SynchronizeNavigationTreeAsync();
+            _ = SearchCurrentFolderAsync(target.SearchQuery);
+        }
     }
 
     private ExplorerLocation CurrentHistoryLocation() => _location with { SearchQuery = _isSearchView ? SearchBox.Text.Trim() : null };
@@ -586,6 +594,7 @@ public partial class ExplorerWindow : Window
         SetFolderDetails(entries.Count);
         if (loadError is not null) SetStatus(loadError);
         else SetStatus(FormatItemCount(entries.Count));
+        _ = SynchronizeNavigationTreeAsync();
     }
 
     private static IReadOnlyList<ExplorerEntry> ReadDrives() => DriveInfo.GetDrives()
@@ -605,12 +614,25 @@ public partial class ExplorerWindow : Window
         return roots;
     }
 
-    private async void NavigationTreeItem_Expanded(object sender, RoutedEventArgs e)
+    private void NavigationTreeItem_Expanded(object sender, RoutedEventArgs e)
     {
         if (sender is not TreeViewItem { DataContext: ExplorerNavigationNode node }
             || node.IsPlaceholder || node.IsLoaded || node.IsLoading)
             return;
 
+        _ = EnsureNavigationNodeChildrenLoadedAsync(node);
+    }
+
+    private Task EnsureNavigationNodeChildrenLoadedAsync(ExplorerNavigationNode node)
+    {
+        if (node.IsLoaded || node.IsPlaceholder) return Task.CompletedTask;
+        if (node.ChildrenLoadTask is not null) return node.ChildrenLoadTask;
+        node.ChildrenLoadTask = LoadNavigationNodeChildrenAsync(node);
+        return node.ChildrenLoadTask;
+    }
+
+    private async Task LoadNavigationNodeChildrenAsync(ExplorerNavigationNode node)
+    {
         node.IsLoading = true;
         node.Children.Clear();
         node.Children.Add(new("Loading...", isPlaceholder: true));
@@ -621,24 +643,132 @@ public partial class ExplorerWindow : Window
                 ? ExplorerNavigationService.ReadDriveRoots()
                 : ExplorerNavigationService.ReadDirectories(node.Path!, _showHiddenItems, cancellationToken), cancellationToken);
             node.Children.Clear();
+            if (result.Error is not null)
+            {
+                node.Children.Add(new("Loading...", isPlaceholder: true));
+                node.IsExpanded = false;
+                SetStatus($"Could not load navigation folders: {result.Error}");
+                return;
+            }
+
             foreach (var directory in result.Directories)
                 node.Children.Add(new(directory.Name, directory.Path));
             node.IsLoaded = true;
-            if (result.Error is not null) SetStatus($"Could not load navigation folders: {result.Error}");
         }
         catch (OperationCanceledException) when (_navigationLoadCancellation.IsCancellationRequested)
         {
             node.Children.Clear();
         }
+        catch (Exception ex)
+        {
+            Trace.TraceError("Could not load Explorer navigation tree node {0}: {1}", node.Path ?? node.Label, ex);
+            node.Children.Clear();
+            node.Children.Add(new("Loading...", isPlaceholder: true));
+            node.IsExpanded = false;
+            SetStatus($"Could not load navigation folders: {ex.Message}");
+        }
         finally
         {
             node.IsLoading = false;
+            node.ChildrenLoadTask = null;
+        }
+    }
+
+    private async Task SynchronizeNavigationTreeAsync()
+    {
+        var generation = ++_navigationSyncGeneration;
+        if (_location.IsHome)
+        {
+            SetNavigationSelection(null);
+            return;
+        }
+
+        var thisPc = _navigationRoots.FirstOrDefault(node => node.IsThisPc);
+        if (_location.IsDriveList)
+        {
+            if (thisPc is null) return;
+            await EnsureNavigationNodeChildrenLoadedAsync(thisPc);
+            if (generation != _navigationSyncGeneration) return;
+            thisPc.IsExpanded = true;
+            SetNavigationSelection(thisPc);
+            return;
+        }
+
+        if (_location.Path is not { } activePath) return;
+        var targetPath = Path.GetFullPath(activePath);
+        var rootNode = _navigationRoots.FirstOrDefault(node => node.Path is { } path
+            && ExplorerNavigationPathPolicy.IsSameOrDescendant(path, targetPath));
+        IReadOnlyList<string> remainingSegments;
+        if (rootNode is not null)
+        {
+            remainingSegments = ExplorerNavigationPathPolicy.GetRelativeSegments(rootNode.Path!, targetPath);
+        }
+        else
+        {
+            if (thisPc is null)
+            {
+                SetNavigationSelection(null);
+                return;
+            }
+            await EnsureNavigationNodeChildrenLoadedAsync(thisPc);
+            if (generation != _navigationSyncGeneration) return;
+            rootNode = thisPc.Children.FirstOrDefault(node => node.Path is { } path
+                && ExplorerNavigationPathPolicy.IsSameOrDescendant(path, targetPath));
+            if (rootNode is null)
+            {
+                SetNavigationSelection(null);
+                return;
+            }
+            thisPc.IsExpanded = true;
+            remainingSegments = ExplorerNavigationPathPolicy.GetRelativeSegments(rootNode.Path!, targetPath);
+        }
+
+        var currentNode = rootNode;
+        foreach (var segment in remainingSegments)
+        {
+            await EnsureNavigationNodeChildrenLoadedAsync(currentNode);
+            if (generation != _navigationSyncGeneration) return;
+            currentNode.IsExpanded = true;
+            var childPath = Path.Combine(currentNode.Path!, segment);
+            currentNode = currentNode.Children.FirstOrDefault(child => child.Path is { } path
+                && string.Equals(Path.GetFullPath(path), Path.GetFullPath(childPath), StringComparison.OrdinalIgnoreCase))!;
+            if (currentNode is null)
+            {
+                SetNavigationSelection(null);
+                return;
+            }
+        }
+
+        SetNavigationSelection(currentNode);
+    }
+
+    private void SetNavigationSelection(ExplorerNavigationNode? selectedNode)
+    {
+        _syncingNavigationSelection = true;
+        try
+        {
+            foreach (var node in EnumerateNavigationNodes(_navigationRoots)) node.IsSelected = false;
+            if (selectedNode is not null) selectedNode.IsSelected = true;
+        }
+        finally
+        {
+            _syncingNavigationSelection = false;
+        }
+    }
+
+    private static IEnumerable<ExplorerNavigationNode> EnumerateNavigationNodes(IEnumerable<ExplorerNavigationNode> roots)
+    {
+        foreach (var node in roots)
+        {
+            yield return node;
+            foreach (var descendant in EnumerateNavigationNodes(node.Children.Where(child => !child.IsPlaceholder)))
+                yield return descendant;
         }
     }
 
     private void NavigationTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
-        if (e.NewValue is not ExplorerNavigationNode node || node.IsPlaceholder) return;
+        if (_syncingNavigationSelection || e.NewValue is not ExplorerNavigationNode node || node.IsPlaceholder) return;
         if (node.IsThisPc) Navigate(new ExplorerLocation(null, IsDriveList: true));
         else if (node.Path is { } path) Navigate(new ExplorerLocation(path));
     }

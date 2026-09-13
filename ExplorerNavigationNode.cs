@@ -9,6 +9,7 @@ public sealed class ExplorerNavigationNode : INotifyPropertyChanged
     private bool _isExpanded;
     private bool _isLoaded;
     private bool _isLoading;
+    private bool _isSelected;
 
     public ExplorerNavigationNode(string label, string? path = null, bool isThisPc = false, bool isPlaceholder = false)
     {
@@ -42,6 +43,14 @@ public sealed class ExplorerNavigationNode : INotifyPropertyChanged
         get => _isLoading;
         set => SetProperty(ref _isLoading, value);
     }
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
+    }
+
+    public Task? ChildrenLoadTask { get; set; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

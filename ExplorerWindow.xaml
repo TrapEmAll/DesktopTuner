@@ -79,6 +79,7 @@
         </HierarchicalDataTemplate>
         <Style x:Key="ExplorerNavigationTreeItemStyle" TargetType="TreeViewItem">
             <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
             <Setter Property="Padding" Value="3,4" />
             <EventSetter Event="Expanded" Handler="NavigationTreeItem_Expanded" />
         </Style>

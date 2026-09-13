@@ -16,6 +16,12 @@ try
     Check("Alpha", string.Join(',', ExplorerNavigationService.ReadDirectories(navigationTestRoot, showHiddenItems: false).Directories.Select(directory => directory.Name)), "hide hidden folders in Explorer navigation when Windows hidden items are off");
     Check("Alpha,Hidden", string.Join(',', ExplorerNavigationService.ReadDirectories(navigationTestRoot, showHiddenItems: true).Directories.Select(directory => directory.Name)), "include hidden folders in Explorer navigation when enabled");
     CheckTrue(ExplorerNavigationService.ReadDirectories(Path.Combine(navigationTestRoot, "Missing"), showHiddenItems: false).Error is not null, "report unavailable folders in the Explorer navigation tree");
+    var nestedNavigationPath = Path.Combine(navigationTestRoot, "Alpha", "Nested");
+    var siblingPrefixPath = Path.Combine(navigationTestRoot + "-other", "Nested");
+    CheckTrue(ExplorerNavigationPathPolicy.IsSameOrDescendant(navigationTestRoot, navigationTestRoot), "match the Explorer navigation root itself");
+    CheckTrue(ExplorerNavigationPathPolicy.IsSameOrDescendant(navigationTestRoot, nestedNavigationPath), "match a descendant in the Explorer navigation tree");
+    Check(false, ExplorerNavigationPathPolicy.IsSameOrDescendant(navigationTestRoot, siblingPrefixPath), "avoid matching folders that only share a path prefix");
+    Check("Alpha,Nested", string.Join(',', ExplorerNavigationPathPolicy.GetRelativeSegments(navigationTestRoot, nestedNavigationPath)), "split active Explorer folders into navigation-tree segments");
     using var canceledNavigation = new CancellationTokenSource();
     canceledNavigation.Cancel();
     Throws<OperationCanceledException>(() => ExplorerNavigationService.ReadDirectories(navigationTestRoot, showHiddenItems: false, canceledNavigation.Token), "cancel Explorer navigation enumeration before it reads a folder");
