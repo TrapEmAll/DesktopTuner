@@ -117,27 +117,36 @@
                             <Grid>
                                 <Grid.ContextMenu>
                                     <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                        <MenuItem Header="Pin to Start" Tag="{Binding}" Click="PinStartApp_Click" />
-                                        <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenFileLocation}" Click="OpenFileLocation_Click" />
-                                        <MenuItem Header="Run as administrator" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunAsAdministrator_Click" />
+                                        <MenuItem Header="Pin to Start" Tag="{Binding Application}" Click="PinStartApp_Click" />
+                                        <MenuItem Header="Open file location" Tag="{Binding Application}" IsEnabled="{Binding Application.CanOpenFileLocation}" Click="OpenFileLocation_Click" />
+                                        <MenuItem Header="Run as administrator" Tag="{Binding Application}" IsEnabled="{Binding Application.CanRunElevated}" Click="RunAsAdministrator_Click" />
                                     </ContextMenu>
                                 </Grid.ContextMenu>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <Grid Width="30" Height="30" VerticalAlignment="Center">
-                                    <Image Source="{Binding Icon}" Width="28" Height="28" />
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="{Binding AlphabetMarker}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource DesktopAccentTextBrush}" Margin="0,0,0,4">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers><DataTrigger Binding="{Binding AlphabetMarker}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <Grid Grid.Row="1" Width="30" Height="30" VerticalAlignment="Center">
+                                    <Image Source="{Binding Application.Icon}" Width="28" Height="28" />
                                     <Border CornerRadius="8" Background="{DynamicResource DesktopAccentTintBrush}">
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Setter Property="Visibility" Value="Collapsed" />
-                                                <Style.Triggers><DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                                                <Style.Triggers><DataTrigger Binding="{Binding Application.Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                                             </Style>
                                         </Border.Style>
-                                        <TextBlock Text="{Binding Name}" MaxWidth="27" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource DesktopAccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Application.Name}" MaxWidth="27" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource DesktopAccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
                                 </Grid>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" />
-                                    <TextBlock Text="{Binding SourceDescription}" FontSize="10" Foreground="{DynamicResource DesktopFaintTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                                <StackPanel Grid.Row="1" Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Application.Name}" FontSize="13" FontWeight="Medium" />
+                                    <TextBlock Text="{Binding Application.SourceDescription}" FontSize="10" Foreground="{DynamicResource DesktopFaintTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
                                 </StackPanel>
                             </Grid>
                         </DataTemplate>

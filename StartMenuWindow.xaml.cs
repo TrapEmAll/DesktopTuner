@@ -247,7 +247,11 @@ public partial class StartMenuWindow : Window
         AppTree.ItemsSource = showFolders ? AppCatalogService.BuildTree(_apps) : null;
         AppTree.Visibility = showFolders ? Visibility.Visible : Visibility.Collapsed;
         AppList.Visibility = showFolders ? Visibility.Collapsed : Visibility.Visible;
-        AppList.ItemsSource = showFolders ? null : results;
+        AppList.ItemsSource = showFolders
+            ? null
+            : query.Length == 0
+                ? StartMenuAppListPolicy.AddAlphabetMarkers(results)
+                : results.Select(application => new StartMenuAppListItem(application, null)).ToList();
         AppList.SelectedIndex = showFolders || results.Count == 0 ? -1 : 0;
         ResultsHeading.Text = query.Length > 0 ? "Search results" : showFolders ? "Programs" : "All apps";
         SearchActionPanel.Visibility = query.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -299,7 +303,12 @@ public partial class StartMenuWindow : Window
     {
         var entry = AppTree.Visibility == Visibility.Visible
             ? (AppTree.SelectedItem as StartMenuNode)?.Application
-            : AppList.SelectedItem as AppEntry;
+            : AppList.SelectedItem switch
+            {
+                StartMenuAppListItem item => item.Application,
+                AppEntry app => app,
+                _ => null
+            };
         if (entry is null) return;
         LaunchEntry(entry);
     }

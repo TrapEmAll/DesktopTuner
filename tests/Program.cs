@@ -284,6 +284,18 @@ var largeAppCatalog = Enumerable.Range(0, 55)
     .ToList();
 Check(56, AppCatalogService.Search(largeAppCatalog).Count, "show every app in a large Start menu catalog");
 Check("Zebra Editor", AppCatalogService.Search(largeAppCatalog, " zebra ").Single().Name, "search apps beyond the first 40 catalog entries");
+var alphabeticalStartApps = StartMenuAppListPolicy.AddAlphabetMarkers(
+[
+    new AppEntry("! Audio Player", "audio-player.lnk"),
+    new AppEntry("3D Viewer", "3d-viewer.lnk"),
+    new AppEntry("7-Zip", "7-zip.lnk"),
+    new AppEntry("Audio", "audio.lnk"),
+    new AppEntry("Calculator", "calculator.lnk"),
+    new AppEntry("Calendar", "calendar.lnk"),
+    new AppEntry("Microsoft Edge", "edge.lnk")
+]);
+Check("#,-,-,A,C,-,M", string.Join(',', alphabeticalStartApps.Select(app => app.AlphabetMarker ?? "-")), "mark the first Start app in each alphabetic section and group numeric or symbol prefixes");
+Check("Calendar", alphabeticalStartApps[5].Application.Name, "preserve app entries while adding Start alphabet markers");
 var rankedSearchResults = AppCatalogService.Search(
 [
     new AppEntry("TextEditor", "text-editor.lnk"),
