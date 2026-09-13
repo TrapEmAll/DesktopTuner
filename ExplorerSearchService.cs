@@ -13,12 +13,13 @@ public static class ExplorerSearchService
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
         var searchTerm = query.Trim();
         ArgumentException.ThrowIfNullOrWhiteSpace(searchTerm);
+        var criteria = ExplorerSearchQuery.Parse(searchTerm);
         var root = Path.GetFullPath(rootDirectory);
         if (!Directory.Exists(root)) throw new DirectoryNotFoundException($"The search folder '{root}' does not exist.");
-        return Task.Run(() => Search(root, searchTerm, cancellationToken, showHiddenItems), cancellationToken);
+        return Task.Run(() => Search(root, criteria, cancellationToken, showHiddenItems), cancellationToken);
     }
 
-    private static ExplorerSearchResult Search(string root, string query, CancellationToken cancellationToken, bool showHiddenItems)
+    private static ExplorerSearchResult Search(string root, ExplorerSearchQuery criteria, CancellationToken cancellationToken, bool showHiddenItems)
     {
         var results = new List<ExplorerEntry>();
         var pendingDirectories = new Stack<string>();
@@ -50,7 +51,7 @@ public static class ExplorerSearchService
                 }
 
                 if (entry.IsSystem || entry.IsHidden && !showHiddenItems) continue;
-                if (entry.Name.Contains(query, StringComparison.OrdinalIgnoreCase)) results.Add(entry);
+                if (criteria.Matches(entry)) results.Add(entry);
                 if (entry.IsDirectory && !entry.IsReparsePoint) pendingDirectories.Push(entry.FullPath);
             }
         }

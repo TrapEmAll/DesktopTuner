@@ -44,7 +44,7 @@
                     <Button x:Name="UpButton" Content="↑" ToolTip="Up one level" Width="38" Height="36" Margin="0,0,12,0" Click="Up_Click" />
                 </StackPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
-                    <TextBox x:Name="SearchBox" Width="230" Height="36" VerticalContentAlignment="Center" Padding="10,0" ToolTip="Search this folder and its subfolders" KeyDown="SearchBox_KeyDown" />
+                    <TextBox x:Name="SearchBox" Width="230" Height="36" VerticalContentAlignment="Center" Padding="10,0" ToolTip="Search names or use filters such as *.pdf, ext:pdf, kind:document, or kind:folder" KeyDown="SearchBox_KeyDown" />
                     <Button x:Name="SearchButton" Content="Search" Margin="6,0,0,0" Padding="14,0" Click="Search_Click" />
                 </StackPanel>
                 <DockPanel>

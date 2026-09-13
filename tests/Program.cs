@@ -349,9 +349,18 @@ try
     Directory.CreateDirectory(nestedExplorerFolder);
     var nestedMatchPath = Path.Combine(nestedExplorerFolder, "meeting-notes.txt");
     File.WriteAllText(nestedMatchPath, "notes");
+    var searchablePdf = Path.Combine(explorerTestDirectory, "final invoice.pdf");
+    File.WriteAllText(searchablePdf, "invoice data");
+    var archiveFolder = Path.Combine(explorerTestDirectory, "Archive");
+    Directory.CreateDirectory(archiveFolder);
     var recursiveSearchResults = ExplorerSearchService.SearchAsync(explorerTestDirectory, "NOTES").GetAwaiter().GetResult();
     Check(2, recursiveSearchResults.Entries.Count, "search case-insensitively through nested folders");
     Check(true, recursiveSearchResults.Entries.Any(entry => entry.FullPath == nestedMatchPath), "return full paths for nested search results");
+    Check(searchablePdf, ExplorerSearchService.SearchAsync(explorerTestDirectory, "*.pdf").GetAwaiter().GetResult().Entries.Single().FullPath, "match file names with wildcard patterns");
+    Check(searchablePdf, ExplorerSearchService.SearchAsync(explorerTestDirectory, "final invoice ext:pdf kind:document").GetAwaiter().GetResult().Entries.Single().FullPath, "combine name terms with extension and document-kind filters");
+    Check(searchablePdf, ExplorerSearchService.SearchAsync(explorerTestDirectory, "name:\"final invoice.pdf\"").GetAwaiter().GetResult().Entries.Single().FullPath, "keep quoted file-name phrases together in a search");
+    Check(true, ExplorerSearchService.SearchAsync(explorerTestDirectory, "kind:folder").GetAwaiter().GetResult().Entries.Any(entry => entry.FullPath == archiveFolder), "search for folders with a kind filter");
+    Check(0, ExplorerSearchService.SearchAsync(explorerTestDirectory, "ext:pdf kind:folder").GetAwaiter().GetResult().Entries.Count, "apply file extension filters only to files");
     var hiddenMatchPath = Path.Combine(explorerTestDirectory, "classified-notes.txt");
     File.WriteAllText(hiddenMatchPath, "hidden");
     File.SetAttributes(hiddenMatchPath, File.GetAttributes(hiddenMatchPath) | FileAttributes.Hidden);
