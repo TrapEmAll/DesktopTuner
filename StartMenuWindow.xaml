@@ -66,9 +66,18 @@
                                             </ContextMenu>
                                         </Button.ContextMenu>
                                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource DesktopAccentTintBrush}" HorizontalAlignment="Center">
-                                                <TextBlock Text="{Binding Name}" MaxWidth="27" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource DesktopAccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                            </Border>
+                                            <Grid Width="34" Height="34" HorizontalAlignment="Center">
+                                                <Image Source="{Binding Icon}" Width="32" Height="32" />
+                                                <Border CornerRadius="8" Background="{DynamicResource DesktopAccentTintBrush}">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers><DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock Text="{Binding Name}" MaxWidth="30" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource DesktopAccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                            </Grid>
                                             <TextBlock Text="{Binding Name}" FontSize="9" TextWrapping="Wrap" TextAlignment="Center" MaxHeight="28" Margin="0,3,0,0" />
                                         </StackPanel>
                                     </Button>
@@ -107,9 +116,18 @@
                                     </ContextMenu>
                                 </Grid.ContextMenu>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="8" Background="{DynamicResource DesktopAccentTintBrush}" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Name}" MaxWidth="25" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource DesktopAccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
+                                <Grid Width="30" Height="30" VerticalAlignment="Center">
+                                    <Image Source="{Binding Icon}" Width="28" Height="28" />
+                                    <Border CornerRadius="8" Background="{DynamicResource DesktopAccentTintBrush}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers><DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="{Binding Name}" MaxWidth="27" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource DesktopAccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                </Grid>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" />
                                     <TextBlock Text="{Binding SourceDescription}" FontSize="10" Foreground="{DynamicResource DesktopFaintTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
@@ -121,7 +139,21 @@
                 <TreeView x:Name="AppTree" Grid.Row="2" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppTree_MouseDoubleClick">
                     <TreeView.Resources>
                         <HierarchicalDataTemplate DataType="{x:Type local:StartMenuNode}" ItemsSource="{Binding Children}">
-                            <TextBlock Text="{Binding Name}" FontSize="13" Padding="5,4" />
+                            <StackPanel Orientation="Horizontal">
+                                <Grid Width="24" Height="24" Margin="4,0,6,0" VerticalAlignment="Center">
+                                    <Image Source="{Binding Application.Icon}" Width="22" Height="22" />
+                                    <Border CornerRadius="5" Background="{DynamicResource DesktopAccentTintBrush}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers><DataTrigger Binding="{Binding Application.Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="{Binding Name}" MaxWidth="22" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource DesktopAccentTextBrush}" FontWeight="Bold" FontSize="9" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                </Grid>
+                                <TextBlock Text="{Binding Name}" FontSize="13" Padding="1,4" VerticalAlignment="Center" />
+                            </StackPanel>
                         </HierarchicalDataTemplate>
                     </TreeView.Resources>
                     <TreeView.ItemContainerStyle>

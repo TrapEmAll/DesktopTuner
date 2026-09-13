@@ -146,6 +146,7 @@ Check(new Thickness(1, 0, 1, 0), TaskbarButtonSpacingPolicy.GetButtonMargin(Task
 Check(new Thickness(0, 4, 0, 4), TaskbarButtonSpacingPolicy.GetButtonMargin(TaskbarButtonSpacing.Relaxed, true), "apply relaxed spacing on a vertical taskbar");
 Throws<ArgumentOutOfRangeException>(() => TaskbarButtonSpacingPolicy.GetGap((TaskbarButtonSpacing)99), "reject unknown taskbar spacing values");
 CheckTrue(TaskbarIconService.LoadIcon(Environment.ProcessPath!) is not null, "extract a taskbar icon from an executable file");
+CheckTrue(new AppEntry("Desktop Tuner", Environment.ProcessPath!).Icon is not null, "expose extracted app icons to Start menu entries");
 var presentationPreferences = new DesktopPreferences(TaskbarEdge.Bottom, TaskbarShowLabels: false, TaskbarIconSize: TaskbarIconSize.Large);
 var pinPresentation = TaskbarButtonViewModel.FromPin(new PinnedTaskbarApp("Editor", Environment.ProcessPath!), presentationPreferences, vertical: false);
 Check("Editor", pinPresentation.Label, "retain pinned app labels in taskbar presentation data");

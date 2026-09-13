@@ -2,12 +2,14 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.CSharp.RuntimeBinder;
+using System.Windows.Media;
 
 namespace DesktopTuner;
 
 public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedApp = false, string CategoryPath = "")
 {
     public string SourceDescription => IsPackagedApp ? "Windows app" : Path.GetDirectoryName(ShortcutPath) ?? ShortcutPath;
+    public ImageSource? Icon => TaskbarIconService.LoadIcon(ShortcutPath);
 }
 
 public sealed class StartMenuNode(string name, AppEntry? application = null)
