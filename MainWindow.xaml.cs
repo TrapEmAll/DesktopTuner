@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     private ExplorerWindow? _explorerWindow;
     private TaskbarDisplay? _startMenuDisplay;
     private readonly List<TaskbarWindow> _taskbarWindows = [];
+    private readonly TaskbarWindowOrder _taskbarWindowOrder = new();
     private WindowsKeyStartHook? _windowsKeyHook;
     private TaskbarEdge _taskbarEdge = TaskbarEdge.Bottom;
     private TaskbarSize _taskbarSize = TaskbarSize.Standard;
@@ -644,7 +645,7 @@ public partial class MainWindow : Window
             var preferences = CreateDesktopPreferences();
             foreach (var display in TaskbarDisplayService.Select(_taskbarOnAllDisplays))
             {
-                var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication);
+                var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, _taskbarWindowOrder, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication);
                 taskbar.Closed += (_, _) =>
                 {
                     _taskbarWindows.Remove(taskbar);

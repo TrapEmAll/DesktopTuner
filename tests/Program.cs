@@ -107,6 +107,13 @@ Check("Document one" + Environment.NewLine + "Document two", alwaysGroupedWindow
 Check(3, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Never, 1).Count, "never group taskbar windows");
 Check(3, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFull, 3).Count, "keep windows separate while the taskbar has capacity");
 Check(2, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFull, 2).Count, "group windows when the taskbar is full");
+var windowOrder = new TaskbarWindowOrder();
+Check("1,2,3", string.Join(',', windowOrder.Synchronize(runningWindows).Select(window => window.Handle)), "initialize running-window order from the current enumeration");
+CheckTrue(windowOrder.MoveGroup(runningWindows, alwaysGroupedWindows[1], alwaysGroupedWindows[0]), "move a grouped app's taskbar button before another group");
+Check("3,1,2", string.Join(',', windowOrder.Synchronize(runningWindows).Select(window => window.Handle)), "move all windows in a grouped button as one block");
+CheckTrue(!windowOrder.MoveGroup(runningWindows, alwaysGroupedWindows[0], alwaysGroupedWindows[0]), "ignore a drop onto the same running-window group");
+var updatedRunningWindows = new[] { runningWindows[0], runningWindows[2], new RunningWindow((nint)4, "Calendar", "Calendar", @"C:\Apps\calendar.exe", false) };
+Check("3,1,4", string.Join(',', windowOrder.Synchronize(updatedRunningWindows).Select(window => window.Handle)), "remove closed windows and append newly opened windows without losing the chosen order");
 Check(120d, TaskbarButtonAlignmentPolicy.CalculateLeadingSpacer(500, 260, TaskbarButtonAlignment.Center), "center taskbar buttons within the free app area");
 Check(0d, TaskbarButtonAlignmentPolicy.CalculateLeadingSpacer(500, 260, TaskbarButtonAlignment.Left), "keep left-aligned taskbar buttons at the start of the app area");
 Check(0d, TaskbarButtonAlignmentPolicy.CalculateLeadingSpacer(260, 500, TaskbarButtonAlignment.Center), "keep overflowing taskbar buttons reachable from the start");

@@ -12,7 +12,9 @@ namespace DesktopTuner;
 public partial class TaskbarWindow : Window
 {
     private const string PinnedAppDragFormat = "DesktopTuner.PinnedTaskbarApp";
+    private const string WindowGroupDragFormat = "DesktopTuner.RunningTaskbarGroup";
     private readonly RunningWindowService _windows = new();
+    private readonly TaskbarWindowOrder _windowOrder;
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
     private readonly DispatcherTimer _autoHideTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
     private readonly Action<TaskbarDisplay> _showStartMenu;
@@ -32,15 +34,18 @@ public partial class TaskbarWindow : Window
     private bool _nativeTrayExposed;
     private PinnedTaskbarApp? _pinDragCandidate;
     private Point _pinDragStart;
+    private TaskbarWindowGroup? _windowDragCandidate;
+    private Point _windowDragStart;
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication)
     {
         InitializeComponent();
         Display = display;
         _showStartMenu = showStartMenu;
         _isStartMenuVisible = isStartMenuVisible;
+        _windowOrder = windowOrder;
         _persistPreferences = persistPreferences;
         _closeAllTaskbars = closeAllTaskbars;
         _showSettings = showSettings;
@@ -223,7 +228,7 @@ public partial class TaskbarWindow : Window
 
     private void RefreshWindows()
     {
-        var windows = _windows.Enumerate();
+        var windows = _windowOrder.Synchronize(_windows.Enumerate());
         var wasMaximizedWindowOnDisplay = _maximizedWindowOnDisplay;
         _maximizedWindowOnDisplay = TaskbarAutoHidePolicy.HasMaximizedWindowOnDisplay(windows, Display);
         if (wasMaximizedWindowOnDisplay && !_maximizedWindowOnDisplay && !_autoHide && _collapsed)
@@ -411,6 +416,65 @@ public partial class TaskbarWindow : Window
         var data = new DataObject(PinnedAppDragFormat, _pinDragCandidate.ExecutablePath);
         try { DragDrop.DoDragDrop(button, data, DragDropEffects.Move); }
         finally { _pinDragCandidate = null; }
+    }
+
+    private void WindowButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not Button { Tag: TaskbarWindowGroup group }) return;
+        _windowDragCandidate = group;
+        _windowDragStart = e.GetPosition(this);
+    }
+
+    private void WindowButton_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) => _windowDragCandidate = null;
+
+    private void WindowButton_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_windowDragCandidate is null || e.LeftButton != MouseButtonState.Pressed || sender is not Button button) return;
+        var position = e.GetPosition(this);
+        if (Math.Abs(position.X - _windowDragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(position.Y - _windowDragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+        var data = new DataObject(WindowGroupDragFormat, _windowDragCandidate);
+        try
+        {
+            e.Handled = true;
+            DragDrop.DoDragDrop(button, data, DragDropEffects.Move);
+        }
+        finally
+        {
+            _windowDragCandidate = null;
+            button.Background = Brushes.Transparent;
+        }
+    }
+
+    private void WindowButton_DragOver(object sender, DragEventArgs e)
+    {
+        if (sender is Button { Tag: TaskbarWindowGroup target } button &&
+            e.Data.GetDataPresent(WindowGroupDragFormat) && e.Data.GetData(WindowGroupDragFormat) is TaskbarWindowGroup source &&
+            !source.Windows.Select(window => window.Handle).Intersect(target.Windows.Select(window => window.Handle)).Any())
+        {
+            button.Background = Brush("#494F70");
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+            return;
+        }
+
+        e.Effects = DragDropEffects.None;
+        e.Handled = false;
+    }
+
+    private void WindowButton_DragLeave(object sender, DragEventArgs e)
+    {
+        if (sender is Button button) button.Background = Brushes.Transparent;
+    }
+
+    private void WindowButton_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is not Button { Tag: TaskbarWindowGroup target } ||
+            !e.Data.GetDataPresent(WindowGroupDragFormat) || e.Data.GetData(WindowGroupDragFormat) is not TaskbarWindowGroup moving) return;
+
+        if (_windowOrder.MoveGroup(_windows.Enumerate(), moving, target)) RefreshWindows();
+        e.Handled = true;
     }
 
     private static IEnumerable<string> GetDroppedDocuments(IDataObject data)
