@@ -19,6 +19,7 @@ public partial class TaskbarWindow : Window
     private readonly RunningWindowService _windows = new();
     private readonly TaskbarWindowOrder _windowOrder;
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
+    private readonly DispatcherTimer _batteryRefreshTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly DispatcherTimer _autoHideTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
     private readonly DispatcherTimer _previewOpenTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
     private readonly DispatcherTimer _previewCloseTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
@@ -38,6 +39,7 @@ public partial class TaskbarWindow : Window
     private bool _nativeReady;
     private bool _nativeTrayExposed;
     private bool _isDark;
+    private TaskbarBatteryStatus? _batteryStatus;
     private PinnedTaskbarApp? _pinDragCandidate;
     private Point _pinDragStart;
     private TaskbarWindowGroup? _windowDragCandidate;
@@ -63,6 +65,7 @@ public partial class TaskbarWindow : Window
         _showSettings = showSettings;
         _quitApplication = quitApplication;
         _refreshTimer.Tick += (_, _) => RefreshWindows();
+        _batteryRefreshTimer.Tick += (_, _) => UpdateBatteryStatus();
         _autoHideTimer.Tick += (_, _) => AutoHideTimer_Tick();
         _previewOpenTimer.Tick += (_, _) => OpenPendingPreview();
         _previewCloseTimer.Tick += (_, _) => ClosePreviewIfPointerOutside();
@@ -87,6 +90,7 @@ public partial class TaskbarWindow : Window
         _collapsed = (_autoHide || _autoHideWhenMaximized && _maximizedWindowOnDisplay) && !_isStartMenuVisible() && !IsMouseOver;
         ApplyLayout();
         if (IsLoaded) RefreshWindows();
+        if (IsLoaded) UpdateBatteryStatus();
         if (IsLoaded) Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
         if (!_autoHide && !_autoHideWhenMaximized) _autoHideTimer.Stop();
         else if (IsLoaded) _autoHideTimer.Start();
@@ -101,6 +105,7 @@ public partial class TaskbarWindow : Window
         var trayBounds = _preferences.ReplaceNativeTaskbar ? null : NativeTaskbarTrayService.FindTrayBounds(Display);
         var integratedBounds = TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(Display, layoutPreferences, trayBounds, _collapsed);
         _nativeTrayExposed = integratedBounds is not null;
+        BatteryButton.Visibility = _preferences.ReplaceNativeTaskbar && _batteryStatus is not null ? Visibility.Visible : Visibility.Collapsed;
         if (integratedBounds is { } trayIntegratedBounds) bounds = trayIntegratedBounds;
         SettingsButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         TrayButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
@@ -232,7 +237,9 @@ public partial class TaskbarWindow : Window
         RefreshWindows();
         ApplyLayout();
         UpdateClock();
+        UpdateBatteryStatus();
         _refreshTimer.Start();
+        _batteryRefreshTimer.Start();
         if (_autoHide || _autoHideWhenMaximized) _autoHideTimer.Start();
     }
 
@@ -241,6 +248,7 @@ public partial class TaskbarWindow : Window
         SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
         HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.RemoveHook(WindowProc);
         _refreshTimer.Stop();
+        _batteryRefreshTimer.Stop();
         _autoHideTimer.Stop();
         _previewOpenTimer.Stop();
         _previewCloseTimer.Stop();
@@ -322,6 +330,7 @@ public partial class TaskbarWindow : Window
         var reservedControlsLength = vertical
             ? (_nativeTrayExposed ? 170 : 210) + 60
             : (_nativeTrayExposed ? 250 : 290) + 60;
+        if (_preferences.ReplaceNativeTaskbar && _batteryStatus is not null) reservedControlsLength += 56;
         var reservedLength = reservedControlsLength + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
         return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / buttonSpan));
     }
@@ -334,6 +343,49 @@ public partial class TaskbarWindow : Window
         var now = DateTime.Now;
         ClockText.Text = now.ToString("h:mm tt");
         DateText.Text = now.ToString("ddd, MMM d");
+    }
+
+    private void UpdateBatteryStatus()
+    {
+        var wasVisible = BatteryButton.Visibility == Visibility.Visible;
+        try
+        {
+            _batteryStatus = TaskbarBatteryService.TryRead();
+        }
+        catch (Exception ex)
+        {
+            _batteryStatus = null;
+            Trace.TraceWarning($"Could not read battery status: {ex}");
+        }
+
+        BatteryButton.Visibility = _preferences.ReplaceNativeTaskbar && _batteryStatus is not null
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        if (_batteryStatus is not { } status)
+        {
+            if (IsLoaded && wasVisible != (BatteryButton.Visibility == Visibility.Visible)) RefreshWindows();
+            return;
+        }
+
+        BatteryFill.Width = TaskbarBatteryService.GetFillWidth(status.Percent, 13);
+        BatteryFill.Background = status.Percent is <= 15 ? Brushes.IndianRed : TaskbarTheme.GetBrush("TaskbarAccentBrush");
+        BatteryPercentText.Text = status.Percent is { } percent ? $"{percent}%" : string.Empty;
+        BatteryChargingGlyph.Visibility = status.IsCharging ? Visibility.Visible : Visibility.Collapsed;
+        BatteryButton.ToolTip = TaskbarBatteryService.GetLabel(status);
+        if (IsLoaded && wasVisible != (BatteryButton.Visibility == Visibility.Visible)) RefreshWindows();
+    }
+
+    private void BatterySettings_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("ms-settings:powersleep") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            BatteryButton.ToolTip = $"Could not open Power settings: {ex.Message}";
+            Trace.TraceWarning($"Could not open Windows Power settings: {ex}");
+        }
     }
 
     private void Window_MouseEnter(object sender, MouseEventArgs e)
