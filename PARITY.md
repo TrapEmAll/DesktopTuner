@@ -9,7 +9,7 @@ This tracker uses StartAllBack's public product description as the baseline. Its
 | Taskbar | Classic/replacement taskbar and edge placement | Partial: live overlays on the primary display or all connected displays, with per-display placement and window switching; native taskbars remain underneath |
 | Taskbar | Labels, icon size, margins, grouping, drag/drop | Partial: window titles, centered or left-aligned app buttons while Start stays left, persistent launch pins, executable/shortcut/folder drag-and-drop, document-to-app drop, and three bar sizes/grouping preference exist; system icon sizing and margins remain |
 | Taskbar | Segmented/floating/translucent styles and auto-hide | Partial: edge-aware auto-hide, floating inset style, and separate Start/apps/system segments; aura effects and Windows material translucency remain |
-| Taskbar | Tray, taskbar context menus, widgets, flyouts, and multi-monitor behavior | Partial: per-window minimize context menu, clock, and overlays on all displays; native tray integration, widgets, and shell flyouts remain |
+| Taskbar | Tray, taskbar context menus, widgets, flyouts, and multi-monitor behavior | Partial: per-window and grouped minimize/close menus, clock, and overlays on all displays; native tray integration, widgets, and shell flyouts remain |
 | Explorer | Restyled ribbon/command bar and translucent menus | Missing |
 | Explorer | Bottom details pane and classic search | Missing |
 | Explorer | Dark mode and common-dialog styling | Partial: shared Windows app/system color mode and transparency preferences; dark common-dialog restyling remains |

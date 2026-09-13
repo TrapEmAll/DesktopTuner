@@ -383,6 +383,16 @@ public partial class TaskbarWindow : Window
         else if (item.Tag is RunningWindow window) RunningWindowService.Minimize(window);
     }
 
+    private void CloseWindows_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem item) return;
+        if (item.Tag is TaskbarWindowGroup group)
+        {
+            foreach (var window in group.Windows) RunningWindowService.Close(window);
+        }
+        else if (item.Tag is RunningWindow window) RunningWindowService.Close(window);
+    }
+
     private void Pin_Click(object sender, RoutedEventArgs e)
     {
         var currentPins = _preferences.PinnedApps ?? [];

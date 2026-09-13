@@ -12,6 +12,7 @@ public sealed class RunningWindowService
     private const int GW_OWNER = 4;
     private const int SW_RESTORE = 9;
     private const int SW_MINIMIZE = 6;
+    private const uint WM_CLOSE = 0x0010;
     private readonly uint _ownProcessId = (uint)Environment.ProcessId;
 
     public IReadOnlyList<RunningWindow> Enumerate()
@@ -58,6 +59,12 @@ public sealed class RunningWindowService
 
     public static void Minimize(RunningWindow window) => ShowWindow(window.Handle, SW_MINIMIZE);
 
+    public static void Close(RunningWindow window)
+    {
+        if (!PostMessage(window.Handle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero))
+            Trace.TraceWarning($"Could not request closing window '{window.Title}' (0x{window.Handle:X}).");
+    }
+
     private delegate bool EnumWindowsProc(nint hWnd, nint lParam);
 
     [DllImport("user32.dll")]
@@ -94,4 +101,8 @@ public sealed class RunningWindowService
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetForegroundWindow(nint hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PostMessage(nint hWnd, uint message, nint wParam, nint lParam);
 }

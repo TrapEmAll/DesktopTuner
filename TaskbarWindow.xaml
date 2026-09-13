@@ -74,6 +74,7 @@
                                 <Button.ContextMenu>
                                     <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
                                         <MenuItem Header="Minimize window(s)" Tag="{Binding}" Click="Minimize_Click" />
+                                        <MenuItem Header="Close window(s)" Tag="{Binding}" Click="CloseWindows_Click" />
                                         <MenuItem Header="Pin app to taskbar" Tag="{Binding}" Click="Pin_Click" />
                                         <MenuItem Header="Close Desktop Tuner bar" Click="CloseBar_Click" />
                                     </ContextMenu>
