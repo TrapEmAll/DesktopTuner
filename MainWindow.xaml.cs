@@ -14,6 +14,7 @@ public partial class MainWindow : Window
     private const int StartMenuHotkeyId = 0xD701;
     private const int WM_HOTKEY = 0x0312;
     private const int WM_DISPLAYCHANGE = 0x007E;
+    private const int WM_APP_ACTIVATE_SETTINGS = 0x8000 + 0x451;
     private const uint MOD_ALT = 0x0001;
     private const uint MOD_CONTROL = 0x0002;
     private const uint VK_SPACE = 0x20;
@@ -43,12 +44,15 @@ public partial class MainWindow : Window
     private bool _replaceWindowsKey;
     private StartMenuStyle _startMenuStyle = StartMenuStyle.Modern;
     private bool _taskbarOnAllDisplays = true;
+    private bool _startWithWindows;
+    private readonly bool _startInBackground;
     private bool _closingTaskbars;
     private bool _displayRefreshPending;
 
-    public MainWindow()
+    public MainWindow(bool startInBackground = false)
     {
         InitializeComponent();
+        _startInBackground = startInBackground;
         SourceInitialized += MainWindow_SourceInitialized;
         Closed += MainWindow_Closed;
         _settings = new RegistrySettingsService(_profileStore);
@@ -64,6 +68,7 @@ public partial class MainWindow : Window
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
         _startMenuStyle = desktopPreferences.StartMenuStyle;
         _taskbarOnAllDisplays = desktopPreferences.TaskbarOnAllDisplays;
+        _startWithWindows = desktopPreferences.StartWithWindows;
         foreach (var setting in SettingsCatalog.All)
         {
             var value = _settings.Read(setting);
@@ -269,10 +274,14 @@ public partial class MainWindow : Window
             allDisplays.Checked += (_, _) => { _taskbarOnAllDisplays = true; SaveDesktopPreferences(); };
             allDisplays.Unchecked += (_, _) => { _taskbarOnAllDisplays = false; SaveDesktopPreferences(); };
             PageContent.Children.Add(allDisplays);
+            var startWithWindows = new CheckBox { Content = "Start the taskbar automatically when I sign in", IsChecked = _startWithWindows, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
+            startWithWindows.Checked += (_, _) => SetStartWithWindows(startWithWindows, true);
+            startWithWindows.Unchecked += (_, _) => SetStartWithWindows(startWithWindows, false);
+            PageContent.Children.Add(startWithWindows);
             var launchButton = new Button { Content = "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowTaskbar();
             PageContent.Children.Add(launchButton);
-            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, bar size and style, app button labels, icon size, spacing, and optional auto-hide. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and opens the native Widgets board. Right-click the bar for Windows Settings, auto-hide, or close. When Windows' native notification area is detected on a bottom full-edge or segmented layout, the overlay stops before it; other layouts keep Tray and Clock shortcuts.");
+            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, bar size and style, app button labels, icon size, spacing, and optional auto-hide. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and opens the native Widgets board. Enable sign-in startup to keep the taskbar running in the background; right-click the bar to reopen Desktop Tuner settings or exit. When Windows' native notification area is detected on a bottom full-edge or segmented layout, the overlay stops before it; other layouts keep Tray and Clock shortcuts.");
             PageContent.Children.Add(overlayInfo);
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);
@@ -476,6 +485,11 @@ public partial class MainWindow : Window
             SaveDesktopPreferences();
             SetStatus("Windows-key replacement could not start; the setting was turned off.");
         }
+        if (_startInBackground && _startWithWindows)
+        {
+            Hide();
+            Dispatcher.BeginInvoke(new Action(ShowTaskbar));
+        }
     }
 
     private void MainWindow_Closed(object? sender, EventArgs e)
@@ -490,6 +504,12 @@ public partial class MainWindow : Window
 
     private IntPtr WindowMessageHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if (message == WM_APP_ACTIVATE_SETTINGS)
+        {
+            ShowSettingsWindow();
+            handled = true;
+            return IntPtr.Zero;
+        }
         if (message == WM_DISPLAYCHANGE && !_displayRefreshPending && _taskbarWindows.Any(window => window.IsVisible))
         {
             _displayRefreshPending = true;
@@ -507,6 +527,17 @@ public partial class MainWindow : Window
             handled = true;
         }
         return IntPtr.Zero;
+    }
+
+    public static bool TryActivateExistingInstance(bool showSettings)
+    {
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            var window = FindWindow(null, "Desktop Tuner");
+            if (window != IntPtr.Zero && PostMessage(window, WM_APP_ACTIVATE_SETTINGS, showSettings ? new IntPtr(1) : IntPtr.Zero, IntPtr.Zero)) return true;
+            Thread.Sleep(50);
+        }
+        return false;
     }
 
     private void ShowStartMenu() => ShowStartMenu(null);
@@ -578,7 +609,7 @@ public partial class MainWindow : Window
             var preferences = CreateDesktopPreferences();
             foreach (var display in TaskbarDisplayService.Select(_taskbarOnAllDisplays))
             {
-                var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, SaveDesktopPreferences, CloseTaskbars);
+                var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication);
                 taskbar.Closed += (_, _) =>
                 {
                     _taskbarWindows.Remove(taskbar);
@@ -611,7 +642,7 @@ public partial class MainWindow : Window
         finally { _closingTaskbars = false; }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows);
 
     private void UpdateTaskbarPreferences()
     {
@@ -647,6 +678,7 @@ public partial class MainWindow : Window
             _taskbarShowLabels = preferences.TaskbarShowLabels;
             _taskbarIconSize = preferences.TaskbarIconSize;
             _taskbarButtonSpacing = preferences.TaskbarButtonSpacing;
+            _startWithWindows = preferences.StartWithWindows;
             if (displayModeChanged && _taskbarWindows.Any(window => window.IsVisible))
             {
                 CloseTaskbars();
@@ -661,6 +693,35 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not save taskbar preferences", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
+
+    private void SetStartWithWindows(CheckBox checkBox, bool enabled)
+    {
+        if (_startWithWindows == enabled) return;
+        try
+        {
+            StartupShortcutService.SetEnabled(enabled);
+            _preferences.Save(CreateDesktopPreferences() with { StartWithWindows = enabled });
+            _startWithWindows = enabled;
+            SetStatus(enabled ? "The taskbar will start automatically at sign-in." : "Automatic taskbar startup is disabled.");
+        }
+        catch (Exception ex)
+        {
+            try { StartupShortcutService.SetEnabled(_startWithWindows); }
+            catch (Exception rollbackError) { ex = new AggregateException("The Startup shortcut could not be restored after saving failed.", ex, rollbackError); }
+            checkBox.IsChecked = _startWithWindows;
+            MessageBox.Show(this, ex.Message, "Could not change sign-in startup", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ShowSettingsWindow()
+    {
+        if (!IsVisible) Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        RenderPage("Taskbar");
+        Activate();
+    }
+
+    private void QuitApplication() => Close();
 
     private void ToggleWindowsKeyReplacement(CheckBox checkBox, bool enabled)
     {
@@ -704,4 +765,11 @@ public partial class MainWindow : Window
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "FindWindowW")]
+    private static extern IntPtr FindWindow(string? className, string windowName);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PostMessage(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
 }

@@ -196,6 +196,16 @@ CheckTrue(SystemFlyoutService.GetWidgetsSequence().SequenceEqual(
     new KeyboardKeyEvent((ushort)'W', true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+W Widgets shortcut in balanced key order");
+var appHostStartup = StartupShortcutService.BuildCommand(
+    @"C:\Program Files\Desktop Tuner\DesktopTuner.exe",
+    @"C:\Program Files\Desktop Tuner\DesktopTuner.dll");
+Check(@"C:\Program Files\Desktop Tuner\DesktopTuner.exe", appHostStartup.TargetPath, "launch the packaged app host at sign-in");
+Check("--startup", appHostStartup.Arguments, "start the taskbar in background mode at sign-in");
+var dotnetStartup = StartupShortcutService.BuildCommand(
+    @"C:\Program Files\dotnet\dotnet.exe",
+    @"C:\Program Files\Desktop Tuner\DesktopTuner.dll");
+Check(@"C:\Program Files\dotnet\dotnet.exe", dotnetStartup.TargetPath, "support development launches through dotnet at sign-in");
+Check("\"C:\\Program Files\\Desktop Tuner\\DesktopTuner.dll\" --startup", dotnetStartup.Arguments, "quote an assembly path with spaces in the Startup shortcut");
 Throws<ArgumentOutOfRangeException>(() => TaskbarLayoutCalculator.Calculate(0, 1080, new(TaskbarEdge.Bottom), false), "rejects invalid screen bounds");
 var appModeSetting = SettingsCatalog.ById("explorer-app-mode");
 var systemModeSetting = SettingsCatalog.ById("explorer-system-mode");
@@ -235,6 +245,9 @@ try
     Check(expectedPreferences.TaskbarLayout, loadedPreferences.TaskbarLayout, "persist floating taskbar style");
     Check(expectedPreferences.TaskbarGrouping, loadedPreferences.TaskbarGrouping, "persist taskbar grouping mode");
     Check(expectedPreferences.TaskbarButtonAlignment, loadedPreferences.TaskbarButtonAlignment, "persist taskbar button alignment");
+    preferencesStore.Save(expectedPreferences with { StartWithWindows = true });
+    Check(true, preferencesStore.Load().StartWithWindows, "persist automatic taskbar startup preference");
+    Check(false, new DesktopPreferences(TaskbarEdge.Bottom).StartWithWindows, "leave automatic taskbar startup disabled for older preferences");
     preferencesStore.Save(expectedPreferences with { TaskbarLayout = TaskbarStyle.Segmented });
     Check(TaskbarStyle.Segmented, preferencesStore.Load().TaskbarLayout, "persist segmented taskbar style");
     preferencesStore.Save(expectedPreferences with { TaskbarGrouping = TaskbarGroupingMode.Never });
@@ -251,6 +264,7 @@ try
     File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"PinnedApps":[{"Name":"Legacy app","ExecutablePath":"C:\\Apps\\Editor.exe"}]}""");
     Check(StartMenuStyle.Modern, preferencesStore.Load().StartMenuStyle, "default legacy preferences to the Modern Start menu");
     Check(false, preferencesStore.Load().TaskbarOnAllDisplays, "keep legacy taskbar preferences on the primary display");
+    Check(false, preferencesStore.Load().StartWithWindows, "disable sign-in startup for older preference files");
     Check(TaskbarStyle.EdgeToEdge, preferencesStore.Load().TaskbarLayout, "default legacy preferences to a full-edge taskbar");
     Check(TaskbarGroupingMode.Always, preferencesStore.Load().TaskbarGrouping, "default legacy preferences to grouped taskbar buttons");
     Check(TaskbarButtonAlignment.Center, preferencesStore.Load().TaskbarButtonAlignment, "default legacy preferences to centered taskbar buttons");

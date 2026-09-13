@@ -19,6 +19,8 @@ public partial class TaskbarWindow : Window
     private readonly Func<bool> _isStartMenuVisible;
     private readonly Action<DesktopPreferences> _persistPreferences;
     private readonly Action _closeAllTaskbars;
+    private readonly Action _showSettings;
+    private readonly Action _quitApplication;
     private DesktopPreferences _preferences = new(TaskbarEdge.Bottom);
     private TaskbarEdge _edge;
     private TaskbarSize _size;
@@ -31,7 +33,7 @@ public partial class TaskbarWindow : Window
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication)
     {
         InitializeComponent();
         Display = display;
@@ -39,6 +41,8 @@ public partial class TaskbarWindow : Window
         _isStartMenuVisible = isStartMenuVisible;
         _persistPreferences = persistPreferences;
         _closeAllTaskbars = closeAllTaskbars;
+        _showSettings = showSettings;
+        _quitApplication = quitApplication;
         _refreshTimer.Tick += (_, _) => RefreshWindows();
         _autoHideTimer.Tick += (_, _) => AutoHideTimer_Tick();
         SourceInitialized += (_, _) =>
@@ -536,6 +540,10 @@ public partial class TaskbarWindow : Window
     private void Widgets_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWidgets();
 
     private void TaskbarContextMenu_Opened(object sender, RoutedEventArgs e) => AutoHideMenuItem.IsChecked = _autoHide;
+
+    private void ShowSettings_Click(object sender, RoutedEventArgs e) => _showSettings();
+
+    private void Quit_Click(object sender, RoutedEventArgs e) => _quitApplication();
 
     private void AutoHideMenuItem_Click(object sender, RoutedEventArgs e)
     {
