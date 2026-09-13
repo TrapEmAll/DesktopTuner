@@ -8,7 +8,7 @@ A native Windows 11 desktop-personalization starter focused on the Start menu, t
 - Offers Modern, Classic two-column, and Compact launcher layouts, with the selected style saved between sessions.
 - Optionally opens the custom launcher when the user taps either Windows key; modified Win+key shortcuts pass through to Windows, and the setting is disabled by default.
 - Opens a primary-monitor taskbar overlay on any edge with live top-level window switching, minimize commands, a clock, and a shortcut to the companion Start menu. Edge, size, and auto-hide preferences persist between app launches.
-- Pins running desktop apps to the custom taskbar; pinned buttons activate an existing window or launch the executable, and pins persist between app launches.
+- Pins running desktop apps to the custom taskbar, or drag `.exe` files onto it to pin them. Pinned buttons activate an existing window or launch the executable, and pins persist between app launches.
 - Adjusts eight per-user Windows settings across Start, taskbar, and File Explorer, including an experimental classic context-menu switch.
 - Saves and imports portable JSON profiles. Import loads choices for review and never applies them automatically.
 - Captures the exact prior registry values before applying and provides one-step undo for the last successful apply.

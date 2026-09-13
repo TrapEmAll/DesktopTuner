@@ -16,6 +16,13 @@ Check(1, firstPin.Count, "pin a running app executable");
 Check(1, TaskbarPinCatalog.Add(firstPin, "Editor", @"C:\Program Files\Editor\editor.exe").Count, "avoid duplicate pins");
 Check(1, TaskbarPinCatalog.Add(firstPin, "Script", @"C:\Tools\script.cmd").Count, "reject non-executable pin paths");
 Check(0, TaskbarPinCatalog.Remove(firstPin, @"C:\Program Files\Editor\editor.exe").Count, "unpin an app executable");
+var droppedPins = TaskbarPinCatalog.AddDroppedFiles([], [@"C:\Apps\Editor.exe", @"C:\Apps\Editor.exe", @"C:\Docs\readme.txt", "relative.exe"]);
+Check(1, droppedPins.Count, "accept unique absolute executable drops only");
+Check("Editor", droppedPins[0].Name, "derive dropped app name from executable filename");
+var fullPinList = Enumerable.Range(0, TaskbarPinCatalog.MaximumPins)
+    .Select(index => new PinnedTaskbarApp($"App {index}", $@"C:\Apps\app{index}.exe"))
+    .ToList();
+Check(TaskbarPinCatalog.MaximumPins, TaskbarPinCatalog.AddDroppedFiles(fullPinList, [@"C:\Apps\extra.exe"]).Count, "respect taskbar pin limit for dropped files");
 var tapGesture = new WindowsKeyGesture();
 Check(WindowsKeyAction.Suppress, tapGesture.KeyDown(0x5b), "capture a bare left Windows key press");
 Check(WindowsKeyAction.Suppress, tapGesture.KeyDown(0x5b), "suppress Windows-key repeat events");

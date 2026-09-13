@@ -19,6 +19,20 @@ public static class TaskbarPinCatalog
         return pins;
     }
 
+    public static List<PinnedTaskbarApp> AddDroppedFiles(IEnumerable<PinnedTaskbarApp> current, IEnumerable<string> paths)
+    {
+        var pins = current.ToList();
+        foreach (var path in paths)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path) ||
+                !string.Equals(Path.GetExtension(path), ".exe", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            pins = Add(pins, Path.GetFileNameWithoutExtension(path), path);
+        }
+        return pins;
+    }
+
     public static List<PinnedTaskbarApp> Remove(IEnumerable<PinnedTaskbarApp> current, string executablePath) =>
         current.Where(app => !string.Equals(app.ExecutablePath, executablePath, StringComparison.OrdinalIgnoreCase)).ToList();
 }

@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace DesktopTuner;
@@ -149,6 +150,48 @@ public partial class TaskbarWindow : Window
     {
         if (_autoHide) _autoHideTimer.Start();
     }
+
+    private void Window_DragOver(object sender, DragEventArgs e)
+    {
+        var canPin = GetDroppableExecutables(e.Data).Any();
+        e.Effects = canPin ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+        RootBorder.BorderBrush = canPin ? Brush("#8D86FF") : Brush("#405064");
+        RootBorder.Background = canPin ? Brush("#302C49") : Brush("#F2171D2A");
+    }
+
+    private void Window_DragLeave(object sender, DragEventArgs e) => ResetDropHighlight();
+
+    private void Window_Drop(object sender, DragEventArgs e)
+    {
+        ResetDropHighlight();
+        var currentPins = _preferences.PinnedApps ?? [];
+        var pins = TaskbarPinCatalog.AddDroppedFiles(currentPins, GetDroppableExecutables(e.Data));
+        if (pins.Count == currentPins.Count) return;
+
+        _preferences = _preferences with { PinnedApps = pins };
+        _persistPreferences(_preferences);
+        RefreshWindows();
+        e.Effects = DragDropEffects.Copy;
+        e.Handled = true;
+    }
+
+    private IEnumerable<string> GetDroppableExecutables(IDataObject data)
+    {
+        if (!data.GetDataPresent(DataFormats.FileDrop) || data.GetData(DataFormats.FileDrop) is not string[] paths)
+            return [];
+
+        return paths.Where(File.Exists)
+            .Where(path => TaskbarPinCatalog.AddDroppedFiles(_preferences.PinnedApps ?? [], [path]).Count > (_preferences.PinnedApps?.Count ?? 0));
+    }
+
+    private void ResetDropHighlight()
+    {
+        RootBorder.BorderBrush = Brush("#405064");
+        RootBorder.Background = Brush("#F2171D2A");
+    }
+
+    private static SolidColorBrush Brush(string color) => new((Color)ColorConverter.ConvertFromString(color));
 
     private void AutoHideTimer_Tick()
     {

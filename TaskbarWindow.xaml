@@ -4,6 +4,7 @@
         Title="Desktop Tuner Taskbar" Height="54" WindowStyle="None" ResizeMode="NoResize"
         ShowInTaskbar="False" ShowActivated="False" Topmost="True" Background="#171D2A"
         Foreground="#F4F6FA" FontFamily="Segoe UI Variable Text, Segoe UI"
+        AllowDrop="True" DragOver="Window_DragOver" DragLeave="Window_DragLeave" Drop="Window_Drop"
         Loaded="Window_Loaded" Closed="Window_Closed" MouseEnter="Window_MouseEnter" MouseLeave="Window_MouseLeave">
     <Window.Resources>
         <ItemsPanelTemplate x:Key="HorizontalWindowPanel"><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
