@@ -4,11 +4,18 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Controls.Primitives;
+using System.Windows.Interop;
+using System.Runtime.InteropServices;
 
 namespace DesktopTuner;
 
 public partial class MainWindow : Window
 {
+    private const int StartMenuHotkeyId = 0xD701;
+    private const int WM_HOTKEY = 0x0312;
+    private const uint MOD_ALT = 0x0001;
+    private const uint MOD_CONTROL = 0x0002;
+    private const uint VK_SPACE = 0x20;
     private readonly ProfileStore _profileStore = new();
     private readonly RegistrySettingsService _settings;
     private readonly Dictionary<string, ComboBox> _controls = [];
@@ -16,10 +23,14 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, int> _selectedValues = [];
     private readonly HashSet<string> _dirty = [];
     private string _activePage = "Overview";
+    private HwndSource? _windowSource;
+    private StartMenuWindow? _startMenuWindow;
 
     public MainWindow()
     {
         InitializeComponent();
+        SourceInitialized += MainWindow_SourceInitialized;
+        Closed += MainWindow_Closed;
         _settings = new RegistrySettingsService(_profileStore);
         foreach (var setting in SettingsCatalog.All)
         {
@@ -62,7 +73,7 @@ public partial class MainWindow : Window
         PageContent.Children.Add(hero);
 
         var grid = new UniformGrid { Columns = 3, Margin = new Thickness(0, 0, 0, 18) };
-        AddModuleCard(grid, "Start menu", "Recent item visibility and activity privacy.", "Start", "01");
+        AddModuleCard(grid, "Start menu", "Open apps with a searchable launcher and choose how Windows handles recent activity.", "Start", "01");
         AddModuleCard(grid, "Taskbar", "Alignment and window grouping preferences.", "Taskbar", "02");
         AddModuleCard(grid, "File Explorer", "Useful defaults for everyday file browsing.", "Explorer", "03");
         PageContent.Children.Add(grid);
@@ -102,6 +113,9 @@ public partial class MainWindow : Window
 
         if (section == "Start")
         {
+            var launchButton = new Button { Content = "Open Desktop Tuner Start menu", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
+            launchButton.Click += (_, _) => ShowStartMenu();
+            PageContent.Children.Add(launchButton);
             var info = InfoCard("Privacy setting shared with Windows", "The recent-items preference affects Start, Jump Lists, and File Explorer together. Windows does not expose an app API to independently rebuild the built-in Start menu layout.");
             PageContent.Children.Add(info);
         }
@@ -280,4 +294,54 @@ public partial class MainWindow : Window
     }
 
     private void SetStatus(string message) => StatusText.Text = message;
+
+    private void MainWindow_SourceInitialized(object? sender, EventArgs e)
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        _windowSource = HwndSource.FromHwnd(handle);
+        _windowSource.AddHook(WindowMessageHook);
+        if (!RegisterHotKey(handle, StartMenuHotkeyId, MOD_CONTROL | MOD_ALT, VK_SPACE))
+            SetStatus("Global shortcut Ctrl+Alt+Space is unavailable. Open the Start page and use its launcher button.");
+    }
+
+    private void MainWindow_Closed(object? sender, EventArgs e)
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        UnregisterHotKey(handle, StartMenuHotkeyId);
+        _windowSource?.RemoveHook(WindowMessageHook);
+    }
+
+    private IntPtr WindowMessageHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (message == WM_HOTKEY && wParam.ToInt32() == StartMenuHotkeyId)
+        {
+            ShowStartMenu();
+            handled = true;
+        }
+        return IntPtr.Zero;
+    }
+
+    private void ShowStartMenu()
+    {
+        if (_startMenuWindow is { IsVisible: true })
+        {
+            _startMenuWindow.Close();
+            return;
+        }
+        _startMenuWindow = new StartMenuWindow();
+        _startMenuWindow.Closed += (_, _) => _startMenuWindow = null;
+        var workArea = SystemParameters.WorkArea;
+        _startMenuWindow.Left = workArea.Left + 12;
+        _startMenuWindow.Top = Math.Max(workArea.Top + 12, workArea.Bottom - _startMenuWindow.Height - 12);
+        _startMenuWindow.Show();
+        _startMenuWindow.Activate();
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint modifiers, uint key);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 }

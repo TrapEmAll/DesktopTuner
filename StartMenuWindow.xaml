@@ -1,0 +1,78 @@
+<Window x:Class="DesktopTuner.StartMenuWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Desktop Tuner Start" Width="470" Height="650" MinWidth="430" MinHeight="560"
+        WindowStyle="None" ResizeMode="CanResizeWithGrip" ShowInTaskbar="False" Topmost="True"
+        Background="#F9FAFD" Foreground="#172033" FontFamily="Segoe UI Variable Text, Segoe UI"
+        PreviewKeyDown="Window_PreviewKeyDown" Loaded="Window_Loaded">
+    <Border Background="#F9FAFD" BorderBrush="#DDE2EB" BorderThickness="1" CornerRadius="18" Padding="20">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="2,0,0,18">
+                <Border Width="38" Height="38" CornerRadius="12" Background="#6258D9" Margin="0,0,11,0">
+                    <TextBlock Text="D" Foreground="White" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Good to see you" FontSize="17" FontWeight="SemiBold" />
+                    <TextBlock Text="Search apps or open a favorite place" FontSize="11" Foreground="#70798A" Margin="0,2,0,0" />
+                </StackPanel>
+                <Button Content="×" Width="30" Height="30" HorizontalAlignment="Right" Margin="12,0,0,0" Background="Transparent" BorderThickness="0" Foreground="#667085" FontSize="18" Click="Close_Click" />
+            </StackPanel>
+            <TextBox x:Name="SearchBox" Grid.Row="1" Height="46" FontSize="14" Padding="14,9" BorderBrush="#D7DCE6" Background="White" VerticalContentAlignment="Center" TextChanged="SearchBox_TextChanged" ToolTip="Search installed Start menu apps" />
+            <Grid Grid.Row="2" Margin="0,16,0,10">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <DockPanel Grid.Row="0" Margin="2,0,2,9">
+                    <TextBlock x:Name="ResultsHeading" Text="All apps" FontWeight="SemiBold" FontSize="13" />
+                    <TextBlock x:Name="ResultCount" DockPanel.Dock="Right" Foreground="#8992A3" FontSize="11" />
+                </DockPanel>
+                <ListBox x:Name="AppList" Grid.Row="1" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppList_MouseDoubleClick">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="11,10" />
+                            <Setter Property="Margin" Value="0,2" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Row" Background="Transparent" CornerRadius="9" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Row" Property="Background" Value="#EFF0FB" /></Trigger>
+                                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="Row" Property="Background" Value="#E8E7FB" /></Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <Border Width="28" Height="28" CornerRadius="8" Background="#ECEBFA" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" MaxWidth="25" TextTrimming="CharacterEllipsis" Foreground="#5148C7" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" />
+                                    <TextBlock Text="{Binding ShortcutPath}" FontSize="10" Foreground="#8992A3" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <TextBlock x:Name="EmptyMessage" Grid.Row="1" Text="No matching apps. Try a different search." Foreground="#70798A" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" />
+            </Grid>
+            <Border Grid.Row="3" BorderBrush="#E5E8EF" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+                <DockPanel LastChildFill="False">
+                    <Button Content="Documents" Tag="documents" Click="QuickLink_Click" Padding="9,7" Margin="0,0,7,0" Background="White" BorderBrush="#E1E5EC" />
+                    <Button Content="Downloads" Tag="downloads" Click="QuickLink_Click" Padding="9,7" Margin="0,0,7,0" Background="White" BorderBrush="#E1E5EC" />
+                    <Button Content="Settings" Tag="settings" Click="QuickLink_Click" Padding="9,7" Background="White" BorderBrush="#E1E5EC" />
+                    <Button Content="⏻" Tag="power" Click="QuickLink_Click" Padding="11,7" Margin="7,0,0,0" Background="#ECEBFA" BorderBrush="#E1DFFF" Foreground="#5148C7" HorizontalAlignment="Right" />
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>
