@@ -175,6 +175,8 @@
                         <ListView.ContextMenu>
                             <ContextMenu Opened="EntriesContextMenu_Opened">
                                 <MenuItem Header="Open" Click="OpenSelected_Click" />
+                                <MenuItem x:Name="PropertiesMenuItem" Header="Properties" Click="Properties_Click" />
+                                <Separator />
                                 <MenuItem x:Name="OpenInNewTabMenuItem" Header="Open in new tab" Click="OpenInNewTab_Click" />
                                 <MenuItem x:Name="PinQuickAccessMenuItem" Header="Pin to quick access" Click="PinQuickAccess_Click" />
                                 <MenuItem x:Name="UnpinQuickAccessMenuItem" Header="Remove from quick access" Click="UnpinQuickAccess_Click" />

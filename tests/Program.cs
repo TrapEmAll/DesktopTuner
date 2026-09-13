@@ -388,6 +388,14 @@ try
 {
     var explorerTestDirectory = Path.Combine(temporaryPreferencesDirectory, "ExplorerOperations");
     Directory.CreateDirectory(explorerTestDirectory);
+    var propertiesTestFile = Path.Combine(explorerTestDirectory, "Details.txt");
+    File.WriteAllText(propertiesTestFile, "properties fixture");
+    var propertiesFileEntry = new ExplorerEntry("Details.txt", propertiesTestFile, false, false, 18, DateTime.Now);
+    var propertiesDirectoryEntry = new ExplorerEntry("ExplorerOperations", explorerTestDirectory, true, false, null, DateTime.Now);
+    CheckTrue(ExplorerPropertiesService.CanShowProperties(propertiesFileEntry), "offer the native Properties sheet for an existing file");
+    CheckTrue(ExplorerPropertiesService.CanShowProperties(propertiesDirectoryEntry), "offer the native Properties sheet for an existing folder");
+    CheckTrue(!ExplorerPropertiesService.CanShowProperties(new ExplorerEntry("C:\\", "C:\\", true, true, null, DateTime.Now)), "keep drive-list entries out of file Properties selection");
+    CheckTrue(!ExplorerPropertiesService.CanShowProperties(new ExplorerEntry("Missing", Path.Combine(explorerTestDirectory, "missing.txt"), false, false, null, DateTime.Now)), "disable Properties for a removed item");
     var startShortcutDirectory = Path.Combine(temporaryPreferencesDirectory, "Start Shortcuts");
     Directory.CreateDirectory(startShortcutDirectory);
     var startShortcutPath = Path.Combine(startShortcutDirectory, "Editor Preview.lnk");

@@ -1234,6 +1234,7 @@ public partial class ExplorerWindow : Window
         var selection = EntriesList.SelectedItems.OfType<ExplorerEntry>().ToList();
         var hasTransferableSelection = selection.Count > 0 && selection.All(entry => !entry.IsDrive);
         var hasSingleSelection = selection.Count == 1;
+        PropertiesMenuItem.IsEnabled = hasSingleSelection && ExplorerPropertiesService.CanShowProperties(selection[0]);
         CopyMenuItem.IsEnabled = CutMenuItem.IsEnabled = hasTransferableSelection;
         PasteMenuItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && ClipboardHasFileDrop();
         OpenInNewTabMenuItem.IsEnabled = hasSingleSelection && selection[0].IsDirectory;
@@ -1260,6 +1261,20 @@ public partial class ExplorerWindow : Window
     private void OpenSelected_Click(object sender, RoutedEventArgs e)
     {
         if (EntriesList.SelectedItem is ExplorerEntry entry) OpenEntry(entry);
+    }
+
+    private void Properties_Click(object sender, RoutedEventArgs e)
+    {
+        if (EntriesList.SelectedItems.Count != 1 || EntriesList.SelectedItem is not ExplorerEntry entry) return;
+        try
+        {
+            if (!ExplorerPropertiesService.ShowProperties(entry, new System.Windows.Interop.WindowInteropHelper(this).Handle))
+                SetStatus($"Windows could not open Properties for {entry.DisplayName}.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            SetStatus($"Could not open Properties for {entry.DisplayName}: {ex.Message}");
+        }
     }
 
     private void CreateFolder()
