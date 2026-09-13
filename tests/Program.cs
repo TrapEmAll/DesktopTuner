@@ -96,6 +96,16 @@ Check(70, TaskbarTransparencyPolicy.Clamp(100), "cap transparency to preserve ta
 Check(30, TaskbarTransparencyPolicy.GetEffectiveTransparency(30, dynamicTransparency: false, maximizedWindowOnDisplay: false), "keep the configured transparency when adaptive mode is off");
 Check(0, TaskbarTransparencyPolicy.GetEffectiveTransparency(30, dynamicTransparency: true, maximizedWindowOnDisplay: false), "make the taskbar solid on the desktop in adaptive mode");
 Check(30, TaskbarTransparencyPolicy.GetEffectiveTransparency(30, dynamicTransparency: true, maximizedWindowOnDisplay: true), "apply the selected transparency when a maximized app covers the display");
+var elevatedShortcutApp = new AppEntry("Editor", @"C:\Apps\Editor.lnk");
+CheckTrue(AppCatalogService.CanRunAsAdministrator(elevatedShortcutApp), "offer elevation for Start menu shortcuts");
+CheckTrue(AppCatalogService.CanRunAsAdministrator(new AppEntry("Editor", @"C:\Apps\Editor.exe")), "offer elevation for direct executables");
+CheckTrue(!AppCatalogService.CanRunAsAdministrator(new AppEntry("Calculator", "CalculatorApp!App", IsPackagedApp: true)), "do not offer elevation for packaged Windows apps");
+CheckTrue(!AppCatalogService.CanRunAsAdministrator(new AppEntry("Readme", @"C:\Docs\readme.txt")), "do not offer elevation for documents");
+var elevatedLaunchInfo = AppCatalogService.BuildLaunchInfo(elevatedShortcutApp, runAsAdministrator: true);
+Check(elevatedShortcutApp.ShortcutPath, elevatedLaunchInfo.FileName, "launch the selected shortcut path when elevating");
+Check("runas", elevatedLaunchInfo.Verb, "request the Windows elevation verb only for an explicit Start menu action");
+CheckTrue(elevatedLaunchInfo.UseShellExecute, "use ShellExecute for the Windows elevation prompt");
+Throws<NotSupportedException>(() => AppCatalogService.BuildLaunchInfo(new AppEntry("Calculator", "CalculatorApp!App", IsPackagedApp: true), runAsAdministrator: true), "reject unsupported elevation for packaged Start apps");
 var systemAccent = TaskbarTheme.ResolveAccentBrushes(0xFF336699);
 Check("#FF336699", systemAccent.Accent, "read DWM colorization values as Windows accent RGB");
 Check("#FF264C73", systemAccent.Fallback, "darken the Windows accent for white taskbar fallback icons");

@@ -1,4 +1,5 @@
 using System.IO;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -249,6 +250,24 @@ public partial class StartMenuWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, $"Windows could not open {entry.Name}.\n\n{ex.Message}", "Could not launch app", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void RunAsAdministrator_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AppEntry { CanRunElevated: true } app }) return;
+        try
+        {
+            AppCatalogService.LaunchAsAdministrator(app);
+            Close();
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            // The user dismissed the UAC prompt.
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Windows could not run {app.Name} as administrator.\n\n{ex.Message}", "Could not elevate app", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization;
 using Microsoft.CSharp.RuntimeBinder;
 using System.Windows.Media;
 
@@ -10,12 +11,15 @@ public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedA
 {
     public string SourceDescription => IsPackagedApp ? "Windows app" : Path.GetDirectoryName(ShortcutPath) ?? ShortcutPath;
     public ImageSource? Icon => TaskbarIconService.LoadIcon(ShortcutPath);
+    [JsonIgnore]
+    public bool CanRunElevated => AppCatalogService.CanRunAsAdministrator(this);
 }
 
 public sealed class StartMenuNode(string name, AppEntry? application = null)
 {
     public string Name { get; } = name;
     public AppEntry? Application { get; } = application;
+    public bool CanRunApplicationAsAdministrator => Application?.CanRunElevated == true;
     public List<StartMenuNode> Children { get; } = [];
 }
 
@@ -135,7 +139,7 @@ public sealed class AppCatalogService
     {
         if (!entry.IsPackagedApp)
         {
-            Process.Start(new ProcessStartInfo(entry.ShortcutPath) { UseShellExecute = true });
+            Process.Start(BuildLaunchInfo(entry));
             return;
         }
 
@@ -143,6 +147,29 @@ public sealed class AppCatalogService
         startInfo.ArgumentList.Add($"shell:AppsFolder\\{entry.ShortcutPath}");
         Process.Start(startInfo);
     }
+
+    public static bool CanRunAsAdministrator(AppEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        if (entry.IsPackagedApp) return false;
+        var extension = Path.GetExtension(entry.ShortcutPath);
+        return string.Equals(extension, ".lnk", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".exe", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static ProcessStartInfo BuildLaunchInfo(AppEntry entry, bool runAsAdministrator = false)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        if (runAsAdministrator && !CanRunAsAdministrator(entry))
+            throw new NotSupportedException("This app entry cannot be started with administrator privileges.");
+        return new ProcessStartInfo(entry.ShortcutPath)
+        {
+            UseShellExecute = true,
+            Verb = runAsAdministrator ? "runas" : string.Empty
+        };
+    }
+
+    public static void LaunchAsAdministrator(AppEntry entry) => Process.Start(BuildLaunchInfo(entry, runAsAdministrator: true));
 
     private static IReadOnlyList<AppEntry> FindPackagedApps()
     {

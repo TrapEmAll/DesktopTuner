@@ -60,6 +60,8 @@
                                     <Button Width="76" Height="76" Margin="2,0,3,0" Padding="3" Tag="{Binding}" Click="PinnedStartApp_Click" ToolTip="{Binding Name}">
                                         <Button.ContextMenu>
                                             <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem Header="Run as administrator" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunAsAdministrator_Click" />
+                                                <Separator />
                                                 <MenuItem Header="Move earlier" Tag="{Binding}" Click="MoveStartAppEarlier_Click" />
                                                 <MenuItem Header="Move later" Tag="{Binding}" Click="MoveStartAppLater_Click" />
                                                 <Separator />
@@ -114,6 +116,7 @@
                                 <Grid.ContextMenu>
                                     <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                         <MenuItem Header="Pin to Start" Tag="{Binding}" Click="PinStartApp_Click" />
+                                        <MenuItem Header="Run as administrator" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunAsAdministrator_Click" />
                                     </ContextMenu>
                                 </Grid.ContextMenu>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -141,6 +144,11 @@
                     <TreeView.Resources>
                         <HierarchicalDataTemplate DataType="{x:Type local:StartMenuNode}" ItemsSource="{Binding Children}">
                             <StackPanel Orientation="Horizontal">
+                                <StackPanel.ContextMenu>
+                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                        <MenuItem Header="Run as administrator" Tag="{Binding Application}" IsEnabled="{Binding CanRunApplicationAsAdministrator}" Click="RunAsAdministrator_Click" />
+                                    </ContextMenu>
+                                </StackPanel.ContextMenu>
                                 <Grid Width="24" Height="24" Margin="4,0,6,0" VerticalAlignment="Center">
                                     <Image Source="{Binding Application.Icon}" Width="22" Height="22" />
                                     <Border CornerRadius="5" Background="{DynamicResource DesktopAccentTintBrush}">
