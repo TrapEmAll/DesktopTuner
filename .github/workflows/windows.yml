@@ -12,7 +12,11 @@ permissions:
 
 jobs:
   build-and-test:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out source
         uses: actions/checkout@v6
@@ -29,15 +33,19 @@ jobs:
         run: dotnet run --project tests/DesktopTuner.Tests.csproj --configuration Release
 
       - name: Restore Windows runtime pack
+        if: matrix.os == 'windows-2025'
         run: dotnet restore DesktopTuner.csproj --runtime win-x64 --source https://api.nuget.org/v3/index.json
 
       - name: Publish portable Windows app
+        if: matrix.os == 'windows-2025'
         run: dotnet publish DesktopTuner.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output artifacts/DesktopTuner --no-restore
 
       - name: Install Inno Setup
+        if: matrix.os == 'windows-2025'
         run: choco install innosetup --yes --no-progress
 
       - name: Build per-user installer
+        if: matrix.os == 'windows-2025'
         shell: pwsh
         run: |
           $compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
@@ -54,6 +62,7 @@ jobs:
           }
 
       - name: Upload portable Windows app
+        if: matrix.os == 'windows-2025'
         uses: actions/upload-artifact@v7
         with:
           name: DesktopTuner-win-x64-${{ github.sha }}
@@ -62,6 +71,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Windows installer
+        if: matrix.os == 'windows-2025'
         uses: actions/upload-artifact@v7
         with:
           name: DesktopTuner-Setup-win-x64-${{ github.sha }}

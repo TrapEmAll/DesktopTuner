@@ -23,7 +23,7 @@ See [PARITY.md](PARITY.md) for the feature-by-feature gap list against StartAllB
 
 ## Build
 
-Requires the .NET 10 SDK and Windows Desktop targeting pack.
+Requires the .NET 10 SDK and Windows Desktop targeting pack. CI builds and runs regression checks on GitHub's Windows Server 2022 and 2025 runner images; packaging runs once on 2025. This runner matrix does not replace runtime checks on Windows 10 and 11 desktop installations.
 
 ```powershell
 dotnet restore --configfile NuGet.Config
