@@ -6,7 +6,7 @@ namespace DesktopTuner;
 public enum TaskbarEdge { Bottom, Top, Left, Right }
 public enum TaskbarSize { Small, Standard, Large }
 public enum StartMenuStyle { Modern, Classic, Compact }
-public sealed record PinnedTaskbarApp(string Name, string ExecutablePath);
+public sealed record PinnedTaskbarApp(string Name, string ExecutablePath, bool IsDirectory = false);
 public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern, bool TaskbarOnAllDisplays = false);
 
 public sealed class DesktopPreferencesStore
@@ -27,8 +27,8 @@ public sealed class DesktopPreferencesStore
             if (value is null || !Enum.IsDefined(value.TaskbarEdge) || !Enum.IsDefined(value.TaskbarSize) || !Enum.IsDefined(value.StartMenuStyle))
                 return new DesktopPreferences(TaskbarEdge.Bottom);
             var pins = (value.PinnedApps ?? [])
-                .Where(app => app is not null && !string.IsNullOrWhiteSpace(app.Name) && !string.IsNullOrWhiteSpace(app.ExecutablePath) && Path.IsPathFullyQualified(app.ExecutablePath) &&
-                    string.Equals(Path.GetExtension(app.ExecutablePath), ".exe", StringComparison.OrdinalIgnoreCase))
+                .Where(app => app is not null && !string.IsNullOrWhiteSpace(app.Name) && !string.IsNullOrWhiteSpace(app.ExecutablePath) &&
+                    TaskbarPinCatalog.IsSupportedTarget(app.ExecutablePath, app.IsDirectory))
                 .DistinctBy(app => app.ExecutablePath, StringComparer.OrdinalIgnoreCase)
                 .Take(TaskbarPinCatalog.MaximumPins)
                 .ToList();

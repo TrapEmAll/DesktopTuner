@@ -167,7 +167,7 @@ public partial class TaskbarWindow : Window
 
     private void Window_DragOver(object sender, DragEventArgs e)
     {
-        var canPin = GetDroppableExecutables(e.Data).Any();
+        var canPin = GetDroppableItems(e.Data).Any();
         e.Effects = canPin ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
         RootBorder.BorderBrush = canPin ? Brush("#8D86FF") : Brush("#405064");
@@ -180,7 +180,7 @@ public partial class TaskbarWindow : Window
     {
         ResetDropHighlight();
         var currentPins = _preferences.PinnedApps ?? [];
-        var pins = TaskbarPinCatalog.AddDroppedFiles(currentPins, GetDroppableExecutables(e.Data));
+        var pins = TaskbarPinCatalog.AddDroppedFiles(currentPins, GetDroppableItems(e.Data), Directory.Exists);
         if (pins.Count == currentPins.Count) return;
 
         _preferences = _preferences with { PinnedApps = pins };
@@ -190,19 +190,63 @@ public partial class TaskbarWindow : Window
         e.Handled = true;
     }
 
-    private IEnumerable<string> GetDroppableExecutables(IDataObject data)
+    private IEnumerable<string> GetDroppableItems(IDataObject data)
     {
         if (!data.GetDataPresent(DataFormats.FileDrop) || data.GetData(DataFormats.FileDrop) is not string[] paths)
             return [];
 
-        return paths.Where(File.Exists)
-            .Where(path => TaskbarPinCatalog.AddDroppedFiles(_preferences.PinnedApps ?? [], [path]).Count > (_preferences.PinnedApps?.Count ?? 0));
+        return paths.Where(path => File.Exists(path) || Directory.Exists(path))
+            .Where(path => TaskbarPinCatalog.AddDroppedFiles(_preferences.PinnedApps ?? [], [path], Directory.Exists).Count > (_preferences.PinnedApps?.Count ?? 0));
     }
 
     private void ResetDropHighlight()
     {
         RootBorder.BorderBrush = Brush("#405064");
         RootBorder.Background = Brush("#F2171D2A");
+    }
+
+    private void PinnedButton_DragOver(object sender, DragEventArgs e)
+    {
+        if (sender is Button { Tag: PinnedTaskbarApp app } button && !app.IsDirectory &&
+            File.Exists(app.ExecutablePath) && GetDroppedDocuments(e.Data).Any())
+        {
+            button.Background = Brush("#494F70");
+            e.Effects = DragDropEffects.Link;
+            e.Handled = true;
+            return;
+        }
+
+        e.Effects = DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void PinnedButton_DragLeave(object sender, DragEventArgs e)
+    {
+        if (sender is Button button) button.Background = Brushes.Transparent;
+    }
+
+    private void PinnedButton_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is not Button button) return;
+        if (button.Tag is not PinnedTaskbarApp app || app.IsDirectory || !File.Exists(app.ExecutablePath)) return;
+        button.Background = Brushes.Transparent;
+        var documents = GetDroppedDocuments(e.Data).ToArray();
+        if (documents.Length == 0) return;
+        try
+        {
+            var startInfo = new ProcessStartInfo(app.ExecutablePath) { UseShellExecute = true };
+            foreach (var document in documents) startInfo.ArgumentList.Add(document);
+            Process.Start(startInfo);
+            e.Effects = DragDropEffects.Link;
+            e.Handled = true;
+        }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open dropped items", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private static IEnumerable<string> GetDroppedDocuments(IDataObject data)
+    {
+        if (!data.GetDataPresent(DataFormats.FileDrop) || data.GetData(DataFormats.FileDrop) is not string[] paths) return [];
+        return paths.Where(File.Exists).Where(path => !string.Equals(Path.GetExtension(path), ".exe", StringComparison.OrdinalIgnoreCase));
     }
 
     private static SolidColorBrush Brush(string color) => new((Color)ColorConverter.ConvertFromString(color));
@@ -256,12 +300,20 @@ public partial class TaskbarWindow : Window
             RunningWindowService.Activate(openWindow);
             return;
         }
-        if (!File.Exists(app.ExecutablePath))
+        var isDirectory = app.IsDirectory || Directory.Exists(app.ExecutablePath);
+        if (!isDirectory && !File.Exists(app.ExecutablePath))
         {
             MessageBox.Show(this, $"The pinned app could not be found:\n{app.ExecutablePath}", "Pinned app unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-        try { Process.Start(new ProcessStartInfo(app.ExecutablePath) { UseShellExecute = true }); }
+        try
+        {
+            var startInfo = isDirectory
+                ? new ProcessStartInfo("explorer.exe") { UseShellExecute = true }
+                : new ProcessStartInfo(app.ExecutablePath) { UseShellExecute = true };
+            if (isDirectory) startInfo.ArgumentList.Add(app.ExecutablePath);
+            Process.Start(startInfo);
+        }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not launch pinned app", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 

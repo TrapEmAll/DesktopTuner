@@ -40,7 +40,8 @@
                 <ItemsControl x:Name="PinnedItems" VerticalAlignment="Center" ItemsPanel="{StaticResource HorizontalWindowPanel}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Style="{StaticResource TaskButton}" Tag="{Binding}" Click="PinnedButton_Click" ToolTip="{Binding ExecutablePath}">
+                            <Button Style="{StaticResource TaskButton}" Tag="{Binding}" Click="PinnedButton_Click" ToolTip="{Binding ExecutablePath}"
+                                    AllowDrop="True" DragOver="PinnedButton_DragOver" DragLeave="PinnedButton_DragLeave" Drop="PinnedButton_Drop">
                                 <StackPanel Orientation="Horizontal" MaxWidth="190">
                                     <Border Width="20" Height="20" CornerRadius="6" Background="#6258D9" VerticalAlignment="Center" Margin="0,0,8,0">
                                         <TextBlock Text="{Binding Name}" MaxWidth="17" TextTrimming="CharacterEllipsis" Foreground="White" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />

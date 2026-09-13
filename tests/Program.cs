@@ -29,9 +29,21 @@ Check(1, firstPin.Count, "pin a running app executable");
 Check(1, TaskbarPinCatalog.Add(firstPin, "Editor", @"C:\Program Files\Editor\editor.exe").Count, "avoid duplicate pins");
 Check(1, TaskbarPinCatalog.Add(firstPin, "Script", @"C:\Tools\script.cmd").Count, "reject non-executable pin paths");
 Check(0, TaskbarPinCatalog.Remove(firstPin, @"C:\Program Files\Editor\editor.exe").Count, "unpin an app executable");
-var droppedPins = TaskbarPinCatalog.AddDroppedFiles([], [@"C:\Apps\Editor.exe", @"C:\Apps\Editor.exe", @"C:\Docs\readme.txt", "relative.exe"]);
-Check(1, droppedPins.Count, "accept unique absolute executable drops only");
+var droppedPaths = new[]
+{
+    @"C:\Apps\Editor.exe",
+    @"C:\Apps\Editor.exe",
+    @"C:\Apps\Editor Shortcut.lnk",
+    @"C:\Docs\Projects",
+    @"C:\Docs\readme.txt",
+    "relative.exe"
+};
+var droppedPins = TaskbarPinCatalog.AddDroppedFiles([], droppedPaths, path => path == @"C:\Docs\Projects");
+Check(3, droppedPins.Count, "accept executable, shortcut, and folder drops while rejecting documents and relative paths");
 Check("Editor", droppedPins[0].Name, "derive dropped app name from executable filename");
+Check("Editor Shortcut", droppedPins[1].Name, "derive dropped shortcut name without its extension");
+Check(true, droppedPins[2].IsDirectory, "preserve folder pins as folder targets");
+Check(3, TaskbarPinCatalog.AddDroppedFiles(droppedPins, [@"C:\Docs\Projects"], path => path == @"C:\Docs\Projects").Count, "avoid duplicate folder pins");
 var fullPinList = Enumerable.Range(0, TaskbarPinCatalog.MaximumPins)
     .Select(index => new PinnedTaskbarApp($"App {index}", $@"C:\Apps\app{index}.exe"))
     .ToList();
@@ -70,17 +82,20 @@ try
     var freshPreferencesStore = new DesktopPreferencesStore(Path.Combine(temporaryPreferencesDirectory, "new-install.json"));
     Check(true, freshPreferencesStore.Load().TaskbarOnAllDisplays, "enable all displays by default for a new installation");
     var preferencesStore = new DesktopPreferencesStore(preferencesPath);
-    var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true, [], true, StartMenuStyle.Classic, false);
+    var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
+        [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
     Check(expectedPreferences.TaskbarSize, loadedPreferences.TaskbarSize, "persist taskbar size");
     Check(expectedPreferences.StartMenuStyle, loadedPreferences.StartMenuStyle, "persist Start menu style");
     Check(expectedPreferences.TaskbarOnAllDisplays, loadedPreferences.TaskbarOnAllDisplays, "persist taskbar display coverage");
+    Check(true, loadedPreferences.PinnedApps!.Single().IsDirectory, "persist folder pin type");
 
-    File.WriteAllText(preferencesPath, "{\"TaskbarEdge\":\"Bottom\"}");
+    File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"PinnedApps":[{"Name":"Legacy app","ExecutablePath":"C:\\Apps\\Editor.exe"}]}""");
     Check(StartMenuStyle.Modern, preferencesStore.Load().StartMenuStyle, "default legacy preferences to the Modern Start menu");
     Check(false, preferencesStore.Load().TaskbarOnAllDisplays, "keep legacy taskbar preferences on the primary display");
+    Check(false, preferencesStore.Load().PinnedApps!.Single().IsDirectory, "default old pin records to app launch behavior");
 
     var profilePath = Path.Combine(temporaryPreferencesDirectory, "appearance-profile.json");
     var profileStore = new ProfileStore();
