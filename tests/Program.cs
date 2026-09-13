@@ -370,6 +370,9 @@ Check("Browser,Editor", string.Join(',', StartPinCatalog.Reorder(orderedStartPin
 Check("Browser,Editor", string.Join(',', StartPinCatalog.Reorder(orderedStartPins, @"C:\Apps\Browser.lnk", 0).Select(app => app.Name)), "drag a Start favorite before the first pin");
 Check("Editor,Browser", string.Join(',', StartPinCatalog.Reorder(orderedStartPins, @"C:\Apps\Browser.lnk", 3).Select(app => app.Name)), "ignore an out-of-range Start favorite drop");
 Check("Editor,Calculator,Browser", string.Join(',', StartPinCatalog.Reorder(StartPinCatalog.Pin(orderedStartPins, packagedStartPin), packagedStartPin.ShortcutPath, 1).Select(app => app.Name)), "insert a newly dragged app before a Start favorite");
+Check(StartTileSize.Wide, StartPinCatalog.SetTileSize(orderedStartPins, @"C:\Apps\Browser.lnk", StartTileSize.Wide).Single(app => app.Name == "Browser").TileSize, "resize a pinned Start tile");
+Check(StartTileSize.Medium, StartPinCatalog.Normalize([new AppEntry("Invalid size", @"C:\Apps\invalid.lnk", TileSize: (StartTileSize)99)]).Single().TileSize, "normalize an unknown saved Start tile size");
+Throws<ArgumentOutOfRangeException>(() => StartPinCatalog.SetTileSize(orderedStartPins, @"C:\Apps\Browser.lnk", (StartTileSize)99), "reject an unknown Start tile size");
 Check("Editor,Browser", string.Join(',', StartPinCatalog.Reorder(orderedStartPins, @"C:\Apps\Missing.lnk", 0).Select(app => app.Name)), "ignore a Start favorite drop with an unknown source");
 var explorerTabOrder = new List<string> { "Home", "Documents", "Downloads" };
 CheckTrue(ExplorerTabOrdering.Move(explorerTabOrder, 0, 3), "move an Explorer tab after the final tab");
@@ -946,13 +949,14 @@ try
     var preferencesStore = new DesktopPreferencesStore(preferencesPath);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide)], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
     Check(expectedPreferences.TaskbarSize, loadedPreferences.TaskbarSize, "persist taskbar size");
     Check(expectedPreferences.StartMenuStyle, loadedPreferences.StartMenuStyle, "persist Start menu style");
     Check("Editor", loadedPreferences.PinnedStartApps!.Single().Name, "persist pinned Start apps");
+    Check(StartTileSize.Wide, loadedPreferences.PinnedStartApps!.Single().TileSize, "persist a pinned Start tile's size");
     Check(expectedPreferences.TaskbarOnAllDisplays, loadedPreferences.TaskbarOnAllDisplays, "persist taskbar display coverage");
     Check(expectedPreferences.TaskbarLayout, loadedPreferences.TaskbarLayout, "persist floating taskbar style");
     Check(true, loadedPreferences.ReplaceNativeTaskbar, "persist native taskbar replacement mode");

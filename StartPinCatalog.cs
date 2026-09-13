@@ -8,7 +8,12 @@ public static class StartPinCatalog
 
     public static IReadOnlyList<AppEntry> Normalize(IEnumerable<AppEntry>? apps) => (apps ?? [])
         .Where(IsSupported)
-        .Select(app => app with { Name = app.Name.Trim(), CategoryPath = app.CategoryPath ?? string.Empty })
+        .Select(app => app with
+        {
+            Name = app.Name.Trim(),
+            CategoryPath = app.CategoryPath ?? string.Empty,
+            TileSize = Enum.IsDefined(app.TileSize) ? app.TileSize : StartTileSize.Medium
+        })
         .DistinctBy(app => app.ShortcutPath, StringComparer.OrdinalIgnoreCase)
         .Take(MaximumPins)
         .ToList();
@@ -59,6 +64,17 @@ public static class StartPinCatalog
         if (index < 0 || targetIndex < 0 || targetIndex >= pins.Count) return pins;
         (pins[index], pins[targetIndex]) = (pins[targetIndex], pins[index]);
         return pins;
+    }
+
+    public static IReadOnlyList<AppEntry> SetTileSize(IEnumerable<AppEntry>? current, string shortcutPath, StartTileSize size)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(shortcutPath);
+        if (!Enum.IsDefined(size)) throw new ArgumentOutOfRangeException(nameof(size), size, "Unknown Start tile size.");
+        return Normalize(current)
+            .Select(pin => string.Equals(pin.ShortcutPath, shortcutPath, StringComparison.OrdinalIgnoreCase)
+                ? pin with { TileSize = size }
+                : pin)
+            .ToList();
     }
 
     public static IReadOnlyList<AppEntry> Reorder(IEnumerable<AppEntry>? current, string shortcutPath, int insertionIndex)

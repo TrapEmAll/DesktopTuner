@@ -685,6 +685,23 @@ public partial class StartMenuWindow : Window
         SavePinnedApps(StartPinCatalog.Unpin(_pinnedApps, app.ShortcutPath));
     }
 
+    private void PinnedStartContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu { DataContext: AppEntry app } menu) return;
+        var tileSizeMenu = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Tile size"));
+        if (tileSizeMenu is null) return;
+        tileSizeMenu.Visibility = _style is StartMenuStyle.Windows8 or StartMenuStyle.Windows10 ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var item in tileSizeMenu.Items.OfType<MenuItem>())
+            item.IsChecked = item.Tag is StartTileSize size && size == app.TileSize;
+    }
+
+    private void PinnedStartTileSize_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: StartTileSize size } item
+            || ItemsControl.ItemsControlFromItemContainer(item) is not MenuItem { Tag: AppEntry app }) return;
+        SavePinnedApps(StartPinCatalog.SetTileSize(_pinnedApps, app.ShortcutPath, size));
+    }
+
     private void MoveStartAppEarlier_Click(object sender, RoutedEventArgs e) => MovePinnedStartApp(sender, -1);
 
     private void MoveStartAppLater_Click(object sender, RoutedEventArgs e) => MovePinnedStartApp(sender, 1);

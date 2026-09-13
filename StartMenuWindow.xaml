@@ -79,6 +79,30 @@
                                                     <MultiDataTrigger>
                                                         <MultiDataTrigger.Conditions>
                                                             <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows8}" />
+                                                            <Condition Binding="{Binding TileSize}" Value="{x:Static local:StartTileSize.Small}" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Width" Value="64" />
+                                                        <Setter Property="Height" Value="64" />
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows8}" />
+                                                            <Condition Binding="{Binding TileSize}" Value="{x:Static local:StartTileSize.Wide}" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Width" Value="280" />
+                                                        <Setter Property="Height" Value="96" />
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows8}" />
+                                                            <Condition Binding="{Binding TileSize}" Value="{x:Static local:StartTileSize.Large}" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Width" Value="280" />
+                                                        <Setter Property="Height" Value="200" />
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Tag}" Value="{x:Static local:StartMenuStyle.Windows8}" />
                                                             <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex)}" Value="0" />
                                                         </MultiDataTrigger.Conditions>
                                                         <Setter Property="Background" Value="{DynamicResource DesktopTileBlueBrush}" />
@@ -108,13 +132,20 @@
                                             </Style>
                                         </Button.Style>
                                         <Button.ContextMenu>
-                                            <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                            <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}" Opened="PinnedStartContextMenu_Opened">
                                                 <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenFileLocation}" Click="OpenFileLocation_Click" />
                                                 <Separator />
                                                 <MenuItem Header="Run as administrator" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunAsAdministrator_Click" />
                                                 <Separator />
                                                 <MenuItem Header="Move earlier" Tag="{Binding}" Click="MoveStartAppEarlier_Click" />
                                                 <MenuItem Header="Move later" Tag="{Binding}" Click="MoveStartAppLater_Click" />
+                                                <Separator />
+                                                <MenuItem Header="Tile size" Tag="{Binding}">
+                                                    <MenuItem Header="Small" Tag="{x:Static local:StartTileSize.Small}" IsCheckable="True" Click="PinnedStartTileSize_Click" />
+                                                    <MenuItem Header="Medium" Tag="{x:Static local:StartTileSize.Medium}" IsCheckable="True" Click="PinnedStartTileSize_Click" />
+                                                    <MenuItem Header="Wide" Tag="{x:Static local:StartTileSize.Wide}" IsCheckable="True" Click="PinnedStartTileSize_Click" />
+                                                    <MenuItem Header="Large" Tag="{x:Static local:StartTileSize.Large}" IsCheckable="True" Click="PinnedStartTileSize_Click" />
+                                                </MenuItem>
                                                 <Separator />
                                                 <MenuItem Header="Unpin from Start" Tag="{Binding}" Click="UnpinStartApp_Click" />
                                             </ContextMenu>
