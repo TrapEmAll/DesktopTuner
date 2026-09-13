@@ -9,6 +9,7 @@ public static class SystemFlyoutService
 {
     private const ushort VK_LWIN = 0x5B;
     private const ushort VK_RWIN = 0x5C;
+    private const ushort VK_B = 0x42;
     private const ushort VK_N = 0x4E;
     private const uint INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_KEYUP = 0x0002;
@@ -19,22 +20,34 @@ public static class SystemFlyoutService
         new(VK_N, true),
         new(VK_LWIN, true)
     ]);
+    private static readonly IReadOnlyList<KeyboardKeyEvent> NotificationAreaSequence = Array.AsReadOnly<KeyboardKeyEvent>(
+    [
+        new(VK_LWIN, false),
+        new(VK_B, false),
+        new(VK_B, true),
+        new(VK_LWIN, true)
+    ]);
 
     public static IReadOnlyList<KeyboardKeyEvent> GetNotificationCenterSequence() => NotificationCenterSequence;
+    public static IReadOnlyList<KeyboardKeyEvent> GetNotificationAreaSequence() => NotificationAreaSequence;
 
-    public static bool OpenNotificationCenter()
+    public static bool OpenNotificationCenter() => SendWindowsShortcut(VK_N, NotificationCenterSequence, "notification center");
+
+    public static bool FocusNotificationArea() => SendWindowsShortcut(VK_B, NotificationAreaSequence, "notification area");
+
+    private static bool SendWindowsShortcut(ushort shortcutKey, IReadOnlyList<KeyboardKeyEvent> sequence, string featureName)
     {
         if (IsKeyDown(VK_LWIN) || IsKeyDown(VK_RWIN)) return false;
 
-        Input[] inputs = NotificationCenterSequence.Select(keyEvent => Keyboard(keyEvent.VirtualKey, keyEvent.KeyUp)).ToArray();
+        Input[] inputs = sequence.Select(keyEvent => Keyboard(keyEvent.VirtualKey, keyEvent.KeyUp)).ToArray();
         var sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Input>());
         if (sent == inputs.Length) return true;
 
-        Input[] releases = [Keyboard(VK_N, keyUp: true), Keyboard(VK_LWIN, keyUp: true)];
+        Input[] releases = [Keyboard(shortcutKey, keyUp: true), Keyboard(VK_LWIN, keyUp: true)];
         var released = SendInput((uint)releases.Length, releases, Marshal.SizeOf<Input>());
         if (released != releases.Length)
-            Trace.TraceError($"Could not release synthetic Windows+N keys after a partial send (released {released} of {releases.Length}).");
-        Trace.TraceWarning($"Could not open the Windows notification center (sent {sent} of {inputs.Length} key events; error {Marshal.GetLastWin32Error()}).");
+            Trace.TraceError($"Could not release synthetic Windows+{(char)shortcutKey} keys after a partial send (released {released} of {releases.Length}).");
+        Trace.TraceWarning($"Could not access the Windows {featureName} (sent {sent} of {inputs.Length} key events; error {Marshal.GetLastWin32Error()}).");
         return false;
     }
 

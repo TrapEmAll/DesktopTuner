@@ -516,5 +516,7 @@ public partial class TaskbarWindow : Window
 
     private void Clock_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenNotificationCenter();
 
+    private void Tray_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.FocusNotificationArea();
+
     private void CloseBar_Click(object sender, RoutedEventArgs e) => _closeAllTaskbars();
 }

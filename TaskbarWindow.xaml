@@ -130,6 +130,7 @@
             <Border x:Name="SystemSegment" Grid.Column="2">
                 <StackPanel x:Name="RightControls" Orientation="Horizontal" VerticalAlignment="Center">
                 <Button Content="Settings" Style="{StaticResource TaskButton}" Click="Settings_Click" FontSize="11" />
+                <Button Content="Tray" Style="{StaticResource TaskButton}" Click="Tray_Click" FontSize="11" ToolTip="Focus the Windows notification area" />
                 <Button Style="{StaticResource TaskButton}" Click="Clock_Click" ToolTip="Open notifications and calendar" Padding="7,4" Margin="3,0,8,0">
                     <Border Background="#30394D" CornerRadius="8" Padding="10,5">
                         <StackPanel HorizontalAlignment="Center">
