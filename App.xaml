@@ -11,6 +11,7 @@
             <Setter Property="Padding" Value="4" />
             <Setter Property="HasDropShadow" Value="True" />
             <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="local:AcrylicContextMenuBehavior.IsEnabled" Value="True" />
             <Setter Property="OverridesDefaultStyle" Value="True" />
             <Setter Property="Template">
                 <Setter.Value>

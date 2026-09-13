@@ -16,6 +16,7 @@
             <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource DesktopBorderBrush}" />
+            <Setter Property="local:AcrylicContextMenuBehavior.IsEnabled" Value="True" />
         </Style>
         <Style TargetType="MenuItem">
             <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
