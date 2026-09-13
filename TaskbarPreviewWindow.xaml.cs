@@ -11,17 +11,19 @@ namespace DesktopTuner;
 
 public partial class TaskbarPreviewWindow : Window
 {
+    private const string PreviewWindowDragFormat = "DesktopTuner.TaskbarPreviewWindow";
     private const uint ThumbnailRectDestination = 0x00000001;
     private const uint ThumbnailOpacity = 0x00000004;
     private const uint ThumbnailVisible = 0x00000008;
     private const int HResultOk = 0;
-    private readonly List<(RunningWindow Window, Border Surface)> _items = [];
+    private readonly List<(RunningWindow Window, Border Surface, StackPanel Card)> _items = [];
     private readonly Dictionary<nint, nint> _thumbnails = [];
     private readonly DispatcherTimer _layoutTimer = new() { Interval = TimeSpan.FromMilliseconds(80) };
     private TaskbarDisplay _display;
     private bool _closed;
+    private Point _dragStart;
 
-    public TaskbarPreviewWindow(IReadOnlyList<RunningWindow> windows, TaskbarDisplay display, TaskbarEdge edge, Button placementTarget)
+    public TaskbarPreviewWindow(IReadOnlyList<RunningWindow> windows, TaskbarDisplay display, TaskbarEdge edge, Button placementTarget, Action<RunningWindow, RunningWindow> moveWindow)
     {
         InitializeComponent();
         _display = display;
@@ -78,11 +80,23 @@ public partial class TaskbarPreviewWindow : Window
             DockPanel.SetDock(closeButton, Dock.Right);
             footer.Children.Add(closeButton);
             footer.Children.Add(title);
-            var card = new StackPanel { Width = 236, Margin = new Thickness(4, 2, 4, 2) };
+            var card = new StackPanel { Width = 236, Margin = new Thickness(4, 2, 4, 2), Tag = window, AllowDrop = true };
             card.Children.Add(previewButton);
             card.Children.Add(footer);
+            previewButton.PreviewMouseLeftButtonDown += PreviewCard_MouseLeftButtonDown;
+            previewButton.PreviewMouseMove += PreviewCard_MouseMove;
+            card.DragOver += PreviewCard_DragOver;
+            card.DragLeave += PreviewCard_DragLeave;
+            card.Drop += (_, e) =>
+            {
+                if (card.Tag is not RunningWindow target || !e.Data.GetDataPresent(PreviewWindowDragFormat) ||
+                    e.Data.GetData(PreviewWindowDragFormat) is not RunningWindow moving || moving.Handle == target.Handle) return;
+                moveWindow(moving, target);
+                e.Effects = DragDropEffects.Move;
+                e.Handled = true;
+            };
             CardsPanel.Children.Add(card);
-            _items.Add((window, surface));
+            _items.Add((window, surface, card));
         }
 
         Loaded += (_, _) => PlaceNearTarget(placementTarget, edge);
@@ -90,6 +104,19 @@ public partial class TaskbarPreviewWindow : Window
 
     public bool Matches(IReadOnlyList<RunningWindow> windows) =>
         _items.Select(item => item.Window.Handle).SequenceEqual(windows.Select(window => window.Handle));
+
+    public void ApplyWindowOrder(IReadOnlyList<RunningWindow> windows)
+    {
+        var positions = windows.Select((window, index) => (window.Handle, index))
+            .ToDictionary(item => item.Handle, item => item.index);
+        var orderedItems = _items.OrderBy(item => positions.GetValueOrDefault(item.Window.Handle, int.MaxValue)).ToList();
+        _items.Clear();
+        _items.AddRange(orderedItems);
+        CardsPanel.Children.Clear();
+        foreach (var item in _items) CardsPanel.Children.Add(item.Card);
+        CardsPanel.Width = Math.Max(Width - 20, _items.Count * 236d);
+        QueueThumbnailLayoutUpdate();
+    }
 
     private void Window_SourceInitialized(object? sender, EventArgs e)
     {
@@ -103,7 +130,7 @@ public partial class TaskbarPreviewWindow : Window
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
         var handle = new WindowInteropHelper(this).Handle;
-        foreach (var (window, _) in _items)
+        foreach (var (window, _, _) in _items)
         {
             if (window.Handle == IntPtr.Zero || !IsWindow(window.Handle)) continue;
             var result = DwmRegisterThumbnail(handle, window.Handle, out var thumbnail);
@@ -152,6 +179,37 @@ public partial class TaskbarPreviewWindow : Window
         e.Handled = true;
     }
 
+    private void PreviewCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Button button) _dragStart = e.GetPosition(button);
+    }
+
+    private void PreviewCard_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || sender is not Button { Tag: RunningWindow window } button) return;
+        var current = e.GetPosition(button);
+        if (Math.Abs(current.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(current.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+        var data = new DataObject(PreviewWindowDragFormat, window);
+        DragDrop.DoDragDrop(button, data, DragDropEffects.Move);
+    }
+
+    private void PreviewCard_DragOver(object sender, DragEventArgs e)
+    {
+        var canReorder = sender is StackPanel { Tag: RunningWindow target } &&
+            e.Data.GetDataPresent(PreviewWindowDragFormat) && e.Data.GetData(PreviewWindowDragFormat) is RunningWindow moving &&
+            moving.Handle != target.Handle;
+        if (sender is StackPanel card) card.Opacity = canReorder ? 0.72 : 1;
+        e.Effects = canReorder ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void PreviewCard_DragLeave(object sender, DragEventArgs e)
+    {
+        if (sender is StackPanel card) card.Opacity = 1;
+    }
+
     private void PlaceNearTarget(Button target, TaskbarEdge edge)
     {
         try
@@ -183,7 +241,7 @@ public partial class TaskbarPreviewWindow : Window
 
         var destinationHandle = new WindowInteropHelper(this).Handle;
         if (!GetClientRect(destinationHandle, out _) || !ClientToScreen(destinationHandle, out var clientOrigin)) return;
-        foreach (var (window, surface) in _items)
+        foreach (var (window, surface, _) in _items)
         {
             if (!_thumbnails.TryGetValue(window.Handle, out var thumbnail)) continue;
             try

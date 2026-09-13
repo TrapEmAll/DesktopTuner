@@ -526,7 +526,7 @@ public partial class TaskbarWindow : Window
         }
 
         _previewWindow?.Close();
-        var preview = new TaskbarPreviewWindow(group.Windows, Display, _edge, target) { ShowActivated = activate };
+        var preview = new TaskbarPreviewWindow(group.Windows, Display, _edge, target, MovePreviewWindow) { ShowActivated = activate };
         _previewWindow = preview;
         preview.Closed += (_, _) =>
         {
@@ -536,6 +536,15 @@ public partial class TaskbarWindow : Window
         preview.MouseLeave += (_, _) => QueuePreviewClose();
         preview.Show();
         if (activate) preview.Activate();
+    }
+
+    private void MovePreviewWindow(RunningWindow moving, RunningWindow target)
+    {
+        var windows = _windows.Enumerate();
+        if (!_windowOrder.MoveWindow(windows, moving, target)) return;
+        var orderedWindows = _windowOrder.Synchronize(_windows.Enumerate());
+        RefreshWindows();
+        _previewWindow?.ApplyWindowOrder(orderedWindows);
     }
 
     private void QueuePreviewClose()

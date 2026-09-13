@@ -37,4 +37,23 @@ public sealed class TaskbarWindowOrder
         _handles.InsertRange(insertionIndex, orderedMoving);
         return true;
     }
+
+    public bool MoveWindow(IEnumerable<RunningWindow> windows, RunningWindow moving, RunningWindow target)
+    {
+        ArgumentNullException.ThrowIfNull(moving);
+        ArgumentNullException.ThrowIfNull(target);
+        if (moving.Handle == target.Handle) return false;
+
+        var orderedHandles = Synchronize(windows).Select(window => window.Handle).ToList();
+        var movingIndex = orderedHandles.IndexOf(moving.Handle);
+        if (movingIndex < 0 || !orderedHandles.Contains(target.Handle)) return false;
+
+        orderedHandles.RemoveAt(movingIndex);
+        var targetIndex = orderedHandles.IndexOf(target.Handle);
+        if (targetIndex < 0) return false;
+        orderedHandles.Insert(targetIndex, moving.Handle);
+        _handles.Clear();
+        _handles.AddRange(orderedHandles);
+        return true;
+    }
 }

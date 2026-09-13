@@ -177,6 +177,10 @@ Check("1,2,3", string.Join(',', windowOrder.Synchronize(runningWindows).Select(w
 CheckTrue(windowOrder.MoveGroup(runningWindows, alwaysGroupedWindows[1], alwaysGroupedWindows[0]), "move a grouped app's taskbar button before another group");
 Check("3,1,2", string.Join(',', windowOrder.Synchronize(runningWindows).Select(window => window.Handle)), "move all windows in a grouped button as one block");
 CheckTrue(!windowOrder.MoveGroup(runningWindows, alwaysGroupedWindows[0], alwaysGroupedWindows[0]), "ignore a drop onto the same running-window group");
+CheckTrue(windowOrder.MoveWindow(runningWindows, runningWindows[1], runningWindows[2]), "move an individual window preview before another preview");
+Check("2,3,1", string.Join(',', windowOrder.Synchronize(runningWindows).Select(window => window.Handle)), "retain the selected order of individual window previews");
+CheckTrue(!windowOrder.MoveWindow(runningWindows, runningWindows[1], runningWindows[1]), "ignore dropping a preview onto itself");
+CheckTrue(!windowOrder.MoveWindow(runningWindows, runningWindows[1], new RunningWindow((nint)99, "Missing", "Missing", string.Empty, false)), "ignore moving a preview to a window that is no longer open");
 var updatedRunningWindows = new[] { runningWindows[0], runningWindows[2], new RunningWindow((nint)4, "Calendar", "Calendar", @"C:\Apps\calendar.exe", false) };
 Check("3,1,4", string.Join(',', windowOrder.Synchronize(updatedRunningWindows).Select(window => window.Handle)), "remove closed windows and append newly opened windows without losing the chosen order");
 Check(120d, TaskbarButtonAlignmentPolicy.CalculateLeadingSpacer(500, 260, TaskbarButtonAlignment.Center), "center taskbar buttons within the free app area");
