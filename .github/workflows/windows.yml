@@ -35,7 +35,7 @@ jobs:
         run: dotnet publish DesktopTuner.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output artifacts/DesktopTuner --no-restore
 
       - name: Upload portable Windows app
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DesktopTuner-win-x64-${{ github.sha }}
           path: artifacts/DesktopTuner/
