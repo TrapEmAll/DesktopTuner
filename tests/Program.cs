@@ -263,6 +263,11 @@ Check("Browser,Editor", string.Join(',', StartPinCatalog.Move(orderedStartPins, 
 Check("Browser,Editor", string.Join(',', StartPinCatalog.Move(orderedStartPins, @"C:\Apps\Editor.lnk", 1).Select(app => app.Name)), "move a Start favorite later");
 Check("Editor,Browser", string.Join(',', StartPinCatalog.Move(orderedStartPins, @"C:\Apps\Editor.lnk", -1).Select(app => app.Name)), "keep the first Start favorite in place at the list boundary");
 Throws<ArgumentOutOfRangeException>(() => StartPinCatalog.Move(orderedStartPins, @"C:\Apps\Editor.lnk", 2), "reject multi-position Start favorite moves");
+Check("Editor,Browser", string.Join(',', StartPinCatalog.Reorder(orderedStartPins, @"C:\Apps\Editor.lnk", 1).Select(app => app.Name)), "preserve a Start favorite dropped before its current next pin");
+Check("Browser,Editor", string.Join(',', StartPinCatalog.Reorder(orderedStartPins, @"C:\Apps\Editor.lnk", 2).Select(app => app.Name)), "drag a Start favorite after the last pin");
+Check("Browser,Editor", string.Join(',', StartPinCatalog.Reorder(orderedStartPins, @"C:\Apps\Browser.lnk", 0).Select(app => app.Name)), "drag a Start favorite before the first pin");
+Check("Editor,Browser", string.Join(',', StartPinCatalog.Reorder(orderedStartPins, @"C:\Apps\Browser.lnk", 3).Select(app => app.Name)), "ignore an out-of-range Start favorite drop");
+Check("Editor,Browser", string.Join(',', StartPinCatalog.Reorder(orderedStartPins, @"C:\Apps\Missing.lnk", 0).Select(app => app.Name)), "ignore a Start favorite drop with an unknown source");
 var explorerTabOrder = new List<string> { "Home", "Documents", "Downloads" };
 CheckTrue(ExplorerTabOrdering.Move(explorerTabOrder, 0, 3), "move an Explorer tab after the final tab");
 Check("Documents,Downloads,Home", string.Join(',', explorerTabOrder), "preserve Explorer tab order when dragging a tab to the end");

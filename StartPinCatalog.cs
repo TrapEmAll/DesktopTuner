@@ -44,6 +44,22 @@ public static class StartPinCatalog
         return pins;
     }
 
+    public static IReadOnlyList<AppEntry> Reorder(IEnumerable<AppEntry>? current, string shortcutPath, int insertionIndex)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(shortcutPath);
+
+        var pins = Normalize(current).ToList();
+        var sourceIndex = pins.FindIndex(pin => string.Equals(pin.ShortcutPath, shortcutPath, StringComparison.OrdinalIgnoreCase));
+        if (sourceIndex < 0 || insertionIndex < 0 || insertionIndex > pins.Count) return pins;
+
+        var app = pins[sourceIndex];
+        pins.RemoveAt(sourceIndex);
+        if (sourceIndex < insertionIndex) insertionIndex--;
+        insertionIndex = Math.Clamp(insertionIndex, 0, pins.Count);
+        pins.Insert(insertionIndex, app);
+        return pins;
+    }
+
     public static bool IsSupported(AppEntry? app) => app is not null &&
         !string.IsNullOrWhiteSpace(app.Name) &&
         !string.IsNullOrWhiteSpace(app.ShortcutPath) &&

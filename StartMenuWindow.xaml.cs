@@ -10,6 +10,7 @@ namespace DesktopTuner;
 
 public partial class StartMenuWindow : Window
 {
+    private const string PinnedStartDragFormat = "DesktopTuner.StartPinnedApp";
     private readonly AppCatalogService _catalog = new();
     private readonly Func<IReadOnlyList<AppEntry>, bool>? _savePinnedApps;
     private IReadOnlyList<AppEntry> _apps = [];
@@ -17,6 +18,9 @@ public partial class StartMenuWindow : Window
     private StartMenuStyle _style = StartMenuStyle.Modern;
     private bool _catalogLoaded;
     private string? _catalogLoadError;
+    private string? _pinnedStartDragCandidate;
+    private Point _pinnedStartDrag;
+    private bool _suppressPinnedStartClick;
 
     public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null)
     {
@@ -359,7 +363,62 @@ public partial class StartMenuWindow : Window
 
     private void PinnedStartApp_Click(object sender, RoutedEventArgs e)
     {
+        if (_suppressPinnedStartClick)
+        {
+            _suppressPinnedStartClick = false;
+            e.Handled = true;
+            return;
+        }
         if (sender is Button { Tag: AppEntry app }) LaunchEntry(app);
+    }
+
+    private void PinnedStartApp_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not Button { Tag: AppEntry app } button) return;
+        _suppressPinnedStartClick = false;
+        _pinnedStartDragCandidate = app.ShortcutPath;
+        _pinnedStartDrag = e.GetPosition(button);
+    }
+
+    private void PinnedStartApp_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Button { Tag: AppEntry app }
+            && string.Equals(app.ShortcutPath, _pinnedStartDragCandidate, StringComparison.OrdinalIgnoreCase))
+            _pinnedStartDragCandidate = null;
+    }
+
+    private void PinnedStartApp_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || sender is not Button { Tag: AppEntry app } button
+            || !string.Equals(app.ShortcutPath, _pinnedStartDragCandidate, StringComparison.OrdinalIgnoreCase)) return;
+        var current = e.GetPosition(button);
+        if (Math.Abs(current.X - _pinnedStartDrag.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(current.Y - _pinnedStartDrag.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+        _pinnedStartDragCandidate = null;
+        var data = new DataObject(PinnedStartDragFormat, app.ShortcutPath);
+        DragDrop.DoDragDrop(button, data, DragDropEffects.Move);
+        _suppressPinnedStartClick = true;
+    }
+
+    private void PinnedStartApp_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(PinnedStartDragFormat) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void PinnedStartApp_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(PinnedStartDragFormat)
+            || e.Data.GetData(PinnedStartDragFormat) is not string sourcePath
+            || sender is not Button { Tag: AppEntry targetApp } target) return;
+
+        var targetIndex = _pinnedApps.ToList().FindIndex(app =>
+            string.Equals(app.ShortcutPath, targetApp.ShortcutPath, StringComparison.OrdinalIgnoreCase));
+        if (targetIndex < 0) return;
+        var insertionIndex = targetIndex + (e.GetPosition(target).X >= target.ActualWidth / 2 ? 1 : 0);
+        SavePinnedApps(StartPinCatalog.Reorder(_pinnedApps, sourcePath, insertionIndex));
+        e.Handled = true;
     }
 
     private void UnpinStartApp_Click(object sender, RoutedEventArgs e)
