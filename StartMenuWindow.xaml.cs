@@ -271,6 +271,19 @@ public partial class StartMenuWindow : Window
         }
     }
 
+    private void OpenFileLocation_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AppEntry { CanOpenFileLocation: true } app }) return;
+        try
+        {
+            AppCatalogService.OpenFileLocation(app);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Windows could not show the location for {app.Name}.\n\n{ex.Message}", "Could not open file location", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void PinStartApp_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: AppEntry app }) return;

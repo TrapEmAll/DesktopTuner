@@ -388,6 +388,19 @@ try
 {
     var explorerTestDirectory = Path.Combine(temporaryPreferencesDirectory, "ExplorerOperations");
     Directory.CreateDirectory(explorerTestDirectory);
+    var startShortcutDirectory = Path.Combine(temporaryPreferencesDirectory, "Start Shortcuts");
+    Directory.CreateDirectory(startShortcutDirectory);
+    var startShortcutPath = Path.Combine(startShortcutDirectory, "Editor Preview.lnk");
+    File.WriteAllText(startShortcutPath, "test shortcut fixture");
+    var startShortcut = new AppEntry("Editor", startShortcutPath);
+    CheckTrue(startShortcut.CanOpenFileLocation, "offer file location for an existing Start shortcut");
+    var fileLocationLaunchInfo = AppCatalogService.BuildFileLocationLaunchInfo(startShortcut);
+    Check("explorer.exe", fileLocationLaunchInfo.FileName, "open shortcut locations in File Explorer");
+    Check($"/select,\"{startShortcutPath}\"", fileLocationLaunchInfo.ArgumentList.Single(), "select the original shortcut path including spaces");
+    CheckTrue(fileLocationLaunchInfo.UseShellExecute, "open shortcut locations through the Windows shell");
+    CheckTrue(!AppCatalogService.CanOpenFileLocation(new AppEntry("Missing", Path.Combine(startShortcutDirectory, "missing.lnk"))), "disable file location for a removed Start shortcut");
+    CheckTrue(!AppCatalogService.CanOpenFileLocation(new AppEntry("Calculator", "CalculatorApp!App", IsPackagedApp: true)), "do not offer a file location for packaged Windows apps");
+    Throws<NotSupportedException>(() => AppCatalogService.BuildFileLocationLaunchInfo(new AppEntry("Missing", Path.Combine(startShortcutDirectory, "missing.lnk"))), "reject file location for a removed Start shortcut");
     var quickAccessStore = new ExplorerQuickAccessStore(Path.Combine(temporaryPreferencesDirectory, "explorer-quick-access.json"));
     Check(true, quickAccessStore.Add(explorerTestDirectory), "pin an existing Explorer folder to quick access");
     Check(false, quickAccessStore.Add(explorerTestDirectory.ToUpperInvariant()), "avoid duplicate quick access pins without regard to path casing");

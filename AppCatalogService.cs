@@ -13,6 +13,8 @@ public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedA
     public ImageSource? Icon => TaskbarIconService.LoadIcon(ShortcutPath);
     [JsonIgnore]
     public bool CanRunElevated => AppCatalogService.CanRunAsAdministrator(this);
+    [JsonIgnore]
+    public bool CanOpenFileLocation => AppCatalogService.CanOpenFileLocation(this);
 }
 
 public sealed class StartMenuNode(string name, AppEntry? application = null)
@@ -20,6 +22,7 @@ public sealed class StartMenuNode(string name, AppEntry? application = null)
     public string Name { get; } = name;
     public AppEntry? Application { get; } = application;
     public bool CanRunApplicationAsAdministrator => Application?.CanRunElevated == true;
+    public bool CanOpenApplicationFileLocation => Application?.CanOpenFileLocation == true;
     public List<StartMenuNode> Children { get; } = [];
 }
 
@@ -156,6 +159,28 @@ public sealed class AppCatalogService
         return string.Equals(extension, ".lnk", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".exe", StringComparison.OrdinalIgnoreCase);
     }
+
+    public static bool CanOpenFileLocation(AppEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        return !entry.IsPackagedApp
+            && (string.Equals(Path.GetExtension(entry.ShortcutPath), ".lnk", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(Path.GetExtension(entry.ShortcutPath), ".exe", StringComparison.OrdinalIgnoreCase))
+            && File.Exists(entry.ShortcutPath);
+    }
+
+    public static ProcessStartInfo BuildFileLocationLaunchInfo(AppEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        if (!CanOpenFileLocation(entry))
+            throw new NotSupportedException("This Start menu entry does not have an available file location.");
+
+        var startInfo = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+        startInfo.ArgumentList.Add($"/select,\"{entry.ShortcutPath}\"");
+        return startInfo;
+    }
+
+    public static void OpenFileLocation(AppEntry entry) => Process.Start(BuildFileLocationLaunchInfo(entry));
 
     public static ProcessStartInfo BuildLaunchInfo(AppEntry entry, bool runAsAdministrator = false)
     {
