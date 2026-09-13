@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using Microsoft.VisualBasic.FileIO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -20,6 +21,7 @@ public partial class ExplorerWindow : Window
     private bool _syncingTabs;
     private bool _updatingSortControls;
     private bool _updatingViewModeControl;
+    private bool _updatingDriveGroupingControl;
     private TabItem? _tabDragCandidate;
     private Point _tabDragStart;
     private ExplorerEntry? _entryDragCandidate;
@@ -451,6 +453,10 @@ public partial class ExplorerWindow : Window
         _entries = entries;
         ApplySort();
         EntriesList.SelectedItem = null;
+        _updatingDriveGroupingControl = true;
+        GroupDrivesToggle.IsChecked = ActiveTab.GroupDrives;
+        GroupDrivesToggle.IsEnabled = _location.IsDriveList;
+        _updatingDriveGroupingControl = false;
         UpdateSelectionCommands();
         NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome;
         SearchBox.IsEnabled = SearchButton.IsEnabled = !_location.IsDriveList && !_location.IsHome;
@@ -475,10 +481,37 @@ public partial class ExplorerWindow : Window
     }
 
     private static IReadOnlyList<ExplorerEntry> ReadDrives() => DriveInfo.GetDrives()
-        .Where(drive => drive.IsReady)
-        .Select(drive => new ExplorerEntry(drive.Name, drive.RootDirectory.FullName, true, true, null, drive.RootDirectory.LastWriteTime))
-        .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
+        .Select(ReadDrive)
+        .Where(entry => entry is not null)
+        .Select(entry => entry!)
+        .OrderBy(entry => entry.DriveGroupOrder)
+        .ThenBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase)
         .ToList();
+
+    private static ExplorerEntry? ReadDrive(DriveInfo drive)
+    {
+        try
+        {
+            if (!drive.IsReady) return null;
+            var (order, group) = ExplorerDriveCatalog.GetGroup(drive.DriveType);
+            var root = drive.RootDirectory.FullName;
+            var label = drive.VolumeLabel;
+            var displayName = string.IsNullOrWhiteSpace(label)
+                ? drive.Name
+                : $"{label} ({drive.Name.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)})";
+            return new ExplorerEntry(displayName, root, true, true, null, drive.RootDirectory.LastWriteTime)
+            {
+                DriveType = drive.DriveType,
+                DriveGroupOrder = order,
+                DriveGroup = group
+            };
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            Trace.TraceWarning("Could not inspect drive {0}: {1}", drive.Name, ex.Message);
+            return null;
+        }
+    }
 
     private IReadOnlyList<ExplorerEntry> ReadDirectory(string path)
     {
@@ -967,10 +1000,25 @@ public partial class ExplorerWindow : Window
 
     private void ApplySort()
     {
+        if (_location.IsDriveList && ActiveTab.GroupDrives)
+        {
+            var groupedView = new ListCollectionView(ExplorerDriveCatalog.Sort(_entries, _sortColumn, _sortAscending).ToList());
+            groupedView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ExplorerEntry.DriveGroup)));
+            EntriesList.ItemsSource = groupedView;
+            return;
+        }
+
         var entries = _location.IsHome && !_sortExplicitly
             ? _entries.OrderByDescending(entry => entry.RecentAccessed ?? entry.Modified).ToList()
             : ExplorerSortPolicy.Sort(_entries, _sortColumn, _sortAscending);
         EntriesList.ItemsSource = entries;
+    }
+
+    private void GroupDrivesToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (_updatingDriveGroupingControl) return;
+        ActiveTab.GroupDrives = GroupDrivesToggle.IsChecked == true;
+        ApplySort();
     }
 
     private void DetailsPaneToggle_Click(object sender, RoutedEventArgs e)

@@ -624,11 +624,26 @@ try
     Check("b-folder,z-folder,a.txt,b.log", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.Type, ascending: false).Select(entry => entry.Name)), "sort by type with folders grouped first");
     Check("b-folder,z-folder,a.txt,b.log", string.Join(',', ExplorerSortPolicy.Sort(explorerSortEntries, ExplorerSortColumn.Size, ascending: false).Select(entry => entry.Name)), "sort files by numeric size instead of formatted size text");
 
+    var driveEntries = new[]
+    {
+        new ExplorerEntry("Zeta (Z:)", @"Z:\", true, true, null, DateTime.MinValue) { DriveType = DriveType.Fixed, DriveGroupOrder = 0, DriveGroup = "Hard disk drives" },
+        new ExplorerEntry("Alpha (C:)", @"C:\", true, true, null, DateTime.MinValue) { DriveType = DriveType.Fixed, DriveGroupOrder = 0, DriveGroup = "Hard disk drives" },
+        new ExplorerEntry("USB (E:)", @"E:\", true, true, null, DateTime.MinValue) { DriveType = DriveType.Removable, DriveGroupOrder = 1, DriveGroup = "Devices with removable storage" },
+        new ExplorerEntry("Share (N:)", @"N:\", true, true, null, DateTime.MinValue) { DriveType = DriveType.Network, DriveGroupOrder = 3, DriveGroup = "Network locations" }
+    };
+    Check("Hard disk drives", ExplorerDriveCatalog.GetGroup(DriveType.Fixed).Name, "group fixed drives as hard disks");
+    Check("Devices with removable storage", ExplorerDriveCatalog.GetGroup(DriveType.Removable).Name, "group removable drives separately");
+    Check("CD drive", ExplorerDriveCatalog.GetTypeName(DriveType.CDRom), "label optical drive types");
+    Check("Alpha (C:),Zeta (Z:),USB (E:),Share (N:)", string.Join(',', ExplorerDriveCatalog.Sort(driveEntries, ExplorerSortColumn.Name, ascending: true).Select(entry => entry.Name)), "sort drives within stable drive-type groups");
+
     var firstExplorerTab = new ExplorerTabState(new ExplorerLocation(explorerTestDirectory));
+    Check(true, firstExplorerTab.GroupDrives, "enable This PC drive grouping by default per Explorer tab");
+    firstExplorerTab.GroupDrives = false;
     firstExplorerTab.ViewMode = ExplorerViewMode.LargeIcons;
     firstExplorerTab.PushHistory(new ExplorerLocation(explorerTestDirectory, SearchQuery: "draft"));
     firstExplorerTab.Location = new ExplorerLocation(firstCreatedFolder);
     var secondExplorerTab = new ExplorerTabState(new ExplorerLocation(nestedExplorerFolder));
+    Check(true, secondExplorerTab.GroupDrives, "keep drive grouping preferences isolated per tab");
     Check(0, secondExplorerTab.Back.Count, "keep Explorer tab history isolated per tab");
     Check(ExplorerViewMode.Details, secondExplorerTab.ViewMode, "keep Explorer view layout state isolated per tab");
     Check("draft", firstExplorerTab.GoBack(new ExplorerLocation(firstCreatedFolder))!.SearchQuery, "navigate back to a tab's previous search query");

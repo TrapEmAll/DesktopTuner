@@ -9,10 +9,13 @@ public sealed record ExplorerEntry(string Name, string FullPath, bool IsDirector
     public bool IsHidden { get; init; }
     public bool IsSystem { get; init; }
     public bool IsCut { get; init; }
+    public DriveType? DriveType { get; init; }
+    public int DriveGroupOrder { get; init; }
+    public string? DriveGroup { get; init; }
     public DateTime? RecentAccessed { get; init; }
     public string DisplayName { get; init; } = Name;
     public ImageSource? Icon => TaskbarIconService.LoadIcon(FullPath);
-    public string Type => IsDrive ? "Local drive" : IsDirectory ? "File folder" : Path.GetExtension(FullPath) is { Length: > 1 } extension ? $"{extension[1..].ToUpperInvariant()} file" : "File";
+    public string Type => IsDrive ? ExplorerDriveCatalog.GetTypeName(DriveType ?? System.IO.DriveType.Unknown) : IsDirectory ? "File folder" : Path.GetExtension(FullPath) is { Length: > 1 } extension ? $"{extension[1..].ToUpperInvariant()} file" : "File";
     public string SizeText => Length is long length ? FormatSize(length) : "";
     public string ModifiedText => Modified == DateTime.MinValue ? "" : Modified.ToString("g");
     public string GetDisplayName(bool hideFileExtension) => hideFileExtension && !IsDirectory ? Path.GetFileNameWithoutExtension(Name) : Name;

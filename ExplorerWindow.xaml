@@ -135,6 +135,7 @@
                             <ComboBoxItem Content="Size" Tag="Size" />
                         </ComboBox>
                         <Button x:Name="SortDirectionButton" Content="Ascending ↑" Margin="6,0,14,0" Padding="12,6" Click="SortDirectionButton_Click" />
+                        <CheckBox x:Name="GroupDrivesToggle" Content="Group drives by type" VerticalAlignment="Center" Margin="0,0,14,0" Click="GroupDrivesToggle_Click" />
                         <ToggleButton x:Name="DetailsPaneToggle" Content="Details pane" IsChecked="True" Padding="12,6" Click="DetailsPaneToggle_Click" />
                     </StackPanel>
                 </TabItem>
@@ -172,6 +173,15 @@
                         <TextBlock x:Name="LocationSubtitle" Foreground="{DynamicResource DesktopMutedTextBrush}" FontSize="12" Margin="0,3,0,0" />
                     </StackPanel>
                     <ListView x:Name="EntriesList" SelectionMode="Extended" SelectionChanged="EntriesList_SelectionChanged" MouseDoubleClick="EntriesList_MouseDoubleClick" PreviewKeyDown="EntriesList_PreviewKeyDown" PreviewMouseLeftButtonDown="EntriesList_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="EntriesList_PreviewMouseLeftButtonUp" PreviewMouseMove="EntriesList_PreviewMouseMove" PreviewMouseRightButtonDown="EntriesList_PreviewMouseRightButtonDown" DragOver="EntriesList_DragOver" Drop="EntriesList_Drop" AllowDrop="True" BorderThickness="0" Background="Transparent">
+                        <ListView.GroupStyle>
+                            <GroupStyle>
+                                <GroupStyle.HeaderTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource DesktopMutedTextBrush}" Margin="4,14,0,6" />
+                                    </DataTemplate>
+                                </GroupStyle.HeaderTemplate>
+                            </GroupStyle>
+                        </ListView.GroupStyle>
                         <ListView.ContextMenu>
                             <ContextMenu Opened="EntriesContextMenu_Opened">
                                 <MenuItem Header="Open" Click="OpenSelected_Click" />

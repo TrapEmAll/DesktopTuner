@@ -11,6 +11,7 @@ public sealed class ExplorerTabState(ExplorerLocation location)
     public CancellationTokenSource? SearchCancellation { get; set; }
     public bool IsSearchView { get; set; }
     public ExplorerViewMode ViewMode { get; set; } = ExplorerViewMode.Details;
+    public bool GroupDrives { get; set; } = true;
 
     public void PushHistory(ExplorerLocation current)
     {
