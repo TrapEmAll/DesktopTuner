@@ -198,9 +198,10 @@ public partial class TaskbarWindow : Window
     private void RefreshWindows()
     {
         var windows = _windows.Enumerate();
-        PinnedItems.ItemsSource = _preferences.PinnedApps!.Select(app => TaskbarButtonViewModel.FromPin(app, _preferences)).ToList();
+        var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
+        PinnedItems.ItemsSource = _preferences.PinnedApps!.Select(app => TaskbarButtonViewModel.FromPin(app, _preferences, vertical)).ToList();
         WindowItems.ItemsSource = TaskbarWindowGrouping.Create(windows, _preferences.TaskbarGrouping, GetWindowButtonCapacity())
-            .Select(group => TaskbarButtonViewModel.FromWindowGroup(group, _preferences)).ToList();
+            .Select(group => TaskbarButtonViewModel.FromWindowGroup(group, _preferences, vertical)).ToList();
         EmptyText.Visibility = windows.Count == 0 && _preferences.PinnedApps!.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
         UpdateClock();
@@ -227,7 +228,10 @@ public partial class TaskbarWindow : Window
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         var availableLength = vertical ? bounds.Height / Display.ScaleY : bounds.Width / Display.ScaleX;
         var iconPixels = TaskbarIconSizePolicy.GetPixels(_preferences.TaskbarIconSize);
-        var buttonSpan = vertical ? Math.Max(44, iconPixels + 18) : _preferences.TaskbarShowLabels ? 140 : iconPixels + 24;
+        var gap = TaskbarButtonSpacingPolicy.GetGap(_preferences.TaskbarButtonSpacing);
+        var buttonSpan = vertical
+            ? Math.Max(44, iconPixels + 18) + gap * 2
+            : (_preferences.TaskbarShowLabels ? 140 : iconPixels + 24) + (gap - 2) * 2;
         var reservedLength = vertical ? 170 + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan : 250 + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
         return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / buttonSpan));
     }

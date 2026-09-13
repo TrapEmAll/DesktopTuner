@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     private TaskbarGroupingMode _taskbarGrouping = TaskbarGroupingMode.Always;
     private TaskbarButtonAlignment _taskbarButtonAlignment = TaskbarButtonAlignment.Center;
     private TaskbarIconSize _taskbarIconSize = TaskbarIconSize.Standard;
+    private TaskbarButtonSpacing _taskbarButtonSpacing = TaskbarButtonSpacing.Standard;
     private bool _taskbarShowLabels = true;
     private bool _taskbarAutoHide;
     private List<PinnedTaskbarApp> _pinnedApps = [];
@@ -56,6 +57,7 @@ public partial class MainWindow : Window
         _taskbarSize = desktopPreferences.TaskbarSize;
         _taskbarLayout = desktopPreferences.TaskbarLayout;
         _taskbarIconSize = desktopPreferences.TaskbarIconSize;
+        _taskbarButtonSpacing = desktopPreferences.TaskbarButtonSpacing;
         _taskbarShowLabels = desktopPreferences.TaskbarShowLabels;
         _taskbarAutoHide = desktopPreferences.AutoHide;
         _pinnedApps = desktopPreferences.PinnedApps ?? [];
@@ -222,6 +224,22 @@ public partial class MainWindow : Window
             iconSizeRow.Children.Add(iconSizeSelector);
             PageContent.Children.Add(iconSizeRow);
 
+            var spacingRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            spacingRow.Children.Add(new TextBlock { Text = "Button spacing", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+            var spacingSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
+            spacingSelector.Items.Add(new ComboBoxItem { Content = "Compact", Tag = TaskbarButtonSpacing.Compact });
+            spacingSelector.Items.Add(new ComboBoxItem { Content = "Standard", Tag = TaskbarButtonSpacing.Standard });
+            spacingSelector.Items.Add(new ComboBoxItem { Content = "Relaxed", Tag = TaskbarButtonSpacing.Relaxed });
+            spacingSelector.SelectedIndex = (int)_taskbarButtonSpacing;
+            spacingSelector.SelectionChanged += (_, _) =>
+            {
+                if (spacingSelector.SelectedItem is not ComboBoxItem { Tag: TaskbarButtonSpacing spacing }) return;
+                _taskbarButtonSpacing = spacing;
+                SaveDesktopPreferences();
+            };
+            spacingRow.Children.Add(spacingSelector);
+            PageContent.Children.Add(spacingRow);
+
             var showLabels = new CheckBox { Content = "Show app names on taskbar buttons", IsChecked = _taskbarShowLabels, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
             showLabels.Checked += (_, _) => { _taskbarShowLabels = true; SaveDesktopPreferences(); };
             showLabels.Unchecked += (_, _) => { _taskbarShowLabels = false; SaveDesktopPreferences(); };
@@ -254,7 +272,7 @@ public partial class MainWindow : Window
             var launchButton = new Button { Content = "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowTaskbar();
             PageContent.Children.Add(launchButton);
-            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, size, full-edge, floating, or segmented style, and optional auto-hide behavior. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and shows the clock. It covers the Windows taskbar visually while running; closing it reveals the native taskbar again. Native notification-area integration remains parity work.");
+            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, bar size and style, app button labels, icon size, spacing, and optional auto-hide. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and shows the clock. It covers the Windows taskbar visually while running; closing it reveals the native taskbar again. Native notification-area integration remains parity work.");
             PageContent.Children.Add(overlayInfo);
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);
@@ -591,7 +609,7 @@ public partial class MainWindow : Window
         finally { _closingTaskbars = false; }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing);
 
     private void UpdateTaskbarPreferences()
     {
@@ -626,6 +644,7 @@ public partial class MainWindow : Window
             _taskbarButtonAlignment = preferences.TaskbarButtonAlignment;
             _taskbarShowLabels = preferences.TaskbarShowLabels;
             _taskbarIconSize = preferences.TaskbarIconSize;
+            _taskbarButtonSpacing = preferences.TaskbarButtonSpacing;
             if (displayModeChanged && _taskbarWindows.Any(window => window.IsVisible))
             {
                 CloseTaskbars();
