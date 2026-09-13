@@ -486,7 +486,8 @@ public partial class ExplorerWindow : Window
         var selection = EntriesList.SelectedItems.OfType<ExplorerEntry>().ToList();
         var canTransferSelection = selection.Count > 0 && selection.All(entry => !entry.IsDrive);
         CopyButton.IsEnabled = CutButton.IsEnabled = canTransferSelection;
-        RenameButton.IsEnabled = DeleteButton.IsEnabled = selection.Count == 1 && !selection[0].IsDrive;
+        RenameButton.IsEnabled = selection.Count == 1 && !selection[0].IsDrive;
+        DeleteButton.IsEnabled = selection.Count > 0 && selection.All(entry => !entry.IsDrive);
         PasteButton.IsEnabled = !ActiveTab.Location.IsDriveList && ClipboardHasFileDrop();
     }
 
@@ -643,7 +644,7 @@ public partial class ExplorerWindow : Window
             RenameSelected();
             e.Handled = true;
         }
-        else if (e.Key == Key.Delete && EntriesList.SelectedItems.Count == 1 && EntriesList.SelectedItem is ExplorerEntry { IsDrive: false })
+        else if (e.Key == Key.Delete && EntriesList.SelectedItems.Count > 0 && EntriesList.SelectedItems.OfType<ExplorerEntry>().All(entry => !entry.IsDrive))
         {
             DeleteSelected();
             e.Handled = true;
@@ -674,7 +675,8 @@ public partial class ExplorerWindow : Window
         CopyMenuItem.IsEnabled = CutMenuItem.IsEnabled = hasTransferableSelection;
         PasteMenuItem.IsEnabled = !_location.IsDriveList && ClipboardHasFileDrop();
         OpenInNewTabMenuItem.IsEnabled = hasSingleSelection && selection[0].IsDirectory;
-        RenameMenuItem.IsEnabled = DeleteMenuItem.IsEnabled = hasSingleSelection && !selection[0].IsDrive;
+        RenameMenuItem.IsEnabled = hasSingleSelection && !selection[0].IsDrive;
+        DeleteMenuItem.IsEnabled = hasTransferableSelection;
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open")) is { } openItem)
             openItem.IsEnabled = hasSingleSelection;
         NewFolderButton.IsEnabled = !_location.IsDriveList && !_isSearchView;
@@ -729,20 +731,40 @@ public partial class ExplorerWindow : Window
 
     private void DeleteSelected()
     {
-        if (EntriesList.SelectedItem is not ExplorerEntry { IsDrive: false } entry) return;
-        var result = MessageBox.Show(this, $"Send ‘{entry.Name}’ to the Recycle Bin?", "Delete item", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+        var entries = EntriesList.SelectedItems.OfType<ExplorerEntry>()
+            .Where(entry => !entry.IsDrive)
+            .DistinctBy(entry => entry.FullPath, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(entry => entry.FullPath.Length)
+            .ToList();
+        if (entries.Count == 0) return;
+        var description = entries.Count == 1
+            ? $"Send ‘{entries[0].Name}’ to the Recycle Bin?"
+            : $"Send {entries.Count:N0} selected items to the Recycle Bin?";
+        var result = MessageBox.Show(this, description, entries.Count == 1 ? "Delete item" : "Delete items", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
         if (result != MessageBoxResult.Yes) return;
-        try
+
+        var deleted = 0;
+        var failures = new List<string>();
+        foreach (var entry in entries)
         {
-            if (entry.IsDirectory) FileSystem.DeleteDirectory(entry.FullPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
-            else FileSystem.DeleteFile(entry.FullPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
-            RefreshCurrentView();
-            SetStatus($"Sent {entry.Name} to the Recycle Bin.");
+            try
+            {
+                if (entry.IsDirectory) FileSystem.DeleteDirectory(entry.FullPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+                else FileSystem.DeleteFile(entry.FullPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+                deleted++;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+            {
+                failures.Add($"{entry.Name}: {ex.Message}");
+            }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
-        {
-            ShowFileOperationError("Could not delete item", ex);
-        }
+
+        RefreshCurrentView();
+        SetStatus(failures.Count == 0
+            ? $"Sent {deleted:N0} item{(deleted == 1 ? "" : "s")} to the Recycle Bin."
+            : $"Sent {deleted:N0} item{(deleted == 1 ? "" : "s")} to the Recycle Bin; {failures.Count:N0} failed.");
+        if (failures.Count > 0)
+            MessageBox.Show(this, string.Join(Environment.NewLine, failures), "Some items could not be deleted", MessageBoxButton.OK, MessageBoxImage.Error);
     }
 
     private string? PromptForName(string title, string prompt, string initialValue)
