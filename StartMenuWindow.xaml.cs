@@ -10,13 +10,17 @@ namespace DesktopTuner;
 public partial class StartMenuWindow : Window
 {
     private readonly AppCatalogService _catalog = new();
+    private readonly Func<IReadOnlyList<AppEntry>, bool>? _savePinnedApps;
     private IReadOnlyList<AppEntry> _apps = [];
+    private IReadOnlyList<AppEntry> _pinnedApps = [];
     private StartMenuStyle _style = StartMenuStyle.Modern;
 
-    public StartMenuWindow(StartMenuStyle style)
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null)
     {
         InitializeComponent();
         _apps = _catalog.FindStartMenuApps();
+        _pinnedApps = StartPinCatalog.Normalize(pinnedApps);
+        _savePinnedApps = savePinnedApps;
         SetStyle(style);
     }
 
@@ -186,6 +190,8 @@ public partial class StartMenuWindow : Window
         AppList.Visibility = showFolders ? Visibility.Collapsed : Visibility.Visible;
         AppList.ItemsSource = showFolders ? null : results;
         AppList.SelectedIndex = showFolders || results.Count == 0 ? -1 : 0;
+        PinnedStartItems.ItemsSource = _pinnedApps;
+        PinnedStartPanel.Visibility = query.Length == 0 && _pinnedApps.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         ResultsHeading.Text = query.Length > 0 ? "Search results" : showFolders ? "Programs" : "All apps";
         SearchActionPanel.Visibility = query.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         ResultCount.Text = results.Count.ToString();
@@ -230,6 +236,11 @@ public partial class StartMenuWindow : Window
             ? (AppTree.SelectedItem as StartMenuNode)?.Application
             : AppList.SelectedItem as AppEntry;
         if (entry is null) return;
+        LaunchEntry(entry);
+    }
+
+    private void LaunchEntry(AppEntry entry)
+    {
         try
         {
             AppCatalogService.Launch(entry);
@@ -239,6 +250,37 @@ public partial class StartMenuWindow : Window
         {
             MessageBox.Show(this, $"Windows could not open {entry.Name}.\n\n{ex.Message}", "Could not launch app", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void PinStartApp_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AppEntry app }) return;
+        var updated = StartPinCatalog.Pin(_pinnedApps, app);
+        if (updated.Count == _pinnedApps.Count)
+        {
+            if (!_pinnedApps.Any(pin => string.Equals(pin.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase)))
+                MessageBox.Show(this, $"You can pin up to {StartPinCatalog.MaximumPins} apps to Start.", "Start is full", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        SavePinnedApps(updated);
+    }
+
+    private void PinnedStartApp_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: AppEntry app }) LaunchEntry(app);
+    }
+
+    private void UnpinStartApp_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AppEntry app }) return;
+        SavePinnedApps(StartPinCatalog.Unpin(_pinnedApps, app.ShortcutPath));
+    }
+
+    private void SavePinnedApps(IReadOnlyList<AppEntry> apps)
+    {
+        if (_savePinnedApps?.Invoke(apps) == false) return;
+        _pinnedApps = StartPinCatalog.Normalize(apps);
+        RefreshApps();
     }
 
     private void QuickLink_Click(object sender, RoutedEventArgs e)

@@ -49,6 +49,7 @@ public partial class MainWindow : Window
     private bool _taskbarAutoHideWhenMaximized;
     private int _taskbarTransparency = 5;
     private List<PinnedTaskbarApp> _pinnedApps = [];
+    private List<AppEntry> _pinnedStartApps = [];
     private bool _replaceWindowsKey;
     private StartMenuStyle _startMenuStyle = StartMenuStyle.Modern;
     private bool _taskbarOnAllDisplays = true;
@@ -75,6 +76,7 @@ public partial class MainWindow : Window
         _taskbarAutoHideWhenMaximized = desktopPreferences.AutoHideWhenMaximized;
         _taskbarTransparency = desktopPreferences.TaskbarTransparency;
         _pinnedApps = desktopPreferences.PinnedApps ?? [];
+        _pinnedStartApps = StartPinCatalog.Normalize(desktopPreferences.PinnedStartApps).ToList();
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
         _startMenuStyle = desktopPreferences.StartMenuStyle;
         _taskbarOnAllDisplays = desktopPreferences.TaskbarOnAllDisplays;
@@ -616,7 +618,7 @@ public partial class MainWindow : Window
             _startMenuWindow.Close();
             return;
         }
-        _startMenuWindow = new StartMenuWindow(_startMenuStyle);
+        _startMenuWindow = new StartMenuWindow(_startMenuStyle, _pinnedStartApps, SavePinnedStartApps);
         _startMenuDisplay = display;
         _startMenuWindow.Closed += (_, _) => { _startMenuWindow = null; _startMenuDisplay = null; };
         if (display is not null)
@@ -709,7 +711,24 @@ public partial class MainWindow : Window
         finally { _closingTaskbars = false; }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList());
+
+    private bool SavePinnedStartApps(IReadOnlyList<AppEntry> apps)
+    {
+        var pins = StartPinCatalog.Normalize(apps).ToList();
+        try
+        {
+            _preferences.Save(CreateDesktopPreferences() with { PinnedStartApps = pins });
+            _pinnedStartApps = pins;
+            SetStatus("Start pins saved.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not save Start pins", MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+        }
+    }
 
     private void UpdateTaskbarPreferences()
     {
@@ -738,6 +757,7 @@ public partial class MainWindow : Window
             _taskbarAutoHideWhenMaximized = preferences.AutoHideWhenMaximized;
             _taskbarTransparency = preferences.TaskbarTransparency;
             _pinnedApps = preferences.PinnedApps ?? [];
+            _pinnedStartApps = StartPinCatalog.Normalize(preferences.PinnedStartApps).ToList();
             _replaceWindowsKey = preferences.ReplaceWindowsKey;
             _startMenuStyle = preferences.StartMenuStyle;
             _taskbarOnAllDisplays = preferences.TaskbarOnAllDisplays;

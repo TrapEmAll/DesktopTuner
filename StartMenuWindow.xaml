@@ -38,7 +38,7 @@
             </StackPanel>
             <TextBox x:Name="SearchBox" Grid.Row="1" Height="46" FontSize="14" Padding="14,9" BorderBrush="{DynamicResource DesktopInputBorderBrush}" Background="{DynamicResource DesktopSurfaceBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}" VerticalContentAlignment="Center" TextChanged="SearchBox_TextChanged" ToolTip="Search installed Start menu apps" />
             <Grid x:Name="AppPanel" Grid.Row="2" Margin="0,16,0,10">
-                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <DockPanel Grid.Row="0" Margin="2,0,2,9">
                     <TextBlock x:Name="ResultsHeading" Text="All apps" FontWeight="SemiBold" FontSize="13" />
                     <StackPanel x:Name="SearchActionPanel" DockPanel.Dock="Right" Orientation="Horizontal" Visibility="Collapsed">
@@ -47,7 +47,34 @@
                         <Button Content="Web" Click="WebSearch_Click" Padding="7,4" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" FontSize="10" ToolTip="Search the web in your default browser" />
                     </StackPanel>
                 </DockPanel>
-                <ListBox x:Name="AppList" Grid.Row="1" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppList_MouseDoubleClick">
+                <StackPanel x:Name="PinnedStartPanel" Grid.Row="1" Visibility="Collapsed" Margin="0,0,0,8">
+                    <TextBlock Text="Pinned" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DesktopMutedTextBrush}" Margin="4,0,0,3" />
+                    <ScrollViewer Height="82" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="PinnedStartItems">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Width="76" Height="76" Margin="2,0,3,0" Padding="3" Tag="{Binding}" Click="PinnedStartApp_Click" ToolTip="{Binding Name}">
+                                        <Button.ContextMenu>
+                                            <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem Header="Unpin from Start" Tag="{Binding}" Click="UnpinStartApp_Click" />
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource DesktopAccentTintBrush}" HorizontalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" MaxWidth="27" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource DesktopAccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <TextBlock Text="{Binding Name}" FontSize="9" TextWrapping="Wrap" TextAlignment="Center" MaxHeight="28" Margin="0,3,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+                <ListBox x:Name="AppList" Grid.Row="2" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppList_MouseDoubleClick">
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
                             <Setter Property="Padding" Value="11,10" />
@@ -71,6 +98,11 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Grid>
+                                <Grid.ContextMenu>
+                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                        <MenuItem Header="Pin to Start" Tag="{Binding}" Click="PinStartApp_Click" />
+                                    </ContextMenu>
+                                </Grid.ContextMenu>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                 <Border Width="28" Height="28" CornerRadius="8" Background="{DynamicResource DesktopAccentTintBrush}" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Name}" MaxWidth="25" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource DesktopAccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -83,7 +115,7 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
-                <TreeView x:Name="AppTree" Grid.Row="1" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppTree_MouseDoubleClick">
+                <TreeView x:Name="AppTree" Grid.Row="2" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseDoubleClick="AppTree_MouseDoubleClick">
                     <TreeView.Resources>
                         <HierarchicalDataTemplate DataType="{x:Type local:StartMenuNode}" ItemsSource="{Binding Children}">
                             <TextBlock Text="{Binding Name}" FontSize="13" Padding="5,4" />
@@ -97,7 +129,7 @@
                         </Style>
                     </TreeView.ItemContainerStyle>
                 </TreeView>
-                <TextBlock x:Name="EmptyMessage" Grid.Row="1" Text="No matching apps. Try a different search." Foreground="{DynamicResource DesktopMutedTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" />
+                <TextBlock x:Name="EmptyMessage" Grid.Row="2" Text="No matching apps. Try a different search." Foreground="{DynamicResource DesktopMutedTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" />
             </Grid>
             <Border x:Name="QuickLinksBorder" Grid.Row="3" BorderBrush="{DynamicResource DesktopDividerBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
                 <StackPanel x:Name="QuickLinksStack" Orientation="Horizontal">
