@@ -642,6 +642,11 @@ try
     Check("Hard disk drives", ExplorerDriveCatalog.GetGroup(DriveType.Fixed).Name, "group fixed drives as hard disks");
     Check("Devices with removable storage", ExplorerDriveCatalog.GetGroup(DriveType.Removable).Name, "group removable drives separately");
     Check("CD drive", ExplorerDriveCatalog.GetTypeName(DriveType.CDRom), "label optical drive types");
+    Check(75d, ExplorerDriveCatalog.GetUsagePercent(100, 25), "calculate used drive space as a percentage");
+    Check(0d, ExplorerDriveCatalog.GetUsagePercent(0, 0), "avoid dividing by zero for unavailable drive capacity");
+    Check("25 B free of 100 B", ExplorerDriveCatalog.GetSpaceSummary(100, 25), "summarize available and total drive capacity");
+    Check("100 B free of 100 B", ExplorerDriveCatalog.GetSpaceSummary(100, 200), "clamp reported free space to the drive capacity");
+    Check("0 B free of 100 B", ExplorerDriveCatalog.GetSpaceSummary(100, -1), "clamp invalid negative free space to zero");
     Check("Alpha (C:),Zeta (Z:),USB (E:),Share (N:)", string.Join(',', ExplorerDriveCatalog.Sort(driveEntries, ExplorerSortColumn.Name, ascending: true).Select(entry => entry.Name)), "sort drives within stable drive-type groups");
 
     var firstExplorerTab = new ExplorerTabState(new ExplorerLocation(explorerTestDirectory));

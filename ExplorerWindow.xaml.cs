@@ -496,14 +496,32 @@ public partial class ExplorerWindow : Window
             var (order, group) = ExplorerDriveCatalog.GetGroup(drive.DriveType);
             var root = drive.RootDirectory.FullName;
             var label = drive.VolumeLabel;
+            long? capacityBytes = null;
+            long? freeBytes = null;
+            try
+            {
+                var capacity = drive.TotalSize;
+                if (capacity > 0)
+                {
+                    capacityBytes = capacity;
+                    freeBytes = Math.Clamp(drive.AvailableFreeSpace, 0, capacity);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or NotSupportedException)
+            {
+                Trace.TraceWarning("Could not read capacity for drive {0}: {1}", drive.Name, ex.Message);
+            }
+
             var displayName = string.IsNullOrWhiteSpace(label)
                 ? drive.Name
                 : $"{label} ({drive.Name.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)})";
-            return new ExplorerEntry(displayName, root, true, true, null, drive.RootDirectory.LastWriteTime)
+            return new ExplorerEntry(displayName, root, true, true, capacityBytes, drive.RootDirectory.LastWriteTime)
             {
                 DriveType = drive.DriveType,
                 DriveGroupOrder = order,
-                DriveGroup = group
+                DriveGroup = group,
+                DriveCapacityBytes = capacityBytes,
+                DriveFreeBytes = freeBytes
             };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)

@@ -24,6 +24,20 @@ public static class ExplorerDriveCatalog
         _ => "Drive"
     };
 
+    public static double GetUsagePercent(long? capacityBytes, long? freeBytes)
+    {
+        if (capacityBytes is not > 0 || freeBytes is null) return 0;
+        var free = Math.Clamp(freeBytes.Value, 0, capacityBytes.Value);
+        return (capacityBytes.Value - free) * 100d / capacityBytes.Value;
+    }
+
+    public static string GetSpaceSummary(long? capacityBytes, long? freeBytes)
+    {
+        if (capacityBytes is not > 0 || freeBytes is null) return string.Empty;
+        var free = Math.Clamp(freeBytes.Value, 0, capacityBytes.Value);
+        return $"{ExplorerEntry.FormatSize(free)} free of {ExplorerEntry.FormatSize(capacityBytes.Value)}";
+    }
+
     public static IReadOnlyList<ExplorerEntry> Sort(
         IEnumerable<ExplorerEntry> entries,
         ExplorerSortColumn column,
