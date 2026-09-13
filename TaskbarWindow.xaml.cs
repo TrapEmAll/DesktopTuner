@@ -279,6 +279,7 @@ public partial class TaskbarWindow : Window
             _isDark = isDark;
             TaskbarTheme.Apply(_isDark);
             ApplyLayout();
+            UpdateClock();
         }));
     }
 
@@ -348,8 +349,8 @@ public partial class TaskbarWindow : Window
     private void UpdateClock()
     {
         var now = DateTime.Now;
-        ClockText.Text = now.ToString("h:mm tt");
-        DateText.Text = now.ToString("ddd, MMM d");
+        ClockText.Text = TaskbarClockPolicy.FormatTime(now);
+        DateText.Text = TaskbarClockPolicy.FormatDate(now);
     }
 
     private void UpdateBatteryStatus()

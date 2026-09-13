@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Globalization;
 
 var count = 0;
 var navigationTestRoot = Path.Combine(Path.GetTempPath(), $"desktop-tuner-navigation-{Guid.NewGuid():N}");
@@ -254,6 +255,13 @@ Check(16, TaskbarIconSizePolicy.GetPixels(TaskbarIconSize.Small), "use small tas
 Check(20, TaskbarIconSizePolicy.GetPixels(TaskbarIconSize.Standard), "use standard taskbar app icons");
 Check(24, TaskbarIconSizePolicy.GetPixels(TaskbarIconSize.Large), "use large taskbar app icons");
 Throws<ArgumentOutOfRangeException>(() => TaskbarIconSizePolicy.GetPixels((TaskbarIconSize)99), "reject unknown taskbar icon sizes");
+var clockSample = new DateTime(2026, 9, 13, 17, 5, 0);
+var usCulture = CultureInfo.GetCultureInfo("en-US");
+var ukCulture = CultureInfo.GetCultureInfo("en-GB");
+Check("5:05 PM", TaskbarClockPolicy.FormatTime(clockSample, usCulture), "format the taskbar clock using a 12-hour locale");
+Check("17:05", TaskbarClockPolicy.FormatTime(clockSample, ukCulture), "format the taskbar clock using a 24-hour locale");
+Check("9/13/2026", TaskbarClockPolicy.FormatDate(clockSample, usCulture), "format the taskbar date using the US regional order");
+Check("13/09/2026", TaskbarClockPolicy.FormatDate(clockSample, ukCulture), "format the taskbar date using the UK regional order");
 Check(new Thickness(1, 0, 1, 0), TaskbarButtonSpacingPolicy.GetButtonMargin(TaskbarButtonSpacing.Compact, false), "apply compact spacing on a horizontal taskbar");
 Check(new Thickness(0, 4, 0, 4), TaskbarButtonSpacingPolicy.GetButtonMargin(TaskbarButtonSpacing.Relaxed, true), "apply relaxed spacing on a vertical taskbar");
 Throws<ArgumentOutOfRangeException>(() => TaskbarButtonSpacingPolicy.GetGap((TaskbarButtonSpacing)99), "reject unknown taskbar spacing values");
