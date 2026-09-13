@@ -49,21 +49,39 @@ public partial class TaskbarPreviewWindow : Window
                 Foreground = Brushes.White,
                 FontSize = 12,
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                Margin = new Thickness(3, 8, 3, 1),
-                Width = 218
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(6, 0, 4, 0)
             };
-            var button = new Button
+            var previewButton = new Button
             {
                 Tag = window,
                 ToolTip = window.Title,
                 Background = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
                 Padding = new Thickness(0),
-                Margin = new Thickness(4, 2, 4, 2),
-                Content = new StackPanel { Children = { surface, title } }
+                Content = surface
             };
-            button.Click += PreviewButton_Click;
-            CardsPanel.Children.Add(button);
+            previewButton.Click += PreviewButton_Click;
+            var closeButton = new Button
+            {
+                Tag = window,
+                Content = "×",
+                ToolTip = "Close window",
+                Width = 28,
+                Height = 25,
+                Margin = new Thickness(4, 2, 4, 2),
+                Padding = new Thickness(0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            closeButton.Click += ClosePreviewWindow_Click;
+            var footer = new DockPanel { Height = 31, LastChildFill = true };
+            DockPanel.SetDock(closeButton, Dock.Right);
+            footer.Children.Add(closeButton);
+            footer.Children.Add(title);
+            var card = new StackPanel { Width = 236, Margin = new Thickness(4, 2, 4, 2) };
+            card.Children.Add(previewButton);
+            card.Children.Add(footer);
+            CardsPanel.Children.Add(card);
             _items.Add((window, surface));
         }
 
@@ -116,6 +134,13 @@ public partial class TaskbarPreviewWindow : Window
     {
         if (sender is Button { Tag: RunningWindow window }) RunningWindowService.Activate(window);
         Close();
+    }
+
+    private void ClosePreviewWindow_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: RunningWindow window }) RunningWindowService.Close(window);
+        Close();
+        e.Handled = true;
     }
 
     private void PlaceNearTarget(Button target, TaskbarEdge edge)
