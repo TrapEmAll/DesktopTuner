@@ -75,14 +75,12 @@ public partial class TaskbarWindow : Window
             LayoutGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             LayoutGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             LayoutGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            Grid.SetRow(StartButton, 0);
-            Grid.SetColumn(StartButton, 0);
-            Grid.SetRow(WindowScroller, 1);
-            Grid.SetColumn(WindowScroller, 0);
-            Grid.SetRow(EmptyText, 1);
-            Grid.SetColumn(EmptyText, 0);
-            Grid.SetRow(RightControls, 2);
-            Grid.SetColumn(RightControls, 0);
+            Grid.SetRow(StartSegment, 0);
+            Grid.SetColumn(StartSegment, 0);
+            Grid.SetRow(AppsSegment, 1);
+            Grid.SetColumn(AppsSegment, 0);
+            Grid.SetRow(SystemSegment, 2);
+            Grid.SetColumn(SystemSegment, 0);
             RightControls.Orientation = Orientation.Vertical;
             TaskButtonsStack.Orientation = Orientation.Vertical;
             PinnedItems.ItemsPanel = (ItemsPanelTemplate)FindResource("VerticalWindowPanel");
@@ -102,14 +100,12 @@ public partial class TaskbarWindow : Window
             LayoutGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             LayoutGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             LayoutGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            Grid.SetRow(StartButton, 0);
-            Grid.SetColumn(StartButton, 0);
-            Grid.SetRow(WindowScroller, 0);
-            Grid.SetColumn(WindowScroller, 1);
-            Grid.SetRow(EmptyText, 0);
-            Grid.SetColumn(EmptyText, 1);
-            Grid.SetRow(RightControls, 0);
-            Grid.SetColumn(RightControls, 2);
+            Grid.SetRow(StartSegment, 0);
+            Grid.SetColumn(StartSegment, 0);
+            Grid.SetRow(AppsSegment, 0);
+            Grid.SetColumn(AppsSegment, 1);
+            Grid.SetRow(SystemSegment, 0);
+            Grid.SetColumn(SystemSegment, 2);
             RightControls.Orientation = Orientation.Horizontal;
             TaskButtonsStack.Orientation = Orientation.Horizontal;
             PinnedItems.ItemsPanel = (ItemsPanelTemplate)FindResource("HorizontalWindowPanel");
@@ -130,6 +126,17 @@ public partial class TaskbarWindow : Window
             RootBorder.Background = Brush("#E6171D2A");
             RootBorder.BorderBrush = Brush("#66708D");
             RootBorder.BorderThickness = new Thickness(1);
+            ResetSegments();
+        }
+        else if (_preferences.TaskbarLayout == TaskbarStyle.Segmented)
+        {
+            RootBorder.CornerRadius = new CornerRadius(0);
+            RootBorder.Background = Brushes.Transparent;
+            RootBorder.BorderBrush = Brushes.Transparent;
+            RootBorder.BorderThickness = new Thickness(0);
+            StyleSegment(StartSegment, vertical);
+            StyleSegment(AppsSegment, vertical);
+            StyleSegment(SystemSegment, vertical);
         }
         else
         {
@@ -139,7 +146,31 @@ public partial class TaskbarWindow : Window
             RootBorder.BorderThickness = vertical
                 ? (_edge == TaskbarEdge.Left ? new Thickness(0, 0, 1, 0) : new Thickness(1, 0, 0, 0))
                 : (_edge == TaskbarEdge.Top ? new Thickness(0, 0, 0, 1) : new Thickness(0, 1, 0, 0));
+            ResetSegments();
         }
+    }
+
+    private void ResetSegments()
+    {
+        foreach (var segment in new[] { StartSegment, AppsSegment, SystemSegment })
+        {
+            segment.Background = Brushes.Transparent;
+            segment.BorderBrush = Brushes.Transparent;
+            segment.BorderThickness = new Thickness(0);
+            segment.CornerRadius = new CornerRadius(0);
+            segment.Margin = new Thickness(0);
+            segment.Padding = new Thickness(0);
+        }
+    }
+
+    private static void StyleSegment(Border segment, bool vertical)
+    {
+        segment.Background = Brush("#E6171D2A");
+        segment.BorderBrush = Brush("#46516A");
+        segment.BorderThickness = new Thickness(1);
+        segment.CornerRadius = new CornerRadius(11);
+        segment.Margin = vertical ? new Thickness(3, 3, 3, 0) : new Thickness(3, 0, 3, 0);
+        segment.Padding = new Thickness(3);
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)

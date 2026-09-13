@@ -203,6 +203,7 @@ public partial class MainWindow : Window
             var styleSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
             styleSelector.Items.Add(new ComboBoxItem { Content = "Full edge", Tag = TaskbarStyle.EdgeToEdge });
             styleSelector.Items.Add(new ComboBoxItem { Content = "Floating", Tag = TaskbarStyle.Floating });
+            styleSelector.Items.Add(new ComboBoxItem { Content = "Segmented", Tag = TaskbarStyle.Segmented });
             styleSelector.SelectedIndex = (int)_taskbarLayout;
             styleSelector.SelectionChanged += (_, _) =>
             {
@@ -224,7 +225,7 @@ public partial class MainWindow : Window
             var launchButton = new Button { Content = "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowTaskbar();
             PageContent.Children.Add(launchButton);
-            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, size, full-edge or floating style, and optional auto-hide behavior. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and shows the clock. It covers the Windows taskbar visually while running; closing it reveals the native taskbar again. System tray integration remains parity work.");
+            var overlayInfo = InfoCard("Live taskbar overlay", "Choose an edge, size, full-edge, floating, or segmented style, and optional auto-hide behavior. The overlay lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and shows the clock. It covers the Windows taskbar visually while running; closing it reveals the native taskbar again. Native notification-area integration remains parity work.");
             PageContent.Children.Add(overlayInfo);
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);

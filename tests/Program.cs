@@ -10,6 +10,8 @@ Check(new TaskbarBounds(1916, 0, 4, 1080), TaskbarLayoutCalculator.Calculate(192
 Check(new TaskbarBounds(0, 1076, 1920, 4), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom), true), "bottom, collapsed");
 Check(new TaskbarBounds(288, 1014, 1344, 54), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom, TaskbarSize.Standard, TaskbarLayout: TaskbarStyle.Floating), false), "center a floating bar with a bottom screen inset");
 Check(new TaskbarBounds(12, 162, 176, 756), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Left, TaskbarSize.Standard, TaskbarLayout: TaskbarStyle.Floating), false), "shorten and inset a floating vertical bar");
+Check(new TaskbarBounds(0, 1026, 1920, 54), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom, TaskbarSize.Standard, TaskbarLayout: TaskbarStyle.Segmented), false), "keep segmented taskbar regions across the selected screen edge");
+Check(new TaskbarBounds(0, 0, 176, 1080), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Left, TaskbarSize.Standard, TaskbarLayout: TaskbarStyle.Segmented), false), "retain full-height geometry for vertical segmented regions");
 var secondaryDisplay = new TaskbarDisplay("DISPLAY2", -1920, -200, 1920, 1080, false, 1.5, 1.5);
 var primaryDisplay = new TaskbarDisplay("DISPLAY1", 0, 0, 2560, 1440, true, 1.25, 1.25);
 var secondaryBar = TaskbarLayoutCalculator.Calculate(secondaryDisplay, new(TaskbarEdge.Bottom), false);
@@ -117,6 +119,8 @@ try
     Check(expectedPreferences.StartMenuStyle, loadedPreferences.StartMenuStyle, "persist Start menu style");
     Check(expectedPreferences.TaskbarOnAllDisplays, loadedPreferences.TaskbarOnAllDisplays, "persist taskbar display coverage");
     Check(expectedPreferences.TaskbarLayout, loadedPreferences.TaskbarLayout, "persist floating taskbar style");
+    preferencesStore.Save(expectedPreferences with { TaskbarLayout = TaskbarStyle.Segmented });
+    Check(TaskbarStyle.Segmented, preferencesStore.Load().TaskbarLayout, "persist segmented taskbar style");
     Check(true, loadedPreferences.PinnedApps!.Single().IsDirectory, "persist folder pin type");
 
     File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"PinnedApps":[{"Name":"Legacy app","ExecutablePath":"C:\\Apps\\Editor.exe"}]}""");

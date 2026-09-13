@@ -34,9 +34,13 @@
     <Border x:Name="RootBorder" Background="#F2171D2A" BorderBrush="#405064" BorderThickness="0,1,0,0" Padding="10,4">
         <Grid x:Name="LayoutGrid">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <Button x:Name="StartButton" Grid.Column="0" Content="D" Width="38" Height="38" Style="{StaticResource TaskButton}" Background="#6258D9" FontWeight="Bold" FontSize="18" Click="Start_Click" ToolTip="Open Desktop Tuner Start menu" />
-            <ScrollViewer x:Name="WindowScroller" Grid.Column="1" Margin="10,0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                <StackPanel x:Name="TaskButtonsStack" Orientation="Horizontal" VerticalAlignment="Center">
+            <Border x:Name="StartSegment" Grid.Column="0">
+                <Button x:Name="StartButton" Content="D" Width="38" Height="38" Style="{StaticResource TaskButton}" Background="#6258D9" FontWeight="Bold" FontSize="18" Click="Start_Click" ToolTip="Open Desktop Tuner Start menu" />
+            </Border>
+            <Border x:Name="AppsSegment" Grid.Column="1">
+                <Grid>
+                    <ScrollViewer x:Name="WindowScroller" Margin="10,0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel x:Name="TaskButtonsStack" Orientation="Horizontal" VerticalAlignment="Center">
                 <ItemsControl x:Name="PinnedItems" VerticalAlignment="Center" ItemsPanel="{StaticResource HorizontalWindowPanel}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -77,16 +81,20 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                </StackPanel>
-            </ScrollViewer>
-                <TextBlock x:Name="EmptyText" Text="No open app windows" Foreground="#8993A7" FontSize="11" VerticalAlignment="Center" Margin="6,0" />
-            <StackPanel x:Name="RightControls" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        </StackPanel>
+                    </ScrollViewer>
+                    <TextBlock x:Name="EmptyText" Text="No open app windows" Foreground="#8993A7" FontSize="11" VerticalAlignment="Center" Margin="6,0" />
+                </Grid>
+            </Border>
+            <Border x:Name="SystemSegment" Grid.Column="2">
+                <StackPanel x:Name="RightControls" Orientation="Horizontal" VerticalAlignment="Center">
                 <Button Content="Settings" Style="{StaticResource TaskButton}" Click="Settings_Click" FontSize="11" />
                 <Border Background="#30394D" CornerRadius="8" Padding="10,6" Margin="3,0,8,0">
                     <TextBlock x:Name="ClockText" FontSize="12" FontWeight="SemiBold" />
                 </Border>
                 <Button Content="×" Style="{StaticResource TaskButton}" Click="CloseBar_Click" FontSize="16" ToolTip="Close this taskbar" />
-            </StackPanel>
+                </StackPanel>
+            </Border>
         </Grid>
     </Border>
 </Window>

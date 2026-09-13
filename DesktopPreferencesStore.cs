@@ -5,7 +5,7 @@ namespace DesktopTuner;
 
 public enum TaskbarEdge { Bottom, Top, Left, Right }
 public enum TaskbarSize { Small, Standard, Large }
-public enum TaskbarStyle { EdgeToEdge, Floating }
+public enum TaskbarStyle { EdgeToEdge, Floating, Segmented }
 public enum StartMenuStyle { Modern, Classic, Compact }
 public sealed record PinnedTaskbarApp(string Name, string ExecutablePath, bool IsDirectory = false);
 public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern, bool TaskbarOnAllDisplays = false, TaskbarStyle TaskbarLayout = TaskbarStyle.EdgeToEdge);
