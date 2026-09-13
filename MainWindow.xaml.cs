@@ -341,7 +341,7 @@ public partial class MainWindow : Window
             PageContent.Children.Add(replaceNativeTaskbar);
             PageContent.Children.Add(new TextBlock
             {
-                Text = "Hides the built-in taskbar on displays covered by Desktop Tuner and restores it when the app exits. If Desktop Tuner crashes, restart Windows Explorer or sign out to restore the built-in taskbar.",
+                Text = "Hides the built-in taskbar on displays covered by Desktop Tuner. A companion recovery process restores it if Desktop Tuner exits unexpectedly; restart Windows Explorer or sign out if both processes are terminated.",
                 TextWrapping = TextWrapping.Wrap,
                 Foreground = (Brush)FindResource("DesktopMutedTextBrush"),
                 Margin = new Thickness(0, 0, 0, 16)
@@ -726,6 +726,7 @@ public partial class MainWindow : Window
             if (_replaceNativeTaskbar)
             {
                 var displays = TaskbarDisplayService.Select(_taskbarOnAllDisplays);
+                using var watchdog = NativeTaskbarWatchdog.Start(Environment.ProcessId, _nativeTaskbarVisibility.SnapshotPath);
                 if (!_nativeTaskbarVisibility.HideForDisplays(displays))
                 {
                     throw new InvalidOperationException("Windows did not expose a taskbar on the selected displays, so replacement mode could not start.");

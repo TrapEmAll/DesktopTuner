@@ -14,6 +14,18 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        if (NativeTaskbarWatchdog.IsWatchdogInvocation(e.Args))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            if (!NativeTaskbarWatchdog.TryReadInvocation(e.Args, out var ownerProcessId, out var snapshotPath))
+            {
+                Shutdown();
+                return;
+            }
+            WatchTaskbarOwnerAsync(ownerProcessId, snapshotPath);
+            return;
+        }
+
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         var startInBackground = e.Args.Contains("--startup", StringComparer.OrdinalIgnoreCase);
         _instanceMutex = new Mutex(initiallyOwned: true, name: @"Local\DesktopTuner.Singleton", out var createdNew);
@@ -30,6 +42,12 @@ public partial class App : Application
         var window = new MainWindow(startInBackground);
         MainWindow = window;
         window.Show();
+    }
+
+    private async void WatchTaskbarOwnerAsync(int ownerProcessId, string snapshotPath)
+    {
+        try { await NativeTaskbarWatchdog.WaitForOwnerAndRestoreAsync(ownerProcessId, snapshotPath); }
+        finally { Shutdown(); }
     }
 
     protected override void OnExit(ExitEventArgs e)

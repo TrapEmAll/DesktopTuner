@@ -1,5 +1,8 @@
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Text;
 
 namespace DesktopTuner;
@@ -12,40 +15,91 @@ public sealed class NativeTaskbarVisibilityService
     private const int SwShowNoActivate = 4;
     private readonly Dictionary<IntPtr, bool> _originalVisibility = [];
 
+    public NativeTaskbarVisibilityService()
+    {
+        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DesktopTuner");
+        SnapshotPath = Path.Combine(directory, $"taskbar-restore-{Environment.ProcessId}.json");
+    }
+
+    public string SnapshotPath { get; }
+
     public bool HideForDisplays(IEnumerable<TaskbarDisplay> displays)
     {
         ArgumentNullException.ThrowIfNull(displays);
         var targets = displays.ToArray();
         if (targets.Length == 0) return false;
 
-        var found = 0;
-        var failedToHide = false;
+        var taskbars = new List<IntPtr>();
         if (!EnumWindows((window, _) =>
         {
             if (!IsTaskbar(window) || !GetWindowRect(window, out var rect)) return true;
             var bounds = new TaskbarBounds(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
             if (!targets.Any(display => TaskbarDisplayService.Overlaps(bounds, display))) return true;
-
-            found++;
-            if (!_originalVisibility.ContainsKey(window)) _originalVisibility[window] = IsWindowVisible(window);
-            if (IsWindowVisible(window)) ShowWindow(window, SwHide);
-            if (IsWindowVisible(window)) failedToHide = true;
+            taskbars.Add(window);
             return true;
         }, IntPtr.Zero))
             throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not enumerate the Windows taskbars.");
 
-        return found > 0 && !failedToHide;
+        foreach (var window in taskbars)
+        {
+            if (!_originalVisibility.ContainsKey(window))
+            {
+                _originalVisibility[window] = IsWindowVisible(window);
+                PersistSnapshot();
+            }
+            if (IsWindowVisible(window)) ShowWindow(window, SwHide);
+        }
+
+        return taskbars.Count > 0 && taskbars.All(window => !IsWindowVisible(window));
     }
 
     public void Restore()
     {
-        foreach (var (window, wasVisible) in _originalVisibility.ToArray())
-        {
-            if (!IsWindow(window) || !IsTaskbar(window)) continue;
-            ShowWindow(window, wasVisible ? SwShowNoActivate : SwHide);
-        }
+        RestoreWindows(_originalVisibility.Select(pair => new WindowSnapshot(pair.Key.ToInt64(), pair.Value)));
         _originalVisibility.Clear();
+        try { File.Delete(SnapshotPath); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Trace.TraceError($"Could not remove the taskbar recovery snapshot: {ex}");
+        }
     }
+
+    public static void RestoreSnapshot(string snapshotPath)
+    {
+        if (string.IsNullOrWhiteSpace(snapshotPath) || !File.Exists(snapshotPath)) return;
+        try
+        {
+            var snapshot = JsonSerializer.Deserialize<List<WindowSnapshot>>(File.ReadAllText(snapshotPath));
+            if (snapshot is not null) RestoreWindows(snapshot);
+            File.Delete(snapshotPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            Trace.TraceError($"Could not read the taskbar recovery snapshot: {ex}");
+        }
+    }
+
+    private void PersistSnapshot()
+    {
+        var directory = Path.GetDirectoryName(SnapshotPath)!;
+        Directory.CreateDirectory(directory);
+        var temporaryPath = $"{SnapshotPath}.tmp";
+        File.WriteAllText(temporaryPath, JsonSerializer.Serialize(_originalVisibility
+            .Select(pair => new WindowSnapshot(pair.Key.ToInt64(), pair.Value)).ToArray()));
+        File.Move(temporaryPath, SnapshotPath, overwrite: true);
+    }
+
+    private static void RestoreWindows(IEnumerable<WindowSnapshot> snapshot)
+    {
+        foreach (var entry in snapshot)
+        {
+            var window = new IntPtr(entry.Handle);
+            if (!IsWindow(window) || !IsTaskbar(window)) continue;
+            ShowWindow(window, entry.WasVisible ? SwShowNoActivate : SwHide);
+        }
+    }
+
+    private sealed record WindowSnapshot(long Handle, bool WasVisible);
 
     private static bool IsTaskbar(IntPtr window)
     {
