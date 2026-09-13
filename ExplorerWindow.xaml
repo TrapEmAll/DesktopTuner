@@ -77,7 +77,7 @@
                         </ListView.ContextMenu>
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="Name" Width="360" DisplayMemberBinding="{Binding Name}" />
+                                <GridViewColumn Header="Name" Width="360" DisplayMemberBinding="{Binding DisplayName}" />
                                 <GridViewColumn Header="Date modified" Width="155" DisplayMemberBinding="{Binding ModifiedText}" />
                                 <GridViewColumn Header="Type" Width="130" DisplayMemberBinding="{Binding Type}" />
                                 <GridViewColumn Header="Size" Width="105" DisplayMemberBinding="{Binding SizeText}" />

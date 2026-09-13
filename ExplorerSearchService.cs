@@ -7,7 +7,7 @@ public sealed record ExplorerSearchResult(IReadOnlyList<ExplorerEntry> Entries, 
 
 public static class ExplorerSearchService
 {
-    public static Task<ExplorerSearchResult> SearchAsync(string rootDirectory, string query, CancellationToken cancellationToken = default)
+    public static Task<ExplorerSearchResult> SearchAsync(string rootDirectory, string query, CancellationToken cancellationToken = default, bool showHiddenItems = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootDirectory);
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
@@ -15,10 +15,10 @@ public static class ExplorerSearchService
         ArgumentException.ThrowIfNullOrWhiteSpace(searchTerm);
         var root = Path.GetFullPath(rootDirectory);
         if (!Directory.Exists(root)) throw new DirectoryNotFoundException($"The search folder '{root}' does not exist.");
-        return Task.Run(() => Search(root, searchTerm, cancellationToken), cancellationToken);
+        return Task.Run(() => Search(root, searchTerm, cancellationToken, showHiddenItems), cancellationToken);
     }
 
-    private static ExplorerSearchResult Search(string root, string query, CancellationToken cancellationToken)
+    private static ExplorerSearchResult Search(string root, string query, CancellationToken cancellationToken, bool showHiddenItems)
     {
         var results = new List<ExplorerEntry>();
         var pendingDirectories = new Stack<string>();
@@ -49,6 +49,7 @@ public static class ExplorerSearchService
                     continue;
                 }
 
+                if (entry.IsSystem || entry.IsHidden && !showHiddenItems) continue;
                 if (entry.Name.Contains(query, StringComparison.OrdinalIgnoreCase)) results.Add(entry);
                 if (entry.IsDirectory && !entry.IsReparsePoint) pendingDirectories.Push(entry.FullPath);
             }
@@ -69,6 +70,11 @@ public static class ExplorerSearchService
         var entry = isDirectory
             ? new ExplorerEntry(Path.GetFileName(path), path, true, false, null, modified)
             : new ExplorerEntry(Path.GetFileName(path), path, false, false, new FileInfo(path).Length, modified);
-        return entry with { IsReparsePoint = (attributes & FileAttributes.ReparsePoint) != 0 };
+        return entry with
+        {
+            IsReparsePoint = (attributes & FileAttributes.ReparsePoint) != 0,
+            IsHidden = (attributes & FileAttributes.Hidden) != 0,
+            IsSystem = (attributes & FileAttributes.System) != 0
+        };
     }
 }

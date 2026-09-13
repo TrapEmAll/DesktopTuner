@@ -270,6 +270,12 @@ try
     var recursiveSearchResults = ExplorerSearchService.SearchAsync(explorerTestDirectory, "NOTES").GetAwaiter().GetResult();
     Check(2, recursiveSearchResults.Entries.Count, "search case-insensitively through nested folders");
     Check(true, recursiveSearchResults.Entries.Any(entry => entry.FullPath == nestedMatchPath), "return full paths for nested search results");
+    var hiddenMatchPath = Path.Combine(explorerTestDirectory, "classified-notes.txt");
+    File.WriteAllText(hiddenMatchPath, "hidden");
+    File.SetAttributes(hiddenMatchPath, File.GetAttributes(hiddenMatchPath) | FileAttributes.Hidden);
+    Check(0, ExplorerSearchService.SearchAsync(explorerTestDirectory, "classified").GetAwaiter().GetResult().Entries.Count, "respect hidden-item preferences during search");
+    Check(1, ExplorerSearchService.SearchAsync(explorerTestDirectory, "classified", showHiddenItems: true).GetAwaiter().GetResult().Entries.Count, "include hidden items when the preference allows them");
+    Check("report", new ExplorerEntry("report.txt", Path.Combine(explorerTestDirectory, "report.txt"), false, false, 0, DateTime.MinValue).GetDisplayName(true), "hide only the displayed extension while retaining the full file name");
 
     var freshPreferencesStore = new DesktopPreferencesStore(Path.Combine(temporaryPreferencesDirectory, "new-install.json"));
     Check(true, freshPreferencesStore.Load().TaskbarOnAllDisplays, "enable all displays by default for a new installation");

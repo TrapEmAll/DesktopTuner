@@ -17,12 +17,20 @@ public partial class ExplorerWindow : Window
     private IReadOnlyList<ExplorerEntry> _entries = [];
     private CancellationTokenSource? _searchCancellation;
     private bool _isSearchView;
+    private readonly bool _showHiddenItems;
+    private readonly bool _hideFileExtensions;
 
-    public ExplorerWindow(string? initialPath = null)
+    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false)
     {
         InitializeComponent();
+        _showHiddenItems = showHiddenItems;
+        _hideFileExtensions = hideFileExtensions;
         var startPath = string.IsNullOrWhiteSpace(initialPath) ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) : initialPath;
-        _location = Directory.Exists(startPath) ? new ExplorerLocation(Path.GetFullPath(startPath)) : new ExplorerLocation(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        _location = startInThisPc && string.IsNullOrWhiteSpace(initialPath)
+            ? new ExplorerLocation(null, IsDriveList: true)
+            : Directory.Exists(startPath)
+                ? new ExplorerLocation(Path.GetFullPath(startPath))
+                : new ExplorerLocation(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
         Closed += (_, _) => CancelSearch();
         RefreshLocation();
     }
@@ -75,6 +83,7 @@ public partial class ExplorerWindow : Window
         _entries = entries;
         EntriesList.ItemsSource = entries;
         EntriesList.SelectedItem = null;
+        NewFolderButton.IsEnabled = !_location.IsDriveList;
         var title = _location.IsDriveList ? "This PC" : Path.GetFileName(_location.Path!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         if (string.IsNullOrEmpty(title)) title = _location.Path ?? "Home";
         LocationTitle.Text = title;
@@ -96,10 +105,12 @@ public partial class ExplorerWindow : Window
         .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
         .ToList();
 
-    private static IReadOnlyList<ExplorerEntry> ReadDirectory(string path)
+    private IReadOnlyList<ExplorerEntry> ReadDirectory(string path)
     {
         return Directory.EnumerateFileSystemEntries(path)
             .Select(ReadEntry)
+            .Where(entry => !entry.IsSystem && (_showHiddenItems || !entry.IsHidden))
+            .Select(ApplyDisplayName)
             .OrderByDescending(entry => entry.IsDirectory)
             .ThenBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
@@ -110,9 +121,21 @@ public partial class ExplorerWindow : Window
         var attributes = File.GetAttributes(path);
         var isDirectory = (attributes & FileAttributes.Directory) != 0;
         var modified = File.GetLastWriteTime(path);
-        if (isDirectory) return new ExplorerEntry(Path.GetFileName(path), path, true, false, null, modified);
-        return new ExplorerEntry(Path.GetFileName(path), path, false, false, new FileInfo(path).Length, modified);
+        var entry = isDirectory
+            ? new ExplorerEntry(Path.GetFileName(path), path, true, false, null, modified)
+            : new ExplorerEntry(Path.GetFileName(path), path, false, false, new FileInfo(path).Length, modified);
+        return entry with
+        {
+            IsReparsePoint = (attributes & FileAttributes.ReparsePoint) != 0,
+            IsHidden = (attributes & FileAttributes.Hidden) != 0,
+            IsSystem = (attributes & FileAttributes.System) != 0
+        };
     }
+
+    private ExplorerEntry ApplyDisplayName(ExplorerEntry entry) => entry with
+    {
+        DisplayName = entry.GetDisplayName(_hideFileExtensions)
+    };
 
     private void Back_Click(object sender, RoutedEventArgs e)
     {
@@ -210,9 +233,9 @@ public partial class ExplorerWindow : Window
 
         try
         {
-            var result = await ExplorerSearchService.SearchAsync(_location.Path, searchTerm, cancellation.Token);
+            var result = await ExplorerSearchService.SearchAsync(_location.Path, searchTerm, cancellation.Token, _showHiddenItems);
             if (!ReferenceEquals(_searchCancellation, cancellation)) return;
-            _entries = result.Entries;
+            _entries = result.Entries.Select(ApplyDisplayName).ToList();
             EntriesList.ItemsSource = _entries;
             LocationSubtitle.Text = $"Search in {_location.Path}";
             EmptyMessage.Text = $"No items match “{searchTerm}”.";
@@ -257,12 +280,12 @@ public partial class ExplorerWindow : Window
         if (EntriesList.SelectedItem is ExplorerEntry entry)
         {
             RenameButton.IsEnabled = DeleteButton.IsEnabled = !entry.IsDrive;
-            DetailsName.Text = entry.Name;
+            DetailsName.Text = entry.DisplayName;
             DetailsType.Text = entry.Type;
             DetailsLocation.Text = entry.FullPath;
             DetailsSize.Text = entry.SizeText.Length == 0 ? (entry.IsDirectory ? "Folder" : "—") : entry.SizeText;
             DetailsModified.Text = entry.Modified == DateTime.MinValue ? "—" : entry.Modified.ToString("f");
-            SetStatus(entry.IsDirectory ? $"{entry.Name} · folder" : $"{entry.Name} · {entry.SizeText}");
+            SetStatus(entry.IsDirectory ? $"{entry.DisplayName} · folder" : $"{entry.DisplayName} · {entry.SizeText}");
         }
         else
         {

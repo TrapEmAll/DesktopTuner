@@ -763,7 +763,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        _explorerWindow = new ExplorerWindow { Owner = this };
+        _explorerWindow = new ExplorerWindow(
+            showHiddenItems: _currentValues["explorer-hidden"] == 1,
+            hideFileExtensions: _currentValues["explorer-extensions"] == 1,
+            startInThisPc: _currentValues["explorer-launch"] == 1)
+        { Owner = this };
         _explorerWindow.Closed += (_, _) => _explorerWindow = null;
         _explorerWindow.Show();
     }
