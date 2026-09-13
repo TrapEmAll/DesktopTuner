@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows.Media;
 
 namespace DesktopTuner;
 
@@ -10,6 +11,7 @@ public sealed record ExplorerEntry(string Name, string FullPath, bool IsDirector
     public bool IsCut { get; init; }
     public DateTime? RecentAccessed { get; init; }
     public string DisplayName { get; init; } = Name;
+    public ImageSource? Icon => TaskbarIconService.LoadIcon(FullPath);
     public string Type => IsDrive ? "Local drive" : IsDirectory ? "File folder" : Path.GetExtension(FullPath) is { Length: > 1 } extension ? $"{extension[1..].ToUpperInvariant()} file" : "File";
     public string SizeText => Length is long length ? FormatSize(length) : "";
     public string ModifiedText => Modified == DateTime.MinValue ? "" : Modified.ToString("g");

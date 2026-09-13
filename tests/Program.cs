@@ -311,6 +311,8 @@ try
     Check("New folder (2)", Path.GetFileName(secondCreatedFolder), "avoid overwriting an existing folder when creating another");
     var sourceFile = Path.Combine(explorerTestDirectory, "draft.txt");
     File.WriteAllText(sourceFile, "draft");
+    CheckTrue(new ExplorerEntry("draft.txt", sourceFile, false, false, new FileInfo(sourceFile).Length, File.GetLastWriteTime(sourceFile)).Icon is not null, "expose shell file icons to Explorer rows");
+    CheckTrue(new ExplorerEntry("ExplorerOperations", explorerTestDirectory, true, false, null, Directory.GetLastWriteTime(explorerTestDirectory)).Icon is not null, "expose shell folder icons to Explorer rows");
     var renamedFile = ExplorerFileOperationService.Rename(sourceFile, "notes.txt");
     Check(true, File.Exists(renamedFile), "rename a file within its current folder");
     Throws<IOException>(() => ExplorerFileOperationService.Rename(renamedFile, "New folder"), "reject a rename that would replace a folder");

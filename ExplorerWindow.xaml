@@ -112,8 +112,16 @@
                         </ListView.ContextMenu>
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Width="360" DisplayMemberBinding="{Binding DisplayName}">
+                                <GridViewColumn Width="360">
                                     <GridViewColumn.Header><GridViewColumnHeader x:Name="NameColumnHeader" Tag="Name" Click="SortColumn_Click">Name</GridViewColumnHeader></GridViewColumn.Header>
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Image Source="{Binding Icon}" Width="18" Height="18" Margin="0,0,8,0" />
+                                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
                                 <GridViewColumn Width="155" DisplayMemberBinding="{Binding ModifiedText}">
                                     <GridViewColumn.Header><GridViewColumnHeader x:Name="DateModifiedColumnHeader" Tag="DateModified" Click="SortColumn_Click">Date modified</GridViewColumnHeader></GridViewColumn.Header>
