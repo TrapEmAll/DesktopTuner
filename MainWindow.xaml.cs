@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private string _activePage = "Overview";
     private HwndSource? _windowSource;
     private StartMenuWindow? _startMenuWindow;
+    private TaskbarWindow? _taskbarWindow;
 
     public MainWindow()
     {
@@ -74,7 +75,7 @@ public partial class MainWindow : Window
 
         var grid = new UniformGrid { Columns = 3, Margin = new Thickness(0, 0, 0, 18) };
         AddModuleCard(grid, "Start menu", "Open apps with a searchable launcher and choose how Windows handles recent activity.", "Start", "01");
-        AddModuleCard(grid, "Taskbar", "Alignment and window grouping preferences.", "Taskbar", "02");
+        AddModuleCard(grid, "Taskbar", "A live app-switching bar plus taskbar alignment and grouping preferences.", "Taskbar", "02");
         AddModuleCard(grid, "File Explorer", "Useful defaults for everyday file browsing.", "Explorer", "03");
         PageContent.Children.Add(grid);
 
@@ -121,6 +122,11 @@ public partial class MainWindow : Window
         }
         if (section == "Taskbar")
         {
+            var launchButton = new Button { Content = "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
+            launchButton.Click += (_, _) => ShowTaskbar();
+            PageContent.Children.Add(launchButton);
+            var overlayInfo = InfoCard("Live taskbar overlay", "This primary-display overlay lists open windows, activates or minimizes them, opens the companion Start menu, and shows the clock. It covers the Windows taskbar visually while running; closing it reveals the native taskbar again. System tray and multi-monitor support are still parity work.");
+            PageContent.Children.Add(overlayInfo);
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);
         }
@@ -340,6 +346,19 @@ public partial class MainWindow : Window
         _startMenuWindow.Top = Math.Max(workArea.Top + 12, workArea.Bottom - _startMenuWindow.Height - 12);
         _startMenuWindow.Show();
         _startMenuWindow.Activate();
+    }
+
+    private void ShowTaskbar()
+    {
+        if (_taskbarWindow is { IsVisible: true })
+        {
+            _taskbarWindow.Activate();
+            return;
+        }
+        _taskbarWindow = new TaskbarWindow(ShowStartMenu);
+        _taskbarWindow.Closed += (_, _) => _taskbarWindow = null;
+        _taskbarWindow.Show();
+        SetStatus("Desktop Tuner taskbar overlay is running. Close it to reveal the Windows taskbar.");
     }
 
     [DllImport("user32.dll", SetLastError = true)]
