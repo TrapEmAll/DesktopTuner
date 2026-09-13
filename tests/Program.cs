@@ -704,6 +704,18 @@ try
     var recursiveSearchResults = ExplorerSearchService.SearchAsync(explorerTestDirectory, "NOTES").GetAwaiter().GetResult();
     Check(2, recursiveSearchResults.Entries.Count, "search case-insensitively through nested folders");
     Check(true, recursiveSearchResults.Entries.Any(entry => entry.FullPath == nestedMatchPath), "return full paths for nested search results");
+    var wideSearchDirectory = Path.Combine(explorerTestDirectory, "Wide");
+    Directory.CreateDirectory(wideSearchDirectory);
+    for (var index = 0; index < 128; index++)
+        File.WriteAllText(Path.Combine(wideSearchDirectory, $"stream-{index:D3}.txt"), string.Empty);
+    Check(128, ExplorerSearchService.SearchAsync(explorerTestDirectory, "stream- ext:txt").GetAwaiter().GetResult().Entries.Count,
+        "enumerate every match in a wide folder while streaming directory entries");
+    using (var canceledSearch = new CancellationTokenSource())
+    {
+        canceledSearch.Cancel();
+        Throws<OperationCanceledException>(() => ExplorerSearchService.SearchAsync(explorerTestDirectory, "*.txt", canceledSearch.Token).GetAwaiter().GetResult(),
+            "cancel Explorer search before reading directory entries");
+    }
     Check(searchablePdf, ExplorerSearchService.SearchAsync(explorerTestDirectory, "*.pdf").GetAwaiter().GetResult().Entries.Single().FullPath, "match file names with wildcard patterns");
     Check(searchablePdf, ExplorerSearchService.SearchAsync(explorerTestDirectory, "final invoice ext:pdf kind:document").GetAwaiter().GetResult().Entries.Single().FullPath, "combine name terms with extension and document-kind filters");
     Check(searchablePdf, ExplorerSearchService.SearchAsync(explorerTestDirectory, "name:\"final invoice.pdf\"").GetAwaiter().GetResult().Entries.Single().FullPath, "keep quoted file-name phrases together in a search");

@@ -29,30 +29,29 @@ public static class ExplorerSearchService
         while (pendingDirectories.TryPop(out var currentDirectory))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            IEnumerable<string> children;
-            try { children = Directory.EnumerateFileSystemEntries(currentDirectory).ToArray(); }
+            try
+            {
+                foreach (var path in Directory.EnumerateFileSystemEntries(currentDirectory))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    ExplorerEntry entry;
+                    try { entry = ReadEntry(path); }
+                    catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or ArgumentException)
+                    {
+                        skippedItems++;
+                        Trace.TraceWarning($"Skipping Explorer search item '{path}': {ex.Message}");
+                        continue;
+                    }
+
+                    if (entry.IsSystem || entry.IsHidden && !showHiddenItems) continue;
+                    if (criteria.Matches(entry)) results.Add(entry);
+                    if (entry.IsDirectory && !entry.IsReparsePoint) pendingDirectories.Push(entry.FullPath);
+                }
+            }
             catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
             {
                 skippedItems++;
                 Trace.TraceWarning($"Skipping inaccessible Explorer search folder '{currentDirectory}': {ex.Message}");
-                continue;
-            }
-
-            foreach (var path in children)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                ExplorerEntry entry;
-                try { entry = ReadEntry(path); }
-                catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or ArgumentException)
-                {
-                    skippedItems++;
-                    Trace.TraceWarning($"Skipping Explorer search item '{path}': {ex.Message}");
-                    continue;
-                }
-
-                if (entry.IsSystem || entry.IsHidden && !showHiddenItems) continue;
-                if (criteria.Matches(entry)) results.Add(entry);
-                if (entry.IsDirectory && !entry.IsReparsePoint) pendingDirectories.Push(entry.FullPath);
             }
         }
 
