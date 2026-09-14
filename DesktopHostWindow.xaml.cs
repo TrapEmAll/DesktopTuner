@@ -100,7 +100,7 @@ public partial class DesktopHostWindow : Window
         var selectedPaths = _desktopItems.Where(item => item.IsSelected)
             .Select(item => item.FullPath)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var entries = DesktopHostCatalog.ReadItems([_userDesktop, _publicDesktop]);
+        var entries = DesktopHostCatalog.ReadItems([_userDesktop, _publicDesktop], includeDesktopNamespace: true);
         var ordered = _desktopMonitors.Count > 0
             ? _layoutStore.ApplyMonitorLayout(entries, _desktopMonitors)
             : _layoutStore.ApplyLayout(entries, DesktopItems.ActualWidth, DesktopItems.ActualHeight);

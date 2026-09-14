@@ -56,7 +56,7 @@ public sealed class DesktopHostItem(string name, string fullPath, bool isDirecto
 
 public static class DesktopHostCatalog
 {
-    public static IReadOnlyList<DesktopHostItem> ReadItems(IEnumerable<string> roots)
+    public static IReadOnlyList<DesktopHostItem> ReadItems(IEnumerable<string> roots, bool includeDesktopNamespace = false)
     {
         ArgumentNullException.ThrowIfNull(roots);
         var entries = new Dictionary<string, DesktopHostItem>(StringComparer.OrdinalIgnoreCase);
@@ -86,8 +86,14 @@ public static class DesktopHostCatalog
             }
         }
 
-        entries.TryAdd("shell:MyComputerFolder", new DesktopHostItem("This PC", "shell:MyComputerFolder", true, isShellNamespace: true));
-        entries.TryAdd("shell:RecycleBinFolder", new DesktopHostItem("Recycle Bin", "shell:RecycleBinFolder", true, isShellNamespace: true));
+        if (includeDesktopNamespace)
+            foreach (var item in DesktopShellNamespaceCatalog.ReadVirtualItems())
+                entries.TryAdd(item.FullPath, item);
+
+        if (!entries.ContainsKey("shell:MyComputerFolder"))
+            entries.TryAdd("shell:MyComputerFolder", new DesktopHostItem("This PC", "shell:MyComputerFolder", true, isShellNamespace: true));
+        if (!entries.ContainsKey("shell:RecycleBinFolder"))
+            entries.TryAdd("shell:RecycleBinFolder", new DesktopHostItem("Recycle Bin", "shell:RecycleBinFolder", true, isShellNamespace: true));
         return entries.Values.OrderBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
     }
 }

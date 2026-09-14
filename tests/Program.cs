@@ -25,6 +25,18 @@ Check(true, desktopHostEntries.Single(entry => entry.Name == "user.txt").CanShow
 Check(true, desktopHostEntries.Single(entry => entry.Name == "This PC").CanShowNativeContextMenu, "offer native Shell context verbs for This PC");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "Recycle Bin").CanShowNativeContextMenu, "offer native Shell context verbs for Recycle Bin");
 CheckTrue(TaskbarIconService.LoadNamespaceIcon("shell:MyComputerFolder") is not null, "extract a shell icon for a namespace parsing name");
+var shellNamespaceDesktopEntries = DesktopHostCatalog.ReadItems([userDesktopRoot, sharedDesktopRoot], includeDesktopNamespace: true);
+CheckTrue(shellNamespaceDesktopEntries.Any(entry => entry.Name == "Network" && entry.IsShellNamespace), "include Network from the Windows desktop Shell namespace");
+CheckTrue(shellNamespaceDesktopEntries.Any(entry => entry.Name == "Libraries" && entry.IsShellNamespace), "include Libraries from the Windows desktop Shell namespace");
+CheckTrue(shellNamespaceDesktopEntries.Any(entry => entry.Name == "Control Panel" && entry.IsShellNamespace), "include Control Panel from the Windows desktop Shell namespace");
+CheckTrue(shellNamespaceDesktopEntries.Any(entry => entry.FullPath == "shell:MyComputerFolder"), "keep This PC's existing persisted Shell identity during namespace enumeration");
+CheckTrue(shellNamespaceDesktopEntries.Any(entry => entry.FullPath == "shell:RecycleBinFolder"), "keep Recycle Bin's existing persisted Shell identity during namespace enumeration");
+CheckTrue(shellNamespaceDesktopEntries.Where(entry => entry.IsShellNamespace).All(entry => entry.CanShowNativeContextMenu), "enable native context menus for every discovered Shell namespace entry");
+CheckTrue(shellNamespaceDesktopEntries.Any(entry => entry.FullPath == Path.Combine(userDesktopRoot, "user.txt")), "retain custom filesystem roots alongside Shell namespace entries");
+Check(shellNamespaceDesktopEntries.Where(entry => entry.IsShellNamespace).Count(), shellNamespaceDesktopEntries.Where(entry => entry.IsShellNamespace)
+    .Select(entry => entry.Name).Distinct(StringComparer.CurrentCultureIgnoreCase).Count(), "show each Windows desktop namespace label once");
+var desktopLibraries = shellNamespaceDesktopEntries.Single(entry => entry.Name == "Libraries");
+CheckTrue(await NativeShellContextMenuService.ProbeShellItemContextMenuAsync(desktopLibraries.FullPath), "build a native context menu for a dynamically enumerated Shell namespace item");
 var desktopLayoutStore = new DesktopHostLayoutStore(Path.Combine(desktopHostTestRoot, "desktop-layout.json"));
 var laidOutDesktopEntries = desktopLayoutStore.ApplyLayout(desktopHostEntries, 600, 400).ToArray();
 laidOutDesktopEntries.Single(entry => entry.Name == "user.txt").SetPosition(new DesktopHostPosition(0, 112));

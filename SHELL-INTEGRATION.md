@@ -57,7 +57,7 @@ $shellLauncher = [wmiclass]"\\localhost\root\standardcimv2\embedded:WESL_UserSet
 $shellLauncher.RemoveCustomShell($testSid)
 ```
 
-The desktop host spans the Windows virtual desktop and persists icon positions independently in monitor-local layouts keyed by display name; if a display disconnects, its icons move to the primary monitor while retaining local coordinates. It does not yet provide the full shell namespace. The custom taskbar does not yet reproduce arbitrary notification-area extensions, Windows' native Start/taskbar relationship, or every shell flyout. CI can build the mode but cannot validate sign-in, recovery, Shell Launcher edition behavior, or display integration on a real Windows 11 desktop.
+The desktop host spans the Windows virtual desktop and persists icon positions independently in monitor-local layouts keyed by display name; if a display disconnects, its icons move to the primary monitor while retaining local coordinates. It enumerates root virtual entries from the Windows desktop namespace and can show their native context menus, but does not render child namespace contents inside its own desktop view. The custom taskbar does not yet reproduce arbitrary notification-area extensions, Windows' native Start/taskbar relationship, or every shell flyout. CI can build the mode but cannot validate sign-in, recovery, Shell Launcher edition behavior, or display integration on a real Windows 11 desktop.
 
 ## Distribution gate
 
