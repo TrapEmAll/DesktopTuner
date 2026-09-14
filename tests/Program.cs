@@ -417,6 +417,22 @@ CheckTrue(new StartMenuNode("Editor", new AppEntry("Editor", @"C:\Apps\Editor.ln
 Check(false, new StartMenuNode("Tools").CanPinApplication, "keep Start app-tree folders from being pinned as apps");
 var droppedStartPins = StartPinCatalog.AddDroppedFiles([], [@"C:\Apps\Editor.exe", @"C:\Apps\Editor.lnk", @"C:\Apps\Notes.txt", "relative.exe"]);
 Check("Editor,Editor", string.Join(',', droppedStartPins.Select(app => app.Name)), "pin dropped executables and shortcuts while ignoring documents and relative paths");
+var droppedFolderPath = Path.Combine(Path.GetTempPath(), $"desktop-tuner-start-pin-{Guid.NewGuid():N}");
+Directory.CreateDirectory(droppedFolderPath);
+try
+{
+    var droppedFolderPin = StartPinCatalog.AddDroppedFiles([], [droppedFolderPath]).Single();
+    Check(Path.GetFileName(droppedFolderPath), droppedFolderPin.Name, "name a Start folder pin from its directory name");
+    Check(Path.GetFullPath(droppedFolderPath), droppedFolderPin.ShortcutPath, "store a normalized absolute path for a Start folder pin");
+    Check(true, droppedFolderPin.IsDirectory, "mark dropped Start folders for folder-specific launching");
+    Check(false, droppedFolderPin.CanRunElevated, "do not offer elevation for Start folder pins");
+    Check(false, droppedFolderPin.CanOpenFileLocation, "do not treat a Start folder pin as a shortcut file");
+    Check(1, StartPinCatalog.AddDroppedFiles([droppedFolderPin], [droppedFolderPath]).Count, "avoid duplicate Start folder pins");
+}
+finally
+{
+    Directory.Delete(droppedFolderPath, recursive: true);
+}
 Throws<ArgumentException>(() => StartPinCatalog.Pin([], new AppEntry("Unsupported", @"C:\Apps\unsupported.txt")), "reject unsupported Start pin targets");
 Check("shell:MyComputerFolder", StartMenuPlaceCatalog.ResolveTarget("computer"), "open This PC from the Start places menu");
 Check("control.exe", StartMenuPlaceCatalog.ResolveTarget("control-panel"), "open Control Panel from the Start places menu");

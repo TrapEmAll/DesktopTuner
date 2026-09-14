@@ -146,6 +146,7 @@
                                         </Button.Style>
                                         <Button.ContextMenu>
                                             <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}" Opened="PinnedStartContextMenu_Opened">
+                                                <MenuItem Header="Open folder" Tag="{Binding}" Click="OpenPinnedFolder_Click" />
                                                 <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenFileLocation}" Click="OpenFileLocation_Click" />
                                                 <Separator />
                                                 <MenuItem Header="Run as administrator" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunAsAdministrator_Click" />

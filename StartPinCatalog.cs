@@ -48,6 +48,15 @@ public static class StartPinCatalog
         foreach (var path in paths)
         {
             if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path)) continue;
+            if (Directory.Exists(path))
+            {
+                var normalizedPath = Path.GetFullPath(path);
+                var folderName = Path.GetFileName(Path.TrimEndingDirectorySeparator(normalizedPath));
+                if (!string.IsNullOrWhiteSpace(folderName))
+                    pins = Pin(pins, new AppEntry(folderName, normalizedPath, IsDirectory: true));
+                continue;
+            }
+
             var extension = Path.GetExtension(path);
             if (!IsShortcutExtension(extension)) continue;
 
@@ -145,7 +154,9 @@ public static class StartPinCatalog
     public static bool IsSupported(AppEntry? app) => app is not null &&
         !string.IsNullOrWhiteSpace(app.Name) &&
         !string.IsNullOrWhiteSpace(app.ShortcutPath) &&
-        (app.IsPackagedApp
+        (app.IsDirectory
+            ? !app.IsPackagedApp && Path.IsPathFullyQualified(app.ShortcutPath)
+            : app.IsPackagedApp
             ? app.ShortcutPath.Contains('!')
             : IsShortcutExtension(Path.GetExtension(app.ShortcutPath)));
 

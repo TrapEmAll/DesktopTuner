@@ -497,7 +497,7 @@ public partial class StartMenuWindow : Window
         try
         {
             AppCatalogService.Launch(entry);
-            if (!_recentAppsStore.TryRecordLaunch(entry))
+            if (!entry.IsDirectory && !_recentAppsStore.TryRecordLaunch(entry))
             {
                 MessageBox.Show(this, "The app opened, but Desktop Tuner could not save recently used app history.", "Recent app history unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
@@ -613,7 +613,7 @@ public partial class StartMenuWindow : Window
         if (e.Data.GetDataPresent(PinnedStartDragFormat))
             e.Effects = DragDropEffects.Move;
         else
-            e.Effects = HasDroppedApps(e.Data) ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Effects = HasDroppedStartEntries(e.Data) ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
 
@@ -652,7 +652,7 @@ public partial class StartMenuWindow : Window
         if (e.Data.GetDataPresent(PinnedStartDragFormat))
             e.Effects = DragDropEffects.Move;
         else
-            e.Effects = HasDroppedApps(e.Data) ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Effects = HasDroppedStartEntries(e.Data) ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
 
@@ -675,14 +675,14 @@ public partial class StartMenuWindow : Window
         e.Handled = true;
     }
 
-    private bool HasDroppedApps(IDataObject data) =>
+    private bool HasDroppedStartEntries(IDataObject data) =>
         data.GetDataPresent(DataFormats.FileDrop)
         && data.GetData(DataFormats.FileDrop) is string[] paths
-        && StartPinCatalog.AddDroppedFiles([], paths.Where(File.Exists)).Count > 0;
+        && StartPinCatalog.AddDroppedFiles([], paths.Where(path => File.Exists(path) || Directory.Exists(path))).Count > 0;
 
     private static IEnumerable<string> GetDroppedAppPaths(IDataObject data) =>
         data.GetDataPresent(DataFormats.FileDrop) && data.GetData(DataFormats.FileDrop) is string[] paths
-            ? paths.Where(File.Exists)
+            ? paths.Where(path => File.Exists(path) || Directory.Exists(path))
             : [];
 
     private void InsertDroppedApps(IEnumerable<string> paths, int index, string? groupName = null)
@@ -718,7 +718,7 @@ public partial class StartMenuWindow : Window
     }
 
     private void ShowStartPinLimitMessage() =>
-        MessageBox.Show(this, $"You can pin up to {StartPinCatalog.MaximumPins} apps to Start.", "Start is full", MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show(this, $"You can pin up to {StartPinCatalog.MaximumPins} apps and folders to Start.", "Start is full", MessageBoxButton.OK, MessageBoxImage.Information);
 
     private AppEntry? FindApp(string shortcutPath) => _apps.FirstOrDefault(app =>
         string.Equals(app.ShortcutPath, shortcutPath, StringComparison.OrdinalIgnoreCase));
@@ -729,7 +729,7 @@ public partial class StartMenuWindow : Window
         if (updated.Count == _pinnedApps.Count)
         {
             if (!_pinnedApps.Any(pin => string.Equals(pin.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase)))
-                MessageBox.Show(this, $"You can pin up to {StartPinCatalog.MaximumPins} apps to Start.", "Start is full", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, $"You can pin up to {StartPinCatalog.MaximumPins} apps and folders to Start.", "Start is full", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         SavePinnedApps(StartPinCatalog.Reorder(updated, app.ShortcutPath, index));
@@ -744,6 +744,10 @@ public partial class StartMenuWindow : Window
     private void PinnedStartContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         if (sender is not ContextMenu { DataContext: AppEntry app } menu) return;
+        var openFolderItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open folder"));
+        var openFileLocationItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open file location"));
+        if (openFolderItem is not null) openFolderItem.Visibility = app.IsDirectory ? Visibility.Visible : Visibility.Collapsed;
+        if (openFileLocationItem is not null) openFileLocationItem.Visibility = app.IsDirectory ? Visibility.Collapsed : Visibility.Visible;
         var tileSizeMenu = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Tile size"));
         var tileLayout = _style is StartMenuStyle.Windows8 or StartMenuStyle.Windows10;
         if (tileSizeMenu is not null)
@@ -757,6 +761,11 @@ public partial class StartMenuWindow : Window
             if (Equals(item.Header, "Move to group") || Equals(item.Header, "Create group and move…") || Equals(item.Header, "Rename this group…"))
                 item.Visibility = tileLayout ? Visibility.Visible : Visibility.Collapsed;
         }
+    }
+
+    private void OpenPinnedFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: AppEntry { IsDirectory: true } app }) LaunchEntry(app);
     }
 
     private void PinnedStartTileSize_Click(object sender, RoutedEventArgs e)
@@ -817,7 +826,7 @@ public partial class StartMenuWindow : Window
     {
         e.Effects = e.Data.GetDataPresent(PinnedStartDragFormat)
             ? DragDropEffects.Move
-            : HasDroppedApps(e.Data) ? DragDropEffects.Copy : DragDropEffects.None;
+            : HasDroppedStartEntries(e.Data) ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
 

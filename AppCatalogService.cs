@@ -7,9 +7,9 @@ using System.Windows.Media;
 
 namespace DesktopTuner;
 
-public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedApp = false, string CategoryPath = "", StartTileSize TileSize = StartTileSize.Medium, string GroupName = StartPinCatalog.DefaultGroupName)
+public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedApp = false, string CategoryPath = "", StartTileSize TileSize = StartTileSize.Medium, string GroupName = StartPinCatalog.DefaultGroupName, bool IsDirectory = false)
 {
-    public string SourceDescription => IsPackagedApp ? "Windows app" : Path.GetDirectoryName(ShortcutPath) ?? ShortcutPath;
+    public string SourceDescription => IsPackagedApp ? "Windows app" : IsDirectory ? ShortcutPath : Path.GetDirectoryName(ShortcutPath) ?? ShortcutPath;
     public ImageSource? Icon => TaskbarIconService.LoadIcon(ShortcutPath);
     [JsonIgnore]
     public bool CanRunElevated => AppCatalogService.CanRunAsAdministrator(this);
@@ -141,6 +141,12 @@ public sealed class AppCatalogService
 
     public static void Launch(AppEntry entry)
     {
+        if (entry.IsDirectory)
+        {
+            Process.Start(new ProcessStartInfo(entry.ShortcutPath) { UseShellExecute = true });
+            return;
+        }
+
         if (!entry.IsPackagedApp)
         {
             Process.Start(BuildLaunchInfo(entry));
@@ -155,7 +161,7 @@ public sealed class AppCatalogService
     public static bool CanRunAsAdministrator(AppEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        if (entry.IsPackagedApp) return false;
+        if (entry.IsPackagedApp || entry.IsDirectory) return false;
         var extension = Path.GetExtension(entry.ShortcutPath);
         return string.Equals(extension, ".lnk", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".exe", StringComparison.OrdinalIgnoreCase);
@@ -164,7 +170,7 @@ public sealed class AppCatalogService
     public static bool CanOpenFileLocation(AppEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        return !entry.IsPackagedApp
+        return !entry.IsPackagedApp && !entry.IsDirectory
             && (string.Equals(Path.GetExtension(entry.ShortcutPath), ".lnk", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(Path.GetExtension(entry.ShortcutPath), ".exe", StringComparison.OrdinalIgnoreCase))
             && File.Exists(entry.ShortcutPath);
