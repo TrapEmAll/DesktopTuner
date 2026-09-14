@@ -86,6 +86,7 @@ public partial class MainWindow : Window
     private readonly bool _startInBackground;
     private readonly bool _shellHostMode;
     private readonly bool _shellOverlayMode;
+    private bool _shellHostReadySignaled;
     private bool _closingTaskbars;
     private bool _reconcilingDisplayTopology;
 
@@ -1338,13 +1339,13 @@ public partial class MainWindow : Window
                 ? "Desktop Tuner shell overlay is running on every display. Explorer's notification area remains exposed where the selected layout supports it."
                 : _shellHostMode
                 ? "Desktop Tuner shell host is running. Its taskbars and Start menu are active on every display."
-                : showAllDisplays
-                    ? hideNativeTaskbar
-                        ? "Desktop Tuner taskbar replacement is running on all displays. Close it to restore Windows taskbars."
-                        : "Desktop Tuner taskbar overlays are running on all displays. Close one to reveal the Windows taskbar everywhere."
-                    : hideNativeTaskbar
-                        ? "Desktop Tuner taskbar replacement is running on the primary display. Close it to restore the Windows taskbar."
-                        : "Desktop Tuner taskbar overlay is running on the primary display. Close it to reveal the Windows taskbar.");
+                    : showAllDisplays
+                        ? hideNativeTaskbar
+                            ? "Desktop Tuner taskbar replacement is running on all displays. Close it to restore Windows taskbars."
+                            : "Desktop Tuner taskbar overlays are running on all displays. Close one to reveal the Windows taskbar everywhere."
+                        : hideNativeTaskbar
+                            ? "Desktop Tuner taskbar replacement is running on the primary display. Close it to restore the Windows taskbar."
+                            : "Desktop Tuner taskbar overlay is running on the primary display. Close it to reveal the Windows taskbar.");
         }
         catch (Exception ex)
         {
@@ -1363,14 +1364,23 @@ public partial class MainWindow : Window
     private TaskbarWindow AddTaskbarWindow(TaskbarDisplay display, DesktopPreferences preferences)
     {
         var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, _taskbarWindowOrder, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication);
+        taskbar.ContentRendered += TaskbarWindow_ContentRendered;
         taskbar.Closed += (_, _) =>
         {
+            taskbar.ContentRendered -= TaskbarWindow_ContentRendered;
             _taskbarWindows.Remove(taskbar);
             if (!_closingTaskbars && !_reconcilingDisplayTopology) CloseTaskbars();
         };
         _taskbarWindows.Add(taskbar);
         taskbar.Show();
         return taskbar;
+    }
+
+    private void TaskbarWindow_ContentRendered(object? sender, EventArgs e)
+    {
+        if (!_shellHostMode || _shellHostReadySignaled) return;
+        _shellHostReadySignaled = true;
+        CustomShellPolicy.SignalHostReady();
     }
 
     private void DisplayRefreshTimer_Tick(object? sender, EventArgs e)

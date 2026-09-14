@@ -105,8 +105,6 @@ public partial class App : Application
                 shellControls.Show();
                 shellControls.Hide();
             }
-            if (shellHostWorkerArgument)
-                CustomShellPolicy.SignalHostReady();
             return;
         }
 
