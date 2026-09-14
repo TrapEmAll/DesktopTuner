@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Interop;
 using System.Windows.Threading;
 
 namespace DesktopTuner;
@@ -2012,11 +2013,49 @@ public partial class ExplorerWindow : Window
         UnpinQuickAccessMenuItem.IsEnabled = isPinned;
         RenameMenuItem.IsEnabled = hasSingleSelection && !selection[0].IsDrive;
         DeleteMenuItem.IsEnabled = hasTransferableSelection;
+        NativeShellContextMenuItem.IsEnabled = CanShowNativeShellContextMenu(selection);
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open")) is { } openItem)
             openItem.IsEnabled = hasSingleSelection;
         NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_isSearchView;
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "New folder")) is { } newFolderItem)
             newFolderItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_isSearchView;
+    }
+
+    private bool CanShowNativeShellContextMenu(IReadOnlyList<ExplorerEntry> selection)
+    {
+        if (selection.Count == 0) return !_location.IsHome && !_location.IsDriveList && _location.Path is { } folder && Directory.Exists(folder);
+        if (selection.Any(entry => entry.IsDrive)) return false;
+        try
+        {
+            _ = NativeShellContextMenuPolicy.NormalizeSelection(selection.Select(entry => entry.FullPath));
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    private async void NativeShellContextMenu_Click(object sender, RoutedEventArgs e)
+    {
+        var selection = EntriesList.SelectedItems.OfType<ExplorerEntry>().ToList();
+        var owner = new WindowInteropHelper(this).Handle;
+        try
+        {
+            if (selection.Count == 0)
+            {
+                if (_location.Path is { } folder && !_location.IsHome && !_location.IsDriveList)
+                    await NativeShellContextMenuService.ShowForFolderBackgroundAsync(owner, folder);
+            }
+            else
+            {
+                await NativeShellContextMenuService.ShowForItemsAsync(owner, selection.Select(entry => entry.FullPath));
+            }
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Could not open Windows' context menu: {ex.Message}");
+        }
     }
 
     private void NewFolder_Click(object sender, RoutedEventArgs e) => CreateFolder();

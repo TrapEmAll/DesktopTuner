@@ -719,6 +719,20 @@ var temporaryPreferencesDirectory = Path.Combine(Path.GetTempPath(), $"DesktopTu
 var preferencesPath = Path.Combine(temporaryPreferencesDirectory, "preferences.json");
 try
 {
+    var nativeMenuFolder = Path.Combine(temporaryPreferencesDirectory, "NativeMenu");
+    var nativeMenuOtherFolder = Path.Combine(temporaryPreferencesDirectory, "NativeMenuOther");
+    Directory.CreateDirectory(nativeMenuFolder);
+    Directory.CreateDirectory(nativeMenuOtherFolder);
+    var nativeMenuFirst = Path.Combine(nativeMenuFolder, "first.txt");
+    var nativeMenuSecond = Path.Combine(nativeMenuFolder, "second.txt");
+    File.WriteAllText(nativeMenuFirst, "first");
+    File.WriteAllText(nativeMenuSecond, "second");
+    CheckTrue(await NativeShellContextMenuService.ProbeItemsContextMenuAsync([nativeMenuFirst, nativeMenuSecond]), "build the Windows Shell context menu for a multi-selection");
+    CheckTrue(await NativeShellContextMenuService.ProbeFolderBackgroundContextMenuAsync(nativeMenuFolder), "build the Windows Shell folder-background context menu");
+    Check(2, NativeShellContextMenuPolicy.NormalizeSelection([nativeMenuFirst, nativeMenuSecond, nativeMenuFirst]).Count, "allow one native context menu for distinct items in the same folder");
+    Throws<ArgumentException>(() => NativeShellContextMenuPolicy.NormalizeSelection([nativeMenuFirst, Path.Combine(nativeMenuOtherFolder, "third.txt")]), "reject mixed-parent native context menus");
+    Throws<ArgumentException>(() => NativeShellContextMenuPolicy.NormalizeSelection([Path.GetPathRoot(temporaryPreferencesDirectory)!]), "reject drive-root native context menus");
+
     var explorerTestDirectory = Path.Combine(temporaryPreferencesDirectory, "ExplorerOperations");
     Directory.CreateDirectory(explorerTestDirectory);
     var propertiesTestFile = Path.Combine(explorerTestDirectory, "Details.txt");

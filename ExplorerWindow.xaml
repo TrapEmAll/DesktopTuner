@@ -280,6 +280,8 @@
                                 <MenuItem x:Name="DeleteMenuItem" Header="Send to Recycle Bin" IsEnabled="False" Click="Delete_Click" />
                                 <Separator />
                                 <MenuItem Header="Refresh" Click="Refresh_Click" />
+                                <Separator />
+                                <MenuItem x:Name="NativeShellContextMenuItem" Header="Show more options" Click="NativeShellContextMenu_Click" />
                             </ContextMenu>
                         </ListView.ContextMenu>
                         <ListView.View>
