@@ -799,20 +799,23 @@ public partial class ShellNamespaceBrowserWindow : Window
             return;
         }
 
-        var paths = NativeShellContextMenuService.ReadCutFilePathsFromClipboard();
-        if (paths.Count == 0)
+        var parsingNames = NativeShellContextMenuService.ReadCutItemParsingNamesFromClipboard();
+        if (parsingNames.Count == 0)
         {
             ClearCutState();
             return;
         }
 
         _cutParsingNames.Clear();
-        foreach (var path in paths)
+        foreach (var parsingName in parsingNames)
         {
-            try { _cutParsingNames.Add(Path.GetFullPath(path)); }
+            try
+            {
+                _cutParsingNames.Add(Path.IsPathFullyQualified(parsingName) ? Path.GetFullPath(parsingName) : parsingName);
+            }
             catch (Exception ex) when (ex is ArgumentException or IOException or NotSupportedException)
             {
-                _cutParsingNames.Add(path);
+                _cutParsingNames.Add(parsingName);
             }
         }
         _cutClipboardSequence = clipboardSequence;

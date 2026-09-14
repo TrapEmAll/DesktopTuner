@@ -24,6 +24,9 @@ public static class NativeShellContextMenuService
     private const uint DropEffectCopy = 0x00000001;
     private const uint DropEffectMove = 0x00000002;
     private const uint ClipboardFormatHDrop = 15;
+    private const int MaximumClipboardPayloadBytes = 32 * 1024 * 1024;
+    private const uint MaximumClipboardItemCount = 4096;
+    private const uint MaximumClipboardPathCharacters = 32768;
     private const uint GlobalMemoryMoveable = 0x0002;
     private const uint GlobalMemoryZeroInit = 0x0040;
     private const uint MouseButtonMask = 0x00000013;
@@ -73,7 +76,7 @@ public static class NativeShellContextMenuService
 
     internal static uint ReadClipboardSequenceNumber() => GetClipboardSequenceNumber();
 
-    internal static IReadOnlyList<string> ReadCutFilePathsFromClipboard()
+    internal static IReadOnlyList<string> ReadCutItemParsingNamesFromClipboard()
     {
         if (!OpenClipboard(nint.Zero)) return [];
         try
@@ -96,23 +99,75 @@ public static class NativeShellContextMenuService
             }
             if (!ShellClipboardPolicy.IsCutDropEffect(effect)) return [];
 
+            var parsingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var fileDropHandle = GetClipboardData(ClipboardFormatHDrop);
-            if (fileDropHandle == nint.Zero) return [];
-            var fileCount = DragQueryFile(fileDropHandle, uint.MaxValue, null, 0);
-            var paths = new List<string>(checked((int)fileCount));
-            for (uint index = 0; index < fileCount; index++)
+            if (fileDropHandle != nint.Zero)
             {
-                var length = DragQueryFile(fileDropHandle, index, null, 0);
-                if (length == 0) continue;
-                var path = new StringBuilder(checked((int)length + 1));
-                if (DragQueryFile(fileDropHandle, index, path, checked(length + 1)) > 0)
-                    paths.Add(path.ToString());
+                var fileCount = Math.Min(DragQueryFile(fileDropHandle, uint.MaxValue, null, 0), MaximumClipboardItemCount);
+                for (uint index = 0; index < fileCount; index++)
+                {
+                    var length = DragQueryFile(fileDropHandle, index, null, 0);
+                    if (length == 0 || length > MaximumClipboardPathCharacters) continue;
+                    var path = new StringBuilder(checked((int)length + 1));
+                    if (DragQueryFile(fileDropHandle, index, path, checked(length + 1)) > 0)
+                        parsingNames.Add(path.ToString());
+                }
             }
-            return paths;
+
+            var shellIdListFormat = RegisterClipboardFormat("Shell IDList Array");
+            var shellIdListHandle = shellIdListFormat == 0 ? nint.Zero : GetClipboardData(shellIdListFormat);
+            if (shellIdListHandle != nint.Zero)
+            {
+                var payloadSize = GlobalSize(shellIdListHandle);
+                if (payloadSize is > 0 and <= MaximumClipboardPayloadBytes)
+                {
+                    var shellIdListPointer = GlobalLock(shellIdListHandle);
+                    if (shellIdListPointer != nint.Zero)
+                    {
+                        try
+                        {
+                            var payload = new byte[checked((int)payloadSize)];
+                            Marshal.Copy(shellIdListPointer, payload, 0, payload.Length);
+                            if (ShellClipboardPolicy.TryReadShellIdListArray(payload, out var parentOffset, out var itemOffsets))
+                            {
+                                foreach (var itemOffset in itemOffsets)
+                                {
+                                    var absolutePidl = ILCombine(shellIdListPointer + parentOffset, shellIdListPointer + itemOffset);
+                                    if (absolutePidl == nint.Zero) continue;
+                                    try
+                                    {
+                                        if (SHGetNameFromIDList(absolutePidl, DesktopAbsoluteParsing, out var namePointer) >= 0 && namePointer != nint.Zero)
+                                        {
+                                            try
+                                            {
+                                                var parsingName = Marshal.PtrToStringUni(namePointer);
+                                                if (!string.IsNullOrWhiteSpace(parsingName)) parsingNames.Add(parsingName);
+                                            }
+                                            finally
+                                            {
+                                                Marshal.FreeCoTaskMem(namePointer);
+                                            }
+                                        }
+                                    }
+                                    finally
+                                    {
+                                        Marshal.FreeCoTaskMem(absolutePidl);
+                                    }
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            GlobalUnlock(shellIdListHandle);
+                        }
+                    }
+                }
+            }
+            return parsingNames.ToArray();
         }
-        catch (Exception ex) when (ex is Win32Exception or OverflowException or ArgumentException)
+        catch (Exception ex) when (ex is Win32Exception or OverflowException or ArgumentException or COMException)
         {
-            Trace.TraceWarning($"Could not read filesystem cut items from the Windows clipboard: {ex.Message}");
+            Trace.TraceWarning($"Could not read cut items from the Windows clipboard: {ex.Message}");
             return [];
         }
         finally
@@ -941,6 +996,9 @@ public static class NativeShellContextMenuService
 
     [DllImport("shell32.dll", PreserveSig = true)]
     private static extern int SHGetNameFromIDList(nint pidl, uint nameType, out nint name);
+
+    [DllImport("shell32.dll", PreserveSig = true)]
+    private static extern nint ILCombine(nint parentPidl, nint childPidl);
 
     [DllImport("shell32.dll", PreserveSig = true)]
     private static extern int SHGetDesktopFolder([MarshalAs(UnmanagedType.Interface)] out IShellFolder desktopFolder);
