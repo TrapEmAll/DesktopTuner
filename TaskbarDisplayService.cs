@@ -23,6 +23,7 @@ public sealed record TaskbarDisplayTopologyPlan(
 public static class TaskbarDisplayService
 {
     private const uint MonitorInfoPrimary = 0x00000001;
+    private const uint MonitorDefaultToNearest = 0x00000002;
 
     public static IReadOnlyList<TaskbarDisplay> Enumerate()
     {
@@ -73,6 +74,15 @@ public static class TaskbarDisplayService
         if (displays.Count == 0) throw new ArgumentException("At least one display is required.", nameof(connectedDisplays));
         if (allDisplays) return displays;
         return [displays.FirstOrDefault(display => display.IsPrimary) ?? displays[0]];
+    }
+
+    public static string? GetDeviceNameForWindow(nint windowHandle)
+    {
+        if (windowHandle == IntPtr.Zero) throw new ArgumentException("A window handle is required.", nameof(windowHandle));
+        var monitor = MonitorFromWindow(windowHandle, MonitorDefaultToNearest);
+        if (monitor == IntPtr.Zero) return null;
+        var info = new MonitorInfoEx { Size = (uint)Marshal.SizeOf<MonitorInfoEx>(), DeviceName = string.Empty };
+        return GetMonitorInfo(monitor, ref info) ? info.DeviceName : null;
     }
 
     public static TaskbarDisplayTopologyPlan PlanTopologyChange(IEnumerable<TaskbarDisplay> currentDisplays, IEnumerable<TaskbarDisplay> desiredDisplays)
@@ -151,6 +161,9 @@ public static class TaskbarDisplayService
     [DllImport("user32.dll", EntryPoint = "GetMonitorInfoW", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfoEx info);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr window, uint flags);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

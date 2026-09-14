@@ -25,23 +25,20 @@ public static class TaskbarWindowDisplayPolicy
         var primary = displays.FirstOrDefault(display => display.IsPrimary) ?? displays[0];
         return entries.Where(window =>
         {
-            var windowDisplay = FindWindowDisplay(window.Bounds, displays);
+            var windowDisplay = FindWindowDisplay(window, displays);
             return SameDisplay(windowDisplay, taskbarDisplay)
                 || mode == TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen && SameDisplay(primary, taskbarDisplay);
         }).ToList();
     }
 
-    private static TaskbarDisplay FindWindowDisplay(TaskbarBounds bounds, IReadOnlyList<TaskbarDisplay> displays)
+    private static TaskbarDisplay FindWindowDisplay(RunningWindow window, IReadOnlyList<TaskbarDisplay> displays)
     {
-        var centerX = bounds.Left + bounds.Width / 2d;
-        var centerY = bounds.Top + bounds.Height / 2d;
-        var containing = displays.FirstOrDefault(display =>
-            centerX >= display.Left && centerX < display.Left + display.Width &&
-            centerY >= display.Top && centerY < display.Top + display.Height);
-        if (containing is not null) return containing;
+        var reportedDisplay = displays.FirstOrDefault(display =>
+            string.Equals(display.DeviceName, window.DisplayDeviceName, StringComparison.OrdinalIgnoreCase));
+        if (reportedDisplay is not null) return reportedDisplay;
 
         return displays
-            .Select(display => (Display: display, Area: IntersectionArea(bounds, display)))
+            .Select(display => (Display: display, Area: IntersectionArea(window.Bounds, display)))
             .OrderByDescending(item => item.Area)
             .ThenByDescending(item => item.Display.IsPrimary)
             .First().Display;

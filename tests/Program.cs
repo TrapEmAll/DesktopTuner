@@ -126,9 +126,15 @@ RunningWindow[] windowsAcrossDisplays =
     new RunningWindow((nint)203, "Spanning", "Mail", @"C:\Apps\mail.exe", false) { Bounds = new(-200, 200, 700, 500) }
 ];
 Check("201,202,203", string.Join(',', TaskbarWindowDisplayPolicy.Filter(windowsAcrossDisplays, primaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.AllTaskbars).Select(window => window.Handle)), "show all app windows on every taskbar in the default mode");
-Check("201,203", string.Join(',', TaskbarWindowDisplayPolicy.Filter(windowsAcrossDisplays, primaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.TaskbarOnWhichWindowIsOpen).Select(window => window.Handle)), "show app windows on the display containing their center point");
+Check("201,203", string.Join(',', TaskbarWindowDisplayPolicy.Filter(windowsAcrossDisplays, primaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.TaskbarOnWhichWindowIsOpen).Select(window => window.Handle)), "show app windows on the display with the largest window overlap");
 Check("202", string.Join(',', TaskbarWindowDisplayPolicy.Filter(windowsAcrossDisplays, secondaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.TaskbarOnWhichWindowIsOpen).Select(window => window.Handle)), "show a secondary app only on its own taskbar");
 Check("201,202,203", string.Join(',', TaskbarWindowDisplayPolicy.Filter(windowsAcrossDisplays, primaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen).Select(window => window.Handle)), "also show all app windows on the primary taskbar");
+var nativeAssignedWindow = windowsAcrossDisplays[0] with { DisplayDeviceName = secondaryDisplay.DeviceName };
+Check("201", string.Join(',', TaskbarWindowDisplayPolicy.Filter([nativeAssignedWindow], secondaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.TaskbarOnWhichWindowIsOpen).Select(window => window.Handle)), "prefer Windows' assigned monitor for a spanning window");
+var tallSecondary = new TaskbarDisplay("TALL", 1000, -1000, 1000, 3000, false);
+var flatPrimary = new TaskbarDisplay("FLAT", 0, 0, 1000, 1000, true);
+var spanningDisplayWindow = new RunningWindow((nint)204, "Spanning", "Editor", @"C:\Apps\editor.exe", false) { Bounds = new(500, -500, 980, 1000) };
+Check("204", string.Join(',', TaskbarWindowDisplayPolicy.Filter([spanningDisplayWindow], tallSecondary, [flatPrimary, tallSecondary], TaskbarWindowDisplayMode.TaskbarOnWhichWindowIsOpen).Select(window => window.Handle)), "use largest display intersection when Windows has no monitor assignment");
 var secondaryBar = TaskbarLayoutCalculator.Calculate(secondaryDisplay, new(TaskbarEdge.Bottom), false);
 Check(-1920d, secondaryBar.Left, "place taskbar on a monitor with negative desktop coordinates");
 Check(799d, secondaryBar.Top, "scale taskbar thickness for a high-DPI display");
