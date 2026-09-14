@@ -23,6 +23,8 @@ public partial class ShellNamespaceBrowserWindow : Window
     private bool _isClosed;
     private bool _sourceInitialized;
     private bool _changeNotificationsAttempted;
+    private DesktopShellNamespaceEntry? _dragCandidate;
+    private Point _dragStart;
     private string? _registeredChangeLocation;
     private DesktopShellChangeNotificationListener? _shellChangeNotifications;
 
@@ -303,6 +305,42 @@ public partial class ShellNamespaceBrowserWindow : Window
         if (e.OriginalSource is DependencyObject source &&
             ItemsControl.ContainerFromElement(ItemsList, source) is ListViewItem { Content: DesktopShellNamespaceEntry entry })
             OpenItem(entry);
+    }
+
+    private void ItemsList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _dragCandidate = null;
+        if (e.OriginalSource is not DependencyObject source ||
+            ItemsControl.ContainerFromElement(ItemsList, source) is not ListViewItem { Content: DesktopShellNamespaceEntry entry }) return;
+        _dragCandidate = entry;
+        _dragStart = e.GetPosition(ItemsList);
+    }
+
+    private void ItemsList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) => _dragCandidate = null;
+
+    private async void ItemsList_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _dragCandidate is not { } candidate) return;
+        var current = e.GetPosition(ItemsList);
+        if (Math.Abs(current.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(current.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+        _dragCandidate = null;
+        var selection = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().ToArray();
+        if (!selection.Contains(candidate)) selection = [candidate];
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.DragShellItemsAsync(owner, selection.Select(entry => entry.ParsingName));
+        }
+        catch (ArgumentException ex)
+        {
+            StatusText.Text = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not drag Shell items", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void Open_Click(object sender, RoutedEventArgs e) => OpenSelectedItem();

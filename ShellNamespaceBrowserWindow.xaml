@@ -95,6 +95,9 @@
         </DockPanel>
         <ListView x:Name="ItemsList" Grid.Row="2" Margin="0,10,0,0" MouseDoubleClick="ItemsList_MouseDoubleClick"
                   PreviewMouseRightButtonDown="ItemsList_PreviewMouseRightButtonDown"
+                  PreviewMouseLeftButtonDown="ItemsList_PreviewMouseLeftButtonDown"
+                  PreviewMouseLeftButtonUp="ItemsList_PreviewMouseLeftButtonUp"
+                  PreviewMouseMove="ItemsList_PreviewMouseMove"
                   SelectionMode="Extended" ItemsPanel="{StaticResource ShellNamespaceVerticalItemsPanel}">
             <ListView.ContextMenu>
                 <ContextMenu Opened="ItemContextMenu_Opened">
