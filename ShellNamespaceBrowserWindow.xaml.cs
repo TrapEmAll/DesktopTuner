@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace DesktopTuner;
@@ -77,7 +78,6 @@ public partial class ShellNamespaceBrowserWindow : Window
             StatusText.Text = "Loading Shell items…";
             var entries = await DesktopShellNamespaceCatalog.ReadChildrenAsync(location);
             if (version != _navigationVersion || !IsVisible && IsLoaded) return;
-            ItemsList.ItemsSource = entries;
             StatusText.Text = entries.Count == 0
                 ? "This location is empty or Windows returned no items."
                 : $"{entries.Count:N0} items · Loading icons…";
@@ -208,7 +208,6 @@ public partial class ShellNamespaceBrowserWindow : Window
         {
             var result = await DesktopShellNamespaceCatalog.SearchAsync(_location, query, cancellation.Token);
             if (cancellation.IsCancellationRequested || version != _navigationVersion || !IsVisible && IsLoaded) return;
-            ItemsList.ItemsSource = result.Entries;
             StatusText.Text = $"{result.Entries.Count:N0} found · Loading Shell icons…";
             var entriesWithIcons = await Task.Run(() => result.Entries
                 .Select(entry => entry with { Icon = TaskbarIconService.LoadNamespaceIcon(entry.ParsingName) })
@@ -331,12 +330,88 @@ public partial class ShellNamespaceBrowserWindow : Window
         }
     }
 
-    private void ItemContextMenu_Opened(object sender, RoutedEventArgs e)
+    private async void ItemContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         var hasSelection = ItemsList.SelectedItems.Count > 0;
         OpenMenuItem.IsEnabled = ItemsList.SelectedItems.Count == 1;
+        RenameMenuItem.IsEnabled = false;
+        if (ItemsList.SelectedItems.Count == 1 && ItemsList.SelectedItem is DesktopShellNamespaceEntry entry)
+            RenameMenuItem.IsEnabled = await CanRenameAsync(entry);
         ShowMoreOptionsMenuItem.Header = hasSelection ? "Show more options" : "Show folder options";
         ShowMoreOptionsMenuItem.IsEnabled = true;
+    }
+
+    private static async Task<bool> CanRenameAsync(DesktopShellNamespaceEntry entry)
+    {
+        if (!entry.RenameCapabilityChecked)
+        {
+            var canRename = await Task.Run(() => NativeShellContextMenuService.CanRenameShellItem(entry.ParsingName));
+            entry.SetRenameCapability(canRename);
+        }
+        return entry.CanRename;
+    }
+
+    private void Rename_Click(object sender, RoutedEventArgs e) => BeginRenameSelected();
+
+    private void BeginRenameSelected()
+    {
+        if (ItemsList.SelectedItems.Count != 1 || ItemsList.SelectedItem is not DesktopShellNamespaceEntry { CanRename: true } entry) return;
+        entry.RenameText = entry.Name;
+        entry.IsRenaming = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (!entry.IsRenaming) return;
+            var container = ItemsList.ItemContainerGenerator.ContainerFromItem(entry);
+            var editor = container is null ? null : FindVisualDescendant<TextBox>(container);
+            if (editor is null)
+            {
+                entry.IsRenaming = false;
+                return;
+            }
+            editor.Focus();
+            Keyboard.Focus(editor);
+            editor.Select(0, ExplorerRenamePolicy.GetInitialSelectionLength(entry.Name, entry.IsFolder));
+        }));
+    }
+
+    private async void RenameEditor_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is TextBox { DataContext: DesktopShellNamespaceEntry entry }) await CommitRenameAsync(entry);
+    }
+
+    private async Task CommitRenameAsync(DesktopShellNamespaceEntry entry)
+    {
+        if (!entry.IsRenaming) return;
+        var newName = entry.RenameText.Trim();
+        entry.IsRenaming = false;
+        if (string.IsNullOrWhiteSpace(newName) || string.Equals(entry.Name, newName, StringComparison.Ordinal))
+        {
+            entry.RenameText = entry.Name;
+            return;
+        }
+
+        try
+        {
+            await NativeShellContextMenuService.RenameShellItemAsync(entry.ParsingName, newName);
+            await RefreshCurrentViewAsync();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Runtime.InteropServices.COMException or InvalidOperationException)
+        {
+            entry.RenameText = entry.Name;
+            MessageBox.Show(this, ex.Message, "Could not rename Shell item", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private static T? FindVisualDescendant<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is T match) return match;
+            var descendant = FindVisualDescendant<T>(child);
+            if (descendant is not null) return descendant;
+        }
+        return null;
     }
 
     private void ItemsList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
@@ -379,8 +454,30 @@ public partial class ShellNamespaceBrowserWindow : Window
 
     private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (Keyboard.FocusedElement is TextBox { DataContext: DesktopShellNamespaceEntry editingEntry } && editingEntry.IsRenaming)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                await CommitRenameAsync(editingEntry);
+            }
+            else if (e.Key == Key.Escape)
+            {
+                editingEntry.RenameText = editingEntry.Name;
+                editingEntry.IsRenaming = false;
+                e.Handled = true;
+            }
+            else return;
+            return;
+        }
+
+        if (e.Key == Key.F2 && Keyboard.Modifiers == ModifierKeys.None && ItemsList.IsKeyboardFocusWithin &&
+            ItemsList.SelectedItems.Count == 1 && ItemsList.SelectedItem is DesktopShellNamespaceEntry { IsRenaming: false } renameEntry)
+            await CanRenameAsync(renameEntry);
+
         var keyboardAction = ShellNamespaceBrowserKeyboardPolicy.Resolve(
-            e.Key, Keyboard.Modifiers, ItemsList.IsKeyboardFocusWithin, ItemsList.SelectedItems.Count > 0);
+            e.Key, Keyboard.Modifiers, ItemsList.IsKeyboardFocusWithin, ItemsList.SelectedItems.Count > 0,
+            ItemsList.SelectedItem is DesktopShellNamespaceEntry { CanRename: true });
         if (keyboardAction == ShellNamespaceBrowserKeyboardAction.SelectAll)
         {
             ItemsList.SelectAll();
@@ -394,6 +491,11 @@ public partial class ShellNamespaceBrowserWindow : Window
         else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.ShowContextMenu)
         {
             await ShowShellContextMenuAsync();
+            e.Handled = true;
+        }
+        else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.Rename)
+        {
+            BeginRenameSelected();
             e.Handled = true;
         }
         else if (e.Key == Key.F5 || e.Key == Key.R && Keyboard.Modifiers == ModifierKeys.Control)

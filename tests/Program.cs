@@ -27,6 +27,13 @@ Check(true, desktopHostEntries.Single(entry => entry.Name == "This PC").CanShowN
 Check(false, desktopHostEntries.Single(entry => entry.Name == "This PC").CanRename, "keep This PC inline rename disabled when the Shell does not advertise rename support");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "Recycle Bin").CanShowNativeContextMenu, "offer native Shell context verbs for Recycle Bin");
 CheckTrue(TaskbarIconService.LoadNamespaceIcon("shell:MyComputerFolder") is not null, "extract a shell icon for a namespace parsing name");
+var browserRenameEntry = new DesktopShellNamespaceEntry("Rename me", "shell:RenameFixture", false);
+Check(false, browserRenameEntry.CanRename, "keep Shell browser rename disabled until the native capability is checked");
+browserRenameEntry.SetRenameCapability(true);
+Check(true, browserRenameEntry.CanRename && browserRenameEntry.RenameCapabilityChecked, "cache native Shell rename capability on a browser item");
+browserRenameEntry.IsRenaming = true;
+browserRenameEntry.RenameText = "Renamed";
+Check("Renamed", browserRenameEntry.RenameText, "store inline rename text for a Shell browser item");
 var shellNamespaceDesktopEntries = DesktopHostCatalog.ReadItems([userDesktopRoot, sharedDesktopRoot], includeDesktopNamespace: true);
 CheckTrue(shellNamespaceDesktopEntries.Any(entry => entry.Name == "Network" && entry.IsShellNamespace), "include Network from the Windows desktop Shell namespace");
 CheckTrue(shellNamespaceDesktopEntries.Any(entry => entry.Name == "Libraries" && entry.IsShellNamespace), "include Libraries from the Windows desktop Shell namespace");
@@ -1457,6 +1464,9 @@ try
     Check(ShellNamespaceBrowserKeyboardAction.None, ShellNamespaceBrowserKeyboardPolicy.Resolve(Key.Escape, ModifierKeys.None, itemListFocused: true, hasSelection: false), "leave Escape available when the Shell item list has no selection");
     Check(ShellNamespaceBrowserKeyboardAction.ShowContextMenu, ShellNamespaceBrowserKeyboardPolicy.Resolve(Key.F10, ModifierKeys.Shift, itemListFocused: true, hasSelection: true), "open the native Shell context menu with Shift+F10");
     Check(ShellNamespaceBrowserKeyboardAction.ShowContextMenu, ShellNamespaceBrowserKeyboardPolicy.Resolve(Key.Apps, ModifierKeys.None, itemListFocused: true, hasSelection: false), "open the native folder context menu with the Menu key");
+    Check(ShellNamespaceBrowserKeyboardAction.Rename, ShellNamespaceBrowserKeyboardPolicy.Resolve(Key.F2, ModifierKeys.None, itemListFocused: true, hasSelection: true, canRename: true), "start inline rename for a selected Shell item that supports renaming");
+    Check(ShellNamespaceBrowserKeyboardAction.None, ShellNamespaceBrowserKeyboardPolicy.Resolve(Key.F2, ModifierKeys.None, itemListFocused: true, hasSelection: true), "leave F2 unhandled for a Shell item that does not support renaming");
+    Check(ShellNamespaceBrowserKeyboardAction.None, ShellNamespaceBrowserKeyboardPolicy.Resolve(Key.F2, ModifierKeys.None, itemListFocused: false, hasSelection: true, canRename: true), "preserve F2 when the Shell item list does not have focus");
     Check(ShellNamespaceBrowserKeyboardAction.None, ShellNamespaceBrowserKeyboardPolicy.Resolve(Key.F10, ModifierKeys.Control, itemListFocused: true, hasSelection: true), "preserve unrelated modified F10 shortcuts in the Shell browser");
     using (var canceledShellSearch = new CancellationTokenSource())
     {

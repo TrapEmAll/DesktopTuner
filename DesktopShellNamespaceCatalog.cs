@@ -1,14 +1,52 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows.Media;
 
 namespace DesktopTuner;
 
-public sealed record DesktopShellNamespaceEntry(string Name, string ParsingName, bool IsFolder)
+public sealed record DesktopShellNamespaceEntry(string Name, string ParsingName, bool IsFolder) : INotifyPropertyChanged
 {
+    private bool _isRenaming;
+    private string _renameText = Name;
+    private bool _canRename;
+    private bool _renameCapabilityChecked;
+
     public ImageSource? Icon { get; init; }
+    public bool CanRename
+    {
+        get => _canRename;
+        private set { if (_canRename == value) return; _canRename = value; OnPropertyChanged(); }
+    }
+    public bool RenameCapabilityChecked
+    {
+        get => _renameCapabilityChecked;
+        private set { if (_renameCapabilityChecked == value) return; _renameCapabilityChecked = value; OnPropertyChanged(); }
+    }
+    public bool IsRenaming
+    {
+        get => _isRenaming;
+        set { if (_isRenaming == value) return; _isRenaming = value; OnPropertyChanged(); }
+    }
+    public string RenameText
+    {
+        get => _renameText;
+        set { if (string.Equals(_renameText, value, StringComparison.Ordinal)) return; _renameText = value; OnPropertyChanged(); }
+    }
     public string Type => IsFolder ? "Folder" : "Item";
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public void SetRenameCapability(bool canRename)
+    {
+        CanRename = canRename;
+        RenameCapabilityChecked = true;
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 
 public sealed record DesktopShellNamespaceSearchResult(
