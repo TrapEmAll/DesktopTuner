@@ -1209,7 +1209,8 @@ public partial class MainWindow : Window
             return;
         }
         _startMenuWindow = new StartMenuWindow(_startMenuStyle, _pinnedStartApps, SavePinnedStartApps,
-            startPlaces: _startMenuPlaces, recentAppCount: _startRecentAppCount, controlPanelApplets: _controlPanelApplets);
+            startPlaces: _startMenuPlaces, recentAppCount: _startRecentAppCount, controlPanelApplets: _controlPanelApplets,
+            openShellLocation: _shellHostMode ? TryOpenLocationInCompanionExplorer : null);
         _startMenuDisplay = display;
         _startMenuWindow.Closed += (_, _) => { _startMenuWindow = null; _startMenuDisplay = null; };
         if (display is not null)
@@ -1835,6 +1836,23 @@ public partial class MainWindow : Window
         { Owner = this };
         _explorerWindow.Closed += (_, _) => _explorerWindow = null;
         _explorerWindow.Show();
+    }
+
+    private bool TryOpenLocationInCompanionExplorer(string location)
+    {
+        var isSupportedShellLocation = DesktopShellNamespaceCatalog.IsCompanionExplorerLocation(location);
+        var isFilesystemDirectory = Path.IsPathFullyQualified(location) && Directory.Exists(location);
+        if (!ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(_shellHostMode, isFilesystemDirectory, isSupportedShellLocation))
+            return false;
+
+        if (isSupportedShellLocation)
+        {
+            if (_explorerWindow is { IsVisible: true }) _explorerWindow.OpenShellLocationFromShell(location);
+            else OpenExplorer(location);
+            return true;
+        }
+        OpenExplorer(Path.GetFullPath(location));
+        return true;
     }
 
     private void QuitApplication()

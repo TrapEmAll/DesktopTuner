@@ -252,6 +252,10 @@ Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, true), 
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, false), "integrate the native notification area in normal overlay mode");
 Check(true, ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(true), "keep desktop folder navigation inside the replacement shell");
 Check(false, ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(false), "preserve normal desktop-host folder activation outside replacement shell mode");
+Check(true, ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(true, true, false), "route filesystem-backed Start places through companion Explorer in replacement mode");
+Check(true, ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(true, false, true), "route supported namespace Start places through companion Explorer in replacement mode");
+Check(false, ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(false, true, true), "preserve native Start place handlers outside replacement mode");
+Check(false, ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(true, false, false), "leave unsupported Start locations on their existing handler");
 Check(true, DesktopShellNamespaceCatalog.IsCompanionExplorerLocation("shell:MyComputerFolder"), "route the This PC desktop namespace item to companion Explorer");
 Check(true, DesktopShellNamespaceCatalog.IsCompanionExplorerLocation("shell:RecycleBinFolder"), "route the Recycle Bin desktop namespace item to companion Explorer");
 Check(false, DesktopShellNamespaceCatalog.IsCompanionExplorerLocation("shell:PrintersFolder"), "leave unsupported namespace items on their native Shell handler");

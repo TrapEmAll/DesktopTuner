@@ -19,6 +19,7 @@ public partial class StartMenuWindow : Window
     private readonly StartRecentAppsStore _recentAppsStore;
     private readonly StartMenuIdentity _identity;
     private readonly Func<IReadOnlyList<AppEntry>, bool>? _savePinnedApps;
+    private readonly Func<string, bool>? _openShellLocation;
     private StartMenuPlacePreferences _startPlaces;
     private ControlPanelAppletPreferences _controlPanelApplets;
     private IReadOnlyList<AppEntry> _apps = [];
@@ -33,7 +34,7 @@ public partial class StartMenuWindow : Window
     private Point _pinnedStartDrag;
     private bool _suppressPinnedStartClick;
 
-    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null)
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, Func<string, bool>? openShellLocation = null)
     {
         InitializeComponent();
         _identity = StartMenuIdentityService.ReadCurrentUser();
@@ -59,6 +60,7 @@ public partial class StartMenuWindow : Window
         }
         _pinnedApps = StartPinCatalog.Normalize(pinnedApps);
         _savePinnedApps = savePinnedApps;
+        _openShellLocation = openShellLocation;
         _recentAppsStore = recentAppsStore ?? new StartRecentAppsStore();
         _startPlaces = StartMenuPlaceCatalog.Normalize(startPlaces);
         _controlPanelApplets = ControlPanelAppletCatalog.Normalize(controlPanelApplets);
@@ -1062,6 +1064,11 @@ public partial class StartMenuWindow : Window
         if (sender is not MenuItem { Tag: StartMenuPlaceEntry entry }) return;
         try
         {
+            if (entry.IsDirectory && _openShellLocation?.Invoke(entry.FullPath) == true)
+            {
+                Close();
+                return;
+            }
             AppCatalogService.OpenLocation(entry.FullPath);
             Close();
         }
@@ -1085,7 +1092,8 @@ public partial class StartMenuWindow : Window
                 return;
             }
 
-            AppCatalogService.OpenLocation(StartMenuPlaceCatalog.ResolveTarget(action));
+            var target = StartMenuPlaceCatalog.ResolveTarget(action);
+            if (_openShellLocation?.Invoke(target) != true) AppCatalogService.OpenLocation(target);
             Close();
         }
         catch (Exception ex)
