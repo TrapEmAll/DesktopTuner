@@ -9,6 +9,7 @@ namespace DesktopTuner;
 public static class ExplorerRecycleBinService
 {
     private const int RecycleBinShellFolder = 10;
+    private const uint EmptyWithoutConfirmation = 0x0001;
 
     public static IReadOnlyList<ExplorerEntry> ReadEntries()
     {
@@ -81,6 +82,16 @@ public static class ExplorerRecycleBinService
     public static void Restore(string shellItemPath) => InvokeItemVerb(shellItemPath, "restore");
 
     public static void DeletePermanently(string shellItemPath) => InvokeItemVerb(shellItemPath, "delete");
+
+    public static void Empty(IntPtr ownerWindow)
+    {
+        var result = SHEmptyRecycleBin(ownerWindow, null, EmptyWithoutConfirmation);
+        if (result < 0)
+        {
+            Trace.TraceError("Could not empty the Windows Recycle Bin (HRESULT 0x{0:X8}).", result);
+            Marshal.ThrowExceptionForHR(result);
+        }
+    }
 
     private static void InvokeItemVerb(string shellItemPath, string requestedVerb)
     {
@@ -179,4 +190,7 @@ public static class ExplorerRecycleBinService
     {
         if (value is not null && Marshal.IsComObject(value)) Marshal.ReleaseComObject(value);
     }
+
+    [DllImport("shell32.dll", EntryPoint = "SHEmptyRecycleBinW", CharSet = CharSet.Unicode, ExactSpelling = true)]
+    private static extern int SHEmptyRecycleBin(IntPtr ownerWindow, string? rootPath, uint flags);
 }

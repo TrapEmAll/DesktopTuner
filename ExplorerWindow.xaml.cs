@@ -770,6 +770,10 @@ public partial class ExplorerWindow : Window
         GroupDrivesToggle.IsEnabled = _location.IsDriveList;
         _updatingDriveGroupingControl = false;
         UpdateSelectionCommands();
+        EmptyRecycleBinButton.Visibility = ExplorerRecycleBinPolicy.ShouldShowEmptyCommand(_location.IsRecycleBin)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        EmptyRecycleBinButton.IsEnabled = ExplorerRecycleBinPolicy.CanEmpty(_location.IsRecycleBin, entries.Count);
         NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin;
         SearchBox.IsEnabled = SearchButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin;
         DeleteButton.Content = _location.IsRecycleBin ? "Delete permanently" : "Delete";
@@ -2167,6 +2171,31 @@ public partial class ExplorerWindow : Window
 
     private void RestoreSelected_Click(object sender, RoutedEventArgs e) =>
         RestoreEntries(EntriesList.SelectedItems.OfType<ExplorerEntry>().Where(entry => entry.IsRecycleBinItem).ToArray());
+
+    private void EmptyRecycleBin_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_location.IsRecycleBin) return;
+        var itemCount = _entries.Count(entry => entry.IsRecycleBinItem);
+        if (!ExplorerRecycleBinPolicy.CanEmpty(true, itemCount)) return;
+
+        var result = MessageBox.Show(this,
+            $"Permanently delete all {itemCount:N0} item{(itemCount == 1 ? string.Empty : "s")} in the Recycle Bin? This cannot be undone.",
+            "Empty Recycle Bin", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+        if (result != MessageBoxResult.Yes) return;
+
+        try
+        {
+            ExplorerRecycleBinService.Empty(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+            RefreshLocation();
+            SetStatus($"Emptied the Recycle Bin ({itemCount:N0} items).");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or COMException or DllNotFoundException or EntryPointNotFoundException)
+        {
+            RefreshLocation();
+            SetStatus($"Could not empty the Recycle Bin: {ex.Message}");
+            MessageBox.Show(this, ex.Message, "Could not empty Recycle Bin", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 
     private void RestoreEntries(IReadOnlyList<ExplorerEntry> entries)
     {

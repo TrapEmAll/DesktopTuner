@@ -177,6 +177,7 @@
                     <StackPanel Orientation="Horizontal" Margin="8,6">
                         <Button x:Name="OpenSelectedButton" Content="Open" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Click="OpenSelected_Click" />
                         <Button x:Name="RestoreButton" Content="Restore" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Visibility="Collapsed" Click="RestoreSelected_Click" />
+                        <Button x:Name="EmptyRecycleBinButton" Content="Empty Recycle Bin" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Visibility="Collapsed" Click="EmptyRecycleBin_Click" />
                         <Button x:Name="OpenInNewTabButton" Content="Open in new tab" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Click="OpenInNewTab_Click" />
                         <Button x:Name="OpenInNewWindowButton" Content="Open in new window" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Click="OpenInNewWindow_Click" />
                         <Button x:Name="CopyPathButton" Content="Copy path" Padding="14,6" IsEnabled="False" Click="CopyPath_Click" />

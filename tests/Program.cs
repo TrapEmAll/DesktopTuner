@@ -1015,6 +1015,12 @@ try
     Check(explorerTestDirectory, ExplorerSelectionSummaryService.Resolve([recycledFileEntry]).Location, "show the original folder for a Recycle Bin selection");
     Check(new DateTime(2025, 6, 1).ToString("f"), ExplorerSelectionSummaryService.Resolve([recycledFileEntry]).Modified, "show the deletion date in Recycle Bin item details");
     CheckTrue(ExplorerRecycleBinService.ReadEntries().All(entry => entry.IsRecycleBinItem && !string.IsNullOrWhiteSpace(entry.ShellItemPath)), "enumerate Windows Recycle Bin entries as virtual Explorer rows");
+    Check(true, ExplorerRecycleBinPolicy.ShouldShowEmptyCommand(true), "show Empty Recycle Bin in the Recycle Bin location");
+    Check(false, ExplorerRecycleBinPolicy.ShouldShowEmptyCommand(false), "hide Empty Recycle Bin outside its virtual location");
+    Check(true, ExplorerRecycleBinPolicy.CanEmpty(true, 1), "enable Empty Recycle Bin when it contains items");
+    Check(false, ExplorerRecycleBinPolicy.CanEmpty(true, 0), "disable Empty Recycle Bin when there are no items");
+    Check(false, ExplorerRecycleBinPolicy.CanEmpty(false, 1), "prevent Empty Recycle Bin from running outside its virtual location");
+    Throws<ArgumentOutOfRangeException>(() => ExplorerRecycleBinPolicy.CanEmpty(true, -1), "reject invalid Recycle Bin item counts");
     var startShortcutDirectory = Path.Combine(temporaryPreferencesDirectory, "Start Shortcuts");
     Directory.CreateDirectory(startShortcutDirectory);
     var startShortcutPath = Path.Combine(startShortcutDirectory, "Editor Preview.lnk");
