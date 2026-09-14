@@ -375,6 +375,21 @@ Check("Editor Pro", rankedSearchResults[1].Name, "rank app-name prefixes before 
 Check("Text Editor", rankedSearchResults[2].Name, "rank word-boundary matches above mid-word matches");
 Check("TextEditor", rankedSearchResults[3].Name, "match camel-case word boundaries");
 Check("Documents", AppCatalogService.Search([new AppEntry("Documents", "documents.lnk", CategoryPath: "Creative Tools")], "creative tool").Single().Name, "search nested Start menu folder names");
+var typoTolerantSearchResults = AppCatalogService.Search(
+[
+    new AppEntry("Calculator", "calculator.lnk"),
+    new AppEntry("Calendar", "calendar.lnk"),
+    new AppEntry("Firefox", "firefox.lnk", CategoryPath: "Internet Tools")
+], "calculatr");
+Check("Calculator", typoTolerantSearchResults.Single().Name, "find a Start app after a one-character search typo");
+Check("Firefox", AppCatalogService.Search([new AppEntry("Firefox", "firefox.lnk")], "fireofx").Single().Name, "match adjacent transposed letters in Start search");
+Check("Calendar", AppCatalogService.Search([new AppEntry("Calendar", "calendar.lnk")], "calender").Single().Name, "include fuzzy search matches after a single substitution");
+Check(0, AppCatalogService.Search([new AppEntry("Cut", "cut.lnk")], "cat").Count, "avoid typo expansion for short Start search terms");
+Check("Calculatr,Calculator", string.Join(',', AppCatalogService.Search(
+[
+    new AppEntry("Calculatr", "calculatr.lnk"),
+    new AppEntry("Calculator", "calculator.lnk")
+], "calculatr").Select(app => app.Name)), "keep exact Start search matches ahead of fuzzy matches");
 Check("SJ", StartMenuIdentityService.GetInitials("Sam Jones"), "build an account avatar from the user's first and last names");
 Check("SJ", StartMenuIdentityService.GetInitials("sam.jones"), "split account names on common username separators for initials");
 Check("?", StartMenuIdentityService.GetInitials("  "), "provide a safe avatar fallback for a missing account name");

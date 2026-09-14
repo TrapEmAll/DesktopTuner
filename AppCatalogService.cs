@@ -85,8 +85,47 @@ public sealed class AppCatalogService
         if (entry.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase)) return 3;
 
         var category = entry.CategoryPath ?? string.Empty;
-        return terms.All(term => entry.Name.Contains(term, StringComparison.CurrentCultureIgnoreCase) ||
-            category.Contains(term, StringComparison.CurrentCultureIgnoreCase)) ? 4 : -1;
+        if (terms.All(term => entry.Name.Contains(term, StringComparison.CurrentCultureIgnoreCase) ||
+            category.Contains(term, StringComparison.CurrentCultureIgnoreCase))) return 4;
+
+        var searchableWords = GetSearchWords(entry.Name + " " + category);
+        return terms.All(term => searchableWords.Any(word => IsFuzzyWordMatch(term, word))) ? 5 : -1;
+    }
+
+    private static string[] GetSearchWords(string value) => value
+        .Split([' ', '\\', '/', '-', '_', '.', '(', ')', '[', ']'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static bool IsFuzzyWordMatch(string query, string word)
+    {
+        if (query.Length < 4 || word.Length < 4) return false;
+        var maximumDistance = query.Length >= 10 ? 2 : 1;
+        if (Math.Abs(query.Length - word.Length) > maximumDistance) return false;
+
+        var previousPrevious = new int[word.Length + 1];
+        var previous = Enumerable.Range(0, word.Length + 1).ToArray();
+        var current = new int[word.Length + 1];
+        for (var queryIndex = 1; queryIndex <= query.Length; queryIndex++)
+        {
+            current[0] = queryIndex;
+            var rowMinimum = current[0];
+            for (var wordIndex = 1; wordIndex <= word.Length; wordIndex++)
+            {
+                var substitutionCost = char.ToUpperInvariant(query[queryIndex - 1]) == char.ToUpperInvariant(word[wordIndex - 1]) ? 0 : 1;
+                current[wordIndex] = Math.Min(
+                    Math.Min(previous[wordIndex] + 1, current[wordIndex - 1] + 1),
+                    previous[wordIndex - 1] + substitutionCost);
+                if (queryIndex > 1 && wordIndex > 1
+                    && char.ToUpperInvariant(query[queryIndex - 1]) == char.ToUpperInvariant(word[wordIndex - 2])
+                    && char.ToUpperInvariant(query[queryIndex - 2]) == char.ToUpperInvariant(word[wordIndex - 1]))
+                    current[wordIndex] = Math.Min(current[wordIndex], previousPrevious[wordIndex - 2] + 1);
+                rowMinimum = Math.Min(rowMinimum, current[wordIndex]);
+            }
+
+            if (rowMinimum > maximumDistance) return false;
+            (previousPrevious, previous, current) = (previous, current, previousPrevious);
+        }
+
+        return previous[word.Length] <= maximumDistance;
     }
 
     private static bool StartsAtWordBoundary(string value, string term)
