@@ -8,7 +8,9 @@ public enum WindowsKeyAction
     ForwardWindowsUpThenSuppress,
     OpenStartMenu,
     ActivateTaskbarPin,
-    FocusTaskbar
+    FocusTaskbar,
+    OpenExplorer,
+    ForwardWindowsTapThenSuppress
 }
 
 public sealed class WindowsKeyGesture
@@ -18,12 +20,15 @@ public sealed class WindowsKeyGesture
     private uint? _heldWindowsKey;
     private bool _forwarded;
     private bool _taskbarShortcutConsumed;
-    private readonly HashSet<uint> _suppressedTaskbarKeys = [];
+    private readonly bool _replaceBareWindowsKey;
+    private readonly HashSet<uint> _suppressedShortcutKeys = [];
     public int? TaskbarPinIndex { get; private set; }
+
+    public WindowsKeyGesture(bool replaceBareWindowsKey = true) => _replaceBareWindowsKey = replaceBareWindowsKey;
 
     public uint? HeldWindowsKey => _heldWindowsKey;
 
-    public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null, Func<bool>? canFocusTaskbar = null)
+    public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Func<bool>? canOpenExplorer = null)
     {
         if (key is VK_LWIN or VK_RWIN)
         {
@@ -44,18 +49,24 @@ public sealed class WindowsKeyGesture
 
         if (_heldWindowsKey is not null && !_forwarded)
         {
-            if (_suppressedTaskbarKeys.Contains(key)) return WindowsKeyAction.Suppress;
+            if (_suppressedShortcutKeys.Contains(key)) return WindowsKeyAction.Suppress;
+            if (key == (uint)'E' && canOpenExplorer?.Invoke() == true)
+            {
+                _taskbarShortcutConsumed = true;
+                _suppressedShortcutKeys.Add(key);
+                return WindowsKeyAction.OpenExplorer;
+            }
             if (key == (uint)'T' && canFocusTaskbar?.Invoke() == true)
             {
                 _taskbarShortcutConsumed = true;
-                _suppressedTaskbarKeys.Add(key);
+                _suppressedShortcutKeys.Add(key);
                 return WindowsKeyAction.FocusTaskbar;
             }
             if (TaskbarShortcutCatalog.GetOneBasedPinIndex(key) is { } pinIndex && canActivateTaskbarPin?.Invoke(pinIndex) == true)
             {
                 _taskbarShortcutConsumed = true;
                 TaskbarPinIndex = pinIndex;
-                _suppressedTaskbarKeys.Add(key);
+                _suppressedShortcutKeys.Add(key);
                 return WindowsKeyAction.ActivateTaskbarPin;
             }
             _forwarded = true;
@@ -66,11 +77,13 @@ public sealed class WindowsKeyGesture
 
     public WindowsKeyAction KeyUp(uint key)
     {
-        if (_suppressedTaskbarKeys.Remove(key)) return WindowsKeyAction.Suppress;
+        if (_suppressedShortcutKeys.Remove(key)) return WindowsKeyAction.Suppress;
         if (_heldWindowsKey != key) return WindowsKeyAction.PassThrough;
         var action = _forwarded
             ? WindowsKeyAction.ForwardWindowsUpThenSuppress
-            : _taskbarShortcutConsumed ? WindowsKeyAction.Suppress : WindowsKeyAction.OpenStartMenu;
+            : _taskbarShortcutConsumed ? WindowsKeyAction.Suppress
+            : _replaceBareWindowsKey ? WindowsKeyAction.OpenStartMenu
+            : WindowsKeyAction.ForwardWindowsTapThenSuppress;
         _heldWindowsKey = null;
         _forwarded = false;
         _taskbarShortcutConsumed = false;
@@ -84,7 +97,7 @@ public sealed class WindowsKeyGesture
         _heldWindowsKey = null;
         _forwarded = false;
         _taskbarShortcutConsumed = false;
-        _suppressedTaskbarKeys.Clear();
+        _suppressedShortcutKeys.Clear();
         TaskbarPinIndex = null;
         return forwardedKey;
     }

@@ -594,6 +594,19 @@ Check(WindowsKeyAction.Suppress, tapGesture.KeyDown(0x5b), "capture a bare left 
 Check(WindowsKeyAction.Suppress, tapGesture.KeyDown(0x5b), "suppress Windows-key repeat events");
 Check(WindowsKeyAction.OpenStartMenu, tapGesture.KeyUp(0x5b), "open Start after a bare Windows key press");
 Check<uint?>(null, tapGesture.HeldWindowsKey, "clear Windows-key state after opening Start");
+var explorerShortcutGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
+Check(WindowsKeyAction.Suppress, explorerShortcutGesture.KeyDown(0x5b), "capture Windows while only Explorer shortcut replacement is enabled");
+Check(WindowsKeyAction.OpenExplorer, explorerShortcutGesture.KeyDown((uint)'E', canOpenExplorer: () => true), "route Win+E to the companion Explorer when enabled");
+Check(WindowsKeyAction.Suppress, explorerShortcutGesture.KeyUp((uint)'E'), "suppress Win+E release after opening the companion Explorer");
+Check(WindowsKeyAction.Suppress, explorerShortcutGesture.KeyUp(0x5b), "avoid opening Start after routing Win+E");
+var explorerOnlyBareKeyGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
+Check(WindowsKeyAction.Suppress, explorerOnlyBareKeyGesture.KeyDown(0x5b), "capture a Windows-key tap while Explorer routing is enabled");
+Check(WindowsKeyAction.ForwardWindowsTapThenSuppress, explorerOnlyBareKeyGesture.KeyUp(0x5b), "forward bare Windows-key taps to native Start when Start replacement is disabled");
+var nativeExplorerShortcutGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
+nativeExplorerShortcutGesture.KeyDown(0x5b);
+Check(WindowsKeyAction.ForwardWindowsDownThenPass, nativeExplorerShortcutGesture.KeyDown((uint)'E', canOpenExplorer: () => false), "preserve native Win+E when companion Explorer routing is disabled");
+Check(WindowsKeyAction.PassThrough, nativeExplorerShortcutGesture.KeyUp((uint)'E'), "pass through native Win+E release");
+Check(WindowsKeyAction.ForwardWindowsUpThenSuppress, nativeExplorerShortcutGesture.KeyUp(0x5b), "release Windows after passing native Win+E through");
 Check(1, TaskbarShortcutCatalog.GetOneBasedPinIndex((uint)'1'), "map Win+1 to the first taskbar pin");
 Check(9, TaskbarShortcutCatalog.GetOneBasedPinIndex(0x69), "map the numpad 9 key to the ninth taskbar pin");
 Check<int?>(null, TaskbarShortcutCatalog.GetOneBasedPinIndex((uint)'R'), "leave ordinary Windows-key shortcuts unmapped");
@@ -1207,6 +1220,7 @@ try
     Check(TaskbarStyle.EdgeToEdge, freshPreferencesStore.Load().TaskbarLayout, "default a new install to the full-edge taskbar layout");
     Check(false, freshPreferencesStore.Load().CenterStartMenu, "default new installs to taskbar-aligned Start menus");
     Check(false, freshPreferencesStore.Load().FolderShellIntegrationEnabled, "keep folder context menu integration opt-in on new installs");
+    Check(false, freshPreferencesStore.Load().ReplaceExplorerShortcut, "keep Win+E Explorer routing opt-in on new installs");
     var staleTaskbarSnapshot = Path.Combine(temporaryPreferencesDirectory, "taskbar-restore.json");
     File.WriteAllText(staleTaskbarSnapshot, """[{"Handle":-1,"WasVisible":true}]""");
     NativeTaskbarVisibilityService.RestoreSnapshot(staleTaskbarSnapshot);
@@ -1244,6 +1258,8 @@ try
     Check(true, loadedPreferences.TaskbarShowWindowsFromAllVirtualDesktops, "persist showing app windows from all virtual desktops");
     preferencesStore.Save(expectedPreferences with { FolderShellIntegrationEnabled = true });
     Check(true, preferencesStore.Load().FolderShellIntegrationEnabled, "persist folder context menu integration");
+    preferencesStore.Save(expectedPreferences with { ReplaceExplorerShortcut = true });
+    Check(true, preferencesStore.Load().ReplaceExplorerShortcut, "persist Win+E Explorer routing");
     preferencesStore.Save(expectedPreferences);
     Check("Editor", loadedPreferences.PinnedStartApps!.Single().Name, "persist pinned Start apps");
     Check(StartTileSize.Wide, loadedPreferences.PinnedStartApps!.Single().TileSize, "persist a pinned Start tile's size");

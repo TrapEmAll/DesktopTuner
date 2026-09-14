@@ -63,6 +63,7 @@ public partial class MainWindow : Window
     private List<AppEntry> _pinnedStartApps = [];
     private StartMenuPlacePreferences _startMenuPlaces = StartMenuPlaceCatalog.Normalize(null);
     private bool _replaceWindowsKey;
+    private bool _replaceExplorerShortcut;
     private StartMenuStyle _startMenuStyle = StartMenuStyle.Modern;
     private int _startRecentAppCount = 4;
     private bool _centerStartMenu;
@@ -102,6 +103,7 @@ public partial class MainWindow : Window
         _pinnedStartApps = StartPinCatalog.Normalize(desktopPreferences.PinnedStartApps).ToList();
         _startMenuPlaces = StartMenuPlaceCatalog.Normalize(desktopPreferences.StartMenuPlaces);
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
+        _replaceExplorerShortcut = desktopPreferences.ReplaceExplorerShortcut;
         _startMenuStyle = desktopPreferences.StartMenuStyle;
         _startRecentAppCount = desktopPreferences.StartRecentAppCount;
         _centerStartMenu = desktopPreferences.CenterStartMenu;
@@ -302,6 +304,11 @@ public partial class MainWindow : Window
             var explorerButton = new Button { Content = "Open Desktop Tuner Explorer", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             explorerButton.Click += (_, _) => OpenExplorer();
             PageContent.Children.Add(explorerButton);
+            var replaceExplorerShortcut = new CheckBox { Content = "Open Desktop Tuner Explorer with Win+E while this app is running", IsChecked = _replaceExplorerShortcut, Margin = new Thickness(0, 0, 0, 12), FontSize = 13 };
+            replaceExplorerShortcut.Checked += (_, _) => ToggleExplorerShortcutReplacement(replaceExplorerShortcut, true);
+            replaceExplorerShortcut.Unchecked += (_, _) => ToggleExplorerShortcutReplacement(replaceExplorerShortcut, false);
+            PageContent.Children.Add(replaceExplorerShortcut);
+            PageContent.Children.Add(InfoCard("Explorer shortcut integration", "When enabled, Win+E opens the companion Explorer and Windows Explorer stays available from the taskbar and other apps. The shortcut returns to Windows when Desktop Tuner closes."));
             var folderShellIntegration = new CheckBox { Content = "Add “Open with Desktop Tuner” to folder context menus", IsChecked = _folderShellIntegrationEnabled, Margin = new Thickness(0, 0, 0, 12), FontSize = 13 };
             folderShellIntegration.Checked += (_, _) => SetFolderShellIntegration(folderShellIntegration, true);
             folderShellIntegration.Unchecked += (_, _) => SetFolderShellIntegration(folderShellIntegration, false);
@@ -783,11 +790,12 @@ public partial class MainWindow : Window
             unavailableShortcuts.Add("Win+Alt+T");
         if (unavailableShortcuts.Count > 0)
             SetStatus($"Global shortcut(s) {string.Join(" and ", unavailableShortcuts)} unavailable; use the app buttons or taskbar menu instead.");
-        if (_replaceWindowsKey && !EnableWindowsKeyHook())
+        if ((_replaceWindowsKey || _replaceExplorerShortcut) && !ConfigureWindowsKeyHook())
         {
             _replaceWindowsKey = false;
+            _replaceExplorerShortcut = false;
             SaveDesktopPreferences();
-            SetStatus("Windows-key replacement could not start; the setting was turned off.");
+            SetStatus("Shell shortcut integration could not start; the settings were turned off.");
         }
         if (_startInBackground && _startWithWindows)
         {
@@ -1148,7 +1156,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut);
 
     private void SetStartMenuCentered(bool centered)
     {
@@ -1245,6 +1253,7 @@ public partial class MainWindow : Window
             _pinnedStartApps = StartPinCatalog.Normalize(preferences.PinnedStartApps).ToList();
             _startMenuPlaces = StartMenuPlaceCatalog.Normalize(preferences.StartMenuPlaces);
             _replaceWindowsKey = preferences.ReplaceWindowsKey;
+            _replaceExplorerShortcut = preferences.ReplaceExplorerShortcut;
             _startMenuStyle = preferences.StartMenuStyle;
             _startRecentAppCount = preferences.StartRecentAppCount;
             _centerStartMenu = preferences.CenterStartMenu;
@@ -1350,29 +1359,54 @@ public partial class MainWindow : Window
 
     private void ToggleWindowsKeyReplacement(CheckBox checkBox, bool enabled)
     {
-        if (enabled && !EnableWindowsKeyHook())
+        var previous = _replaceWindowsKey;
+        _replaceWindowsKey = enabled;
+        if (!ConfigureWindowsKeyHook())
         {
+            _replaceWindowsKey = previous;
+            ConfigureWindowsKeyHook();
             checkBox.IsChecked = false;
             MessageBox.Show(this, "Windows-key replacement could not be enabled. The native Start menu remains available.", "Could not replace Start key", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        if (!enabled)
-        {
-            _windowsKeyHook?.Dispose();
-            _windowsKeyHook = null;
-        }
-        _replaceWindowsKey = enabled;
         SaveDesktopPreferences();
         SetStatus(enabled
             ? "The Windows key now opens Desktop Tuner Start while the app is running. Win+key shortcuts still pass through."
             : "The native Windows Start key behavior is restored.");
     }
 
-    private bool EnableWindowsKeyHook()
+    private void ToggleExplorerShortcutReplacement(CheckBox checkBox, bool enabled)
     {
-        if (_windowsKeyHook?.IsInstalled == true) return true;
-        var hook = new WindowsKeyStartHook(ShowStartMenu, CanActivateTaskbarPinShortcut, ActivateTaskbarPinShortcut, CanFocusTaskbar, FocusTaskbar);
+        var previous = _replaceExplorerShortcut;
+        _replaceExplorerShortcut = enabled;
+        if (!ConfigureWindowsKeyHook())
+        {
+            _replaceExplorerShortcut = previous;
+            ConfigureWindowsKeyHook();
+            checkBox.IsChecked = previous;
+            MessageBox.Show(this, "Win+E could not be routed to Desktop Tuner Explorer. The Windows Explorer shortcut remains available.", "Could not route Win+E", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        SaveDesktopPreferences();
+        SetStatus(enabled ? "Win+E now opens Desktop Tuner Explorer while the app is running." : "Win+E now opens Windows Explorer.");
+    }
+
+    private bool ConfigureWindowsKeyHook()
+    {
+        if (!_replaceWindowsKey && !_replaceExplorerShortcut)
+        {
+            _windowsKeyHook?.Dispose();
+            _windowsKeyHook = null;
+            return true;
+        }
+        if (_windowsKeyHook is { IsInstalled: true })
+        {
+            _windowsKeyHook.Dispose();
+            _windowsKeyHook = null;
+        }
+        var hook = new WindowsKeyStartHook(ShowStartMenu, CanActivateTaskbarPinShortcut, ActivateTaskbarPinShortcut, CanFocusTaskbar, FocusTaskbar,
+            replaceBareWindowsKey: _replaceWindowsKey, canOpenExplorer: () => _replaceExplorerShortcut, openExplorer: () => OpenExplorer());
         if (!hook.TryInstall(out var error))
         {
             hook.Dispose();

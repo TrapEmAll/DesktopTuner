@@ -27,17 +27,22 @@ public sealed class WindowsKeyStartHook : IDisposable
     private readonly Action<int> _activateTaskbarPin;
     private readonly Func<bool> _canFocusTaskbar;
     private readonly Action _focusTaskbar;
+    private readonly Func<bool> _canOpenExplorer;
+    private readonly Action _openExplorer;
     private readonly HookProc _callback;
-    private readonly WindowsKeyGesture _gesture = new();
+    private readonly WindowsKeyGesture _gesture;
     private nint _hook;
 
-    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Action? focusTaskbar = null)
+    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Action? focusTaskbar = null, bool replaceBareWindowsKey = true, Func<bool>? canOpenExplorer = null, Action? openExplorer = null)
     {
         _showStartMenu = showStartMenu;
-        _canActivateTaskbarPin = canActivateTaskbarPin ?? (_ => false);
+        _canActivateTaskbarPin = replaceBareWindowsKey ? canActivateTaskbarPin ?? (_ => false) : _ => false;
         _activateTaskbarPin = activateTaskbarPin ?? (_ => { });
-        _canFocusTaskbar = canFocusTaskbar ?? (() => false);
+        _canFocusTaskbar = replaceBareWindowsKey ? canFocusTaskbar ?? (() => false) : () => false;
         _focusTaskbar = focusTaskbar ?? (() => { });
+        _canOpenExplorer = canOpenExplorer ?? (() => false);
+        _openExplorer = openExplorer ?? (() => { });
+        _gesture = new WindowsKeyGesture(replaceBareWindowsKey);
         _callback = KeyboardCallback;
     }
 
@@ -67,9 +72,12 @@ public sealed class WindowsKeyStartHook : IDisposable
             var canFocusTaskbar = !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_MENU)
                 ? _canFocusTaskbar
                 : static () => false;
+            var canOpenExplorer = !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_MENU)
+                ? _canOpenExplorer
+                : static () => false;
             var action = message switch
             {
-                WM_KEYDOWN or WM_SYSKEYDOWN => _gesture.KeyDown(data.VirtualKey, canActivateTaskbarPin, canFocusTaskbar),
+                WM_KEYDOWN or WM_SYSKEYDOWN => _gesture.KeyDown(data.VirtualKey, canActivateTaskbarPin, canFocusTaskbar, canOpenExplorer),
                 WM_KEYUP or WM_SYSKEYUP => _gesture.KeyUp(data.VirtualKey),
                 _ => WindowsKeyAction.PassThrough
             };
@@ -78,6 +86,10 @@ public sealed class WindowsKeyStartHook : IDisposable
                 case WindowsKeyAction.Suppress:
                 case WindowsKeyAction.ForwardWindowsUpThenSuppress:
                     if (action == WindowsKeyAction.ForwardWindowsUpThenSuppress) SendWindowsKey(data.VirtualKey, keyUp: true);
+                    return new nint(1);
+                case WindowsKeyAction.ForwardWindowsTapThenSuppress:
+                    SendWindowsKey(data.VirtualKey, keyUp: false);
+                    SendWindowsKey(data.VirtualKey, keyUp: true);
                     return new nint(1);
                 case WindowsKeyAction.ForwardWindowsDownThenPass:
                     SendWindowsKey(_gesture.HeldWindowsKey ?? data.VirtualKey, keyUp: false);
@@ -91,6 +103,9 @@ public sealed class WindowsKeyStartHook : IDisposable
                     return new nint(1);
                 case WindowsKeyAction.FocusTaskbar:
                     Application.Current?.Dispatcher.BeginInvoke(_focusTaskbar, DispatcherPriority.Input);
+                    return new nint(1);
+                case WindowsKeyAction.OpenExplorer:
+                    Application.Current?.Dispatcher.BeginInvoke(_openExplorer, DispatcherPriority.Input);
                     return new nint(1);
             }
         }
