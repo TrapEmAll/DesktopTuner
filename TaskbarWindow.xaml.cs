@@ -41,6 +41,8 @@ public partial class TaskbarWindow : Window
     private bool _collapsed;
     private bool _nativeReady;
     private bool _replacementWorkAreaEnabled;
+    private bool _fullscreenAppVisible;
+    private Visibility? _visibilityBeforeWindowArrange;
     private bool? _systemBackdropForCurrentStyle;
     private bool _nativeTrayExposed;
     private bool _isDark;
@@ -351,13 +353,27 @@ public partial class TaskbarWindow : Window
         else if (_nativeAppBar.IsRegistered && message == 0x0047)
             _nativeAppBar.NotifyWindowPositionChanged();
 
-        if (message == NativeTaskbarAppBarService.CallbackMessage
-            && unchecked((int)wParam.ToInt64()) == NativeTaskbarAppBarService.PositionChangedNotification
-            && _nativeAppBar.IsRegistered)
+        if (message == NativeTaskbarAppBarService.CallbackMessage && _nativeAppBar.IsRegistered)
         {
-            ApplyLayout();
-            handled = true;
-            return 0;
+            var notification = unchecked((int)wParam.ToInt64());
+            if (notification == NativeTaskbarAppBarService.PositionChangedNotification)
+            {
+                ApplyLayout();
+                handled = true;
+                return 0;
+            }
+            if (notification == NativeTaskbarAppBarService.FullscreenAppNotification)
+            {
+                SetFullscreenAppVisible(lParam != nint.Zero);
+                handled = true;
+                return 0;
+            }
+            if (notification == NativeTaskbarAppBarService.WindowArrangeNotification)
+            {
+                SetHiddenForWindowArrangement(lParam != nint.Zero);
+                handled = true;
+                return 0;
+            }
         }
         if (message == DwmColorizationColorChangedMessage)
         {
@@ -365,6 +381,29 @@ public partial class TaskbarWindow : Window
             ApplyLayout();
         }
         return 0;
+    }
+
+    private void SetFullscreenAppVisible(bool visible)
+    {
+        if (_fullscreenAppVisible == visible) return;
+        _fullscreenAppVisible = visible;
+        Topmost = !visible;
+        if (visible) _nativeAppBar.LowerBelowFullscreenWindows();
+    }
+
+    private void SetHiddenForWindowArrangement(bool hide)
+    {
+        if (hide)
+        {
+            if (_visibilityBeforeWindowArrange is not null) return;
+            _visibilityBeforeWindowArrange = Visibility;
+            Visibility = Visibility.Hidden;
+        }
+        else if (_visibilityBeforeWindowArrange is { } previousVisibility)
+        {
+            Visibility = previousVisibility;
+            _visibilityBeforeWindowArrange = null;
+        }
     }
 
     private void SystemEvents_UserPreferenceChanged(object? sender, UserPreferenceChangedEventArgs e)

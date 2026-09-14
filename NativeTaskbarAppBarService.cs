@@ -7,6 +7,8 @@ public sealed class NativeTaskbarAppBarService : IDisposable
 {
     public const int CallbackMessage = 0x8000 + 0x2A5;
     public const int PositionChangedNotification = 1;
+    public const int FullscreenAppNotification = 2;
+    public const int WindowArrangeNotification = 3;
 
     private const uint AppBarNew = 0x00000000;
     private const uint AppBarRemove = 0x00000001;
@@ -14,6 +16,11 @@ public sealed class NativeTaskbarAppBarService : IDisposable
     private const uint AppBarSetPosition = 0x00000003;
     private const uint AppBarActivate = 0x00000006;
     private const uint AppBarWindowPositionChanged = 0x00000009;
+    private static readonly nint HwndBottom = (nint)1;
+    private const uint SwpNoSize = 0x0001;
+    private const uint SwpNoMove = 0x0002;
+    private const uint SwpNoActivate = 0x0010;
+    private const uint SwpNoOwnerZOrder = 0x0200;
     private const uint AppBarEdgeLeft = 0;
     private const uint AppBarEdgeRight = 1;
     private const uint AppBarEdgeTop = 2;
@@ -98,6 +105,13 @@ public sealed class NativeTaskbarAppBarService : IDisposable
     public void NotifyActivated() => NotifyWindowMessage(AppBarActivate);
 
     public void NotifyWindowPositionChanged() => NotifyWindowMessage(AppBarWindowPositionChanged);
+
+    public void LowerBelowFullscreenWindows()
+    {
+        if (!IsRegistered) return;
+        if (!SetWindowPos(_window, HwndBottom, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate | SwpNoOwnerZOrder))
+            Trace.TraceWarning($"Could not lower replacement taskbar window {_window} below a full-screen app.");
+    }
 
     public void Unregister()
     {
@@ -187,4 +201,8 @@ public sealed class NativeTaskbarAppBarService : IDisposable
 
     [DllImport("shell32.dll", SetLastError = true)]
     private static extern UIntPtr SHAppBarMessage(uint message, ref AppBarData data);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(nint window, nint insertAfter, int x, int y, int width, int height, uint flags);
 }
