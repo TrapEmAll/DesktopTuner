@@ -16,6 +16,7 @@ namespace DesktopTuner;
 public partial class ExplorerWindow : Window
 {
     private const string ExplorerTabDragFormat = "DesktopTuner.ExplorerTabState";
+    private sealed record ExplorerTabDragPayload(ExplorerWindow Source, ExplorerTabState Tab);
     private const string QuickAccessPinDragFormat = "DesktopTuner.ExplorerQuickAccessPin";
     private readonly CancellationTokenSource _navigationLoadCancellation = new();
     private readonly List<ExplorerTabState> _tabs = [];
@@ -192,7 +193,7 @@ public partial class ExplorerWindow : Window
                 var close = new Button { Content = "×", Padding = new Thickness(3, 0, 3, 0), MinWidth = 20, Height = 20, ToolTip = "Close tab" };
                 close.Click += (_, _) => CloseTab(tab);
                 header.Children.Add(close);
-                var tabItem = new TabItem { Header = header, Tag = tab, Padding = new Thickness(8, 3, 8, 3), AllowDrop = true, ToolTip = "Drag to reorder tab" };
+                var tabItem = new TabItem { Header = header, Tag = tab, Padding = new Thickness(8, 3, 8, 3), AllowDrop = true, ToolTip = "Drag to reorder or move this tab to another Explorer window" };
                 tabItem.PreviewMouseLeftButtonDown += ExplorerTab_PreviewMouseLeftButtonDown;
                 tabItem.PreviewMouseMove += ExplorerTab_PreviewMouseMove;
                 tabItem.PreviewMouseLeftButtonUp += ExplorerTab_PreviewMouseLeftButtonUp;
@@ -302,7 +303,7 @@ public partial class ExplorerWindow : Window
             && Math.Abs(current.Y - _tabDragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
 
         _tabDragCandidate = null;
-        var data = new DataObject(ExplorerTabDragFormat, tab.Tag);
+        var data = new DataObject(ExplorerTabDragFormat, new ExplorerTabDragPayload(this, (ExplorerTabState)tab.Tag));
         DragDrop.DoDragDrop(tab, data, DragDropEffects.Move);
     }
 
@@ -391,22 +392,57 @@ public partial class ExplorerWindow : Window
 
     private void ExplorerTab_DragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(ExplorerTabDragFormat) && sender is TabItem { Tag: ExplorerTabState }
-            ? DragDropEffects.Move
-            : DragDropEffects.None;
+        var canAccept = sender is TabItem { Tag: ExplorerTabState }
+            && e.Data.GetData(ExplorerTabDragFormat) is ExplorerTabDragPayload payload
+            && payload.Source._tabs.Contains(payload.Tab);
+        e.Effects = canAccept ? DragDropEffects.Move : DragDropEffects.None;
         e.Handled = true;
     }
 
     private void ExplorerTab_Drop(object sender, DragEventArgs e)
     {
         if (sender is not TabItem { Tag: ExplorerTabState targetTab } target
-            || e.Data.GetData(ExplorerTabDragFormat) is not ExplorerTabState draggedTab) return;
+            || e.Data.GetData(ExplorerTabDragFormat) is not ExplorerTabDragPayload payload
+            || !payload.Source._tabs.Contains(payload.Tab)) return;
+
+        var source = payload.Source;
+        var draggedTab = payload.Tab;
+        var targetIndex = _tabs.IndexOf(targetTab);
+        if (targetIndex < 0) return;
+        var insertionIndex = targetIndex + (e.GetPosition(target).X >= target.ActualWidth / 2 ? 1 : 0);
+
+        if (!ReferenceEquals(source, this))
+        {
+            var transferSourceIndex = source._tabs.IndexOf(draggedTab);
+            var previouslyActive = source.ActiveTab;
+            if (!ExplorerTabOrdering.Transfer(source._tabs, _tabs, transferSourceIndex, insertionIndex)) return;
+            CancelSearch(draggedTab);
+
+            if (source._tabs.Count == 0)
+            {
+                source._tabs.Add(new ExplorerTabState(new ExplorerLocation(null, IsHome: true)));
+                source.RestoreFolderViewPreferences(source._tabs[0]);
+                source._activeTabIndex = 0;
+            }
+            else
+            {
+                source._activeTabIndex = source._tabs.Contains(previouslyActive)
+                    ? source._tabs.IndexOf(previouslyActive)
+                    : Math.Min(transferSourceIndex, source._tabs.Count - 1);
+            }
+
+            _activeTabIndex = _tabs.IndexOf(draggedTab);
+            source.SyncExplorerTabs();
+            source.ShowActiveTab();
+            SyncExplorerTabs();
+            ShowActiveTab();
+            e.Handled = true;
+            return;
+        }
 
         var sourceIndex = _tabs.IndexOf(draggedTab);
-        var targetIndex = _tabs.IndexOf(targetTab);
-        if (sourceIndex < 0 || targetIndex < 0) return;
+        if (sourceIndex < 0) return;
 
-        var insertionIndex = targetIndex + (e.GetPosition(target).X >= target.ActualWidth / 2 ? 1 : 0);
         var activeTab = ActiveTab;
         if (!ExplorerTabOrdering.Move(_tabs, sourceIndex, insertionIndex)) return;
 

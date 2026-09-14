@@ -460,6 +460,12 @@ CheckTrue(ExplorerTabOrdering.Move(explorerTabOrder, 2, 0), "move an Explorer ta
 Check("Home,Documents,Downloads", string.Join(',', explorerTabOrder), "preserve Explorer tab order when dragging a tab to the beginning");
 CheckTrue(!ExplorerTabOrdering.Move(explorerTabOrder, 1, 2), "ignore an Explorer tab drop that keeps it in the same position");
 CheckTrue(!ExplorerTabOrdering.Move(explorerTabOrder, -1, 0), "ignore an invalid Explorer tab drag source");
+var transferSourceTabs = new List<string> { "Home", "Documents" };
+var transferTargetTabs = new List<string> { "Downloads" };
+CheckTrue(ExplorerTabOrdering.Transfer(transferSourceTabs, transferTargetTabs, 1, 0), "transfer an Explorer tab between windows");
+Check("Home", string.Join(',', transferSourceTabs), "remove a transferred tab from its source window");
+Check("Documents,Downloads", string.Join(',', transferTargetTabs), "insert a transferred tab at its target position");
+CheckTrue(!ExplorerTabOrdering.Transfer(transferSourceTabs, transferTargetTabs, 1, 1), "ignore a transfer with an invalid source index");
 var closedExplorerTabs = new List<ExplorerTabState>();
 var closedDocumentsTab = new ExplorerTabState(new ExplorerLocation(@"C:\Users\test\Documents"));
 var closedDownloadsTab = new ExplorerTabState(new ExplorerLocation(@"C:\Users\test\Downloads"));
