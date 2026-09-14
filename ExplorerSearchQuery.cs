@@ -8,7 +8,8 @@ public sealed record ExplorerSearchQuery(
     IReadOnlyList<string> NameTerms,
     IReadOnlyList<string> NamePatterns,
     IReadOnlyList<string> Extensions,
-    IReadOnlyList<string> Kinds)
+    IReadOnlyList<string> Kinds,
+    IReadOnlyList<string> ContentTerms)
 {
     private enum SizeComparison { Equal, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual }
     private sealed record SizeFilter(SizeComparison Comparison, long Bytes)
@@ -37,6 +38,7 @@ public sealed record ExplorerSearchQuery(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
         var terms = new List<string>();
+        var contentTerms = new List<string>();
         var patterns = new List<string>();
         var extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var kinds = new List<string>();
@@ -89,16 +91,24 @@ public sealed record ExplorerSearchQuery(
                 continue;
             }
 
+            if (TryReadFilter(token, "content", out var contentValue) || TryReadFilter(token, "contents", out contentValue))
+            {
+                if (string.IsNullOrWhiteSpace(contentValue))
+                    throw new ArgumentException("Enter text after content:, for example content:\"meeting notes\".", nameof(query));
+                contentTerms.Add(contentValue);
+                continue;
+            }
+
             var nameToken = TryReadFilter(token, "name", out var nameValue) ? nameValue : token;
             if (nameToken.Length == 0) continue;
             if (nameToken.Contains('*') || nameToken.Contains('?')) patterns.Add(nameToken);
             else terms.Add(nameToken);
         }
 
-        if (terms.Count == 0 && patterns.Count == 0 && extensions.Count == 0 && kinds.Count == 0 && sizes.Count == 0 && modifiedAfter is null && modifiedBefore is null)
-            throw new ArgumentException("Enter a name or a supported filter such as ext:pdf, kind:folder, after:2026-01-01, or size:>=10MB.", nameof(query));
+        if (terms.Count == 0 && patterns.Count == 0 && extensions.Count == 0 && kinds.Count == 0 && contentTerms.Count == 0 && sizes.Count == 0 && modifiedAfter is null && modifiedBefore is null)
+            throw new ArgumentException("Enter a name or a supported filter such as content:\"meeting notes\", ext:pdf, kind:folder, after:2026-01-01, or size:>=10MB.", nameof(query));
 
-        return new ExplorerSearchQuery(terms, patterns, extensions.ToArray(), kinds)
+        return new ExplorerSearchQuery(terms, patterns, extensions.ToArray(), kinds, contentTerms)
         {
             Sizes = sizes,
             ModifiedAfter = modifiedAfter,
@@ -121,6 +131,15 @@ public sealed record ExplorerSearchQuery(
         if (ModifiedBefore is { } before && modifiedDate > before) return false;
         if (Sizes.Count > 0 && (entry.IsDirectory || entry.Length is not { } size || Sizes.Any(filter => !filter.Matches(size)))) return false;
         return Kinds.All(kind => MatchesKind(kind, entry));
+    }
+
+    public bool RequiresContentMatch => ContentTerms.Count > 0;
+
+    public bool MatchesContent(string path, long? length, CancellationToken cancellationToken = default)
+    {
+        if (!RequiresContentMatch) return true;
+        if (!ExplorerContentSearch.CanSearch(path, length)) return false;
+        return ExplorerContentSearch.ContainsAll(path, ContentTerms, cancellationToken);
     }
 
     private static bool TryParseSizeFilter(string value, out SizeFilter filter)

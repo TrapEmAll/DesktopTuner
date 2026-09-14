@@ -1357,9 +1357,10 @@ public partial class ExplorerWindow : Window
                 EmptyMessage.Text = $"No items match “{searchTerm}”.";
                 EmptyMessage.Visibility = tab.Entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
                 SetFolderDetails(tab.Entries.Count);
-                SetStatus(result.SkippedItems == 0
-                    ? $"{FormatItemCount(tab.Entries.Count)} found."
-                    : $"{FormatItemCount(tab.Entries.Count)} found; {result.SkippedItems} inaccessible item(s) or folder(s) skipped.");
+                var statusParts = new List<string> { $"{FormatItemCount(tab.Entries.Count)} found." };
+                if (result.SkippedItems > 0) statusParts.Add($"{result.SkippedItems} inaccessible item(s) or folder(s) skipped.");
+                if (result.SkippedContentItems > 0) statusParts.Add($"{result.SkippedContentItems} item(s) skipped because content search supports plain-text files up to 16 MiB.");
+                SetStatus(string.Join(" ", statusParts));
             }
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
@@ -2018,7 +2019,10 @@ public partial class ExplorerWindow : Window
             DetailsType.Text = "File search";
             DetailsLocation.Text = _location.Path;
             DetailsSize.Text = FormatItemCount(itemCount);
-            DetailsModified.Text = $"Name contains “{SearchBox.Text.Trim()}”.";
+            DetailsModified.Text = SearchBox.Text.Contains("content:", StringComparison.OrdinalIgnoreCase)
+                || SearchBox.Text.Contains("contents:", StringComparison.OrdinalIgnoreCase)
+                ? $"Text content matches “{SearchBox.Text.Trim()}”."
+                : $"Name contains “{SearchBox.Text.Trim()}”.";
             DetailsCreated.Text = DetailsAccessed.Text = "—";
             return;
         }

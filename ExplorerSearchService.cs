@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace DesktopTuner;
 
-public sealed record ExplorerSearchResult(IReadOnlyList<ExplorerEntry> Entries, int SkippedItems);
+public sealed record ExplorerSearchResult(IReadOnlyList<ExplorerEntry> Entries, int SkippedItems, int SkippedContentItems = 0);
 
 public static class ExplorerSearchService
 {
@@ -25,6 +25,7 @@ public static class ExplorerSearchService
         var pendingDirectories = new Stack<string>();
         pendingDirectories.Push(root);
         var skippedItems = 0;
+        var skippedContentItems = 0;
 
         while (pendingDirectories.TryPop(out var currentDirectory))
         {
@@ -44,7 +45,26 @@ public static class ExplorerSearchService
                     }
 
                     if (entry.IsSystem || entry.IsHidden && !showHiddenItems) continue;
-                    if (criteria.Matches(entry)) results.Add(entry);
+                    if (criteria.Matches(entry))
+                    {
+                        if (!criteria.RequiresContentMatch) results.Add(entry);
+                        else if (!entry.IsDirectory)
+                        {
+                            if (!ExplorerContentSearch.CanSearch(entry.FullPath, entry.Length)) skippedContentItems++;
+                            else
+                            {
+                                try
+                                {
+                                    if (criteria.MatchesContent(entry.FullPath, entry.Length, cancellationToken)) results.Add(entry);
+                                }
+                                catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or ArgumentException)
+                                {
+                                    skippedItems++;
+                                    Trace.TraceWarning($"Skipping Explorer content search item '{entry.FullPath}': {ex.Message}");
+                                }
+                            }
+                        }
+                    }
                     if (entry.IsDirectory && !entry.IsReparsePoint) pendingDirectories.Push(entry.FullPath);
                 }
             }
@@ -59,7 +79,7 @@ public static class ExplorerSearchService
             .OrderByDescending(entry => entry.IsDirectory)
             .ThenBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase)
             .ThenBy(entry => entry.FullPath, StringComparer.CurrentCultureIgnoreCase)
-            .ToList(), skippedItems);
+            .ToList(), skippedItems, skippedContentItems);
     }
 
     private static ExplorerEntry ReadEntry(string path)

@@ -876,6 +876,10 @@ try
     File.WriteAllText(nestedMatchPath, "notes");
     var searchablePdf = Path.Combine(explorerTestDirectory, "final invoice.pdf");
     File.WriteAllText(searchablePdf, "invoice data");
+    var searchableText = Path.Combine(explorerTestDirectory, "project-update.md");
+    File.WriteAllText(searchableText, "Project update\nThe launch date is next Friday.");
+    var boundaryText = Path.Combine(explorerTestDirectory, "boundary.txt");
+    File.WriteAllText(boundaryText, new string('x', 4094) + "cross-boundary-phrase" + new string('y', 32));
     var archiveFolder = Path.Combine(explorerTestDirectory, "Archive");
     Directory.CreateDirectory(archiveFolder);
     var recursiveSearchResults = ExplorerSearchService.SearchAsync(explorerTestDirectory, "NOTES").GetAwaiter().GetResult();
@@ -896,6 +900,24 @@ try
     Check(searchablePdf, ExplorerSearchService.SearchAsync(explorerTestDirectory, "*.pdf").GetAwaiter().GetResult().Entries.Single().FullPath, "match file names with wildcard patterns");
     Check(searchablePdf, ExplorerSearchService.SearchAsync(explorerTestDirectory, "final invoice ext:pdf kind:document").GetAwaiter().GetResult().Entries.Single().FullPath, "combine name terms with extension and document-kind filters");
     Check(searchablePdf, ExplorerSearchService.SearchAsync(explorerTestDirectory, "name:\"final invoice.pdf\"").GetAwaiter().GetResult().Entries.Single().FullPath, "keep quoted file-name phrases together in a search");
+    Check(searchableText, ExplorerSearchService.SearchAsync(explorerTestDirectory, "content:\"launch date\"").GetAwaiter().GetResult().Entries.Single().FullPath,
+        "find a quoted phrase inside a text document without requiring the phrase in its file name");
+    Check(searchableText, ExplorerSearchService.SearchAsync(explorerTestDirectory, "content:launch content:friday").GetAwaiter().GetResult().Entries.Single().FullPath,
+        "require every content term to appear in the document");
+    Check(boundaryText, ExplorerSearchService.SearchAsync(explorerTestDirectory, "content:cross-boundary-phrase").GetAwaiter().GetResult().Entries.Single().FullPath,
+        "match text spanning the streaming read buffer boundary");
+    var unsupportedContentSearch = ExplorerSearchService.SearchAsync(explorerTestDirectory, "content:invoice").GetAwaiter().GetResult();
+    CheckTrue(unsupportedContentSearch.SkippedContentItems > 0, "report document formats that content search cannot read");
+    CheckTrue(unsupportedContentSearch.Entries.All(entry => entry.FullPath != searchablePdf), "avoid treating unsupported document formats as content matches");
+    CheckTrue(ExplorerContentSearch.CanSearch(searchableText, new FileInfo(searchableText).Length), "allow bounded plain-text files in content searches");
+    CheckTrue(!ExplorerContentSearch.CanSearch(searchablePdf, new FileInfo(searchablePdf).Length), "exclude binary document formats from plain-text content search");
+    CheckTrue(!ExplorerContentSearch.CanSearch(searchableText, ExplorerContentSearch.MaximumFileBytes + 1), "skip oversized text files instead of reading them without a bound");
+    using (var canceledContentSearch = new CancellationTokenSource())
+    {
+        canceledContentSearch.Cancel();
+        Throws<OperationCanceledException>(() => ExplorerContentSearch.ContainsAll(searchableText, ["launch"], canceledContentSearch.Token),
+            "cancel content scanning before reading a file");
+    }
     var boundedSearch = ExplorerSearchQuery.Parse("after:2024-01-10 before:2024-01-20 size:>=1KB ext:pdf kind:document");
     var inRangePdf = new ExplorerEntry("report.pdf", searchablePdf, false, false, 1024, new DateTime(2024, 1, 15));
     CheckTrue(boundedSearch.Matches(inRangePdf), "combine modified-date, size, extension, and file-kind search filters");
@@ -908,6 +930,7 @@ try
     CheckTrue(ExplorerSearchQuery.Parse("size:<2KB").Matches(inRangePdf), "support less-than file-size search filters");
     Throws<ArgumentException>(() => ExplorerSearchQuery.Parse("after:2024-13-01"), "explain malformed modified-date search filters");
     Throws<ArgumentException>(() => ExplorerSearchQuery.Parse("size:large"), "explain malformed file-size search filters");
+    Throws<ArgumentException>(() => ExplorerSearchQuery.Parse("content:"), "explain empty content search filters");
     Check(true, ExplorerSearchService.SearchAsync(explorerTestDirectory, "kind:folder").GetAwaiter().GetResult().Entries.Any(entry => entry.FullPath == archiveFolder), "search for folders with a kind filter");
     Check(0, ExplorerSearchService.SearchAsync(explorerTestDirectory, "ext:pdf kind:folder").GetAwaiter().GetResult().Entries.Count, "apply file extension filters only to files");
     var hiddenMatchPath = Path.Combine(explorerTestDirectory, "classified-notes.txt");
