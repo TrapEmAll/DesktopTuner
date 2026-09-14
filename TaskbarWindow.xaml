@@ -203,6 +203,7 @@
                 <Button x:Name="TrayButton" Content="Tray" Style="{StaticResource TaskButton}" Click="Tray_Click" FontSize="11" ToolTip="Focus the Windows notification area" />
                 <Button x:Name="QuickSettingsButton" Content="Quick" Style="{StaticResource TaskButton}" Click="QuickSettings_Click" FontSize="11" ToolTip="Open Windows Quick Settings (Win+A)" AutomationProperties.Name="Quick Settings" />
                 <Button x:Name="NetworkButton" Content="Network" Style="{StaticResource TaskButton}" Click="NetworkSettings_Click" FontSize="11" ToolTip="Open Wi-Fi and network settings" AutomationProperties.Name="Network settings" />
+                <Button x:Name="EmojiButton" Content="😊" Style="{StaticResource TaskButton}" Click="Emoji_Click" FontSize="16" Padding="8,4" ToolTip="Open the Windows emoji panel (Win+.)" AutomationProperties.Name="Emoji panel" />
                 <Button x:Name="VolumeButton" Content="🔊" Style="{StaticResource TaskButton}" Click="SoundSettings_Click" PreviewMouseDown="VolumeButton_PreviewMouseDown" PreviewMouseWheel="VolumeButton_PreviewMouseWheel" FontSize="16" Padding="8,4" ToolTip="Scroll to adjust volume, middle-click to mute, right-click to choose an output device, click for Sound settings">
                     <Button.ContextMenu>
                         <ContextMenu x:Name="AudioOutputContextMenu" Opened="AudioOutputContextMenu_Opened" />

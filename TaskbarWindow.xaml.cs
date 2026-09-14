@@ -113,6 +113,7 @@ public partial class TaskbarWindow : Window
         if (integratedBounds is { } trayIntegratedBounds) bounds = trayIntegratedBounds;
         SettingsButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         NetworkButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
+        EmojiButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         TrayButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         VolumeButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
         ClockButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
@@ -1123,6 +1124,8 @@ public partial class TaskbarWindow : Window
     private void Tray_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.FocusNotificationArea();
 
     private void QuickSettings_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenQuickSettings();
+
+    private void Emoji_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenEmojiPanel();
 
     private void Widgets_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWidgets();
 
