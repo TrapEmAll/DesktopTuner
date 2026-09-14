@@ -2,8 +2,50 @@ namespace DesktopTuner;
 
 public sealed record DesktopHostSelection(IReadOnlySet<string> Paths, string? AnchorPath);
 
+public enum DesktopHostNavigationDirection
+{
+    Left,
+    Right,
+    Up,
+    Down
+}
+
 public static class DesktopHostSelectionPolicy
 {
+    public static DesktopHostItem? FindAdjacentItem(
+        IReadOnlyList<DesktopHostItem> items,
+        string currentPath,
+        DesktopHostNavigationDirection direction)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentException.ThrowIfNullOrWhiteSpace(currentPath);
+        if (!Enum.IsDefined(direction)) throw new ArgumentOutOfRangeException(nameof(direction));
+
+        var current = items.FirstOrDefault(item => string.Equals(item.FullPath, currentPath, StringComparison.OrdinalIgnoreCase));
+        if (current is null) return null;
+
+        var horizontal = direction is DesktopHostNavigationDirection.Left or DesktopHostNavigationDirection.Right;
+        var sign = direction is DesktopHostNavigationDirection.Left or DesktopHostNavigationDirection.Up ? -1 : 1;
+        var currentPrimary = horizontal ? current.Left : current.Top;
+        var currentCross = horizontal ? current.Top : current.Left;
+        return items
+            .Where(item => !ReferenceEquals(item, current))
+            .Select(item =>
+            {
+                var primary = horizontal ? item.Left : item.Top;
+                var cross = horizontal ? item.Top : item.Left;
+                var forwardDistance = (primary - currentPrimary) * sign;
+                var crossDistance = Math.Abs(cross - currentCross);
+                return (Item: item, ForwardDistance: forwardDistance, CrossDistance: crossDistance);
+            })
+            .Where(candidate => candidate.ForwardDistance > 0)
+            .OrderBy(candidate => candidate.ForwardDistance + candidate.CrossDistance * 2)
+            .ThenBy(candidate => candidate.CrossDistance)
+            .ThenBy(candidate => candidate.Item.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(candidate => candidate.Item)
+            .FirstOrDefault();
+    }
+
     public static DesktopHostSelection Select(
         IReadOnlyList<DesktopHostItem> items,
         string path,

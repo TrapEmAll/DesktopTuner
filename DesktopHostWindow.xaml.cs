@@ -352,6 +352,72 @@ public partial class DesktopHostWindow : Window
             else ApplySelection(new HashSet<string>(StringComparer.OrdinalIgnoreCase), null);
             e.Handled = true;
         }
+        else if (TryGetFocusedDesktopItem(out var focusedButton, out var focusedItem) &&
+                 TryGetNavigationDirection(e.Key, out var direction))
+        {
+            var target = DesktopHostSelectionPolicy.FindAdjacentItem(_desktopItems, focusedItem.FullPath, direction);
+            if (target is not null)
+            {
+                var modifiers = Keyboard.Modifiers;
+                if (modifiers.HasFlag(ModifierKeys.Shift))
+                {
+                    var selection = DesktopHostSelectionPolicy.Select(_desktopItems, target.FullPath,
+                        modifiers.HasFlag(ModifierKeys.Control), shiftPressed: true, _selectionAnchorPath);
+                    ApplySelection(selection.Paths, selection.AnchorPath);
+                }
+                else if (!modifiers.HasFlag(ModifierKeys.Control))
+                {
+                    ApplySelection(new HashSet<string>([target.FullPath], StringComparer.OrdinalIgnoreCase), target.FullPath);
+                }
+
+                var targetButton = FindVisualChildren<Button>(DesktopItems)
+                    .FirstOrDefault(button => ReferenceEquals(button.DataContext, target));
+                targetButton?.Focus();
+                if (targetButton is not null) Keyboard.Focus(targetButton);
+            }
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter && TryGetFocusedDesktopItem(out _, out var enterItem))
+        {
+            OpenDesktopItem(enterItem);
+            e.Handled = true;
+        }
+        else if ((e.Key == Key.Apps || e.Key == Key.F10 && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) &&
+                 TryGetFocusedDesktopItem(out var contextButton, out _))
+        {
+            if (contextButton.ContextMenu is { } contextMenu)
+            {
+                contextMenu.PlacementTarget = contextButton;
+                contextMenu.IsOpen = true;
+                e.Handled = true;
+            }
+        }
+    }
+
+    private static bool TryGetNavigationDirection(Key key, out DesktopHostNavigationDirection direction)
+    {
+        direction = key switch
+        {
+            Key.Left => DesktopHostNavigationDirection.Left,
+            Key.Right => DesktopHostNavigationDirection.Right,
+            Key.Up => DesktopHostNavigationDirection.Up,
+            Key.Down => DesktopHostNavigationDirection.Down,
+            _ => default
+        };
+        return key is Key.Left or Key.Right or Key.Up or Key.Down;
+    }
+
+    private static bool TryGetFocusedDesktopItem(out Button button, out DesktopHostItem item)
+    {
+        if (Keyboard.FocusedElement is Button { DataContext: DesktopHostItem desktopItem } focusedButton)
+        {
+            button = focusedButton;
+            item = desktopItem;
+            return true;
+        }
+        button = null!;
+        item = null!;
+        return false;
     }
 
     private void OnItemDoubleClick(object sender, MouseButtonEventArgs e)

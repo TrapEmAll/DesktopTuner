@@ -118,6 +118,25 @@ Check("a,c", string.Join(',', selectableDesktopItems.Where(item => desktopSelect
 desktopSelection = DesktopHostSelectionPolicy.Select(selectableDesktopItems, selectableDesktopItems[3].FullPath, false, true, desktopSelection.AnchorPath);
 Check("c,d", string.Join(',', selectableDesktopItems.Where(item => desktopSelection.Paths.Contains(item.FullPath)).Select(item => item.Name)), "select an inclusive desktop range with Shift-click");
 Check(4, DesktopHostSelectionPolicy.SelectAll(selectableDesktopItems).Count, "select every desktop item with Ctrl+A");
+var navigableDesktopItems = new[]
+{
+    new DesktopHostItem("center", "center", false),
+    new DesktopHostItem("right", "right", false),
+    new DesktopHostItem("below", "below", false),
+    new DesktopHostItem("diagonal", "diagonal", false)
+};
+navigableDesktopItems[0].SetPosition(new DesktopHostPosition(0, 0));
+navigableDesktopItems[1].SetPosition(new DesktopHostPosition(112, 0));
+navigableDesktopItems[2].SetPosition(new DesktopHostPosition(0, 112));
+navigableDesktopItems[3].SetPosition(new DesktopHostPosition(112, 112));
+Check("right", DesktopHostSelectionPolicy.FindAdjacentItem(navigableDesktopItems, "center", DesktopHostNavigationDirection.Right)!.FullPath,
+    "move desktop keyboard focus to the nearest item on the right");
+Check("below", DesktopHostSelectionPolicy.FindAdjacentItem(navigableDesktopItems, "center", DesktopHostNavigationDirection.Down)!.FullPath,
+    "move desktop keyboard focus to the nearest item below");
+Check("center", DesktopHostSelectionPolicy.FindAdjacentItem(navigableDesktopItems, "right", DesktopHostNavigationDirection.Left)!.FullPath,
+    "move desktop keyboard focus back to the left");
+Check<DesktopHostItem?>(null, DesktopHostSelectionPolicy.FindAdjacentItem(navigableDesktopItems, "missing", DesktopHostNavigationDirection.Left),
+    "leave desktop keyboard focus unchanged when its item disappeared");
 var marqueeRectangle = DesktopHostMarqueePolicy.CreateRectangle(new Point(20, 20), new Point(0, 0));
 Check(new Rect(0, 0, 20, 20), marqueeRectangle, "normalize a desktop marquee dragged from bottom-right to top-left");
 var marqueeItems = new[]
