@@ -26,6 +26,7 @@ public partial class DesktopHostWindow : Window
     private readonly ObservableCollection<DesktopHostItem> _desktopItems = [];
     private readonly List<FileSystemWatcher> _desktopWatchers = [];
     private IReadOnlyList<DesktopHostMonitorViewport> _desktopMonitors = [];
+    private DesktopShellChangeNotificationListener? _shellChangeNotifications;
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private bool _isClosed;
     private DesktopHostItem? _dragCandidate;
@@ -54,6 +55,15 @@ public partial class DesktopHostWindow : Window
         var handle = new WindowInteropHelper(this).Handle;
         SetWindowPos(handle, HwndBottom, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
         SetWindowPos(handle, HwndNotTopmost, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
+        try
+        {
+            var source = HwndSource.FromHwnd(handle);
+            if (source is not null) _shellChangeNotifications = new DesktopShellChangeNotificationListener(source, QueueDesktopRefresh);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or DllNotFoundException or EntryPointNotFoundException or System.Runtime.InteropServices.COMException)
+        {
+            System.Diagnostics.Trace.TraceWarning($"Desktop Shell change notifications are unavailable; filesystem watchers and manual refresh remain active: {ex.Message}");
+        }
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(RefreshDesktop));
     }
 
@@ -183,6 +193,8 @@ public partial class DesktopHostWindow : Window
         _refreshTimer.Stop();
         SizeChanged -= OnSizeChanged;
         SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        _shellChangeNotifications?.Dispose();
+        _shellChangeNotifications = null;
         foreach (var watcher in _desktopWatchers) watcher.Dispose();
         _desktopWatchers.Clear();
     }

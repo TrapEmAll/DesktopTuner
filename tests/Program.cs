@@ -147,6 +147,11 @@ Throws<ArgumentException>(() => DesktopHostDisplayLayoutPolicy.CalculateVirtualB
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Created), "refresh the desktop when a new item is created");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Renamed), "refresh the desktop when an item is renamed");
 Check(false, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.All), "ignore unknown desktop watcher event types");
+Check(true, DesktopHostRefreshPolicy.ShouldRefreshShellEvent(0x00000002), "refresh desktop namespace items on Shell create notifications");
+Check(true, DesktopHostRefreshPolicy.ShouldRefreshShellEvent(0x00002000), "refresh desktop namespace items when Shell items update");
+Check(true, DesktopHostRefreshPolicy.ShouldRefreshShellEvent(0x08000000), "refresh desktop namespace icons after Shell associations change");
+Check(true, DesktopHostRefreshPolicy.ShouldRefreshShellEvent(0x00000080), "refresh desktop items when a drive leaves the Shell namespace");
+Check(false, DesktopHostRefreshPolicy.ShouldRefreshShellEvent(0x04000000), "ignore unrelated extended Shell notification events");
 File.SetAttributes(Path.Combine(userDesktopRoot, "hidden.txt"), FileAttributes.Normal);
 Directory.Delete(desktopHostTestRoot, recursive: true);
 var navigationTestRoot = Path.Combine(Path.GetTempPath(), $"desktop-tuner-navigation-{Guid.NewGuid():N}");
