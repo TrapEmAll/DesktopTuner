@@ -25,9 +25,15 @@
         <TextBlock Grid.Row="1" Text="Open:" FontSize="12" VerticalAlignment="Center" Margin="0,0,0,6" />
         <DockPanel Grid.Row="2" LastChildFill="True">
             <Button Content="Browse…" DockPanel.Dock="Right" MinWidth="82" Margin="8,0,0,0" Padding="10,5" Click="Browse_Click" />
-            <TextBox x:Name="CommandBox" Height="34" Padding="9,6" VerticalContentAlignment="Center"
-                     Background="{DynamicResource DesktopSurfaceBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}"
-                     BorderBrush="{DynamicResource DesktopInputBorderBrush}" AutomationProperties.Name="Program, folder, document, or Internet address" />
+            <ComboBox x:Name="CommandBox" Height="34" Padding="9,4" IsEditable="True" IsTextSearchEnabled="True" StaysOpenOnEdit="True"
+                      Background="{DynamicResource DesktopSurfaceBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}"
+                      AutomationProperties.Name="Program, folder, document, or Internet address">
+                <ComboBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Clear history" Click="ClearHistory_Click" />
+                    </ContextMenu>
+                </ComboBox.ContextMenu>
+            </ComboBox>
         </DockPanel>
         <CheckBox x:Name="RunAsAdministratorCheckBox" Grid.Row="3" Content="Run as administrator" Margin="1,12,0,0"
                   VerticalAlignment="Top" Foreground="{DynamicResource DesktopPrimaryTextBrush}" />

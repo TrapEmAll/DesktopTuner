@@ -986,6 +986,26 @@ Check(true, runStartInfo.UseShellExecute, "allow the Run dialog to open document
 Check(true, string.Equals(Path.Combine(Environment.SystemDirectory, "notepad.exe"), RunCommandService.CreateStartInfo(@"%SystemRoot%\System32\notepad.exe").FileName, StringComparison.OrdinalIgnoreCase), "expand environment variables in Run dialog commands");
 Check("runas", RunCommandService.CreateStartInfo("taskmgr.exe", runAsAdministrator: true).Verb, "request UAC elevation only when Run as administrator is selected");
 Throws<ArgumentException>(() => RunCommandService.CreateStartInfo("  "), "reject empty Run dialog commands");
+var runHistoryPath = Path.Combine(Path.GetTempPath(), $"desktop-tuner-run-history-{Guid.NewGuid():N}.json");
+try
+{
+    var runHistory = new RunCommandHistoryStore(runHistoryPath);
+    Check(true, runHistory.TryRecord("notepad.exe"), "save successful Run commands to the recent-command history");
+    Check(true, runHistory.TryRecord("calc.exe"), "save later Run commands to history");
+    Check("calc.exe|notepad.exe", string.Join('|', runHistory.Load()), "show Run history in most-recent-first order");
+    Check(true, runHistory.TryRecord("NOTEPAD.EXE"), "move a repeated Run command to the top without duplicating it");
+    Check("NOTEPAD.EXE|calc.exe", string.Join('|', new RunCommandHistoryStore(runHistoryPath).Load()), "persist a normalized bounded history across dialog instances");
+    Check(false, runHistory.TryRecord(" "), "do not save blank Run commands");
+    for (var index = 0; index < RunCommandHistoryStore.MaximumEntries + 3; index++)
+        Check(true, runHistory.TryRecord($"tool-{index}.exe"), "record a Run history entry");
+    Check(RunCommandHistoryStore.MaximumEntries, runHistory.Load().Count, "bound saved Run history to twelve commands");
+    Check(true, runHistory.TryClear(), "clear Run history from the dialog's history menu");
+    Check(0, runHistory.Load().Count, "remove saved Run history entries when cleared");
+}
+finally
+{
+    if (File.Exists(runHistoryPath)) File.Delete(runHistoryPath);
+}
 var runCommandProcessInfo = RunCommandService.CreateStartInfo($"\"{Path.Combine(Environment.SystemDirectory, "cmd.exe")}\" /c exit 17");
 runCommandProcessInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
 using (var runCommandProcess = System.Diagnostics.Process.Start(runCommandProcessInfo)
