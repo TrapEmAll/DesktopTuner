@@ -296,7 +296,7 @@ public partial class MainWindow : Window
             PageContent.Children.Add(replaceStart);
             var info = InfoCard("Windows-key integration", _shellHostMode || _shellOverlayMode
                 ? "Desktop Tuner Start receives the Windows key while the Desktop Tuner desktop is active. Other Win+key shortcuts such as Win+R continue to Windows."
-                : "When enabled, tapping either Windows key opens Desktop Tuner Start. While a Desktop Tuner taskbar is running, Win+1 through Win+9 activate its corresponding pinned app; other Win+key shortcuts such as Win+R continue to Windows. Turn this off at any time to restore native Start and taskbar shortcuts.");
+                : "When enabled, tapping either Windows key opens Desktop Tuner Start. While a Desktop Tuner taskbar is running, Win+1 through Win+9 activate the matching pin and Win+Shift+1 through Win+Shift+9 launch a new instance; Ctrl+Win+Shift+1 through Ctrl+Win+Shift+9 launch an elevated instance where supported; other Win+key shortcuts such as Win+R continue to Windows. Turn this off at any time to restore native Start and taskbar shortcuts.");
             PageContent.Children.Add(info);
 
             AddPageHeading("System places", "Choose which shortcuts appear in More places and set their order.");
@@ -1368,7 +1368,8 @@ public partial class MainWindow : Window
         var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, _taskbarWindowOrder, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication,
             showDesktop: _shellHostMode ? ToggleShowDesktop : null,
             focusSystemArea: _shellHostMode ? FocusTaskbarSystemArea : null,
-            executePowerUserCommand: _shellHostMode ? ExecuteShellHostPowerUserCommand : null);
+            executePowerUserCommand: _shellHostMode ? ExecuteShellHostPowerUserCommand : null,
+            openDirectoryInCompanionExplorer: _shellHostMode ? path => OpenExplorer(path) : null);
         taskbar.ContentRendered += TaskbarWindow_ContentRendered;
         taskbar.Closed += (_, _) =>
         {
@@ -2019,7 +2020,10 @@ public partial class MainWindow : Window
             canOpenRunDialog: CanOpenRunDialog, openRunDialog: ShowRunDialog,
             canMinimizeAllWindows: CanManageShellHostWindows, minimizeAllWindows: MinimizeAllShellWindows,
             canRestoreMinimizedWindows: CanManageShellHostWindows, restoreMinimizedWindows: RestoreShellWindowsMinimizedByShortcut,
-            canOpenShellSystemSurface: _ => CanManageShellHostWindows(), openShellSystemSurface: OpenShellSystemSurfaceShortcut);
+            canOpenShellSystemSurface: _ => CanManageShellHostWindows(), openShellSystemSurface: OpenShellSystemSurfaceShortcut,
+            canLaunchPinnedAppInstance: CanActivateTaskbarPinShortcut, launchPinnedAppInstance: LaunchTaskbarPinInstanceShortcut,
+            canLaunchPinnedAppInstanceAsAdministrator: CanLaunchPinnedAppInstanceAsAdministratorShortcut,
+            launchPinnedAppInstanceAsAdministrator: LaunchElevatedTaskbarPinInstanceShortcut);
         if (!hook.TryInstall(out var error))
         {
             hook.Dispose();
@@ -2046,6 +2050,24 @@ public partial class MainWindow : Window
         var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
             ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
         taskbar?.TryActivatePinnedApp(oneBasedIndex);
+    }
+
+    private void LaunchTaskbarPinInstanceShortcut(int oneBasedIndex)
+    {
+        var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
+            ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
+        taskbar?.TryLaunchPinnedAppInstance(oneBasedIndex);
+    }
+
+    private bool CanLaunchPinnedAppInstanceAsAdministratorShortcut(int oneBasedIndex) =>
+        CanActivateTaskbarPinShortcut(oneBasedIndex) &&
+        TaskbarPinCatalog.CanRunAsAdministrator(_pinnedApps[oneBasedIndex - 1].Name, _pinnedApps[oneBasedIndex - 1].ExecutablePath, _pinnedApps[oneBasedIndex - 1].IsDirectory);
+
+    private void LaunchElevatedTaskbarPinInstanceShortcut(int oneBasedIndex)
+    {
+        var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
+            ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
+        taskbar?.TryLaunchPinnedAppInstance(oneBasedIndex, runAsAdministrator: true);
     }
 
     private bool CanFocusTaskbar() => _taskbarWindows.Any(window => window.IsVisible);

@@ -18,7 +18,9 @@ public enum WindowsKeyAction
     ToggleDesktop,
     MinimizeAllWindows,
     RestoreMinimizedWindows,
-    OpenShellSystemSurface
+    OpenShellSystemSurface,
+    LaunchPinnedAppInstance,
+    LaunchPinnedAppInstanceAsAdministrator
 }
 
 public sealed class WindowsKeyGesture
@@ -50,7 +52,8 @@ public sealed class WindowsKeyGesture
     public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Func<bool>? canOpenExplorer = null,
         bool controlPressed = false, bool altPressed = false, bool shiftPressed = false, Func<bool>? canToggleDesktop = null,
         Func<bool>? canFocusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Func<bool>? canOpenRunDialog = null,
-        Func<bool>? canMinimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null, Func<uint, bool>? canOpenShellSystemSurface = null)
+        Func<bool>? canMinimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null, Func<uint, bool>? canOpenShellSystemSurface = null,
+        Func<int, bool>? canLaunchPinnedAppInstance = null, Func<int, bool>? canLaunchPinnedAppInstanceAsAdministrator = null)
     {
         if (_controlEscapeHeld && key == VK_ESCAPE) return WindowsKeyAction.Suppress;
         if (_replaceControlEscape && key == VK_ESCAPE && controlPressed && !altPressed && !shiftPressed)
@@ -83,6 +86,19 @@ public sealed class WindowsKeyGesture
             // whether Shift or the Windows key was pressed first.
             if (key is VK_SHIFT or VK_LSHIFT or VK_RSHIFT) return WindowsKeyAction.PassThrough;
             if (_suppressedShortcutKeys.Contains(key)) return WindowsKeyAction.Suppress;
+            if (shiftPressed && !altPressed &&
+                TaskbarShortcutCatalog.GetOneBasedPinIndex(key) is { } newInstancePinIndex)
+            {
+                var action = controlPressed ? WindowsKeyAction.LaunchPinnedAppInstanceAsAdministrator : WindowsKeyAction.LaunchPinnedAppInstance;
+                var canLaunch = controlPressed ? canLaunchPinnedAppInstanceAsAdministrator : canLaunchPinnedAppInstance;
+                if (canLaunch?.Invoke(newInstancePinIndex) == true)
+                {
+                    _taskbarShortcutConsumed = true;
+                    TaskbarPinIndex = newInstancePinIndex;
+                    _suppressedShortcutKeys.Add(key);
+                    return action;
+                }
+            }
             if (key == (uint)'B' && canFocusTaskbarSystem?.Invoke() == true)
             {
                 _taskbarShortcutConsumed = true;

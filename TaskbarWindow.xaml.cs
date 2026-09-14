@@ -38,6 +38,7 @@ public partial class TaskbarWindow : Window
     private readonly Action _showDesktop;
     private readonly Action? _focusSystemArea;
     private readonly Action<string>? _executePowerUserCommand;
+    private readonly Action<string>? _openDirectoryInCompanionExplorer;
     private DesktopPreferences _preferences = new(TaskbarEdge.Bottom);
     private TaskbarEdge _edge;
     private TaskbarSize _size;
@@ -69,7 +70,7 @@ public partial class TaskbarWindow : Window
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Action<string>? openDirectoryInCompanionExplorer = null)
     {
         InitializeComponent();
         _isDark = TaskbarTheme.ReadSystemDarkMode();
@@ -85,6 +86,7 @@ public partial class TaskbarWindow : Window
         _showDesktop = showDesktop ?? (() => SystemFlyoutService.ShowDesktop());
         _focusSystemArea = focusSystemArea;
         _executePowerUserCommand = executePowerUserCommand;
+        _openDirectoryInCompanionExplorer = openDirectoryInCompanionExplorer;
         _refreshTimer.Tick += (_, _) => RefreshWindows();
         _batteryRefreshTimer.Tick += (_, _) => UpdateBatteryStatus();
         _microphoneRefreshTimer.Tick += (_, _) => UpdateMicrophoneStatus();
@@ -1095,6 +1097,13 @@ public partial class TaskbarWindow : Window
         return true;
     }
 
+    public bool TryLaunchPinnedAppInstance(int oneBasedIndex, bool runAsAdministrator = false)
+    {
+        if (oneBasedIndex < 1 || oneBasedIndex > (_preferences.PinnedApps?.Count ?? 0)) return false;
+        LaunchPinnedApp(_preferences.PinnedApps![oneBasedIndex - 1], runAsAdministrator);
+        return true;
+    }
+
     public bool HasKeyboardTaskbarFocus => _keyboardFocusActive && IsKeyboardFocusWithin;
 
     public bool IsAtKeyboardFocusBoundary(bool forward)
@@ -1305,8 +1314,24 @@ public partial class TaskbarWindow : Window
             else RunningWindowService.Activate(openWindows[0]);
             return;
         }
+        LaunchPinnedApp(app);
+    }
+
+    private void LaunchPinnedApp(PinnedTaskbarApp app, bool runAsAdministrator = false)
+    {
         var isDirectory = app.IsDirectory || Directory.Exists(app.ExecutablePath);
-        if (!isDirectory && !File.Exists(app.ExecutablePath))
+        if (runAsAdministrator)
+        {
+            try { Process.Start(TaskbarPinCatalog.BuildElevatedLaunchInfo(app)); }
+            catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not run pinned app as administrator", MessageBoxButton.OK, MessageBoxImage.Error); }
+            return;
+        }
+        if (isDirectory && _openDirectoryInCompanionExplorer is not null)
+        {
+            _openDirectoryInCompanionExplorer(app.ExecutablePath);
+            return;
+        }
+        if (isDirectory ? !Directory.Exists(app.ExecutablePath) : !File.Exists(app.ExecutablePath))
         {
             MessageBox.Show(this, $"The pinned app could not be found:\n{app.ExecutablePath}", "Pinned app unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
