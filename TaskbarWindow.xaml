@@ -91,7 +91,16 @@
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <Border x:Name="StartSegment" Grid.Column="0">
                 <StackPanel x:Name="StartControls" Orientation="Horizontal">
-                    <Button x:Name="StartButton" Content="D" Width="38" Height="38" Style="{StaticResource TaskButton}" Background="{DynamicResource TaskbarAccentBrush}" FontWeight="Bold" FontSize="18" Click="Start_Click" ToolTip="Open Desktop Tuner Start menu" />
+                    <Button x:Name="StartButton" Width="38" Height="38" Style="{StaticResource TaskButton}" Background="{DynamicResource TaskbarAccentBrush}" Click="Start_Click" ToolTip="Open Desktop Tuner Start menu" AutomationProperties.Name="Start menu">
+                        <Grid Width="18" Height="18" IsHitTestVisible="False">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="8" /><ColumnDefinition Width="2" /><ColumnDefinition Width="8" /></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="8" /><RowDefinition Height="2" /><RowDefinition Height="8" /></Grid.RowDefinitions>
+                            <Path Grid.Row="0" Grid.Column="0" Fill="White" Data="M0,1 L8,0 L8,8 L0,8 Z" />
+                            <Path Grid.Row="0" Grid.Column="2" Fill="White" Data="M0,0 L8,1 L8,8 L0,8 Z" />
+                            <Path Grid.Row="2" Grid.Column="0" Fill="White" Data="M0,0 L8,0 L8,8 L0,7 Z" />
+                            <Path Grid.Row="2" Grid.Column="2" Fill="White" Data="M0,0 L8,0 L8,7 L0,8 Z" />
+                        </Grid>
+                    </Button>
                     <Button x:Name="SearchButton" Width="38" Height="38" Style="{StaticResource TaskButton}" Click="Search_Click" ToolTip="Open Windows Search (Win+S)" AutomationProperties.Name="Search">
                         <Grid Width="20" Height="20">
                             <Ellipse Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="1" Stroke="{DynamicResource TaskbarForegroundBrush}" StrokeThickness="2" />
