@@ -52,6 +52,28 @@ public sealed class DesktopHostLayoutStore
 
     public IReadOnlyList<DesktopHostItem> ApplyOrder(IEnumerable<DesktopHostItem> items) => ApplyLayout(items, 1920, 1080);
 
+    public static IReadOnlyDictionary<string, DesktopHostPosition> TranslateSelection(
+        IEnumerable<DesktopHostItem> items,
+        string anchorPath,
+        DesktopHostPosition anchorPosition,
+        double viewportWidth,
+        double viewportHeight)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentException.ThrowIfNullOrWhiteSpace(anchorPath);
+        var selected = items.DistinctBy(item => item.FullPath, StringComparer.OrdinalIgnoreCase).ToArray();
+        var anchor = selected.FirstOrDefault(item => string.Equals(item.FullPath, anchorPath, StringComparison.OrdinalIgnoreCase))
+            ?? throw new ArgumentException("The drag anchor must be part of the selected items.", nameof(anchorPath));
+        var width = double.IsFinite(viewportWidth) && viewportWidth > 0 ? viewportWidth : 1920;
+        var height = double.IsFinite(viewportHeight) && viewportHeight > 0 ? viewportHeight : 1080;
+        var clampedAnchor = Clamp(anchorPosition, width, height);
+        var deltaX = clampedAnchor.Left - anchor.Left;
+        var deltaY = clampedAnchor.Top - anchor.Top;
+        return selected.ToDictionary(item => item.FullPath,
+            item => Clamp(new DesktopHostPosition(item.Left + deltaX, item.Top + deltaY), width, height),
+            StringComparer.OrdinalIgnoreCase);
+    }
+
     public bool SaveOrder(IEnumerable<DesktopHostItem> items) => SaveLayout(items);
 
     public bool SaveLayout(IEnumerable<DesktopHostItem> items)
@@ -125,6 +147,9 @@ public sealed class DesktopHostLayoutStore
         .Distinct(StringComparer.OrdinalIgnoreCase).Take(MaximumItems).ToList();
 
     private static DesktopHostPosition Clamp(PersistedPosition position, double width, double height) =>
+        Clamp(new DesktopHostPosition(position.Left, position.Top), width, height);
+
+    private static DesktopHostPosition Clamp(DesktopHostPosition position, double width, double height) =>
         new(Math.Clamp(position.Left, 0, Math.Max(0, width - ItemWidth)), Math.Clamp(position.Top, 0, Math.Max(0, height - ItemHeight)));
 
     private sealed class PersistedLayout

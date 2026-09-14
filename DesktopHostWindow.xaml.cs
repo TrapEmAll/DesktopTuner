@@ -210,22 +210,29 @@ public partial class DesktopHostWindow : Window
 
     private void OnItemMouseMove(object sender, MouseEventArgs e)
     {
-        if (e.LeftButton != MouseButtonState.Pressed || _dragCandidate is not { IsShellNamespace: false } item
+        if (e.LeftButton != MouseButtonState.Pressed || _dragCandidate is not { } item || item.IsShellNamespace
             || !File.Exists(item.FullPath) && !Directory.Exists(item.FullPath)) return;
         var current = e.GetPosition(this);
         if (Math.Abs(current.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance
             && Math.Abs(current.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
 
         _dragCandidate = null;
-        var data = new DataObject(DataFormats.FileDrop, new[] { item.FullPath });
-        data.SetData(ItemIdentityFormat, item.FullPath);
+        var draggedItems = (item.IsSelected ? _desktopItems.Where(candidate => candidate.IsSelected) : [item])
+            .Where(candidate => !candidate.IsShellNamespace && (File.Exists(candidate.FullPath) || Directory.Exists(candidate.FullPath)))
+            .ToArray();
+        if (draggedItems.Length == 0) return;
+        var paths = draggedItems.Select(candidate => candidate.FullPath).ToArray();
+        var data = new DataObject(DataFormats.FileDrop, paths);
+        data.SetData(ItemIdentityFormat, paths.Length == 1 ? paths[0] : paths);
         DragDrop.DoDragDrop((DependencyObject)sender, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
     }
 
     private void OnItemDragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(ItemIdentityFormat)
+        var internalPaths = ReadInternalItemPaths(e.Data);
+        e.Effects = internalPaths.Count == 1 && _desktopItems.Any(item => string.Equals(item.FullPath, internalPaths[0], StringComparison.OrdinalIgnoreCase))
             ? DragDropEffects.Move
+            : internalPaths.Count > 1 ? DragDropEffects.None
             : e.Data.GetDataPresent(DataFormats.FileDrop) && Directory.Exists(_userDesktop) ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
@@ -233,11 +240,15 @@ public partial class DesktopHostWindow : Window
     private void OnItemDrop(object sender, DragEventArgs e)
     {
         if (sender is not Button { DataContext: DesktopHostItem target }) return;
-        if (e.Data.GetDataPresent(ItemIdentityFormat)
-            && e.Data.GetData(ItemIdentityFormat) is string sourcePath)
+        if (e.Data.GetDataPresent(ItemIdentityFormat))
         {
-            ReorderDesktopItem(sourcePath, target.FullPath);
-            e.Effects = DragDropEffects.Move;
+            var internalPaths = ReadInternalItemPaths(e.Data);
+            if (internalPaths.Count == 1)
+            {
+                ReorderDesktopItem(internalPaths[0], target.FullPath);
+                e.Effects = DragDropEffects.Move;
+            }
+            else e.Effects = DragDropEffects.None;
             e.Handled = true;
             return;
         }
@@ -247,7 +258,9 @@ public partial class DesktopHostWindow : Window
 
     private void OnDesktopDragOver(object sender, DragEventArgs e)
     {
-        if (e.Data.GetDataPresent(ItemIdentityFormat)) e.Effects = DragDropEffects.Move;
+        var internalPaths = ReadInternalItemPaths(e.Data);
+        if (internalPaths.Count > 0 && internalPaths.All(path => _desktopItems.Any(item => string.Equals(item.FullPath, path, StringComparison.OrdinalIgnoreCase))))
+            e.Effects = DragDropEffects.Move;
         else if (e.Data.GetDataPresent(DataFormats.FileDrop) && Directory.Exists(_userDesktop) &&
                  e.Data.GetData(DataFormats.FileDrop) is string[] paths && paths.Length > 0 &&
                  TryResolveDesktopDropMove(paths, e, out var move))
@@ -260,11 +273,18 @@ public partial class DesktopHostWindow : Window
     {
         if (e.Data.GetDataPresent(ItemIdentityFormat))
         {
-            if (e.Data.GetData(ItemIdentityFormat) is string sourcePath &&
-                _desktopItems.FirstOrDefault(item => string.Equals(item.FullPath, sourcePath, StringComparison.OrdinalIgnoreCase)) is { } source)
+            var internalPaths = ReadInternalItemPaths(e.Data);
+            var selectedItems = internalPaths.Select(path => _desktopItems.FirstOrDefault(item =>
+                string.Equals(item.FullPath, path, StringComparison.OrdinalIgnoreCase))).ToArray();
+            if (selectedItems.Length > 0 && selectedItems.All(item => item is not null))
             {
                 var point = e.GetPosition(DesktopItems);
-                source.SetPosition(ClampPosition(new DesktopHostPosition(point.X - DesktopIconWidth / 2, point.Y - DesktopIconHeight / 2)));
+                var anchor = selectedItems[0]!;
+                var positions = DesktopHostLayoutStore.TranslateSelection(selectedItems.Select(item => item!), anchor.FullPath,
+                    new DesktopHostPosition(point.X - DesktopIconWidth / 2, point.Y - DesktopIconHeight / 2),
+                    DesktopItems.ActualWidth, DesktopItems.ActualHeight);
+                foreach (var item in selectedItems)
+                    if (item is not null && positions.TryGetValue(item.FullPath, out var position)) item.SetPosition(position);
                 SaveDesktopLayout("Icon moved for this session, but its position could not be saved.");
                 e.Effects = DragDropEffects.Move;
             }
@@ -273,6 +293,17 @@ public partial class DesktopHostWindow : Window
             return;
         }
         TransferDroppedItems(e);
+    }
+
+    private static IReadOnlyList<string> ReadInternalItemPaths(IDataObject data)
+    {
+        if (!data.GetDataPresent(ItemIdentityFormat)) return [];
+        return data.GetData(ItemIdentityFormat) switch
+        {
+            string path when !string.IsNullOrWhiteSpace(path) => [path],
+            string[] paths => paths.Where(path => !string.IsNullOrWhiteSpace(path)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+            _ => []
+        };
     }
 
     private bool TryResolveDesktopDropMove(IEnumerable<string> paths, DragEventArgs e, out bool move)

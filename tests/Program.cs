@@ -49,6 +49,14 @@ Check("a,c", string.Join(',', selectableDesktopItems.Where(item => desktopSelect
 desktopSelection = DesktopHostSelectionPolicy.Select(selectableDesktopItems, selectableDesktopItems[3].FullPath, false, true, desktopSelection.AnchorPath);
 Check("c,d", string.Join(',', selectableDesktopItems.Where(item => desktopSelection.Paths.Contains(item.FullPath)).Select(item => item.Name)), "select an inclusive desktop range with Shift-click");
 Check(4, DesktopHostSelectionPolicy.SelectAll(selectableDesktopItems).Count, "select every desktop item with Ctrl+A");
+selectableDesktopItems[0].SetPosition(new DesktopHostPosition(10, 20));
+selectableDesktopItems[1].SetPosition(new DesktopHostPosition(110, 20));
+var translatedDesktopSelection = DesktopHostLayoutStore.TranslateSelection(selectableDesktopItems.Take(2), selectableDesktopItems[0].FullPath,
+    new DesktopHostPosition(210, 160), 600, 400);
+Check(new DesktopHostPosition(210, 160), translatedDesktopSelection[selectableDesktopItems[0].FullPath], "move a multi-selected desktop group to the dragged anchor position");
+Check(new DesktopHostPosition(310, 160), translatedDesktopSelection[selectableDesktopItems[1].FullPath], "preserve spacing while moving selected desktop items together");
+Check(new DesktopHostPosition(500, 288), DesktopHostLayoutStore.TranslateSelection(selectableDesktopItems.Take(2), selectableDesktopItems[0].FullPath,
+    new DesktopHostPosition(900, 900), 600, 400)[selectableDesktopItems[0].FullPath], "clamp a dragged selection anchor to the display bounds");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Created), "refresh the desktop when a new item is created");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Renamed), "refresh the desktop when an item is renamed");
 Check(false, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.All), "ignore unknown desktop watcher event types");
