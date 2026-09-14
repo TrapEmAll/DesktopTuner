@@ -41,6 +41,7 @@ public partial class MainWindow : Window
     private HwndSource? _windowSource;
     private StartMenuWindow? _startMenuWindow;
     private ExplorerWindow? _explorerWindow;
+    private ShellNamespaceBrowserWindow? _shellNamespaceBrowserWindow;
     private TaskbarDisplay? _startMenuDisplay;
     private readonly List<TaskbarWindow> _taskbarWindows = [];
     private readonly TaskbarWindowOrder _taskbarWindowOrder = new();
@@ -1119,7 +1120,7 @@ public partial class MainWindow : Window
 
     public static bool TryOpenShellLocationInExistingInstance(string shellLocation)
     {
-        if (!DesktopShellNamespaceCatalog.IsCompanionExplorerLocation(shellLocation)) return false;
+        if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(shellLocation)) return false;
         var payload = Marshal.StringToHGlobalUni(shellLocation);
         try
         {
@@ -1175,7 +1176,7 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(value)) return false;
         var terminator = value.IndexOf('\0');
         shellLocation = terminator >= 0 ? value[..terminator] : value;
-        return DesktopShellNamespaceCatalog.IsCompanionExplorerLocation(shellLocation);
+        return DesktopShellNamespaceCatalog.IsShellNamespaceLocation(shellLocation);
     }
 
     public void OpenFolderFromShell(string folderPath)
@@ -1190,13 +1191,14 @@ public partial class MainWindow : Window
 
     private void OpenShellLocationFromShell(string shellLocation)
     {
-        if (!DesktopShellNamespaceCatalog.IsCompanionExplorerLocation(shellLocation)) return;
-        if (_explorerWindow is { IsVisible: true })
+        if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(shellLocation)) return;
+        if (DesktopShellNamespaceCatalog.IsCompanionExplorerLocation(shellLocation))
         {
-            _explorerWindow.OpenShellLocationFromShell(shellLocation);
+            if (_explorerWindow is { IsVisible: true }) _explorerWindow.OpenShellLocationFromShell(shellLocation);
+            else OpenExplorer(shellLocation);
             return;
         }
-        OpenExplorer(shellLocation);
+        OpenShellNamespaceBrowser(shellLocation);
     }
 
     private void ShowStartMenu() => ShowStartMenu(null);
@@ -1840,19 +1842,30 @@ public partial class MainWindow : Window
 
     private bool TryOpenLocationInCompanionExplorer(string location)
     {
-        var isSupportedShellLocation = DesktopShellNamespaceCatalog.IsCompanionExplorerLocation(location);
+        var isShellNamespaceLocation = DesktopShellNamespaceCatalog.IsShellNamespaceLocation(location);
         var isFilesystemDirectory = Path.IsPathFullyQualified(location) && Directory.Exists(location);
-        if (!ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(_shellHostMode, isFilesystemDirectory, isSupportedShellLocation))
+        if (!ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(_shellHostMode, isFilesystemDirectory, isShellNamespaceLocation))
             return false;
 
-        if (isSupportedShellLocation)
+        if (isShellNamespaceLocation)
         {
-            if (_explorerWindow is { IsVisible: true }) _explorerWindow.OpenShellLocationFromShell(location);
-            else OpenExplorer(location);
+            OpenShellLocationFromShell(location);
             return true;
         }
         OpenExplorer(Path.GetFullPath(location));
         return true;
+    }
+
+    private void OpenShellNamespaceBrowser(string location)
+    {
+        if (_shellNamespaceBrowserWindow is not null)
+        {
+            _shellNamespaceBrowserWindow.OpenLocationFromShell(location);
+            return;
+        }
+        _shellNamespaceBrowserWindow = new ShellNamespaceBrowserWindow(location) { Owner = this };
+        _shellNamespaceBrowserWindow.Closed += (_, _) => _shellNamespaceBrowserWindow = null;
+        _shellNamespaceBrowserWindow.Show();
     }
 
     private void QuitApplication()

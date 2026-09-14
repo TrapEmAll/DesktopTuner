@@ -1093,7 +1093,13 @@ public partial class StartMenuWindow : Window
             }
 
             var target = StartMenuPlaceCatalog.ResolveTarget(action);
-            if (_openShellLocation?.Invoke(target) != true) AppCatalogService.OpenLocation(target);
+            var shellTarget = action switch
+            {
+                "control-panel" => "shell:ControlPanelFolder",
+                "network" => "shell:NetworkPlacesFolder",
+                _ => target
+            };
+            if (_openShellLocation?.Invoke(shellTarget) != true) AppCatalogService.OpenLocation(target);
             Close();
         }
         catch (Exception ex)

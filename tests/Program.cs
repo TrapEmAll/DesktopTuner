@@ -258,7 +258,11 @@ Check(false, ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplor
 Check(false, ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(true, false, false), "leave unsupported Start locations on their existing handler");
 Check(true, DesktopShellNamespaceCatalog.IsCompanionExplorerLocation("shell:MyComputerFolder"), "route the This PC desktop namespace item to companion Explorer");
 Check(true, DesktopShellNamespaceCatalog.IsCompanionExplorerLocation("shell:RecycleBinFolder"), "route the Recycle Bin desktop namespace item to companion Explorer");
-Check(false, DesktopShellNamespaceCatalog.IsCompanionExplorerLocation("shell:PrintersFolder"), "leave unsupported namespace items on their native Shell handler");
+Check(false, DesktopShellNamespaceCatalog.IsCompanionExplorerLocation("shell:PrintersFolder"), "keep This PC and Recycle Bin on their specialized companion Explorer views");
+Check(true, DesktopShellNamespaceCatalog.IsShellNamespaceLocation("shell:NetworkPlacesFolder"), "recognize the Network namespace for the replacement-shell browser");
+Check(true, DesktopShellNamespaceCatalog.IsShellNamespaceLocation("shell:ControlPanelFolder"), "recognize Control Panel for the replacement-shell browser");
+Check(true, DesktopShellNamespaceCatalog.IsShellNamespaceLocation("::{645FF040-5081-101B-9F08-00AA002F954E}"), "recognize GUID-parsing-name shell locations");
+Check(false, DesktopShellNamespaceCatalog.IsShellNamespaceLocation("control.exe"), "reject executable commands as Shell namespace locations");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, false, true), "avoid hiding taskbars when Explorer is not the logon shell");
 Check(true, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true), "preserve the user's native taskbar replacement setting in normal mode");
 Check(true, ShellHostLaunchPolicy.ShouldLaunchExplorerOnShellHostExit(true, false), "start Explorer when a Shell Launcher host exits normally");
@@ -1063,6 +1067,9 @@ try
     var nativeMenuSecond = Path.Combine(nativeMenuFolder, "second.txt");
     File.WriteAllText(nativeMenuFirst, "first");
     File.WriteAllText(nativeMenuSecond, "second");
+    var shellFolderEntries = await DesktopShellNamespaceCatalog.ReadChildrenAsync(nativeMenuFolder);
+    CheckTrue(shellFolderEntries.Any(entry => entry.Name == "first.txt" && !entry.IsFolder), "enumerate filesystem children through the asynchronous Shell namespace browser");
+    CheckTrue(shellFolderEntries.Any(entry => entry.Name == "second.txt" && !entry.IsFolder), "retain every Shell folder child in the namespace browser");
     CheckTrue(await NativeShellContextMenuService.ProbeItemsContextMenuAsync([nativeMenuFirst, nativeMenuSecond]), "build the Windows Shell context menu for a multi-selection");
     CheckTrue(await NativeShellContextMenuService.ProbeFolderBackgroundContextMenuAsync(nativeMenuFolder), "build the Windows Shell folder-background context menu");
     CheckTrue(await NativeShellContextMenuService.ProbeShellItemContextMenuAsync("shell:RecycleBinFolder"), "build the Windows Shell context menu for the Recycle Bin namespace item");

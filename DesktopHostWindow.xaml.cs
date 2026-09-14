@@ -228,7 +228,7 @@ public partial class DesktopHostWindow : Window
                 return;
             }
             if (_routeFoldersToCompanionExplorer && entry.IsShellNamespace &&
-                DesktopShellNamespaceCatalog.IsCompanionExplorerLocation(entry.FullPath))
+                DesktopShellNamespaceCatalog.IsShellNamespaceLocation(entry.FullPath))
             {
                 if (!MainWindow.TryOpenShellLocationInExistingInstance(entry.FullPath))
                     throw new InvalidOperationException("Desktop Tuner Explorer could not receive this location. It was not opened in Windows Explorer.");
