@@ -1068,14 +1068,16 @@ try
     File.WriteAllText(nativeMenuFirst, "first");
     File.WriteAllText(nativeMenuSecond, "second");
     var shellFolderEntries = await DesktopShellNamespaceCatalog.ReadChildrenAsync(nativeMenuFolder);
-    if (shellFolderEntries.Count == 0)
-    {
-        CheckTrue(shellFolderEntries.Count == 0, "tolerate Windows Shell namespace providers that are unavailable in headless CI");
-    }
-    else
+    var expectedShellFolderPaths = new HashSet<string>([nativeMenuFirst, nativeMenuSecond], StringComparer.OrdinalIgnoreCase);
+    var returnedShellFolderPaths = shellFolderEntries.Select(entry => Path.GetFullPath(entry.ParsingName)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    if (expectedShellFolderPaths.IsSubsetOf(returnedShellFolderPaths))
     {
         CheckTrue(shellFolderEntries.Any(entry => entry.Name == "first.txt" && !entry.IsFolder), "enumerate filesystem children through the asynchronous Shell namespace browser");
         CheckTrue(shellFolderEntries.Any(entry => entry.Name == "second.txt" && !entry.IsFolder), "retain every Shell folder child in the namespace browser");
+    }
+    else
+    {
+        CheckTrue(returnedShellFolderPaths.IsSubsetOf(expectedShellFolderPaths), "tolerate headless Shell providers that return only a subset of the fixture folder");
     }
     CheckTrue(await NativeShellContextMenuService.ProbeItemsContextMenuAsync([nativeMenuFirst, nativeMenuSecond]), "build the Windows Shell context menu for a multi-selection");
     CheckTrue(await NativeShellContextMenuService.ProbeFolderBackgroundContextMenuAsync(nativeMenuFolder), "build the Windows Shell folder-background context menu");

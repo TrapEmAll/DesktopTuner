@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Windows.Media;
 
 namespace DesktopTuner;
 
 public sealed record DesktopShellNamespaceEntry(string Name, string ParsingName, bool IsFolder)
 {
+    public ImageSource? Icon { get; init; }
     public string Type => IsFolder ? "Folder" : "Item";
 }
 

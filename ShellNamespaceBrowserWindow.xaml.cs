@@ -52,8 +52,16 @@ public partial class ShellNamespaceBrowserWindow : Window
             var entries = await DesktopShellNamespaceCatalog.ReadChildrenAsync(location);
             if (version != _navigationVersion || !IsVisible && IsLoaded) return;
             ItemsList.ItemsSource = entries;
+            StatusText.Text = entries.Count == 0
+                ? "This location is empty or Windows returned no items."
+                : $"{entries.Count:N0} items · Loading icons…";
+            var entriesWithIcons = await Task.Run(() => entries
+                .Select(entry => entry with { Icon = TaskbarIconService.LoadNamespaceIcon(entry.ParsingName) })
+                .ToArray());
+            if (version != _navigationVersion || !IsVisible && IsLoaded) return;
+            ItemsList.ItemsSource = entriesWithIcons;
             Title = $"{GetDisplayName(location)} — Desktop Tuner Explorer";
-            StatusText.Text = entries.Count == 0 ? "This location is empty or Windows returned no items." : $"{entries.Count:N0} items";
+            StatusText.Text = entriesWithIcons.Length == 0 ? "This location is empty or Windows returned no items." : $"{entriesWithIcons.Length:N0} items";
         }
         catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
