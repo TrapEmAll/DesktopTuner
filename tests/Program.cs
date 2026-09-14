@@ -418,6 +418,8 @@ Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true, false), 
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true, true), "keep the native notification area active regardless of the saved replacement preference in shell overlay mode");
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, true), "integrate the native notification area in shell overlay mode without changing the saved replacement preference");
 Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, true), "leave native tray integration disabled in normal replacement mode");
+Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, false, false), "disable native tray integration in shell-host mode so the custom taskbar can reserve its own work area");
+Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, false, true), "keep native tray integration disabled in regular taskbar replacement mode");
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, false), "integrate the native notification area in normal overlay mode");
 Check(true, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(true, false), "route Win+E to companion Explorer in shell replacement mode regardless of the saved preference");
 Check(true, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(false, true), "honor opt-in Win+E routing outside shell replacement mode");

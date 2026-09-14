@@ -48,7 +48,10 @@ public static class ShellHostLaunchPolicy
         !shellHostMode && !shellOverlayMode && replaceNativeTaskbarPreference;
 
     public static bool ShouldUseNativeTrayIntegration(bool shellOverlayMode, bool replaceNativeTaskbarPreference) =>
-        shellOverlayMode || !replaceNativeTaskbarPreference;
+        ShouldUseNativeTrayIntegration(false, shellOverlayMode, replaceNativeTaskbarPreference);
+
+    public static bool ShouldUseNativeTrayIntegration(bool shellHostMode, bool shellOverlayMode, bool replaceNativeTaskbarPreference) =>
+        !shellHostMode && (shellOverlayMode || !replaceNativeTaskbarPreference);
 
     public static bool ShouldReplaceExplorerShortcut(bool shellHostMode, bool preference) =>
         shellHostMode || preference;

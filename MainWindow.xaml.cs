@@ -1507,7 +1507,8 @@ public partial class MainWindow : Window
         var preferences = CreateDesktopPreferences();
         return preferences with
         {
-            ReplaceNativeTaskbar = !ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(_shellOverlayMode, preferences.ReplaceNativeTaskbar)
+            ReplaceNativeTaskbar = !ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(
+                _shellHostMode, _shellOverlayMode, preferences.ReplaceNativeTaskbar)
         };
     }
 
