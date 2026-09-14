@@ -23,6 +23,17 @@ public static class TaskbarWindowGrouping
         return matches.FirstOrDefault(window => window.IsForeground) ?? matches.FirstOrDefault();
     }
 
+    public static RunningWindow? SelectLastActivePinnedWindow(PinnedTaskbarApp app, IEnumerable<RunningWindow> windows, IEnumerable<nint> mostRecentFirstHandles)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        ArgumentNullException.ThrowIfNull(windows);
+        ArgumentNullException.ThrowIfNull(mostRecentFirstHandles);
+        var matches = windows.Where(window => MatchesPinnedApp(app, window)).ToDictionary(window => window.Handle);
+        foreach (var handle in mostRecentFirstHandles)
+            if (matches.TryGetValue(handle, out var window)) return window;
+        return null;
+    }
+
     public static IReadOnlyList<TaskbarWindowGroup> Create(IEnumerable<RunningWindow> windows, TaskbarGroupingMode mode, int buttonCapacity, IEnumerable<PinnedTaskbarApp>? pinnedApps = null)
     {
         ArgumentNullException.ThrowIfNull(windows);

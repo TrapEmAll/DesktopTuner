@@ -47,6 +47,8 @@ public sealed class WindowsKeyStartHook : IDisposable
     private readonly Action<int> _launchPinnedAppInstance;
     private readonly Func<int, bool> _canLaunchPinnedAppInstanceAsAdministrator;
     private readonly Action<int> _launchPinnedAppInstanceAsAdministrator;
+    private readonly Func<int, bool> _canActivateLastActivePinnedApp;
+    private readonly Action<int> _activateLastActivePinnedApp;
     private readonly HookProc _callback;
     private readonly WindowsKeyGesture _gesture;
     private uint? _pendingShellSystemSurfaceKey;
@@ -54,7 +56,7 @@ public sealed class WindowsKeyStartHook : IDisposable
     private bool _shellSystemSurfaceWindowsKeyReleased;
     private nint _hook;
 
-    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Action<bool>? focusTaskbar = null, bool replaceBareWindowsKey = true, Func<bool>? canOpenExplorer = null, Action? openExplorer = null, bool replaceControlEscape = false, Func<bool>? canToggleDesktop = null, Action? toggleDesktop = null, Func<bool>? canFocusTaskbarSystem = null, Action? focusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Action? openPowerUserMenu = null, Func<bool>? canOpenRunDialog = null, Action? openRunDialog = null, Func<bool>? canMinimizeAllWindows = null, Action? minimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null, Action? restoreMinimizedWindows = null, Func<uint, bool>? canOpenShellSystemSurface = null, Action<uint>? openShellSystemSurface = null, Func<int, bool>? canLaunchPinnedAppInstance = null, Action<int>? launchPinnedAppInstance = null, Func<int, bool>? canLaunchPinnedAppInstanceAsAdministrator = null, Action<int>? launchPinnedAppInstanceAsAdministrator = null)
+    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Action<bool>? focusTaskbar = null, bool replaceBareWindowsKey = true, Func<bool>? canOpenExplorer = null, Action? openExplorer = null, bool replaceControlEscape = false, Func<bool>? canToggleDesktop = null, Action? toggleDesktop = null, Func<bool>? canFocusTaskbarSystem = null, Action? focusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Action? openPowerUserMenu = null, Func<bool>? canOpenRunDialog = null, Action? openRunDialog = null, Func<bool>? canMinimizeAllWindows = null, Action? minimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null, Action? restoreMinimizedWindows = null, Func<uint, bool>? canOpenShellSystemSurface = null, Action<uint>? openShellSystemSurface = null, Func<int, bool>? canLaunchPinnedAppInstance = null, Action<int>? launchPinnedAppInstance = null, Func<int, bool>? canLaunchPinnedAppInstanceAsAdministrator = null, Action<int>? launchPinnedAppInstanceAsAdministrator = null, Func<int, bool>? canActivateLastActivePinnedApp = null, Action<int>? activateLastActivePinnedApp = null)
     {
         _showStartMenu = showStartMenu;
         _canActivateTaskbarPin = replaceBareWindowsKey ? canActivateTaskbarPin ?? (_ => false) : _ => false;
@@ -81,6 +83,8 @@ public sealed class WindowsKeyStartHook : IDisposable
         _launchPinnedAppInstance = launchPinnedAppInstance ?? (_ => { });
         _canLaunchPinnedAppInstanceAsAdministrator = canLaunchPinnedAppInstanceAsAdministrator ?? (_ => false);
         _launchPinnedAppInstanceAsAdministrator = launchPinnedAppInstanceAsAdministrator ?? (_ => { });
+        _canActivateLastActivePinnedApp = canActivateLastActivePinnedApp ?? (_ => false);
+        _activateLastActivePinnedApp = activateLastActivePinnedApp ?? (_ => { });
         _gesture = new WindowsKeyGesture(replaceBareWindowsKey, replaceControlEscape);
         _callback = KeyboardCallback;
     }
@@ -141,10 +145,13 @@ public sealed class WindowsKeyStartHook : IDisposable
             var canLaunchPinnedAppInstanceAsAdministrator = IsModifierPressed(VK_SHIFT) && IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_MENU)
                 ? _canLaunchPinnedAppInstanceAsAdministrator
                 : static _ => false;
+            var canActivateLastActivePinnedApp = IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_MENU)
+                ? _canActivateLastActivePinnedApp
+                : static _ => false;
             var action = message switch
             {
                 WM_KEYDOWN or WM_SYSKEYDOWN => _gesture.KeyDown(data.VirtualKey, canActivateTaskbarPin, canFocusTaskbar, canOpenExplorer,
-                    IsModifierPressed(VK_CONTROL), IsModifierPressed(VK_MENU), IsModifierPressed(VK_SHIFT), canToggleDesktop, canFocusTaskbarSystem, canOpenPowerUserMenu, canOpenRunDialog, canMinimizeAllWindows, canRestoreMinimizedWindows, canOpenShellSystemSurface, canLaunchPinnedAppInstance, canLaunchPinnedAppInstanceAsAdministrator),
+                    IsModifierPressed(VK_CONTROL), IsModifierPressed(VK_MENU), IsModifierPressed(VK_SHIFT), canToggleDesktop, canFocusTaskbarSystem, canOpenPowerUserMenu, canOpenRunDialog, canMinimizeAllWindows, canRestoreMinimizedWindows, canOpenShellSystemSurface, canLaunchPinnedAppInstance, canLaunchPinnedAppInstanceAsAdministrator, canActivateLastActivePinnedApp),
                 WM_KEYUP or WM_SYSKEYUP => _gesture.KeyUp(data.VirtualKey),
                 _ => WindowsKeyAction.PassThrough
             };
@@ -222,6 +229,10 @@ public sealed class WindowsKeyStartHook : IDisposable
                 case WindowsKeyAction.LaunchPinnedAppInstanceAsAdministrator:
                     if (_gesture.TaskbarPinIndex is { } elevatedNewInstancePinIndex)
                         Application.Current?.Dispatcher.BeginInvoke(() => _launchPinnedAppInstanceAsAdministrator(elevatedNewInstancePinIndex), DispatcherPriority.Input);
+                    return new nint(1);
+                case WindowsKeyAction.ActivateLastActivePinnedApp:
+                    if (_gesture.TaskbarPinIndex is { } lastActivePinIndex)
+                        Application.Current?.Dispatcher.BeginInvoke(() => _activateLastActivePinnedApp(lastActivePinIndex), DispatcherPriority.Input);
                     return new nint(1);
             }
         }

@@ -49,6 +49,7 @@ public partial class MainWindow : Window
     private nint _taskbarFocusReturnWindow;
     private readonly TaskbarWindowOrder _taskbarWindowOrder = new();
     private readonly ShowDesktopWindowService _showDesktopWindows = new();
+    private readonly ForegroundWindowHistory _foregroundWindowHistory;
     private readonly NativeTaskbarVisibilityService _nativeTaskbarVisibility = new();
     private readonly DispatcherTimer _nativeTaskbarWatchTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly DispatcherTimer _displayRefreshTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
@@ -95,6 +96,7 @@ public partial class MainWindow : Window
     public MainWindow(bool startInBackground = false, bool shellHostMode = false, bool shellOverlayMode = false)
     {
         InitializeComponent();
+        _foregroundWindowHistory = new ForegroundWindowHistory();
         _startInBackground = startInBackground;
         _shellHostMode = shellHostMode;
         _shellOverlayMode = shellOverlayMode;
@@ -296,7 +298,7 @@ public partial class MainWindow : Window
             PageContent.Children.Add(replaceStart);
             var info = InfoCard("Windows-key integration", _shellHostMode || _shellOverlayMode
                 ? "Desktop Tuner Start receives the Windows key while the Desktop Tuner desktop is active. Other Win+key shortcuts such as Win+R continue to Windows."
-                : "When enabled, tapping either Windows key opens Desktop Tuner Start. While a Desktop Tuner taskbar is running, Win+1 through Win+9 activate the matching pin and Win+Shift+1 through Win+Shift+9 launch a new instance; Ctrl+Win+Shift+1 through Ctrl+Win+Shift+9 launch an elevated instance where supported; other Win+key shortcuts such as Win+R continue to Windows. Turn this off at any time to restore native Start and taskbar shortcuts.");
+                : "When enabled, tapping either Windows key opens Desktop Tuner Start. While a Desktop Tuner taskbar is running, Win+1 through Win+9 activate a pin, Win+Ctrl+1 through Win+Ctrl+9 activate its most recently active window, and Win+Shift+1 through Win+Shift+9 launch a new instance; Ctrl+Win+Shift+1 through Ctrl+Win+Shift+9 launch an elevated instance where supported. Other Win+key shortcuts such as Win+R continue to Windows. Turn this off at any time to restore native Start and taskbar shortcuts.");
             PageContent.Children.Add(info);
 
             AddPageHeading("System places", "Choose which shortcuts appear in More places and set their order.");
@@ -1040,6 +1042,7 @@ public partial class MainWindow : Window
         _windowSource?.RemoveHook(WindowMessageHook);
         _windowsKeyHook?.Dispose();
         _windowsKeyHook = null;
+        _foregroundWindowHistory.Dispose();
     }
 
     private void SystemEvents_UserPreferenceChanged(object? sender, UserPreferenceChangedEventArgs e)
@@ -2023,7 +2026,8 @@ public partial class MainWindow : Window
             canOpenShellSystemSurface: _ => CanManageShellHostWindows(), openShellSystemSurface: OpenShellSystemSurfaceShortcut,
             canLaunchPinnedAppInstance: CanActivateTaskbarPinShortcut, launchPinnedAppInstance: LaunchTaskbarPinInstanceShortcut,
             canLaunchPinnedAppInstanceAsAdministrator: CanLaunchPinnedAppInstanceAsAdministratorShortcut,
-            launchPinnedAppInstanceAsAdministrator: LaunchElevatedTaskbarPinInstanceShortcut);
+            launchPinnedAppInstanceAsAdministrator: LaunchElevatedTaskbarPinInstanceShortcut,
+            canActivateLastActivePinnedApp: CanActivateLastActivePinnedAppShortcut, activateLastActivePinnedApp: ActivateLastActivePinnedAppShortcut);
         if (!hook.TryInstall(out var error))
         {
             hook.Dispose();
@@ -2068,6 +2072,20 @@ public partial class MainWindow : Window
         var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
             ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
         taskbar?.TryLaunchPinnedAppInstance(oneBasedIndex, runAsAdministrator: true);
+    }
+
+    private bool CanActivateLastActivePinnedAppShortcut(int oneBasedIndex)
+    {
+        var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
+            ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
+        return taskbar?.CanActivateLastActivePinnedApp(oneBasedIndex, _foregroundWindowHistory.GetMostRecentFirst()) == true;
+    }
+
+    private void ActivateLastActivePinnedAppShortcut(int oneBasedIndex)
+    {
+        var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
+            ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
+        taskbar?.TryActivateLastActivePinnedApp(oneBasedIndex, _foregroundWindowHistory.GetMostRecentFirst());
     }
 
     private bool CanFocusTaskbar() => _taskbarWindows.Any(window => window.IsVisible);

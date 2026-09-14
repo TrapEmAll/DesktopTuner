@@ -1104,6 +1104,27 @@ public partial class TaskbarWindow : Window
         return true;
     }
 
+    public bool CanActivateLastActivePinnedApp(int oneBasedIndex, IEnumerable<nint> mostRecentFirstHandles) =>
+        FindLastActivePinnedWindow(oneBasedIndex, mostRecentFirstHandles) is not null;
+
+    public bool TryActivateLastActivePinnedApp(int oneBasedIndex, IEnumerable<nint> mostRecentFirstHandles)
+    {
+        var target = FindLastActivePinnedWindow(oneBasedIndex, mostRecentFirstHandles);
+        if (target is null) return false;
+        RunningWindowService.Activate(target);
+        return true;
+    }
+
+    private RunningWindow? FindLastActivePinnedWindow(int oneBasedIndex, IEnumerable<nint> mostRecentFirstHandles)
+    {
+        if (oneBasedIndex < 1 || oneBasedIndex > (_preferences.PinnedApps?.Count ?? 0)) return null;
+        var app = _preferences.PinnedApps![oneBasedIndex - 1];
+        var windows = _windows.Enumerate()
+            .Where(window => _preferences.TaskbarShowWindowsFromAllVirtualDesktops || window.IsOnCurrentVirtualDesktop is not false)
+            .ToArray();
+        return TaskbarWindowGrouping.SelectLastActivePinnedWindow(app, windows, mostRecentFirstHandles);
+    }
+
     public bool HasKeyboardTaskbarFocus => _keyboardFocusActive && IsKeyboardFocusWithin;
 
     public bool IsAtKeyboardFocusBoundary(bool forward)
