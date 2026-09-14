@@ -11,12 +11,15 @@ var navigationTestRoot = Path.Combine(Path.GetTempPath(), $"desktop-tuner-naviga
 try
 {
     var nestedPath = Path.Combine(navigationTestRoot, "Alpha");
+    var nestedBreadcrumbChild = Path.Combine(nestedPath, "Child");
     var hiddenPath = Path.Combine(navigationTestRoot, "Hidden");
     Directory.CreateDirectory(nestedPath);
+    Directory.CreateDirectory(nestedBreadcrumbChild);
     Directory.CreateDirectory(hiddenPath);
     File.SetAttributes(hiddenPath, FileAttributes.Hidden);
     Check("Alpha", string.Join(',', ExplorerNavigationService.ReadDirectories(navigationTestRoot, showHiddenItems: false).Directories.Select(directory => directory.Name)), "hide hidden folders in Explorer navigation when Windows hidden items are off");
     Check("Alpha,Hidden", string.Join(',', ExplorerNavigationService.ReadDirectories(navigationTestRoot, showHiddenItems: true).Directories.Select(directory => directory.Name)), "include hidden folders in Explorer navigation when enabled");
+    Check("Child", string.Join(',', ExplorerNavigationService.ReadDirectories(nestedPath, showHiddenItems: false).Directories.Select(directory => directory.Name)), "load breadcrumb dropdown children from the selected path segment");
     var breadcrumbs = ExplorerBreadcrumbPolicy.Create(nestedPath);
     Check(Path.GetPathRoot(nestedPath), breadcrumbs[0].Label, "show the drive root as the first Explorer breadcrumb");
     Check(nestedPath, breadcrumbs[^1].Path, "keep the final Explorer breadcrumb pointed at the active folder");

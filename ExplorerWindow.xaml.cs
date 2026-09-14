@@ -1017,37 +1017,122 @@ public partial class ExplorerWindow : Window
                     AddressBreadcrumbs.Children.Add(separator);
                 }
 
-                if (index == segments.Count - 1)
-                {
-                    var current = new TextBlock
-                    {
-                        Text = segment.Label,
-                        VerticalAlignment = VerticalAlignment.Center,
-                        FontWeight = FontWeights.SemiBold,
-                        Foreground = (Brush)FindResource("DesktopPrimaryTextBrush"),
-                        Margin = new Thickness(4, 0, 8, 0),
-                        ToolTip = segment.Path
-                    };
-                    AddressBreadcrumbs.Children.Add(current);
-                    continue;
-                }
-
-                var ancestor = new Button
-                {
-                    Content = segment.Label,
-                    Tag = segment.Path,
-                    Padding = new Thickness(7, 4, 7, 4),
-                    Margin = new Thickness(0, 0, 1, 0),
-                    BorderThickness = new Thickness(0),
-                    ToolTip = segment.Path
-                };
-                ancestor.Click += Breadcrumb_Click;
-                AddressBreadcrumbs.Children.Add(ancestor);
+                AddressBreadcrumbs.Children.Add(CreateBreadcrumbSegment(segment, index == segments.Count - 1));
             }
         }
 
         AddressBox.Visibility = Visibility.Collapsed;
         AddressBreadcrumbsScroll.Visibility = Visibility.Visible;
+    }
+
+    private FrameworkElement CreateBreadcrumbSegment(ExplorerBreadcrumbSegment segment, bool isCurrent)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        if (isCurrent)
+        {
+            row.Children.Add(new TextBlock
+            {
+                Text = segment.Label,
+                VerticalAlignment = VerticalAlignment.Center,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)FindResource("DesktopPrimaryTextBrush"),
+                Margin = new Thickness(4, 0, 2, 0),
+                ToolTip = segment.Path
+            });
+        }
+        else
+        {
+            var ancestor = new Button
+            {
+                Content = segment.Label,
+                Tag = segment.Path,
+                Padding = new Thickness(7, 4, 2, 4),
+                Margin = new Thickness(0),
+                BorderThickness = new Thickness(0),
+                ToolTip = segment.Path
+            };
+            ancestor.Click += Breadcrumb_Click;
+            row.Children.Add(ancestor);
+        }
+
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Header = "Loading folders…", IsEnabled = false });
+        CancellationTokenSource? loadCancellation = null;
+        menu.Opened += async (_, _) =>
+        {
+            loadCancellation?.Cancel();
+            var cancellation = new CancellationTokenSource();
+            loadCancellation = cancellation;
+            await LoadBreadcrumbFoldersAsync(menu, segment.Path, cancellation);
+            if (ReferenceEquals(loadCancellation, cancellation)) loadCancellation = null;
+            cancellation.Dispose();
+        };
+        menu.Closed += (_, _) => loadCancellation?.Cancel();
+
+        var dropdown = new Button
+        {
+            Content = "⌄",
+            Padding = new Thickness(4, 2, 5, 3),
+            Margin = new Thickness(0, 0, 3, 0),
+            BorderThickness = new Thickness(0),
+            ToolTip = $"Browse folders in {segment.Path}",
+            ContextMenu = menu
+        };
+        System.Windows.Automation.AutomationProperties.SetName(dropdown, $"Browse folders in {segment.Label}");
+        dropdown.Click += (_, _) =>
+        {
+            menu.PlacementTarget = dropdown;
+            menu.IsOpen = true;
+        };
+        row.Children.Add(dropdown);
+        return row;
+    }
+
+    private async Task LoadBreadcrumbFoldersAsync(ContextMenu menu, string folderPath, CancellationTokenSource cancellation)
+    {
+        menu.Items.Clear();
+        menu.Items.Add(new MenuItem { Header = "Loading folders…", IsEnabled = false });
+        try
+        {
+            var result = await Task.Run(
+                () => ExplorerNavigationService.ReadDirectories(folderPath, _showHiddenItems, cancellation.Token),
+                cancellation.Token);
+            if (cancellation.IsCancellationRequested || !menu.IsOpen) return;
+
+            menu.Items.Clear();
+            if (result.Error is not null)
+            {
+                menu.Items.Add(new MenuItem { Header = "Could not read folders", IsEnabled = false, ToolTip = result.Error });
+                return;
+            }
+            if (result.Directories.Count == 0)
+            {
+                menu.Items.Add(new MenuItem { Header = "No subfolders", IsEnabled = false });
+                return;
+            }
+
+            foreach (var directory in result.Directories)
+            {
+                var item = new MenuItem { Header = directory.Name, Tag = directory.Path };
+                item.Click += BreadcrumbFolder_Click;
+                menu.Items.Add(item);
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            Trace.TraceError("Could not load Explorer breadcrumb folders at {0}: {1}", folderPath, ex);
+            if (!cancellation.IsCancellationRequested && menu.IsOpen)
+            {
+                menu.Items.Clear();
+                menu.Items.Add(new MenuItem { Header = "Could not read folders", IsEnabled = false, ToolTip = ex.Message });
+            }
+        }
+    }
+
+    private void BreadcrumbFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: string path }) Navigate(new ExplorerLocation(path));
     }
 
     private void Breadcrumb_Click(object sender, RoutedEventArgs e)
