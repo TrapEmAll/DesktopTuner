@@ -152,6 +152,12 @@
                                         <MenuItem Header="Browse folder contents" Tag="{Binding}" IsEnabled="{Binding IsDirectory}" SubmenuOpened="PinnedFolderMenu_SubmenuOpened">
                                             <MenuItem Header="Loading..." IsEnabled="False" />
                                         </MenuItem>
+                                        <MenuItem Header="Recent items" Tag="{Binding}" IsEnabled="{Binding CanShowJumpList}" CommandParameter="{x:Static local:TaskbarJumpListCategory.Recent}" SubmenuOpened="JumpListMenu_SubmenuOpened">
+                                            <MenuItem Header="Loading..." IsEnabled="False" />
+                                        </MenuItem>
+                                        <MenuItem Header="Frequent items" Tag="{Binding}" IsEnabled="{Binding CanShowJumpList}" CommandParameter="{x:Static local:TaskbarJumpListCategory.Frequent}" SubmenuOpened="JumpListMenu_SubmenuOpened">
+                                            <MenuItem Header="Loading..." IsEnabled="False" />
+                                        </MenuItem>
                                         <Separator />
                                         <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenLocation}" Click="OpenPinnedLocation_Click" />
                                         <MenuItem Header="Start new elevated instance" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunPinnedAsAdministrator_Click" />
@@ -202,6 +208,12 @@
                                     <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
                                         <MenuItem Header="Minimize window(s)" Tag="{Binding}" Click="Minimize_Click" />
                                         <MenuItem Header="Close window(s)" Tag="{Binding}" Click="CloseWindows_Click" />
+                                        <MenuItem Header="Recent items" Tag="{Binding}" CommandParameter="{x:Static local:TaskbarJumpListCategory.Recent}" SubmenuOpened="JumpListMenu_SubmenuOpened">
+                                            <MenuItem Header="Loading..." IsEnabled="False" />
+                                        </MenuItem>
+                                        <MenuItem Header="Frequent items" Tag="{Binding}" CommandParameter="{x:Static local:TaskbarJumpListCategory.Frequent}" SubmenuOpened="JumpListMenu_SubmenuOpened">
+                                            <MenuItem Header="Loading..." IsEnabled="False" />
+                                        </MenuItem>
                                         <MenuItem Header="Pin app to taskbar" Tag="{Binding}" Click="Pin_Click" />
                                         <MenuItem Header="Start new elevated instance" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunWindowAsAdministrator_Click" />
                                         <MenuItem Header="Close Desktop Tuner bar" Click="CloseBar_Click" />

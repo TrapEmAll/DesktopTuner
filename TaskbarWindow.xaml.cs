@@ -938,6 +938,63 @@ public partial class TaskbarWindow : Window
         else if (item.Tag is RunningWindow window) RunningWindowService.Close(window);
     }
 
+    private void JumpListMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menu || menu.CommandParameter is not TaskbarJumpListCategory category) return;
+        menu.Items.Clear();
+        var appUserModelId = menu.Tag switch
+        {
+            PinnedTaskbarApp { IsDirectory: true } => null,
+            PinnedTaskbarApp app => TaskbarJumpListService.GetAppUserModelId(app),
+            TaskbarWindowGroup group => group.Windows
+                .Select(TaskbarJumpListService.GetAppUserModelId)
+                .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)),
+            _ => null
+        };
+
+        var destinations = TaskbarJumpListService.GetDestinations(appUserModelId, category);
+        if (destinations.Count == 0)
+        {
+            menu.Items.Add(new MenuItem
+            {
+                Header = appUserModelId is null ? "No app Jump List is available" : "No items",
+                IsEnabled = false
+            });
+            return;
+        }
+
+        foreach (var destination in destinations)
+        {
+            var item = new MenuItem
+            {
+                Header = destination.Name,
+                ToolTip = destination.ParsingName,
+                Tag = destination
+            };
+            item.Click += JumpListDestination_Click;
+            menu.Items.Add(item);
+        }
+    }
+
+    private void JumpListDestination_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: TaskbarJumpListDestination destination }) return;
+        try
+        {
+            if (Directory.Exists(destination.ParsingName) && _openDirectoryInCompanionExplorer is not null)
+            {
+                _openDirectoryInCompanionExplorer(destination.ParsingName);
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo(destination.ParsingName) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Windows could not open {destination.Name}.\n\n{ex.Message}", "Could not open Jump List item", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void Pin_Click(object sender, RoutedEventArgs e)
     {
         var currentPins = _preferences.PinnedApps ?? [];

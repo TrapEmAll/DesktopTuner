@@ -688,6 +688,17 @@ CheckTrue(TaskbarWindowGrouping.MatchesPinnedApp(editorPin, runningWindows[1]), 
 Check((nint)1, TaskbarWindowGrouping.SelectPinnedRepresentative(editorPin, [runningWindows[1], runningWindows[0]])!.Handle, "prefer the foreground matching window for a pinned taskbar button");
 Check((nint)2, TaskbarWindowGrouping.SelectLastActivePinnedWindow(editorPin, runningWindows, [(nint)3, (nint)2, (nint)1])!.Handle, "select the most recently active matching window for Win+Ctrl+number");
 Check<RunningWindow?>(null, TaskbarWindowGrouping.SelectLastActivePinnedWindow(editorPin, runningWindows, [(nint)3]), "do not select a pinned app window absent from foreground history");
+var jumpListEntries = TaskbarJumpListPolicy.NormalizeDestinations([
+    new("Report.docx", @"C:\Docs\Report.docx"),
+    new("Duplicate casing", @"c:\docs\report.docx"),
+    new("Plan.xlsx", @"C:\Docs\Plan.xlsx"),
+    new(" ", @"C:\Docs\Ignored.docx")
+]);
+Check(2, jumpListEntries.Count, "filter duplicate and unnamed taskbar Jump List destinations");
+Check(1, TaskbarJumpListPolicy.NormalizeDestinations(jumpListEntries, maximumCount: 1).Count, "bound the number of taskbar Jump List destinations");
+Check(0, TaskbarJumpListPolicy.NormalizeDestinations(jumpListEntries, maximumCount: 0).Count, "allow an empty taskbar Jump List destination limit");
+Check(true, new PinnedTaskbarApp("Current app", Environment.ProcessPath!).CanShowJumpList, "allow Jump List menus for existing executable pins");
+Check(false, new PinnedTaskbarApp("Folder", Environment.CurrentDirectory, IsDirectory: true).CanShowJumpList, "hide app Jump List menus for folder pins");
 var editorShortcutPin = new PinnedTaskbarApp("Editor shortcut", @"C:\Apps\Editor.lnk");
 CheckTrue(TaskbarPinIdentityService.Matches(editorShortcutPin, runningWindows[0], _ => @"C:\Apps\Editor.exe"), "match a running app to the executable target of its pinned shortcut");
 CheckTrue(!TaskbarPinIdentityService.Matches(editorShortcutPin, runningWindows[0], _ => @"C:\Apps\Other.exe"), "keep a shortcut separate when its target is a different executable");
