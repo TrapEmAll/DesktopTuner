@@ -5,6 +5,8 @@ namespace DesktopTuner;
 public enum ExplorerKeyboardAction
 {
     None,
+    NavigateBack,
+    NavigateForward,
     OpenNewWindow,
     ReopenClosedTab,
     FocusAddress,
@@ -22,6 +24,8 @@ public static class ExplorerKeyboardPolicy
         if (key == Key.System) key = systemKey;
         return (key, modifiers) switch
         {
+            (Key.Left, ModifierKeys.Alt) => ExplorerKeyboardAction.NavigateBack,
+            (Key.Right, ModifierKeys.Alt) => ExplorerKeyboardAction.NavigateForward,
             (Key.N, ModifierKeys.Control) => ExplorerKeyboardAction.OpenNewWindow,
             (Key.T, ModifierKeys.Control | ModifierKeys.Shift) => ExplorerKeyboardAction.ReopenClosedTab,
             (Key.L, ModifierKeys.Control) or (Key.D, ModifierKeys.Alt) => ExplorerKeyboardAction.FocusAddress,

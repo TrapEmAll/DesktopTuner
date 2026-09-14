@@ -639,6 +639,12 @@ public partial class ExplorerWindow : Window
         {
             switch (explorerAction)
             {
+                case ExplorerKeyboardAction.NavigateBack:
+                    Back_Click(this, new RoutedEventArgs());
+                    break;
+                case ExplorerKeyboardAction.NavigateForward:
+                    Forward_Click(this, new RoutedEventArgs());
+                    break;
                 case ExplorerKeyboardAction.ReopenClosedTab:
                     ReopenClosedTab();
                     break;
