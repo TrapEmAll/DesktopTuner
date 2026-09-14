@@ -43,10 +43,12 @@ public partial class DesktopHostWindow : Window
 
     private void OnItemDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not Button { DataContext: ExplorerEntry entry }) return;
+        if (sender is not Button { DataContext: DesktopHostItem entry }) return;
         try
         {
-            Process.Start(new ProcessStartInfo(entry.FullPath) { UseShellExecute = true });
+            var start = new ProcessStartInfo(entry.IsShellNamespace ? "explorer.exe" : entry.FullPath) { UseShellExecute = true };
+            if (entry.IsShellNamespace) start.ArgumentList.Add(entry.FullPath);
+            Process.Start(start);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
@@ -70,8 +72,14 @@ public partial class DesktopHostWindow : Window
         }
     }
 
-    private void OnOpenDesktopFolderClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo(_userDesktop) { UseShellExecute = true });
+    private void OnOpenDesktopFolderClick(object sender, RoutedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo(_userDesktop) { UseShellExecute = true }); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            MessageBox.Show(this, ex.Message, "Could not open Desktop folder", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 
     private void OnExitClick(object sender, RoutedEventArgs e) => Close();
 

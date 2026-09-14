@@ -28,6 +28,18 @@ public static class TaskbarIconService
         }
     }
 
+    public static ImageSource? LoadNamespaceIcon(string parsingName)
+    {
+        if (string.IsNullOrWhiteSpace(parsingName)) return null;
+        lock (CacheLock)
+        {
+            if (Cache.TryGetValue(parsingName, out var cached)) return cached;
+            var icon = LoadNamespaceIconCore(parsingName);
+            Cache.Add(parsingName, icon);
+            return icon;
+        }
+    }
+
     public static Color? GetPrimaryColor(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return null;
@@ -49,6 +61,26 @@ public static class TaskbarIconService
             return null;
 
         return CreateImageSource(info.Icon);
+    }
+
+    private static ImageSource? LoadNamespaceIconCore(string parsingName)
+    {
+        IntPtr itemIdList = IntPtr.Zero;
+        try
+        {
+            if (SHParseDisplayName(parsingName, IntPtr.Zero, out itemIdList, 0, out _) < 0 || itemIdList == IntPtr.Zero)
+                return null;
+
+            var info = new ShellFileInfo();
+            if (SHGetFileInfo(itemIdList, 0, ref info, (uint)Marshal.SizeOf<ShellFileInfo>(), SHGFI_PIDL | SHGFI_ICON | SHGFI_LARGEICON) == 0 || info.Icon == IntPtr.Zero)
+                return null;
+
+            return CreateImageSource(info.Icon);
+        }
+        finally
+        {
+            if (itemIdList != IntPtr.Zero) Marshal.FreeCoTaskMem(itemIdList);
+        }
     }
 
     private static ImageSource? LoadPackagedAppIcon(string applicationId)
