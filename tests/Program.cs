@@ -21,6 +21,8 @@ var desktopHostEntries = DesktopHostCatalog.ReadItems([userDesktopRoot, sharedDe
 Check("Folder,Recycle Bin,shared.txt,This PC,user.txt", string.Join(',', desktopHostEntries.Select(entry => entry.Name)), "merge desktop item roots, add common shell namespace entries, and skip hidden or missing entries");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "Folder").IsDirectory, "identify desktop folders for shell item activation");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "This PC").IsShellNamespace, "mark This PC for Shell namespace activation");
+Check(true, desktopHostEntries.Single(entry => entry.Name == "user.txt").CanShowNativeContextMenu, "allow native filesystem context verbs for a desktop file");
+Check(false, desktopHostEntries.Single(entry => entry.Name == "This PC").CanShowNativeContextMenu, "keep filesystem context verbs off a namespace shortcut without a filesystem context");
 CheckTrue(TaskbarIconService.LoadNamespaceIcon("shell:MyComputerFolder") is not null, "extract a shell icon for a namespace parsing name");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Created), "refresh the desktop when a new item is created");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Renamed), "refresh the desktop when an item is renamed");

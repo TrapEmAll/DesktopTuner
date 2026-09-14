@@ -15,6 +15,13 @@
                             Background="Transparent" Foreground="White" ToolTip="Double-click to open"
                             PreviewMouseLeftButtonDown="OnItemMouseDown" PreviewMouseMove="OnItemMouseMove"
                             MouseDoubleClick="OnItemDoubleClick">
+                        <Button.ContextMenu>
+                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                <MenuItem Header="Open" Click="OnOpenItemClick"/>
+                                <MenuItem Header="Show more options" IsEnabled="{Binding CanShowNativeContextMenu}"
+                                          Click="OnShowNativeContextMenuClick"/>
+                            </ContextMenu>
+                        </Button.ContextMenu>
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Image Width="40" Height="40" Source="{Binding Icon}" Stretch="Uniform"/>
                             <TextBlock Margin="0,6,0,0" Text="{Binding Name}" TextAlignment="Center"

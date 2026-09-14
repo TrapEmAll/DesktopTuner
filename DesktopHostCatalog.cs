@@ -7,6 +7,7 @@ namespace DesktopTuner;
 public sealed record DesktopHostItem(string Name, string FullPath, bool IsDirectory, bool IsShellNamespace = false)
 {
     public ImageSource? Icon => IsShellNamespace ? TaskbarIconService.LoadNamespaceIcon(FullPath) : TaskbarIconService.LoadIcon(FullPath);
+    public bool CanShowNativeContextMenu => !IsShellNamespace && (File.Exists(FullPath) || Directory.Exists(FullPath));
 }
 
 public static class DesktopHostCatalog

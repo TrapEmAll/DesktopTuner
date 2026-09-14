@@ -114,6 +114,17 @@ public partial class DesktopHostWindow : Window
     private void OnItemDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (sender is not Button { DataContext: DesktopHostItem entry }) return;
+        OpenDesktopItem(entry);
+        e.Handled = true;
+    }
+
+    private void OnOpenItemClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { DataContext: DesktopHostItem entry }) OpenDesktopItem(entry);
+    }
+
+    private void OpenDesktopItem(DesktopHostItem entry)
+    {
         try
         {
             var start = new ProcessStartInfo(entry.IsShellNamespace ? "explorer.exe" : entry.FullPath) { UseShellExecute = true };
@@ -124,7 +135,19 @@ public partial class DesktopHostWindow : Window
         {
             MessageBox.Show(this, ex.Message, "Could not open desktop item", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-        e.Handled = true;
+    }
+
+    private async void OnShowNativeContextMenuClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { DataContext: DesktopHostItem { CanShowNativeContextMenu: true } entry }) return;
+        try
+        {
+            await NativeShellContextMenuService.ShowForItemsAsync(new WindowInteropHelper(this).Handle, [entry.FullPath]);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not open Windows' context menu", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void OnItemMouseDown(object sender, MouseButtonEventArgs e)
