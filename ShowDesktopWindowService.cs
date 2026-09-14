@@ -9,9 +9,21 @@ public sealed class ShowDesktopWindowService
     private const int SW_MINIMIZE = 6;
     private const int SW_RESTORE = 9;
     private readonly List<nint> _minimizedWindows = [];
+    private readonly List<nint> _windowsMinimizedByShortcut = [];
     private bool _desktopIsShown;
 
     public bool IsDesktopShown => _desktopIsShown;
+
+    public void MinimizeAllWindows(IEnumerable<nint> shellSurfaceHandles)
+    {
+        foreach (var window in MinimizeEligibleWindows(shellSurfaceHandles))
+            if (!_windowsMinimizedByShortcut.Contains(window)) _windowsMinimizedByShortcut.Add(window);
+    }
+
+    public void RestoreMinimizedWindows()
+    {
+        RestoreWindows(_windowsMinimizedByShortcut);
+    }
 
     public void Toggle(IEnumerable<nint> shellSurfaceHandles)
     {
@@ -21,6 +33,13 @@ public sealed class ShowDesktopWindowService
             return;
         }
 
+        _minimizedWindows.Clear();
+        _minimizedWindows.AddRange(MinimizeEligibleWindows(shellSurfaceHandles));
+        _desktopIsShown = true;
+    }
+
+    private static List<nint> MinimizeEligibleWindows(IEnumerable<nint> shellSurfaceHandles)
+    {
         var shellSurfaces = shellSurfaceHandles.Where(handle => handle != 0).ToHashSet();
         var candidates = new List<ShowDesktopWindowCandidate>();
         EnumWindows((window, _) =>
@@ -37,21 +56,26 @@ public sealed class ShowDesktopWindowService
             return true;
         }, 0);
 
-        _minimizedWindows.Clear();
+        var minimized = new List<nint>();
         foreach (var window in ShowDesktopWindowPolicy.SelectWindowsToMinimize(candidates))
         {
             ShowWindow(window, SW_MINIMIZE);
-            if (IsIconic(window)) _minimizedWindows.Add(window);
+            if (IsIconic(window)) minimized.Add(window);
         }
-        _desktopIsShown = true;
+        return minimized;
     }
 
     private void RestoreWindows()
     {
-        foreach (var window in _minimizedWindows)
-            if (IsWindow(window) && IsIconic(window)) ShowWindow(window, SW_RESTORE);
-        _minimizedWindows.Clear();
+        RestoreWindows(_minimizedWindows);
         _desktopIsShown = false;
+    }
+
+    private static void RestoreWindows(List<nint> windows)
+    {
+        foreach (var window in windows)
+            if (IsWindow(window) && IsIconic(window)) ShowWindow(window, SW_RESTORE);
+        windows.Clear();
     }
 
     private delegate bool EnumWindowsProc(nint window, nint parameter);

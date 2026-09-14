@@ -15,7 +15,9 @@ public enum WindowsKeyAction
     OpenRunDialog,
     OpenExplorer,
     ForwardWindowsTapThenSuppress,
-    ToggleDesktop
+    ToggleDesktop,
+    MinimizeAllWindows,
+    RestoreMinimizedWindows
 }
 
 public sealed class WindowsKeyGesture
@@ -45,7 +47,8 @@ public sealed class WindowsKeyGesture
 
     public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Func<bool>? canOpenExplorer = null,
         bool controlPressed = false, bool altPressed = false, bool shiftPressed = false, Func<bool>? canToggleDesktop = null,
-        Func<bool>? canFocusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Func<bool>? canOpenRunDialog = null)
+        Func<bool>? canFocusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Func<bool>? canOpenRunDialog = null,
+        Func<bool>? canMinimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null)
     {
         if (_controlEscapeHeld && key == VK_ESCAPE) return WindowsKeyAction.Suppress;
         if (_replaceControlEscape && key == VK_ESCAPE && controlPressed && !altPressed && !shiftPressed)
@@ -101,6 +104,17 @@ public sealed class WindowsKeyGesture
                 _taskbarShortcutConsumed = true;
                 _suppressedShortcutKeys.Add(key);
                 return WindowsKeyAction.ToggleDesktop;
+            }
+            if (key == (uint)'M')
+            {
+                var action = shiftPressed ? WindowsKeyAction.RestoreMinimizedWindows : WindowsKeyAction.MinimizeAllWindows;
+                var canRunAction = shiftPressed ? canRestoreMinimizedWindows : canMinimizeAllWindows;
+                if (canRunAction?.Invoke() == true)
+                {
+                    _taskbarShortcutConsumed = true;
+                    _suppressedShortcutKeys.Add(key);
+                    return action;
+                }
             }
             if (key == (uint)'E' && canOpenExplorer?.Invoke() == true)
             {

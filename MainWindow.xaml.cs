@@ -2016,7 +2016,9 @@ public partial class MainWindow : Window
             canToggleDesktop: () => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible), toggleDesktop: ToggleShowDesktop,
             canFocusTaskbarSystem: CanFocusTaskbarSystemArea, focusTaskbarSystem: FocusTaskbarSystemArea,
             canOpenPowerUserMenu: CanOpenPowerUserMenu, openPowerUserMenu: OpenPowerUserMenu,
-            canOpenRunDialog: CanOpenRunDialog, openRunDialog: ShowRunDialog);
+            canOpenRunDialog: CanOpenRunDialog, openRunDialog: ShowRunDialog,
+            canMinimizeAllWindows: CanManageShellHostWindows, minimizeAllWindows: MinimizeAllShellWindows,
+            canRestoreMinimizedWindows: CanManageShellHostWindows, restoreMinimizedWindows: RestoreShellWindowsMinimizedByShortcut);
         if (!hook.TryInstall(out var error))
         {
             hook.Dispose();
@@ -2073,6 +2075,29 @@ public partial class MainWindow : Window
     }
 
     private bool CanOpenRunDialog() => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible);
+
+    private bool CanManageShellHostWindows() => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible);
+
+    private List<nint> GetShellSurfaceHandles()
+    {
+        var handles = _taskbarWindows.Select(window => new WindowInteropHelper(window).Handle).ToList();
+        if (Application.Current?.MainWindow is { } desktopHost)
+            handles.Add(new WindowInteropHelper(desktopHost).Handle);
+        return handles;
+    }
+
+    private void MinimizeAllShellWindows()
+    {
+        if (!CanManageShellHostWindows()) return;
+        if (_startMenuWindow?.IsVisible == true) _startMenuWindow.Close();
+        _showDesktopWindows.MinimizeAllWindows(GetShellSurfaceHandles());
+    }
+
+    private void RestoreShellWindowsMinimizedByShortcut()
+    {
+        if (!CanManageShellHostWindows()) return;
+        _showDesktopWindows.RestoreMinimizedWindows();
+    }
 
     private void ShowRunDialog()
     {
@@ -2154,10 +2179,7 @@ public partial class MainWindow : Window
     {
         if (!_shellHostMode) return;
         if (_startMenuWindow?.IsVisible == true) _startMenuWindow.Close();
-        var shellSurfaces = _taskbarWindows.Select(window => new WindowInteropHelper(window).Handle).ToList();
-        if (Application.Current?.MainWindow is { } desktopHost)
-            shellSurfaces.Add(new WindowInteropHelper(desktopHost).Handle);
-        _showDesktopWindows.Toggle(shellSurfaces);
+        _showDesktopWindows.Toggle(GetShellSurfaceHandles());
     }
 
     private void FocusTaskbar(bool forward = true)
