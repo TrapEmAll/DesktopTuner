@@ -11,6 +11,11 @@ public sealed record DesktopShellNamespaceEntry(string Name, string ParsingName,
     public string Type => IsFolder ? "Folder" : "Item";
 }
 
+public sealed record DesktopShellNamespaceSearchResult(
+    IReadOnlyList<DesktopShellNamespaceEntry> Entries,
+    int SkippedItems,
+    int SkippedContentItems);
+
 public static class DesktopShellNamespaceCatalog
 {
     public static bool IsShellNamespaceLocation(string? parsingName)
@@ -88,6 +93,113 @@ public static class DesktopShellNamespaceCatalog
 
     public static Task<IReadOnlyList<DesktopShellNamespaceEntry>> ReadChildrenAsync(string parsingName) =>
         RunStaAsync(() => ReadChildren(parsingName));
+
+    public static Task<DesktopShellNamespaceSearchResult> SearchAsync(string location, string query, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(location);
+        ArgumentException.ThrowIfNullOrWhiteSpace(query);
+        if (!IsShellNamespaceLocation(location) && !Directory.Exists(location))
+            throw new ArgumentException("The location is not a Windows Shell namespace or an existing folder.", nameof(location));
+
+        var criteria = ExplorerSearchQuery.Parse(query.Trim());
+        return RunStaAsync(() => Search(location, criteria, cancellationToken));
+    }
+
+    private static DesktopShellNamespaceSearchResult Search(string root, ExplorerSearchQuery criteria, CancellationToken cancellationToken)
+    {
+        const int maximumDepth = 128;
+        var results = new List<DesktopShellNamespaceEntry>();
+        var pending = new Stack<(string Location, int Depth)>();
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        pending.Push((root, 0));
+        visited.Add(root);
+        var skippedItems = 0;
+        var skippedContentItems = 0;
+
+        while (pending.TryPop(out var current))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var child in ReadChildren(current.Location))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var entry = CreateSearchEntry(child);
+                if (criteria.Matches(entry))
+                {
+                    if (!criteria.RequiresContentMatch) results.Add(child);
+                    else if (!child.IsFolder)
+                    {
+                        if (!File.Exists(child.ParsingName)) skippedContentItems++;
+                        else if (!ExplorerContentSearch.CanSearch(child.ParsingName, entry.Length)) skippedContentItems++;
+                        else
+                        {
+                            try
+                            {
+                                if (criteria.MatchesContent(child.ParsingName, entry.Length, cancellationToken)) results.Add(child);
+                            }
+                            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or ArgumentException)
+                            {
+                                skippedItems++;
+                                Trace.TraceWarning($"Skipping Shell namespace content-search item '{child.ParsingName}': {ex.Message}");
+                            }
+                        }
+                    }
+                    else skippedContentItems++;
+                }
+
+                if (!child.IsFolder) continue;
+                if (current.Depth >= maximumDepth)
+                {
+                    skippedItems++;
+                    continue;
+                }
+                if (IsFileSystemReparsePoint(child.ParsingName)) continue;
+                if (visited.Add(child.ParsingName)) pending.Push((child.ParsingName, current.Depth + 1));
+            }
+        }
+
+        var sorted = results
+            .OrderByDescending(entry => entry.IsFolder)
+            .ThenBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(entry => entry.ParsingName, StringComparer.CurrentCultureIgnoreCase)
+            .ToArray();
+        return new DesktopShellNamespaceSearchResult(sorted, skippedItems, skippedContentItems);
+    }
+
+    private static ExplorerEntry CreateSearchEntry(DesktopShellNamespaceEntry entry)
+    {
+        long? length = null;
+        var modified = DateTime.MinValue;
+        var searchName = entry.Name;
+        if (!IsShellNamespaceLocation(entry.ParsingName))
+        {
+            try
+            {
+                modified = File.GetLastWriteTime(entry.ParsingName);
+                if (!entry.IsFolder)
+                {
+                    var extension = Path.GetExtension(entry.ParsingName);
+                    if (extension.Length > 0 && !searchName.EndsWith(extension, StringComparison.OrdinalIgnoreCase)) searchName += extension;
+                    if (File.Exists(entry.ParsingName)) length = new FileInfo(entry.ParsingName).Length;
+                }
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or ArgumentException or NotSupportedException)
+            {
+                Trace.TraceWarning($"Could not read Shell namespace search metadata for '{entry.ParsingName}': {ex.Message}");
+            }
+        }
+        return new ExplorerEntry(searchName, entry.ParsingName, entry.IsFolder, false, length, modified);
+    }
+
+    private static bool IsFileSystemReparsePoint(string parsingName)
+    {
+        if (IsShellNamespaceLocation(parsingName) || !Directory.Exists(parsingName)) return false;
+        try { return (File.GetAttributes(parsingName) & FileAttributes.ReparsePoint) != 0; }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or ArgumentException or NotSupportedException)
+        {
+            Trace.TraceWarning($"Could not inspect Shell namespace folder '{parsingName}' before search traversal: {ex.Message}");
+            return true;
+        }
+    }
 
     public static string? ReadParentLocation(string parsingName)
     {

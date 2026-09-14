@@ -13,6 +13,8 @@ public partial class ShellNamespaceBrowserWindow : Window
     private readonly Stack<string> _forward = new();
     private string _location;
     private long _navigationVersion;
+    private CancellationTokenSource? _searchCancellation;
+    private bool _isSearchView;
 
     public ShellNamespaceBrowserWindow(string location)
     {
@@ -22,7 +24,11 @@ public partial class ShellNamespaceBrowserWindow : Window
         InitializeComponent();
         AddressBox.Text = location;
         Title = $"{GetDisplayName(location)} — Desktop Tuner Explorer";
-        Closed += (_, _) => _navigationVersion++;
+        Closed += (_, _) =>
+        {
+            CancelSearch();
+            _navigationVersion++;
+        };
         _ = NavigateAsync(location, recordHistory: false);
     }
 
@@ -39,6 +45,10 @@ public partial class ShellNamespaceBrowserWindow : Window
         {
             if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(location) && !Directory.Exists(location))
                 throw new DirectoryNotFoundException("That Shell location is no longer available.");
+            CancelSearch();
+            _isSearchView = false;
+            SearchBox.Text = string.Empty;
+            CancelSearchButton.IsEnabled = false;
             if (recordHistory && !string.Equals(_location, location, StringComparison.OrdinalIgnoreCase))
             {
                 _back.Push(_location);
@@ -92,6 +102,88 @@ public partial class ShellNamespaceBrowserWindow : Window
     }
 
     private void Go_Click(object sender, RoutedEventArgs e) => _ = NavigateFromAddressAsync();
+
+    private async void Search_Click(object sender, RoutedEventArgs e) => await SearchCurrentLocationAsync();
+
+    private async void SearchBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        await SearchCurrentLocationAsync();
+        e.Handled = true;
+    }
+
+    private async Task SearchCurrentLocationAsync()
+    {
+        var query = SearchBox.Text.Trim();
+        if (query.Length == 0)
+        {
+            if (_isSearchView) await NavigateAsync(_location, recordHistory: false);
+            return;
+        }
+
+        try { _ = ExplorerSearchQuery.Parse(query); }
+        catch (ArgumentException ex)
+        {
+            StatusText.Text = ex.Message;
+            return;
+        }
+
+        CancelSearch();
+        var version = ++_navigationVersion;
+        var cancellation = new CancellationTokenSource();
+        _searchCancellation = cancellation;
+        _isSearchView = true;
+        CancelSearchButton.IsEnabled = true;
+        ItemsList.ItemsSource = null;
+        Title = $"Search: {query} — {GetDisplayName(_location)} — Desktop Tuner Explorer";
+        StatusText.Text = "Searching this location and its subfolders…";
+
+        try
+        {
+            var result = await DesktopShellNamespaceCatalog.SearchAsync(_location, query, cancellation.Token);
+            if (cancellation.IsCancellationRequested || version != _navigationVersion || !IsVisible && IsLoaded) return;
+            ItemsList.ItemsSource = result.Entries;
+            StatusText.Text = $"{result.Entries.Count:N0} found · Loading Shell icons…";
+            var entriesWithIcons = await Task.Run(() => result.Entries
+                .Select(entry => entry with { Icon = TaskbarIconService.LoadNamespaceIcon(entry.ParsingName) })
+                .ToArray());
+            if (cancellation.IsCancellationRequested || version != _navigationVersion || !IsVisible && IsLoaded) return;
+            ItemsList.ItemsSource = entriesWithIcons;
+            var statusParts = new List<string> { $"{entriesWithIcons.Length:N0} found." };
+            if (result.SkippedItems > 0) statusParts.Add($"{result.SkippedItems:N0} item(s) skipped while searching.");
+            if (result.SkippedContentItems > 0) statusParts.Add($"{result.SkippedContentItems:N0} item(s) skipped because content search is limited to plain-text files up to 16 MiB.");
+            StatusText.Text = string.Join(" ", statusParts);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or System.Security.SecurityException or NotSupportedException)
+        {
+            if (!cancellation.IsCancellationRequested && version == _navigationVersion)
+                StatusText.Text = $"Search failed: {ex.Message}";
+        }
+        finally
+        {
+            if (ReferenceEquals(_searchCancellation, cancellation))
+            {
+                _searchCancellation = null;
+                CancelSearchButton.IsEnabled = false;
+            }
+            cancellation.Dispose();
+        }
+    }
+
+    private void CancelSearch_Click(object sender, RoutedEventArgs e)
+    {
+        SearchBox.Text = string.Empty;
+        _isSearchView = false;
+        _ = NavigateAsync(_location, recordHistory: false);
+    }
+
+    private void CancelSearch()
+    {
+        _searchCancellation?.Cancel();
+        _searchCancellation = null;
+        CancelSearchButton.IsEnabled = false;
+    }
 
     private void AddressBox_KeyDown(object sender, KeyEventArgs e)
     {
@@ -149,7 +241,19 @@ public partial class ShellNamespaceBrowserWindow : Window
 
     private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Back && Keyboard.Modifiers == ModifierKeys.None)
+        if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            SearchBox.Focus();
+            SearchBox.SelectAll();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && SearchBox.IsKeyboardFocusWithin && SearchBox.Text.Length > 0)
+        {
+            SearchBox.Clear();
+            if (_isSearchView) await NavigateAsync(_location, recordHistory: false);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Back && Keyboard.Modifiers == ModifierKeys.None)
         {
             await GoUpAsync();
             e.Handled = true;

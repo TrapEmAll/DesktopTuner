@@ -1063,14 +1063,19 @@ try
     var nativeMenuOtherFolder = Path.Combine(temporaryPreferencesDirectory, "NativeMenuOther");
     Directory.CreateDirectory(nativeMenuFolder);
     Directory.CreateDirectory(nativeMenuOtherFolder);
+    var nativeMenuNestedFolder = Path.Combine(nativeMenuFolder, "Nested");
+    Directory.CreateDirectory(nativeMenuNestedFolder);
     var nativeMenuFirst = Path.Combine(nativeMenuFolder, "first.txt");
     var nativeMenuSecond = Path.Combine(nativeMenuFolder, "second.txt");
+    var nativeMenuNestedMatch = Path.Combine(nativeMenuNestedFolder, "deep-needle.txt");
     File.WriteAllText(nativeMenuFirst, "first");
     File.WriteAllText(nativeMenuSecond, "second");
+    File.WriteAllText(nativeMenuNestedMatch, "nested search fixture");
     var shellFolderEntries = await DesktopShellNamespaceCatalog.ReadChildrenAsync(nativeMenuFolder);
-    var expectedShellFolderPaths = new HashSet<string>([nativeMenuFirst, nativeMenuSecond], StringComparer.OrdinalIgnoreCase);
+    var expectedShellFolderPaths = new HashSet<string>([nativeMenuFirst, nativeMenuSecond, nativeMenuNestedFolder], StringComparer.OrdinalIgnoreCase);
     var returnedShellFolderPaths = shellFolderEntries.Select(entry => Path.GetFullPath(entry.ParsingName)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-    if (expectedShellFolderPaths.IsSubsetOf(returnedShellFolderPaths))
+    var expectedShellFilePaths = new HashSet<string>([nativeMenuFirst, nativeMenuSecond], StringComparer.OrdinalIgnoreCase);
+    if (expectedShellFilePaths.IsSubsetOf(returnedShellFolderPaths))
     {
         CheckTrue(shellFolderEntries.Any(entry => Path.GetFullPath(entry.ParsingName).Equals(nativeMenuFirst, StringComparison.OrdinalIgnoreCase) && !entry.IsFolder), "enumerate filesystem children through the asynchronous Shell namespace browser");
         CheckTrue(shellFolderEntries.Any(entry => Path.GetFullPath(entry.ParsingName).Equals(nativeMenuSecond, StringComparison.OrdinalIgnoreCase) && !entry.IsFolder), "retain every Shell folder child in the namespace browser");
@@ -1078,6 +1083,19 @@ try
     else
     {
         CheckTrue(returnedShellFolderPaths.IsSubsetOf(expectedShellFolderPaths), "tolerate headless Shell providers that return only a subset of the fixture folder");
+    }
+    if (returnedShellFolderPaths.Contains(Path.GetFullPath(nativeMenuNestedFolder)))
+    {
+        var shellSearchResults = await DesktopShellNamespaceCatalog.SearchAsync(nativeMenuFolder, "deep-needle");
+        CheckTrue(shellSearchResults.Entries.Any(entry => Path.GetFullPath(entry.ParsingName).Equals(nativeMenuNestedMatch, StringComparison.OrdinalIgnoreCase) && !entry.IsFolder), "search recursively through Shell namespace folders");
+    }
+    using (var canceledShellSearch = new CancellationTokenSource())
+    {
+        canceledShellSearch.Cancel();
+        var wasCanceled = false;
+        try { await DesktopShellNamespaceCatalog.SearchAsync(nativeMenuFolder, "deep-needle", canceledShellSearch.Token); }
+        catch (OperationCanceledException) { wasCanceled = true; }
+        CheckTrue(wasCanceled, "cancel a Shell namespace search before traversal starts");
     }
     CheckTrue(await NativeShellContextMenuService.ProbeItemsContextMenuAsync([nativeMenuFirst, nativeMenuSecond]), "build the Windows Shell context menu for a multi-selection");
     CheckTrue(await NativeShellContextMenuService.ProbeFolderBackgroundContextMenuAsync(nativeMenuFolder), "build the Windows Shell folder-background context menu");
