@@ -1125,6 +1125,7 @@ try
     CheckTrue(await NativeShellContextMenuService.ProbeItemsContextMenuAsync([nativeMenuFirst, nativeMenuSecond]), "build the Windows Shell context menu for a multi-selection");
     CheckTrue(await NativeShellContextMenuService.ProbeShellItemsContextMenuAsync([nativeMenuFirst, nativeMenuSecond]), "build the namespace browser's combined native context menu for a multi-selection");
     CheckTrue(await NativeShellContextMenuService.ProbeFolderBackgroundContextMenuAsync(nativeMenuFolder), "build the Windows Shell folder-background context menu");
+    CheckTrue(await NativeShellContextMenuService.ProbeFolderBackgroundContextMenuAsync("shell:MyComputerFolder"), "build the Windows Shell background context menu for a virtual namespace folder");
     CheckTrue(await NativeShellContextMenuService.ProbeShellItemContextMenuAsync("shell:RecycleBinFolder"), "build the Windows Shell context menu for the Recycle Bin namespace item");
     Check(2, NativeShellContextMenuPolicy.NormalizeSelection([nativeMenuFirst, nativeMenuSecond, nativeMenuFirst]).Count, "allow one native context menu for distinct items in the same folder");
     Check(2, NativeShellContextMenuPolicy.NormalizeShellSelection([nativeMenuFirst, nativeMenuSecond, nativeMenuFirst]).Count, "deduplicate items for a Shell namespace multi-selection");

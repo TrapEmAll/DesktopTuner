@@ -270,14 +270,20 @@ public partial class ShellNamespaceBrowserWindow : Window
 
     private void ItemContextMenu_Opened(object sender, RoutedEventArgs e)
     {
+        var hasSelection = ItemsList.SelectedItems.Count > 0;
         OpenMenuItem.IsEnabled = ItemsList.SelectedItems.Count == 1;
-        ShowMoreOptionsMenuItem.IsEnabled = ItemsList.SelectedItems.Count > 0;
+        ShowMoreOptionsMenuItem.Header = hasSelection ? "Show more options" : "Show folder options";
+        ShowMoreOptionsMenuItem.IsEnabled = true;
     }
 
     private void ItemsList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.OriginalSource is not DependencyObject source ||
-            ItemsControl.ContainerFromElement(ItemsList, source) is not ListViewItem item) return;
+        if (e.OriginalSource is not DependencyObject source) return;
+        if (ItemsControl.ContainerFromElement(ItemsList, source) is not ListViewItem item)
+        {
+            ItemsList.SelectedItems.Clear();
+            return;
+        }
         if (!item.IsSelected)
         {
             ItemsList.SelectedItems.Clear();
@@ -288,11 +294,14 @@ public partial class ShellNamespaceBrowserWindow : Window
 
     private async void ShowMoreOptions_Click(object sender, RoutedEventArgs e)
     {
-        var selection = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().ToArray();
-        if (selection.Length == 0) return;
         try
         {
-            await NativeShellContextMenuService.ShowForShellItemsAsync(new WindowInteropHelper(this).Handle, selection.Select(entry => entry.ParsingName));
+            var owner = new WindowInteropHelper(this).Handle;
+            var selection = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().ToArray();
+            if (selection.Length == 0)
+                await NativeShellContextMenuService.ShowForShellFolderBackgroundAsync(owner, _location);
+            else
+                await NativeShellContextMenuService.ShowForShellItemsAsync(owner, selection.Select(entry => entry.ParsingName));
         }
         catch (Exception ex)
         {

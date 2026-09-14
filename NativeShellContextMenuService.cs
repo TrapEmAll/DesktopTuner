@@ -74,9 +74,12 @@ public static class NativeShellContextMenuService
     private static async Task<bool> ProcessFolderBackgroundAsync(nint owner, string folderPath, bool showPopup)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
-        var fullPath = Path.GetFullPath(folderPath);
-        if (!Directory.Exists(fullPath)) throw new DirectoryNotFoundException($"The folder no longer exists: {fullPath}");
-        var absolutePidl = await Task.Run(() => ParseDisplayName(fullPath));
+        var location = DesktopShellNamespaceCatalog.IsShellNamespaceLocation(folderPath)
+            ? folderPath.Trim()
+            : Path.GetFullPath(folderPath);
+        if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(location) && !Directory.Exists(location))
+            throw new DirectoryNotFoundException($"The folder no longer exists: {location}");
+        var absolutePidl = await Task.Run(() => ParseDisplayName(location));
         return ShowFolderBackground(owner, absolutePidl, showPopup);
     }
 
@@ -175,6 +178,11 @@ public static class NativeShellContextMenuService
     public static async Task<bool> ShowForFolderBackgroundAsync(nint owner, string folderPath)
     {
         return await ProcessFolderBackgroundAsync(owner, folderPath, showPopup: true);
+    }
+
+    public static async Task<bool> ShowForShellFolderBackgroundAsync(nint owner, string parsingName)
+    {
+        return await ProcessFolderBackgroundAsync(owner, parsingName, showPopup: true);
     }
 
     private static bool ShowFolderBackground(nint owner, nint absolutePidl, bool showPopup)
