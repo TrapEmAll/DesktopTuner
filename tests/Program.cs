@@ -678,6 +678,10 @@ var alphabeticalStartApps = StartMenuAppListPolicy.AddAlphabetMarkers(
 ]);
 Check("#,-,-,A,C,-,M", string.Join(',', alphabeticalStartApps.Select(app => app.AlphabetMarker ?? "-")), "mark the first Start app in each alphabetic section and group numeric or symbol prefixes");
 Check("Calendar", alphabeticalStartApps[5].Application.Name, "preserve app entries while adding Start alphabet markers");
+Check(true, StartMenuAppNavigationPolicy.ShouldShowProgramFolders(StartMenuStyle.Windows7, ""), "show categorized Start folders in the Windows 7-inspired layout");
+Check(false, StartMenuAppNavigationPolicy.ShouldShowProgramFolders(StartMenuStyle.Windows7, "paint"), "show ranked search results instead of folders in the Windows 7-inspired layout");
+Check(true, StartMenuAppNavigationPolicy.ShouldShowProgramFolders(StartMenuStyle.Classic, " "), "preserve classic Start folder browsing when the search query is blank");
+Check(false, StartMenuAppNavigationPolicy.ShouldShowProgramFolders(StartMenuStyle.Modern, ""), "keep the modern Start layout on its app list");
 var rankedSearchResults = AppCatalogService.Search(
 [
     new AppEntry("TextEditor", "text-editor.lnk"),

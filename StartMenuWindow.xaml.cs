@@ -383,7 +383,7 @@ public partial class StartMenuWindow : Window
             : [];
         RecentStartItems.ItemsSource = recentApps;
         RecentStartPanel.Visibility = recentApps.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        var showFolders = _style == StartMenuStyle.Classic && query.Length == 0;
+        var showFolders = StartMenuAppNavigationPolicy.ShouldShowProgramFolders(_style, query);
         AppTree.ItemsSource = showFolders ? AppCatalogService.BuildTree(_apps) : null;
         AppTree.Visibility = showFolders ? Visibility.Visible : Visibility.Collapsed;
         AppList.Visibility = showFolders ? Visibility.Collapsed : Visibility.Visible;
