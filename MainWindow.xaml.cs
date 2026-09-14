@@ -48,6 +48,7 @@ public partial class MainWindow : Window
     private readonly List<TaskbarWindow> _taskbarWindows = [];
     private nint _taskbarFocusReturnWindow;
     private readonly TaskbarWindowOrder _taskbarWindowOrder = new();
+    private readonly ShowDesktopWindowService _showDesktopWindows = new();
     private readonly NativeTaskbarVisibilityService _nativeTaskbarVisibility = new();
     private readonly DispatcherTimer _nativeTaskbarWatchTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly DispatcherTimer _displayRefreshTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
@@ -1364,7 +1365,8 @@ public partial class MainWindow : Window
 
     private TaskbarWindow AddTaskbarWindow(TaskbarDisplay display, DesktopPreferences preferences)
     {
-        var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, _taskbarWindowOrder, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication);
+        var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, _taskbarWindowOrder, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication,
+            showDesktop: _shellHostMode ? ToggleShowDesktop : null);
         taskbar.ContentRendered += TaskbarWindow_ContentRendered;
         taskbar.Closed += (_, _) =>
         {
@@ -2008,7 +2010,8 @@ public partial class MainWindow : Window
         }
         var hook = new WindowsKeyStartHook(ShowStartMenu, CanActivateTaskbarPinShortcut, ActivateTaskbarPinShortcut, CanFocusTaskbar, FocusTaskbar,
             replaceBareWindowsKey: _replaceWindowsKey, canOpenExplorer: () => _replaceExplorerShortcut, openExplorer: () => OpenExplorer(),
-            replaceControlEscape: _shellHostMode || _shellOverlayMode);
+            replaceControlEscape: _shellHostMode || _shellOverlayMode,
+            canToggleDesktop: () => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible), toggleDesktop: ToggleShowDesktop);
         if (!hook.TryInstall(out var error))
         {
             hook.Dispose();
@@ -2038,6 +2041,16 @@ public partial class MainWindow : Window
     }
 
     private bool CanFocusTaskbar() => _taskbarWindows.Any(window => window.IsVisible);
+
+    private void ToggleShowDesktop()
+    {
+        if (!_shellHostMode) return;
+        if (_startMenuWindow?.IsVisible == true) _startMenuWindow.Close();
+        var shellSurfaces = _taskbarWindows.Select(window => new WindowInteropHelper(window).Handle).ToList();
+        if (Application.Current?.MainWindow is { } desktopHost)
+            shellSurfaces.Add(new WindowInteropHelper(desktopHost).Handle);
+        _showDesktopWindows.Toggle(shellSurfaces);
+    }
 
     private void FocusTaskbar(bool forward = true)
     {

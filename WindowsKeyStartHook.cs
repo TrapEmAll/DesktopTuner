@@ -29,11 +29,13 @@ public sealed class WindowsKeyStartHook : IDisposable
     private readonly Action<bool> _focusTaskbar;
     private readonly Func<bool> _canOpenExplorer;
     private readonly Action _openExplorer;
+    private readonly Func<bool> _canToggleDesktop;
+    private readonly Action _toggleDesktop;
     private readonly HookProc _callback;
     private readonly WindowsKeyGesture _gesture;
     private nint _hook;
 
-    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Action<bool>? focusTaskbar = null, bool replaceBareWindowsKey = true, Func<bool>? canOpenExplorer = null, Action? openExplorer = null, bool replaceControlEscape = false)
+    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Action<bool>? focusTaskbar = null, bool replaceBareWindowsKey = true, Func<bool>? canOpenExplorer = null, Action? openExplorer = null, bool replaceControlEscape = false, Func<bool>? canToggleDesktop = null, Action? toggleDesktop = null)
     {
         _showStartMenu = showStartMenu;
         _canActivateTaskbarPin = replaceBareWindowsKey ? canActivateTaskbarPin ?? (_ => false) : _ => false;
@@ -42,6 +44,8 @@ public sealed class WindowsKeyStartHook : IDisposable
         _focusTaskbar = focusTaskbar ?? (_ => { });
         _canOpenExplorer = canOpenExplorer ?? (() => false);
         _openExplorer = openExplorer ?? (() => { });
+        _canToggleDesktop = canToggleDesktop ?? (() => false);
+        _toggleDesktop = toggleDesktop ?? (() => { });
         _gesture = new WindowsKeyGesture(replaceBareWindowsKey, replaceControlEscape);
         _callback = KeyboardCallback;
     }
@@ -75,10 +79,13 @@ public sealed class WindowsKeyStartHook : IDisposable
             var canOpenExplorer = !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_MENU)
                 ? _canOpenExplorer
                 : static () => false;
+            var canToggleDesktop = !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_MENU)
+                ? _canToggleDesktop
+                : static () => false;
             var action = message switch
             {
                 WM_KEYDOWN or WM_SYSKEYDOWN => _gesture.KeyDown(data.VirtualKey, canActivateTaskbarPin, canFocusTaskbar, canOpenExplorer,
-                    IsModifierPressed(VK_CONTROL), IsModifierPressed(VK_MENU), IsModifierPressed(VK_SHIFT)),
+                    IsModifierPressed(VK_CONTROL), IsModifierPressed(VK_MENU), IsModifierPressed(VK_SHIFT), canToggleDesktop),
                 WM_KEYUP or WM_SYSKEYUP => _gesture.KeyUp(data.VirtualKey),
                 _ => WindowsKeyAction.PassThrough
             };
@@ -110,6 +117,9 @@ public sealed class WindowsKeyStartHook : IDisposable
                     return new nint(1);
                 case WindowsKeyAction.OpenExplorer:
                     Application.Current?.Dispatcher.BeginInvoke(_openExplorer, DispatcherPriority.Input);
+                    return new nint(1);
+                case WindowsKeyAction.ToggleDesktop:
+                    Application.Current?.Dispatcher.BeginInvoke(_toggleDesktop, DispatcherPriority.Input);
                     return new nint(1);
             }
         }

@@ -949,6 +949,27 @@ Check(WindowsKeyAction.Suppress, explorerShortcutGesture.KeyDown(0x5b), "capture
 Check(WindowsKeyAction.OpenExplorer, explorerShortcutGesture.KeyDown((uint)'E', canOpenExplorer: () => true), "route Win+E to the companion Explorer when enabled");
 Check(WindowsKeyAction.Suppress, explorerShortcutGesture.KeyUp((uint)'E'), "suppress Win+E release after opening the companion Explorer");
 Check(WindowsKeyAction.Suppress, explorerShortcutGesture.KeyUp(0x5b), "avoid opening Start after routing Win+E");
+var shellDesktopShortcutGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
+Check(WindowsKeyAction.Suppress, shellDesktopShortcutGesture.KeyDown(0x5b), "capture Windows before routing shell-host Show Desktop");
+Check(WindowsKeyAction.ToggleDesktop, shellDesktopShortcutGesture.KeyDown((uint)'D', canToggleDesktop: () => true), "route Win+D to the replacement desktop when it is available");
+Check(WindowsKeyAction.Suppress, shellDesktopShortcutGesture.KeyUp((uint)'D'), "suppress Win+D release after toggling the replacement desktop");
+Check(WindowsKeyAction.Suppress, shellDesktopShortcutGesture.KeyUp(0x5b), "avoid opening Start after toggling the replacement desktop");
+var nativeDesktopShortcutGesture = new WindowsKeyGesture();
+nativeDesktopShortcutGesture.KeyDown(0x5b);
+Check(WindowsKeyAction.ForwardWindowsDownThenPass, nativeDesktopShortcutGesture.KeyDown((uint)'D', canToggleDesktop: () => false), "preserve native Win+D outside replacement-shell mode");
+Check(WindowsKeyAction.PassThrough, nativeDesktopShortcutGesture.KeyUp((uint)'D'), "pass through native Win+D release outside replacement-shell mode");
+Check(WindowsKeyAction.ForwardWindowsUpThenSuppress, nativeDesktopShortcutGesture.KeyUp(0x5b), "release native Windows key after passing through Win+D");
+var showDesktopWindows = ShowDesktopWindowPolicy.SelectWindowsToMinimize([
+    new(1, IsVisible: true, IsMinimized: false, HasOwner: false, IsShellSurface: false, IsCloaked: false),
+    new(2, IsVisible: false, IsMinimized: false, HasOwner: false, IsShellSurface: false, IsCloaked: false),
+    new(3, IsVisible: true, IsMinimized: true, HasOwner: false, IsShellSurface: false, IsCloaked: false),
+    new(4, IsVisible: true, IsMinimized: false, HasOwner: true, IsShellSurface: false, IsCloaked: false),
+    new(5, IsVisible: true, IsMinimized: false, HasOwner: false, IsShellSurface: true, IsCloaked: false),
+    new(6, IsVisible: true, IsMinimized: false, HasOwner: false, IsShellSurface: false, IsCloaked: true),
+    new(0, IsVisible: true, IsMinimized: false, HasOwner: false, IsShellSurface: false, IsCloaked: false),
+    new(1, IsVisible: true, IsMinimized: false, HasOwner: false, IsShellSurface: false, IsCloaked: false)
+]);
+Check("1", string.Join(',', showDesktopWindows), "minimize only unique visible, unowned, uncloaked non-shell windows");
 var explorerOnlyBareKeyGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
 Check(WindowsKeyAction.Suppress, explorerOnlyBareKeyGesture.KeyDown(0x5b), "capture a Windows-key tap while Explorer routing is enabled");
 Check(WindowsKeyAction.ForwardWindowsTapThenSuppress, explorerOnlyBareKeyGesture.KeyUp(0x5b), "forward bare Windows-key taps to native Start when Start replacement is disabled");
