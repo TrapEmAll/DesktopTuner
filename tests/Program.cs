@@ -958,6 +958,16 @@ Check(WindowsKeyAction.Suppress, shellDesktopShortcutGesture.KeyDown(0x5b), "cap
 Check(WindowsKeyAction.ToggleDesktop, shellDesktopShortcutGesture.KeyDown((uint)'D', canToggleDesktop: () => true), "route Win+D to the replacement desktop when it is available");
 Check(WindowsKeyAction.Suppress, shellDesktopShortcutGesture.KeyUp((uint)'D'), "suppress Win+D release after toggling the replacement desktop");
 Check(WindowsKeyAction.Suppress, shellDesktopShortcutGesture.KeyUp(0x5b), "avoid opening Start after toggling the replacement desktop");
+var shellSystemAreaShortcutGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
+Check(WindowsKeyAction.Suppress, shellSystemAreaShortcutGesture.KeyDown(0x5b), "capture Windows before routing shell-host notification-area focus");
+Check(WindowsKeyAction.FocusTaskbarSystem, shellSystemAreaShortcutGesture.KeyDown((uint)'B', canFocusTaskbarSystem: () => true), "route Win+B to the custom taskbar system area when Explorer is absent");
+Check(WindowsKeyAction.Suppress, shellSystemAreaShortcutGesture.KeyUp((uint)'B'), "suppress Win+B release after focusing the custom taskbar system area");
+Check(WindowsKeyAction.Suppress, shellSystemAreaShortcutGesture.KeyUp(0x5b), "avoid opening Start after focusing the custom taskbar system area");
+var nativeSystemAreaShortcutGesture = new WindowsKeyGesture();
+nativeSystemAreaShortcutGesture.KeyDown(0x5b);
+Check(WindowsKeyAction.ForwardWindowsDownThenPass, nativeSystemAreaShortcutGesture.KeyDown((uint)'B', canFocusTaskbarSystem: () => false), "preserve native Win+B outside replacement-shell mode");
+Check(WindowsKeyAction.PassThrough, nativeSystemAreaShortcutGesture.KeyUp((uint)'B'), "pass through native Win+B release outside replacement-shell mode");
+Check(WindowsKeyAction.ForwardWindowsUpThenSuppress, nativeSystemAreaShortcutGesture.KeyUp(0x5b), "release native Windows key after passing through Win+B");
 var nativeDesktopShortcutGesture = new WindowsKeyGesture();
 nativeDesktopShortcutGesture.KeyDown(0x5b);
 Check(WindowsKeyAction.ForwardWindowsDownThenPass, nativeDesktopShortcutGesture.KeyDown((uint)'D', canToggleDesktop: () => false), "preserve native Win+D outside replacement-shell mode");

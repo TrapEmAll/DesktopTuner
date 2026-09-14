@@ -10,6 +10,7 @@ public enum WindowsKeyAction
     ActivateTaskbarPin,
     FocusTaskbar,
     FocusTaskbarPrevious,
+    FocusTaskbarSystem,
     OpenExplorer,
     ForwardWindowsTapThenSuppress,
     ToggleDesktop
@@ -41,7 +42,8 @@ public sealed class WindowsKeyGesture
     public uint? HeldWindowsKey => _heldWindowsKey;
 
     public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Func<bool>? canOpenExplorer = null,
-        bool controlPressed = false, bool altPressed = false, bool shiftPressed = false, Func<bool>? canToggleDesktop = null)
+        bool controlPressed = false, bool altPressed = false, bool shiftPressed = false, Func<bool>? canToggleDesktop = null,
+        Func<bool>? canFocusTaskbarSystem = null)
     {
         if (_controlEscapeHeld && key == VK_ESCAPE) return WindowsKeyAction.Suppress;
         if (_replaceControlEscape && key == VK_ESCAPE && controlPressed && !altPressed && !shiftPressed)
@@ -74,6 +76,12 @@ public sealed class WindowsKeyGesture
             // whether Shift or the Windows key was pressed first.
             if (key is VK_SHIFT or VK_LSHIFT or VK_RSHIFT) return WindowsKeyAction.PassThrough;
             if (_suppressedShortcutKeys.Contains(key)) return WindowsKeyAction.Suppress;
+            if (key == (uint)'B' && canFocusTaskbarSystem?.Invoke() == true)
+            {
+                _taskbarShortcutConsumed = true;
+                _suppressedShortcutKeys.Add(key);
+                return WindowsKeyAction.FocusTaskbarSystem;
+            }
             if (key == (uint)'D' && canToggleDesktop?.Invoke() == true)
             {
                 _taskbarShortcutConsumed = true;

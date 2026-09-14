@@ -1366,7 +1366,8 @@ public partial class MainWindow : Window
     private TaskbarWindow AddTaskbarWindow(TaskbarDisplay display, DesktopPreferences preferences)
     {
         var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, _taskbarWindowOrder, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication,
-            showDesktop: _shellHostMode ? ToggleShowDesktop : null);
+            showDesktop: _shellHostMode ? ToggleShowDesktop : null,
+            focusSystemArea: _shellHostMode ? FocusTaskbarSystemArea : null);
         taskbar.ContentRendered += TaskbarWindow_ContentRendered;
         taskbar.Closed += (_, _) =>
         {
@@ -2011,7 +2012,8 @@ public partial class MainWindow : Window
         var hook = new WindowsKeyStartHook(ShowStartMenu, CanActivateTaskbarPinShortcut, ActivateTaskbarPinShortcut, CanFocusTaskbar, FocusTaskbar,
             replaceBareWindowsKey: _replaceWindowsKey, canOpenExplorer: () => _replaceExplorerShortcut, openExplorer: () => OpenExplorer(),
             replaceControlEscape: _shellHostMode || _shellOverlayMode,
-            canToggleDesktop: () => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible), toggleDesktop: ToggleShowDesktop);
+            canToggleDesktop: () => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible), toggleDesktop: ToggleShowDesktop,
+            canFocusTaskbarSystem: CanFocusTaskbarSystemArea, focusTaskbarSystem: FocusTaskbarSystemArea);
         if (!hook.TryInstall(out var error))
         {
             hook.Dispose();
@@ -2041,6 +2043,20 @@ public partial class MainWindow : Window
     }
 
     private bool CanFocusTaskbar() => _taskbarWindows.Any(window => window.IsVisible);
+
+    private bool CanFocusTaskbarSystemArea() => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible);
+
+    private void FocusTaskbarSystemArea()
+    {
+        if (!CanFocusTaskbarSystemArea()) return;
+        if (_startMenuWindow?.IsVisible == true) _startMenuWindow.Close();
+        var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
+            ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
+        if (taskbar is null) return;
+        if (!_taskbarWindows.Any(window => window.HasKeyboardTaskbarFocus))
+            _taskbarFocusReturnWindow = GetForegroundWindow();
+        taskbar.FocusTaskbarSystemArea(_taskbarFocusReturnWindow);
+    }
 
     private void ToggleShowDesktop()
     {

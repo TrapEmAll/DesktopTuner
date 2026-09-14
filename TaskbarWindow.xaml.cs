@@ -36,6 +36,7 @@ public partial class TaskbarWindow : Window
     private readonly Action _showSettings;
     private readonly Action _quitApplication;
     private readonly Action _showDesktop;
+    private readonly Action? _focusSystemArea;
     private DesktopPreferences _preferences = new(TaskbarEdge.Bottom);
     private TaskbarEdge _edge;
     private TaskbarSize _size;
@@ -67,7 +68,7 @@ public partial class TaskbarWindow : Window
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null)
     {
         InitializeComponent();
         _isDark = TaskbarTheme.ReadSystemDarkMode();
@@ -81,6 +82,7 @@ public partial class TaskbarWindow : Window
         _showSettings = showSettings;
         _quitApplication = quitApplication;
         _showDesktop = showDesktop ?? (() => SystemFlyoutService.ShowDesktop());
+        _focusSystemArea = focusSystemArea;
         _refreshTimer.Tick += (_, _) => RefreshWindows();
         _batteryRefreshTimer.Tick += (_, _) => UpdateBatteryStatus();
         _microphoneRefreshTimer.Tick += (_, _) => UpdateMicrophoneStatus();
@@ -1131,6 +1133,33 @@ public partial class TaskbarWindow : Window
         }), DispatcherPriority.Input);
     }
 
+    public void FocusTaskbarSystemArea(nint restoreForegroundWindow = 0)
+    {
+        if (!_nativeReady) return;
+        _autoHideTimer.Stop();
+        if (!_keyboardFocusActive)
+            _previousForegroundWindow = restoreForegroundWindow != 0 ? restoreForegroundWindow : GetForegroundWindow();
+        if (_collapsed)
+        {
+            _collapsed = false;
+            ApplyLayout();
+        }
+        Activate();
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            var target = ClockButton.IsVisible && ClockButton.IsEnabled
+                ? ClockButton
+                : QuickSettingsButton.IsVisible && QuickSettingsButton.IsEnabled
+                    ? QuickSettingsButton
+                    : FindVisualChildren<Button>(RightControls).FirstOrDefault(button =>
+                        button != TrayButton && button.IsVisible && button.IsEnabled);
+            if (target is null) return;
+            _keyboardFocusActive = true;
+            target.Focus();
+            Keyboard.Focus(target);
+        }), DispatcherPriority.Input);
+    }
+
     private void Taskbar_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (!_keyboardFocusActive) return;
@@ -1503,7 +1532,11 @@ public partial class TaskbarWindow : Window
 
     private void ShowDesktop_Click(object sender, RoutedEventArgs e) => _showDesktop();
 
-    private void Tray_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.FocusNotificationArea();
+    private void Tray_Click(object sender, RoutedEventArgs e)
+    {
+        if (_focusSystemArea is not null) _focusSystemArea();
+        else SystemFlyoutService.FocusNotificationArea();
+    }
 
     private void QuickSettings_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenQuickSettings();
 
