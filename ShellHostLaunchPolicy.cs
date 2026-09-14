@@ -32,4 +32,7 @@ public static class ShellHostLaunchPolicy
 
     public static bool ShouldLaunchExplorerOnShellHostExit(bool shellHostMode, bool customShellSupervisorActive) =>
         shellHostMode && !customShellSupervisorActive;
+
+    public static bool ShouldRestoreExplorerAfterShellHostExit(bool shellLauncherHost, bool sessionEnding, int exitCode) =>
+        shellLauncherHost && !sessionEnding && exitCode == 0;
 }

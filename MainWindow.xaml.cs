@@ -1,6 +1,5 @@
 using Microsoft.Win32;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -80,17 +79,15 @@ public partial class MainWindow : Window
     private readonly bool _startInBackground;
     private readonly bool _shellHostMode;
     private readonly bool _shellOverlayMode;
-    private readonly bool _launchExplorerOnShellHostExit;
     private bool _closingTaskbars;
     private bool _reconcilingDisplayTopology;
 
-    public MainWindow(bool startInBackground = false, bool shellHostMode = false, bool shellOverlayMode = false, bool launchExplorerOnShellHostExit = false)
+    public MainWindow(bool startInBackground = false, bool shellHostMode = false, bool shellOverlayMode = false)
     {
         InitializeComponent();
         _startInBackground = startInBackground;
         _shellHostMode = shellHostMode;
         _shellOverlayMode = shellOverlayMode;
-        _launchExplorerOnShellHostExit = launchExplorerOnShellHostExit;
         SourceInitialized += MainWindow_SourceInitialized;
         Closing += MainWindow_Closing;
         Closed += MainWindow_Closed;
@@ -1536,27 +1533,7 @@ public partial class MainWindow : Window
     private void QuitApplication()
     {
         if (_shellHostMode || _shellOverlayMode)
-        {
-            if (_launchExplorerOnShellHostExit)
-            {
-                try
-                {
-                    using var explorer = Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = true })
-                        ?? throw new InvalidOperationException("Windows did not start Explorer for shell recovery.");
-                }
-                catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException or System.Security.SecurityException)
-                {
-                    Trace.TraceError($"Could not start Explorer when leaving the Shell Launcher session: {ex}");
-                    Application.Current?.Shutdown(exitCode: 1);
-                    return;
-                }
-                Application.Current?.Shutdown(exitCode: 0);
-            }
-            else
-            {
-                Application.Current?.Shutdown();
-            }
-        }
+            Application.Current?.Shutdown();
         else Close();
     }
 

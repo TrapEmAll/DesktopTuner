@@ -15,6 +15,7 @@ public partial class App : Application
 {
     private Mutex? _instanceMutex;
     private bool _sessionEnding;
+    private bool _launchExplorerOnShellHostExit;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -78,6 +79,10 @@ public partial class App : Application
                 return;
             }
 
+            _launchExplorerOnShellHostExit = ShellHostLaunchPolicy.ShouldLaunchExplorerOnShellHostExit(shellHostMode, customShellPolicyTargetsApp);
+            if (_launchExplorerOnShellHostExit)
+                SystemEvents.SessionEnding += OnSystemSessionEnding;
+
             if (shellOverlayMode)
             {
                 var recoveredOverlayTaskbars = NativeTaskbarVisibilityService.RestoreOrphanedSnapshots();
@@ -92,8 +97,7 @@ public partial class App : Application
             {
                 var shellControls = new MainWindow(
                     shellHostMode: shellHostMode,
-                    shellOverlayMode: shellOverlayMode,
-                    launchExplorerOnShellHostExit: ShellHostLaunchPolicy.ShouldLaunchExplorerOnShellHostExit(shellHostMode, customShellPolicyTargetsApp))
+                    shellOverlayMode: shellOverlayMode)
                 { ShowInTaskbar = false };
                 shellControls.Show();
                 shellControls.Hide();
@@ -208,6 +212,19 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         SystemEvents.SessionEnding -= OnSystemSessionEnding;
+        if (ShellHostLaunchPolicy.ShouldRestoreExplorerAfterShellHostExit(_launchExplorerOnShellHostExit, _sessionEnding, e.ApplicationExitCode))
+        {
+            try
+            {
+                using var explorer = Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = true })
+                    ?? throw new InvalidOperationException("Windows did not start Explorer for shell recovery.");
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                Trace.TraceError($"Could not start Explorer when leaving the Shell Launcher session: {ex}");
+                e.ApplicationExitCode = 1;
+            }
+        }
         if (_instanceMutex is not null)
         {
             _instanceMutex.ReleaseMutex();
