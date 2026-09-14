@@ -1052,6 +1052,8 @@ try
     preferencesStore.Save(expectedPreferences with { TaskbarShowLabels = false, TaskbarIconSize = TaskbarIconSize.Large });
     Check(false, preferencesStore.Load().TaskbarShowLabels, "persist hidden taskbar labels");
     Check(TaskbarIconSize.Large, preferencesStore.Load().TaskbarIconSize, "persist large taskbar icons");
+    Check(new TouchMenuMetrics(new System.Windows.Thickness(10, 7, 10, 7), 32), TouchTargetPolicy.Resolve(hasTouchInput: false), "keep context menus compact for pointer input");
+    Check(new TouchMenuMetrics(new System.Windows.Thickness(14, 11, 14, 11), 44), TouchTargetPolicy.Resolve(hasTouchInput: true), "expand context-menu hit targets for touch input");
     preferencesStore.Save(expectedPreferences with { TaskbarButtonSpacing = TaskbarButtonSpacing.Relaxed });
     Check(TaskbarButtonSpacing.Relaxed, preferencesStore.Load().TaskbarButtonSpacing, "persist relaxed taskbar button spacing");
     Check(true, loadedPreferences.PinnedApps!.Single().IsDirectory, "persist folder pin type");

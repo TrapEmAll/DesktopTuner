@@ -23,6 +23,8 @@
         </Style>
         <Style TargetType="MenuItem">
             <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
+            <Setter Property="Padding" Value="{DynamicResource TouchMenuItemPadding}" />
+            <Setter Property="MinHeight" Value="{DynamicResource TouchMenuItemMinimumHeight}" />
         </Style>
     </Window.Resources>
     <Border x:Name="OuterBorder" Background="{DynamicResource DesktopSurfaceAltBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" BorderThickness="1" CornerRadius="18" Padding="20">

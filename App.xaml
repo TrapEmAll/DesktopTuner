@@ -3,6 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:DesktopTuner">
     <Application.Resources>
+        <Thickness x:Key="TouchMenuItemPadding">10,7,10,7</Thickness>
+        <sys:Double x:Key="TouchMenuItemMinimumHeight" xmlns:sys="clr-namespace:System;assembly=mscorlib">32</sys:Double>
         <Style TargetType="ContextMenu">
             <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
@@ -30,6 +32,8 @@
         </Style>
         <Style TargetType="MenuItem">
             <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
+            <Setter Property="Padding" Value="{DynamicResource TouchMenuItemPadding}" />
+            <Setter Property="MinHeight" Value="{DynamicResource TouchMenuItemMinimumHeight}" />
         </Style>
     </Application.Resources>
 </Application>

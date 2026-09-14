@@ -14,6 +14,9 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        var touchMetrics = TouchTargetPolicy.Resolve(TouchTargetPolicy.HasTouchInput);
+        Resources["TouchMenuItemPadding"] = touchMetrics.Padding;
+        Resources["TouchMenuItemMinimumHeight"] = touchMetrics.MinimumHeight;
         if (NativeTaskbarWatchdog.IsWatchdogInvocation(e.Args))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;

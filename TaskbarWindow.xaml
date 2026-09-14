@@ -29,6 +29,8 @@
         </Style>
         <Style TargetType="MenuItem">
             <Setter Property="Foreground" Value="{DynamicResource TaskbarForegroundBrush}" />
+            <Setter Property="Padding" Value="{DynamicResource TouchMenuItemPadding}" />
+            <Setter Property="MinHeight" Value="{DynamicResource TouchMenuItemMinimumHeight}" />
         </Style>
         <Style x:Key="TaskButton" TargetType="Button">
             <Setter Property="Foreground" Value="{DynamicResource TaskbarForegroundBrush}" />
