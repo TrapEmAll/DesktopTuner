@@ -797,6 +797,18 @@ try
     Check(new ExplorerLocation(null, IsHome: true), loadedExplorerSession.Tabs[0].Back!.Single(), "restore companion Explorer navigation history");
     Check(245d, loadedExplorerSession.DetailsPaneHeight, "restore the companion Explorer details pane height");
     Check(false, loadedExplorerSession.DetailsPaneVisible, "restore a hidden companion Explorer details pane");
+    Check(false, loadedExplorerSession.OpenFoldersInNewTab, "restore the companion Explorer folder opening preference");
+    Check(true, ExplorerFolderOpenPolicy.ShouldOpenInNewTab(true, isDirectory: true, isDrive: false), "open folders in a new tab when the preference is enabled");
+    Check(false, ExplorerFolderOpenPolicy.ShouldOpenInNewTab(false, isDirectory: true, isDrive: false), "navigate in the active tab by default");
+    Check(false, ExplorerFolderOpenPolicy.ShouldOpenInNewTab(true, isDirectory: true, isDrive: true), "keep drive rows out of the folder-in-new-tab preference");
+    Check(false, ExplorerFolderOpenPolicy.ShouldOpenInNewTab(true, isDirectory: false, isDrive: false), "open files normally when folder-in-new-tab is enabled");
+    var legacyExplorerSessionPath = Path.Combine(temporaryPreferencesDirectory, "legacy-explorer-session.json");
+    File.WriteAllText(legacyExplorerSessionPath, "{\"ActiveTabIndex\":0,\"Tabs\":[{\"Location\":{\"IsHome\":true}}]}");
+    Check(false, new ExplorerSessionStore(legacyExplorerSessionPath).Load()!.OpenFoldersInNewTab, "default the new Explorer preference when loading older sessions");
+    var openFoldersInNewTabSessionPath = Path.Combine(temporaryPreferencesDirectory, "open-folders-in-new-tab.json");
+    var openFoldersInNewTabStore = new ExplorerSessionStore(openFoldersInNewTabSessionPath);
+    openFoldersInNewTabStore.Save(savedExplorerSession with { OpenFoldersInNewTab = true });
+    Check(true, openFoldersInNewTabStore.Load()!.OpenFoldersInNewTab, "save and restore the Explorer new-tab preference");
     var boundedExplorerSessionStore = new ExplorerSessionStore(Path.Combine(temporaryPreferencesDirectory, "bounded-explorer-session.json"));
     boundedExplorerSessionStore.Save(new ExplorerSession(0, [new ExplorerTabSession(new ExplorerLocation(null, IsHome: true))], DetailsPaneHeight: 9000));
     Check(8000d, boundedExplorerSessionStore.Load()!.DetailsPaneHeight, "bound the restored Explorer details pane height");

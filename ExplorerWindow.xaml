@@ -181,7 +181,8 @@
                     </StackPanel>
                 </TabItem>
                 <TabItem Header="View">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,6">
+                    <StackPanel Margin="8,6">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="Layout" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource DesktopMutedTextBrush}" />
                         <ComboBox x:Name="ViewModeSelector" Width="138" Height="32" VerticalContentAlignment="Center" SelectionChanged="ViewModeSelector_SelectionChanged">
                             <ComboBoxItem Content="Details" Tag="Details" />
@@ -204,6 +205,8 @@
                         <Button x:Name="SortDirectionButton" Content="Ascending ↑" Margin="6,0,14,0" Padding="12,6" Click="SortDirectionButton_Click" />
                         <CheckBox x:Name="GroupDrivesToggle" Content="Group drives by type" VerticalAlignment="Center" Margin="0,0,14,0" Click="GroupDrivesToggle_Click" />
                         <ToggleButton x:Name="DetailsPaneToggle" Content="Details pane" IsChecked="True" Padding="12,6" Click="DetailsPaneToggle_Click" />
+                        </StackPanel>
+                        <CheckBox x:Name="OpenFoldersInNewTabToggle" Content="Open folders in new tabs" VerticalAlignment="Center" Margin="2,8,0,0" Click="OpenFoldersInNewTabToggle_Click" ToolTip="Open folders from the file list in a new tab when using Open, double-click, or Enter." />
                     </StackPanel>
                 </TabItem>
             </TabControl>

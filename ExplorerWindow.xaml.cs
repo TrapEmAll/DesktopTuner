@@ -72,6 +72,7 @@ public partial class ExplorerWindow : Window
         }
     }
     private double _detailsPaneHeight = 160;
+    private bool _openFoldersInNewTab;
 
     private void Window_SourceInitialized(object? sender, EventArgs e)
     {
@@ -91,7 +92,10 @@ public partial class ExplorerWindow : Window
         _folderViewStore = folderViewStore ?? new ExplorerFolderViewStore();
         _sessionStore = sessionStore ?? new ExplorerSessionStore();
         RefreshQuickAccessPins();
-        var restoreSession = string.IsNullOrWhiteSpace(initialPath) && !startInThisPc ? _sessionStore.Load() : null;
+        var savedSession = _sessionStore.Load();
+        _openFoldersInNewTab = savedSession?.OpenFoldersInNewTab ?? false;
+        OpenFoldersInNewTabToggle.IsChecked = _openFoldersInNewTab;
+        var restoreSession = string.IsNullOrWhiteSpace(initialPath) && !startInThisPc ? savedSession : null;
         var initialLocation = restoreSession is not null
             ? restoreSession.Tabs[restoreSession.ActiveTabIndex].Location
             : startInThisPc && string.IsNullOrWhiteSpace(initialPath)
@@ -158,7 +162,7 @@ public partial class ExplorerWindow : Window
                 tab.HomeSortColumn,
                 tab.HomeSortAscending,
                 tab.HomeSortExplicitly,
-                tab.GroupDrives)).ToList(), _detailsPaneHeight, DetailsPaneToggle.IsChecked == true));
+                tab.GroupDrives)).ToList(), _detailsPaneHeight, DetailsPaneToggle.IsChecked == true, _openFoldersInNewTab));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -1676,6 +1680,12 @@ public partial class ExplorerWindow : Window
         ApplySort();
     }
 
+    private void OpenFoldersInNewTabToggle_Click(object sender, RoutedEventArgs e)
+    {
+        _openFoldersInNewTab = OpenFoldersInNewTabToggle.IsChecked == true;
+        if (_tabs.Count > 0) SaveExplorerSession();
+    }
+
     private void DetailsPaneToggle_Click(object sender, RoutedEventArgs e)
     {
         SetDetailsPaneVisibility(DetailsPaneToggle.IsChecked == true);
@@ -1868,7 +1878,13 @@ public partial class ExplorerWindow : Window
 
     private void OpenEntry(ExplorerEntry entry)
     {
-        if (entry.IsDirectory) { Navigate(new ExplorerLocation(entry.FullPath)); return; }
+        if (entry.IsDirectory)
+        {
+            var location = new ExplorerLocation(entry.FullPath);
+            if (ExplorerFolderOpenPolicy.ShouldOpenInNewTab(_openFoldersInNewTab, entry.IsDirectory, entry.IsDrive)) AddTab(location);
+            else Navigate(location);
+            return;
+        }
         try { Process.Start(new ProcessStartInfo(entry.FullPath) { UseShellExecute = true }); }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or FileNotFoundException)
         {

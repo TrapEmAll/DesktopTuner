@@ -15,7 +15,12 @@ public sealed record ExplorerTabSession(
     bool HomeSortExplicitly = false,
     bool GroupDrives = true);
 
-public sealed record ExplorerSession(int ActiveTabIndex, List<ExplorerTabSession> Tabs, double DetailsPaneHeight = 160, bool DetailsPaneVisible = true);
+public sealed record ExplorerSession(
+    int ActiveTabIndex,
+    List<ExplorerTabSession> Tabs,
+    double DetailsPaneHeight = 160,
+    bool DetailsPaneVisible = true,
+    bool OpenFoldersInNewTab = false);
 
 public sealed class ExplorerSessionStore
 {
@@ -49,7 +54,7 @@ public sealed class ExplorerSessionStore
                 .ToList();
             if (tabs.Count == 0) return null;
             var detailsPaneHeight = double.IsFinite(session.DetailsPaneHeight) ? Math.Clamp(session.DetailsPaneHeight, 100, 8000) : 160;
-            return new ExplorerSession(Math.Clamp(session.ActiveTabIndex, 0, tabs.Count - 1), tabs, detailsPaneHeight, session.DetailsPaneVisible);
+            return new ExplorerSession(Math.Clamp(session.ActiveTabIndex, 0, tabs.Count - 1), tabs, detailsPaneHeight, session.DetailsPaneVisible, session.OpenFoldersInNewTab);
         }
         catch (JsonException) { return null; }
         catch (IOException) { return null; }
@@ -71,6 +76,6 @@ public sealed class ExplorerSessionStore
         if (tabs.Count == 0) return;
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
         var detailsPaneHeight = double.IsFinite(session.DetailsPaneHeight) ? Math.Clamp(session.DetailsPaneHeight, 100, 8000) : 160;
-        File.WriteAllText(_path, JsonSerializer.Serialize(new ExplorerSession(Math.Clamp(session.ActiveTabIndex, 0, tabs.Count - 1), tabs, detailsPaneHeight, session.DetailsPaneVisible), new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(_path, JsonSerializer.Serialize(new ExplorerSession(Math.Clamp(session.ActiveTabIndex, 0, tabs.Count - 1), tabs, detailsPaneHeight, session.DetailsPaneVisible, session.OpenFoldersInNewTab), new JsonSerializerOptions { WriteIndented = true }));
     }
 }
