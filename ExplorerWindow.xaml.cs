@@ -645,6 +645,9 @@ public partial class ExplorerWindow : Window
                 case ExplorerKeyboardAction.FocusSearch:
                     FocusAndSelect(SearchBox);
                     break;
+                case ExplorerKeyboardAction.NavigateParent:
+                    Up_Click(this, new RoutedEventArgs());
+                    break;
                 case ExplorerKeyboardAction.NextPane:
                     CycleNavigationFocus(reverse: false);
                     break;

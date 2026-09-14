@@ -9,6 +9,7 @@ public enum ExplorerKeyboardAction
     ReopenClosedTab,
     FocusAddress,
     FocusSearch,
+    NavigateParent,
     NextPane,
     PreviousPane,
     ShowProperties
@@ -25,6 +26,7 @@ public static class ExplorerKeyboardPolicy
             (Key.T, ModifierKeys.Control | ModifierKeys.Shift) => ExplorerKeyboardAction.ReopenClosedTab,
             (Key.L, ModifierKeys.Control) or (Key.D, ModifierKeys.Alt) => ExplorerKeyboardAction.FocusAddress,
             (Key.F, ModifierKeys.Control) => ExplorerKeyboardAction.FocusSearch,
+            (Key.Up, ModifierKeys.Alt) => ExplorerKeyboardAction.NavigateParent,
             (Key.F6, ModifierKeys.None) => ExplorerKeyboardAction.NextPane,
             (Key.F6, ModifierKeys.Shift) => ExplorerKeyboardAction.PreviousPane,
             (Key.Enter, ModifierKeys.Alt) => ExplorerKeyboardAction.ShowProperties,
