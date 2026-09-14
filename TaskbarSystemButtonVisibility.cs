@@ -10,6 +10,7 @@ public enum TaskbarSystemButton
     OnScreenKeyboard,
     Emoji,
     Volume,
+    Microphone,
     Battery,
     Widgets,
     TaskView,
@@ -34,6 +35,7 @@ public sealed record TaskbarSystemButtonVisibility(
 {
     public bool InputMethod { get; init; } = true;
     public bool OnScreenKeyboard { get; init; } = true;
+    public bool Microphone { get; init; } = true;
 
     public static TaskbarSystemButtonVisibility Default { get; } = new();
 
@@ -47,6 +49,7 @@ public sealed record TaskbarSystemButtonVisibility(
         new(TaskbarSystemButton.OnScreenKeyboard, "On-Screen Keyboard", "Open the Windows On-Screen Keyboard."),
         new(TaskbarSystemButton.Emoji, "Emoji panel", "Open the Windows emoji panel."),
         new(TaskbarSystemButton.Volume, "Volume", "Adjust volume and select an audio output."),
+        new(TaskbarSystemButton.Microphone, "Microphone", "Adjust microphone level, mute, and select an input device."),
         new(TaskbarSystemButton.Battery, "Battery", "Show battery status when available."),
         new(TaskbarSystemButton.Widgets, "Widgets", "Open the Windows Widgets board."),
         new(TaskbarSystemButton.TaskView, "Task View", "Open Windows Task View."),
@@ -66,6 +69,7 @@ public sealed record TaskbarSystemButtonVisibility(
         TaskbarSystemButton.OnScreenKeyboard => OnScreenKeyboard,
         TaskbarSystemButton.Emoji => Emoji,
         TaskbarSystemButton.Volume => Volume,
+        TaskbarSystemButton.Microphone => Microphone,
         TaskbarSystemButton.Battery => Battery,
         TaskbarSystemButton.Widgets => Widgets,
         TaskbarSystemButton.TaskView => TaskView,
@@ -84,6 +88,7 @@ public sealed record TaskbarSystemButtonVisibility(
         TaskbarSystemButton.OnScreenKeyboard => this with { OnScreenKeyboard = isVisible },
         TaskbarSystemButton.Emoji => this with { Emoji = isVisible },
         TaskbarSystemButton.Volume => this with { Volume = isVisible },
+        TaskbarSystemButton.Microphone => this with { Microphone = isVisible },
         TaskbarSystemButton.Battery => this with { Battery = isVisible },
         TaskbarSystemButton.Widgets => this with { Widgets = isVisible },
         TaskbarSystemButton.TaskView => this with { TaskView = isVisible },

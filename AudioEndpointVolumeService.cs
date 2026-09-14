@@ -7,6 +7,8 @@ public static class AudioEndpointVolumeService
     private static readonly Guid DeviceEnumeratorClassId = new("BCDE0395-E52F-467C-8E3D-C4579291692E");
     private static readonly Guid EndpointVolumeInterfaceId = new("5CDF2C82-841E-4546-9722-0CF74078229A");
     private const int RenderFlow = 0;
+    private const int CaptureFlow = 1;
+    private const int HResultErrorNotFound = unchecked((int)0x80070490);
     private const int MultimediaRole = 1;
     private const int ClassContextAll = 23;
     private const int ActiveDeviceState = 1;
@@ -14,7 +16,13 @@ public static class AudioEndpointVolumeService
     private static readonly Guid DeviceFriendlyNamePropertySet = new("A45C254E-DF1C-4EFD-8020-67D146A850E0");
     private static readonly Guid PolicyConfigClassId = new("870AF99C-171D-4F9E-AF0D-E63DF40C2BC9");
 
-    public static IReadOnlyList<AudioOutputDevice> EnumerateOutputs()
+    public static IReadOnlyList<AudioOutputDevice> EnumerateOutputs() => EnumerateEndpoints(RenderFlow)
+        .Select(endpoint => new AudioOutputDevice(endpoint.Id, endpoint.Name, endpoint.IsDefault)).ToArray();
+
+    public static IReadOnlyList<AudioInputDevice> EnumerateInputs() => EnumerateEndpoints(CaptureFlow)
+        .Select(endpoint => new AudioInputDevice(endpoint.Id, endpoint.Name, endpoint.IsDefault)).ToArray();
+
+    private static IReadOnlyList<AudioEndpointDevice> EnumerateEndpoints(int flow)
     {
         IMMDeviceEnumerator? enumerator = null;
         IMMDeviceCollection? devices = null;
@@ -22,11 +30,11 @@ public static class AudioEndpointVolumeService
         try
         {
             enumerator = CreateEnumerator();
-            Check(enumerator.EnumAudioEndpoints(RenderFlow, ActiveDeviceState, out devices));
-            var defaultId = GetDefaultDeviceId(enumerator, out defaultDevice);
+            Check(enumerator.EnumAudioEndpoints(flow, ActiveDeviceState, out devices));
+            var defaultId = GetDefaultDeviceId(enumerator, flow, out defaultDevice);
             Check(devices.GetCount(out var count));
 
-            var outputs = new List<AudioOutputDevice>((int)count);
+            var endpoints = new List<AudioEndpointDevice>((int)count);
             for (uint index = 0; index < count; index++)
             {
                 IMMDevice? device = null;
@@ -43,7 +51,8 @@ public static class AudioEndpointVolumeService
                     var endpointId = Marshal.PtrToStringUni(deviceId);
                     var friendlyName = name.Type == 31 ? Marshal.PtrToStringUni(name.StringValue) : null;
                     if (!string.IsNullOrWhiteSpace(endpointId) && !string.IsNullOrWhiteSpace(friendlyName))
-                        outputs.Add(new AudioOutputDevice(endpointId, friendlyName, AudioVolumePolicy.IsDefaultOutput(endpointId, defaultId)));
+                        endpoints.Add(new AudioEndpointDevice(endpointId, friendlyName,
+                            AudioVolumePolicy.IsDefaultEndpoint(endpointId, defaultId)));
                 }
                 finally
                 {
@@ -54,7 +63,7 @@ public static class AudioEndpointVolumeService
                 }
             }
 
-            return outputs.OrderByDescending(device => device.IsDefault).ThenBy(device => device.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+            return endpoints.OrderByDescending(device => device.IsDefault).ThenBy(device => device.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
         }
         finally
         {
@@ -67,6 +76,12 @@ public static class AudioEndpointVolumeService
     // Endpoint enumeration uses the documented MMDevice API. Default selection uses Windows' policy COM interface,
     // which is outside the documented MMDevice API; the click handler reports failures and opens Sound settings as a fallback.
     public static void SetDefaultOutput(string endpointId)
+        => SetDefaultEndpoint(endpointId);
+
+    public static void SetDefaultInput(string endpointId)
+        => SetDefaultEndpoint(endpointId);
+
+    private static void SetDefaultEndpoint(string endpointId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(endpointId);
         object? policyObject = null;
@@ -83,7 +98,11 @@ public static class AudioEndpointVolumeService
         }
     }
 
-    public static (float Volume, bool Muted) ReadDefaultOutput() => WithDefaultOutput(volume =>
+    public static (float Volume, bool Muted) ReadDefaultOutput() => ReadDefaultEndpoint(RenderFlow);
+
+    public static (float Volume, bool Muted) ReadDefaultInput() => ReadDefaultEndpoint(CaptureFlow);
+
+    private static (float Volume, bool Muted) ReadDefaultEndpoint(int flow) => WithDefaultEndpoint(flow, volume =>
     {
         Check(volume.GetMasterVolumeLevelScalar(out var level));
         Check(volume.GetMute(out var muted));
@@ -93,7 +112,7 @@ public static class AudioEndpointVolumeService
     public static void SetDefaultOutputVolume(float level)
     {
         if (!float.IsFinite(level) || level is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(level));
-        WithDefaultOutput(volume =>
+        WithDefaultEndpoint(RenderFlow, volume =>
         {
             var eventContext = Guid.Empty;
             Check(volume.SetMasterVolumeLevelScalar(level, ref eventContext));
@@ -101,7 +120,7 @@ public static class AudioEndpointVolumeService
         });
     }
 
-    public static bool ToggleDefaultOutputMute() => WithDefaultOutput(volume =>
+    public static bool ToggleDefaultOutputMute() => WithDefaultEndpoint(RenderFlow, volume =>
     {
         Check(volume.GetMute(out var muted));
         var eventContext = Guid.Empty;
@@ -109,7 +128,26 @@ public static class AudioEndpointVolumeService
         return !muted;
     });
 
-    private static T WithDefaultOutput<T>(Func<IAudioEndpointVolume, T> action)
+    public static void SetDefaultInputVolume(float level)
+    {
+        if (!float.IsFinite(level) || level is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(level));
+        WithDefaultEndpoint(CaptureFlow, volume =>
+        {
+            var eventContext = Guid.Empty;
+            Check(volume.SetMasterVolumeLevelScalar(level, ref eventContext));
+            return 0;
+        });
+    }
+
+    public static bool ToggleDefaultInputMute() => WithDefaultEndpoint(CaptureFlow, volume =>
+    {
+        Check(volume.GetMute(out var muted));
+        var eventContext = Guid.Empty;
+        Check(volume.SetMute(!muted, ref eventContext));
+        return !muted;
+    });
+
+    private static T WithDefaultEndpoint<T>(int flow, Func<IAudioEndpointVolume, T> action)
     {
         IMMDeviceEnumerator? enumerator = null;
         IMMDevice? device = null;
@@ -118,7 +156,7 @@ public static class AudioEndpointVolumeService
         {
             var enumeratorType = Type.GetTypeFromCLSID(DeviceEnumeratorClassId, throwOnError: true)!;
             enumerator = (IMMDeviceEnumerator)Activator.CreateInstance(enumeratorType)!;
-            Check(enumerator.GetDefaultAudioEndpoint(RenderFlow, MultimediaRole, out device));
+            Check(enumerator.GetDefaultAudioEndpoint(flow, MultimediaRole, out device));
             var endpointInterfaceId = EndpointVolumeInterfaceId;
             Check(device.Activate(ref endpointInterfaceId, ClassContextAll, IntPtr.Zero, out endpointObject));
             return action((IAudioEndpointVolume)endpointObject);
@@ -137,10 +175,13 @@ public static class AudioEndpointVolumeService
         return (IMMDeviceEnumerator)Activator.CreateInstance(enumeratorType)!;
     }
 
-    private static string? GetDefaultDeviceId(IMMDeviceEnumerator enumerator, out IMMDevice? device)
+    private static string? GetDefaultDeviceId(IMMDeviceEnumerator enumerator, int flow, out IMMDevice? device)
     {
         device = null;
-        Check(enumerator.GetDefaultAudioEndpoint(RenderFlow, MultimediaRole, out device));
+        var result = enumerator.GetDefaultAudioEndpoint(flow, MultimediaRole, out device);
+        if (result == HResultErrorNotFound) return null;
+        Check(result);
+        if (device is null) throw new InvalidOperationException("Windows returned no default audio endpoint without an error.");
         Check(device.GetId(out var deviceId));
         try { return Marshal.PtrToStringUni(deviceId); }
         finally { Marshal.FreeCoTaskMem(deviceId); }
@@ -274,3 +315,5 @@ public static class AudioEndpointVolumeService
 }
 
 public sealed record AudioOutputDevice(string Id, string Name, bool IsDefault);
+public sealed record AudioInputDevice(string Id, string Name, bool IsDefault);
+internal sealed record AudioEndpointDevice(string Id, string Name, bool IsDefault);

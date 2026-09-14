@@ -224,6 +224,11 @@
                         <ContextMenu x:Name="AudioOutputContextMenu" Opened="AudioOutputContextMenu_Opened" />
                     </Button.ContextMenu>
                 </Button>
+                <Button x:Name="MicrophoneButton" Content="🎤" Style="{StaticResource TaskButton}" Click="SoundSettings_Click" PreviewMouseDown="MicrophoneButton_PreviewMouseDown" PreviewMouseWheel="MicrophoneButton_PreviewMouseWheel" FontSize="16" Padding="8,4" ToolTip="Scroll to adjust microphone level, middle-click to mute, right-click to choose an input device, click for Sound settings" AutomationProperties.Name="Microphone">
+                    <Button.ContextMenu>
+                        <ContextMenu x:Name="AudioInputContextMenu" Opened="AudioInputContextMenu_Opened" />
+                    </Button.ContextMenu>
+                </Button>
                 <Button x:Name="BatteryButton" Visibility="Collapsed" Style="{StaticResource TaskButton}" Click="BatterySettings_Click" Padding="7,4" ToolTip="Battery status" AutomationProperties.Name="Battery status">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Grid Width="22" Height="14" Margin="0,0,4,0">

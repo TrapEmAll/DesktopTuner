@@ -5,6 +5,7 @@ A native Windows 11 desktop-personalization starter focused on the Start menu, t
 ## What works in this build
 
 - In replacement mode, separate Network and Emoji buttons open Windows' Wi-Fi settings and native emoji panel alongside the native Quick Settings shortcut.
+- When Desktop Tuner draws its own notification area, an optional microphone button adjusts the default capture level with the mouse wheel, toggles mute with middle-click, and lists active input devices on right-click. It is hidden when Windows has no default input endpoint, and its click opens Sound settings.
 - Choose which custom taskbar system buttons appear; hidden controls release space for open app buttons, and older preference files keep the full default control set.
 - Choose an apps-only dock style that centers running and pinned app buttons in a translucent capsule while leaving Start and system controls separate; transparent space stays clear of the taskbar-wide backdrop.
 - Optionally add per-user “Open with Desktop Tuner” commands to filesystem-folder and empty-folder context menus. Opening a folder routes it to the existing app instance or creates an Explorer tab; Windows' default folder handler stays unchanged. Windows 11 may place these legacy shell commands under Show more options.

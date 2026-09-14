@@ -193,6 +193,10 @@ CheckTrue(Math.Abs(AudioVolumePolicy.Adjust(0.3f, -120) - 0.25f) < 0.0001f, "low
 Check(1f, AudioVolumePolicy.Adjust(0.99f, 120), "clamp audio volume to the maximum");
 Check(0f, AudioVolumePolicy.Adjust(0.01f, -120), "clamp audio volume to silence");
 Check("Muted · 42%", AudioVolumePolicy.GetLabel(0.42f, true), "format muted audio status for the taskbar control");
+Check("Microphone · 42%", AudioVolumePolicy.GetMicrophoneLabel(0.42f, false), "format active microphone level for its taskbar control");
+Check("Microphone muted · 42%", AudioVolumePolicy.GetMicrophoneLabel(0.42f, true), "format muted microphone level for its taskbar control");
+CheckTrue(AudioVolumePolicy.IsDefaultEndpoint("input-a", "INPUT-A"), "identify the selected capture endpoint without case-sensitive matching");
+Check(false, AudioVolumePolicy.IsDefaultEndpoint("input-a", null), "leave capture endpoints unselected when Windows has no default input");
 CheckTrue(AudioVolumePolicy.IsDefaultOutput("endpoint-a", "ENDPOINT-A"), "identify the selected audio output without case-sensitive endpoint matching");
 CheckTrue(!AudioVolumePolicy.IsDefaultOutput("endpoint-a", null), "leave audio outputs unselected when Windows has no default endpoint");
 Throws<ArgumentOutOfRangeException>(() => AudioVolumePolicy.Adjust(float.NaN, 120), "reject invalid audio volume values");
@@ -1223,6 +1227,7 @@ try
     var savedStartPlaces = StartMenuPlaceCatalog.Normalize(new StartMenuPlacePreferences(["run", "documents"], ["documents", "run"]));
     var savedTaskbarButtons = TaskbarSystemButtonVisibility.Default
         .WithVisibility(TaskbarSystemButton.Emoji, false)
+        .WithVisibility(TaskbarSystemButton.Microphone, false)
         .WithVisibility(TaskbarSystemButton.InputMethod, false)
         .WithVisibility(TaskbarSystemButton.OnScreenKeyboard, false)
         .WithVisibility(TaskbarSystemButton.Widgets, false);
@@ -1247,6 +1252,7 @@ try
     Check(string.Join(',', savedStartPlaces.Visible!), string.Join(',', loadedPreferences.StartMenuPlaces.Visible!), "persist custom Start system-place visibility");
     Check(8, loadedPreferences.StartRecentAppCount, "persist the configured Start recent-app count");
     Check(false, loadedPreferences.TaskbarSystemButtons!.IsVisible(TaskbarSystemButton.Emoji), "persist hidden taskbar emoji button");
+    Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.Microphone), "persist hidden taskbar microphone button");
     Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.InputMethod), "persist hidden taskbar keyboard-layout button");
     Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.OnScreenKeyboard), "persist hidden taskbar On-Screen Keyboard button");
     Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.Widgets), "persist hidden taskbar Widgets button");
@@ -1254,9 +1260,11 @@ try
     Check(true, TaskbarSystemButtonVisibility.Normalize(null).IsVisible(TaskbarSystemButton.Emoji), "default older taskbar preferences to all system buttons visible");
     Check(true, TaskbarSystemButtonVisibility.Normalize(null).IsVisible(TaskbarSystemButton.InputMethod), "default keyboard-layout button to visible for older taskbar preferences");
     Check(true, TaskbarSystemButtonVisibility.Normalize(null).IsVisible(TaskbarSystemButton.OnScreenKeyboard), "default On-Screen Keyboard button to visible for older taskbar preferences");
+    Check(true, TaskbarSystemButtonVisibility.Normalize(null).IsVisible(TaskbarSystemButton.Microphone), "default microphone button to visible for older taskbar preferences");
     var legacyTaskbarButtons = JsonSerializer.Deserialize<TaskbarSystemButtonVisibility>("""{"Settings":false,"Network":false}""")!;
     Check(true, legacyTaskbarButtons.IsVisible(TaskbarSystemButton.InputMethod), "default keyboard-layout visibility when loading older custom system-button preferences");
     Check(true, legacyTaskbarButtons.IsVisible(TaskbarSystemButton.OnScreenKeyboard), "default On-Screen Keyboard visibility when loading older custom system-button preferences");
+    Check(true, legacyTaskbarButtons.IsVisible(TaskbarSystemButton.Microphone), "default microphone visibility when loading older custom system-button preferences");
     preferencesStore.Save(expectedPreferences with { StartRecentAppCount = 0 });
     Check(0, preferencesStore.Load().StartRecentAppCount, "allow disabling the Start recent-app section");
     preferencesStore.Save(expectedPreferences with { StartRecentAppCount = StartRecentAppsStore.MaximumEntries });

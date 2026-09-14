@@ -21,6 +21,7 @@ public partial class TaskbarWindow : Window
     private readonly TaskbarWindowOrder _windowOrder;
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
     private readonly DispatcherTimer _batteryRefreshTimer = new() { Interval = TimeSpan.FromSeconds(30) };
+    private readonly DispatcherTimer _microphoneRefreshTimer = new() { Interval = TimeSpan.FromSeconds(15) };
     private readonly DispatcherTimer _autoHideTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
     private readonly DispatcherTimer _previewOpenTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
     private readonly DispatcherTimer _previewCloseTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
@@ -44,6 +45,9 @@ public partial class TaskbarWindow : Window
     private bool _keyboardFocusActive;
     private nint _previousForegroundWindow;
     private TaskbarBatteryStatus? _batteryStatus;
+    private (float Volume, bool Muted)? _microphoneStatus;
+    private bool _hasMicrophoneDevice;
+    private bool _reportedMicrophoneEnumerationFailure;
     private PinnedTaskbarApp? _pinDragCandidate;
     private Point _pinDragStart;
     private TaskbarWindowGroup? _windowDragCandidate;
@@ -70,6 +74,7 @@ public partial class TaskbarWindow : Window
         _quitApplication = quitApplication;
         _refreshTimer.Tick += (_, _) => RefreshWindows();
         _batteryRefreshTimer.Tick += (_, _) => UpdateBatteryStatus();
+        _microphoneRefreshTimer.Tick += (_, _) => UpdateMicrophoneStatus();
         _autoHideTimer.Tick += (_, _) => AutoHideTimer_Tick();
         _previewOpenTimer.Tick += (_, _) => OpenPendingPreview();
         _previewCloseTimer.Tick += (_, _) => ClosePreviewIfPointerOutside();
@@ -96,6 +101,7 @@ public partial class TaskbarWindow : Window
         ApplyLayout();
         if (IsLoaded) RefreshWindows();
         if (IsLoaded) UpdateBatteryStatus();
+        if (IsLoaded) UpdateMicrophoneStatus();
         if (IsLoaded) Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
         if (!_autoHide && !_autoHideWhenMaximized) _autoHideTimer.Stop();
         else if (IsLoaded) _autoHideTimer.Start();
@@ -132,6 +138,9 @@ public partial class TaskbarWindow : Window
         EmojiButton.Visibility = !_nativeTrayExposed && systemButtons.Emoji ? Visibility.Visible : Visibility.Collapsed;
         TrayButton.Visibility = !_nativeTrayExposed && systemButtons.Tray ? Visibility.Visible : Visibility.Collapsed;
         VolumeButton.Visibility = !_nativeTrayExposed && systemButtons.Volume ? Visibility.Visible : Visibility.Collapsed;
+        MicrophoneButton.Visibility = !_nativeTrayExposed && systemButtons.Microphone && _hasMicrophoneDevice ? Visibility.Visible : Visibility.Collapsed;
+        if (IsLoaded && systemButtons.Microphone && !_nativeTrayExposed) _microphoneRefreshTimer.Start();
+        else _microphoneRefreshTimer.Stop();
         WidgetsButton.Visibility = systemButtons.Widgets ? Visibility.Visible : Visibility.Collapsed;
         TaskViewButton.Visibility = systemButtons.TaskView ? Visibility.Visible : Visibility.Collapsed;
         ShowDesktopButton.Visibility = systemButtons.ShowDesktop ? Visibility.Visible : Visibility.Collapsed;
@@ -288,6 +297,7 @@ public partial class TaskbarWindow : Window
         ApplyLayout();
         UpdateClock();
         UpdateBatteryStatus();
+        UpdateMicrophoneStatus();
         _refreshTimer.Start();
         _batteryRefreshTimer.Start();
         if (_autoHide || _autoHideWhenMaximized) _autoHideTimer.Start();
@@ -299,6 +309,7 @@ public partial class TaskbarWindow : Window
         HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.RemoveHook(WindowProc);
         _refreshTimer.Stop();
         _batteryRefreshTimer.Stop();
+        _microphoneRefreshTimer.Stop();
         _autoHideTimer.Stop();
         _previewOpenTimer.Stop();
         _previewCloseTimer.Stop();
@@ -1176,6 +1187,61 @@ public partial class TaskbarWindow : Window
         }
     }
 
+    private void AudioInputContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu menu) return;
+        menu.Items.Clear();
+        try
+        {
+            var inputs = AudioEndpointVolumeService.EnumerateInputs();
+            if (inputs.Count == 0)
+                menu.Items.Add(new MenuItem { Header = "No active input devices", IsEnabled = false });
+            else
+            {
+                foreach (var input in inputs)
+                {
+                    var item = new MenuItem
+                    {
+                        Header = input.Name,
+                        Tag = input,
+                        IsCheckable = true,
+                        IsChecked = input.IsDefault,
+                        IsEnabled = !input.IsDefault,
+                        ToolTip = input.IsDefault ? "Current default input" : null
+                    };
+                    item.Click += AudioInputDevice_Click;
+                    menu.Items.Add(item);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            menu.Items.Add(new MenuItem { Header = "Could not list input devices", IsEnabled = false, ToolTip = ex.Message });
+            Trace.TraceWarning($"Could not enumerate audio input devices: {ex}");
+        }
+
+        menu.Items.Add(new Separator());
+        var settingsItem = new MenuItem { Header = "Sound settings…" };
+        settingsItem.Click += SoundSettings_Click;
+        menu.Items.Add(settingsItem);
+    }
+
+    private void AudioInputDevice_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AudioInputDevice input }) return;
+        try
+        {
+            AudioEndpointVolumeService.SetDefaultInput(input.Id);
+            UpdateMicrophoneStatus();
+        }
+        catch (Exception ex)
+        {
+            MicrophoneButton.ToolTip = $"Could not select input device: {ex.Message} · Open Sound settings";
+            Trace.TraceWarning($"Could not set the default audio input to '{input.Name}': {ex}");
+            SoundSettings_Click(this, new RoutedEventArgs());
+        }
+    }
+
     private void VolumeButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Middle) return;
@@ -1210,6 +1276,81 @@ public partial class TaskbarWindow : Window
             Trace.TraceWarning($"Could not adjust default audio output volume: {ex}");
         }
         e.Handled = true;
+    }
+
+    private void MicrophoneButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle) return;
+        try
+        {
+            AudioEndpointVolumeService.ToggleDefaultInputMute();
+            UpdateMicrophoneStatus();
+        }
+        catch (Exception ex)
+        {
+            MicrophoneButton.ToolTip = $"Could not change microphone mute: {ex.Message}";
+            Trace.TraceWarning($"Could not toggle default audio input mute: {ex}");
+        }
+        e.Handled = true;
+    }
+
+    private void MicrophoneButton_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        try
+        {
+            var state = AudioEndpointVolumeService.ReadDefaultInput();
+            var level = AudioVolumePolicy.Adjust(state.Volume, e.Delta);
+            AudioEndpointVolumeService.SetDefaultInputVolume(level);
+            UpdateMicrophoneStatus();
+        }
+        catch (Exception ex)
+        {
+            MicrophoneButton.ToolTip = $"Could not adjust microphone level: {ex.Message}";
+            Trace.TraceWarning($"Could not adjust default audio input level: {ex}");
+        }
+        e.Handled = true;
+    }
+
+    private void UpdateMicrophoneStatus()
+    {
+        var wasVisible = MicrophoneButton.Visibility == Visibility.Visible;
+        var previouslyAvailable = _hasMicrophoneDevice;
+        try
+        {
+            _microphoneStatus = AudioEndpointVolumeService.ReadDefaultInput();
+            _hasMicrophoneDevice = true;
+            var status = _microphoneStatus.Value;
+            MicrophoneButton.Content = status.Muted ? "🔇" : "🎤";
+            MicrophoneButton.ToolTip = AudioVolumePolicy.GetMicrophoneLabel(status.Volume, status.Muted) + " · Scroll to adjust · Middle-click to mute · Right-click to choose input · Click for Sound settings";
+        }
+        catch (Exception ex)
+        {
+            _microphoneStatus = null;
+            try
+            {
+                _hasMicrophoneDevice = AudioEndpointVolumeService.EnumerateInputs().Count > 0;
+                _reportedMicrophoneEnumerationFailure = false;
+            }
+            catch (Exception enumerationException)
+            {
+                _hasMicrophoneDevice = false;
+                if (!_reportedMicrophoneEnumerationFailure)
+                    Trace.TraceWarning($"Could not enumerate audio input devices: {enumerationException}");
+                _reportedMicrophoneEnumerationFailure = true;
+            }
+
+            MicrophoneButton.Content = "🎤";
+            MicrophoneButton.ToolTip = _hasMicrophoneDevice
+                ? "Microphone level control unavailable · Right-click to choose input · Click for Sound settings"
+                : "No active microphone endpoint · Click for Sound settings";
+            if (previouslyAvailable)
+                Trace.TraceWarning($"Could not read the default microphone endpoint: {ex.Message}");
+        }
+
+        MicrophoneButton.Visibility = !_nativeTrayExposed && _preferences.TaskbarSystemButtons!.Microphone && _hasMicrophoneDevice
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        if (IsLoaded && wasVisible != (MicrophoneButton.Visibility == Visibility.Visible)) RefreshWindows();
     }
 
     private void Clock_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenNotificationCenter();

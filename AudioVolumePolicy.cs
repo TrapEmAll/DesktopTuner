@@ -3,6 +3,9 @@ namespace DesktopTuner;
 public static class AudioVolumePolicy
 {
     public static bool IsDefaultOutput(string endpointId, string? defaultEndpointId) =>
+        IsDefaultEndpoint(endpointId, defaultEndpointId);
+
+    public static bool IsDefaultEndpoint(string endpointId, string? defaultEndpointId) =>
         !string.IsNullOrWhiteSpace(defaultEndpointId)
         && string.Equals(endpointId, defaultEndpointId, StringComparison.OrdinalIgnoreCase);
 
@@ -16,5 +19,11 @@ public static class AudioVolumePolicy
     {
         if (!float.IsFinite(volume) || volume is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(volume));
         return muted ? $"Muted · {volume:P0}" : $"Volume · {volume:P0}";
+    }
+
+    public static string GetMicrophoneLabel(float volume, bool muted)
+    {
+        if (!float.IsFinite(volume) || volume is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(volume));
+        return muted ? $"Microphone muted · {volume:P0}" : $"Microphone · {volume:P0}";
     }
 }
