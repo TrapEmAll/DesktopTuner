@@ -24,6 +24,7 @@ public partial class DesktopHostWindow : Window
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private bool _isClosed;
     private DesktopHostItem? _dragCandidate;
+    private string? _selectionAnchorPath;
     private Point _dragStart;
 
     public DesktopHostWindow()
@@ -48,9 +49,18 @@ public partial class DesktopHostWindow : Window
 
     private void RefreshDesktop()
     {
+        var selectedPaths = _desktopItems.Where(item => item.IsSelected)
+            .Select(item => item.FullPath)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var ordered = _layoutStore.ApplyOrder(DesktopHostCatalog.ReadItems([_userDesktop, _publicDesktop]));
         _desktopItems.Clear();
-        foreach (var item in ordered) _desktopItems.Add(item);
+        foreach (var item in ordered)
+        {
+            item.IsSelected = selectedPaths.Contains(item.FullPath);
+            _desktopItems.Add(item);
+        }
+        if (_selectionAnchorPath is not null && !_desktopItems.Any(item => string.Equals(item.FullPath, _selectionAnchorPath, StringComparison.OrdinalIgnoreCase)))
+            _selectionAnchorPath = null;
     }
 
     private void StartDesktopWatchers()
@@ -116,9 +126,21 @@ public partial class DesktopHostWindow : Window
 
     private void OnKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key != Key.F5) return;
-        RefreshDesktop();
-        e.Handled = true;
+        if (e.Key == Key.F5)
+        {
+            RefreshDesktop();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.A && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            ApplySelection(DesktopHostSelectionPolicy.SelectAll(_desktopItems), _selectionAnchorPath);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            ApplySelection(new HashSet<string>(StringComparer.OrdinalIgnoreCase), null);
+            e.Handled = true;
+        }
     }
 
     private void OnItemDoubleClick(object sender, MouseButtonEventArgs e)
@@ -164,6 +186,22 @@ public partial class DesktopHostWindow : Window
     {
         _dragCandidate = (sender as Button)?.DataContext as DesktopHostItem;
         _dragStart = e.GetPosition(this);
+        if (_dragCandidate is not { } item) return;
+        var modifiers = Keyboard.Modifiers;
+        var selection = DesktopHostSelectionPolicy.Select(
+            _desktopItems,
+            item.FullPath,
+            modifiers.HasFlag(ModifierKeys.Control),
+            modifiers.HasFlag(ModifierKeys.Shift),
+            _selectionAnchorPath);
+        ApplySelection(selection.Paths, selection.AnchorPath);
+    }
+
+    private void ApplySelection(IReadOnlySet<string> selectedPaths, string? anchorPath)
+    {
+        foreach (var item in _desktopItems)
+            item.IsSelected = selectedPaths.Contains(item.FullPath);
+        _selectionAnchorPath = anchorPath;
     }
 
     private void OnItemMouseMove(object sender, MouseEventArgs e)

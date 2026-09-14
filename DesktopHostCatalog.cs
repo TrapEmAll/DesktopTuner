@@ -1,13 +1,38 @@
 using System.IO;
 using System.Security;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows.Media;
 
 namespace DesktopTuner;
 
-public sealed record DesktopHostItem(string Name, string FullPath, bool IsDirectory, bool IsShellNamespace = false)
+public sealed class DesktopHostItem(string name, string fullPath, bool isDirectory, bool isShellNamespace = false) : INotifyPropertyChanged
 {
+    private bool _isSelected;
+
+    public string Name { get; } = name;
+    public string FullPath { get; } = fullPath;
+    public bool IsDirectory { get; } = isDirectory;
+    public bool IsShellNamespace { get; } = isShellNamespace;
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value) return;
+            _isSelected = value;
+            OnPropertyChanged();
+        }
+    }
+
     public ImageSource? Icon => IsShellNamespace ? TaskbarIconService.LoadNamespaceIcon(FullPath) : TaskbarIconService.LoadIcon(FullPath);
     public bool CanShowNativeContextMenu => !IsShellNamespace && (File.Exists(FullPath) || Directory.Exists(FullPath));
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 
 public static class DesktopHostCatalog
@@ -42,8 +67,8 @@ public static class DesktopHostCatalog
             }
         }
 
-        entries.TryAdd("shell:MyComputerFolder", new DesktopHostItem("This PC", "shell:MyComputerFolder", true, IsShellNamespace: true));
-        entries.TryAdd("shell:RecycleBinFolder", new DesktopHostItem("Recycle Bin", "shell:RecycleBinFolder", true, IsShellNamespace: true));
+        entries.TryAdd("shell:MyComputerFolder", new DesktopHostItem("This PC", "shell:MyComputerFolder", true, isShellNamespace: true));
+        entries.TryAdd("shell:RecycleBinFolder", new DesktopHostItem("Recycle Bin", "shell:RecycleBinFolder", true, isShellNamespace: true));
         return entries.Values.OrderBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
     }
 }

@@ -27,6 +27,17 @@ CheckTrue(TaskbarIconService.LoadNamespaceIcon("shell:MyComputerFolder") is not 
 var desktopLayoutStore = new DesktopHostLayoutStore(Path.Combine(desktopHostTestRoot, "desktop-layout.json"));
 Check(true, desktopLayoutStore.SaveOrder([desktopHostEntries.Single(entry => entry.Name == "user.txt"), desktopHostEntries.Single(entry => entry.Name == "Folder")]), "save the user's desktop icon order");
 Check("user.txt,Folder,Recycle Bin,shared.txt,This PC", string.Join(',', desktopLayoutStore.ApplyOrder(desktopHostEntries).Select(entry => entry.Name)), "restore the saved icon order while appending unrecorded items");
+var selectableDesktopItems = new[] { "a", "b", "c", "d" }
+    .Select(name => new DesktopHostItem(name, Path.Combine(desktopHostTestRoot, name), false))
+    .ToArray();
+var desktopSelection = DesktopHostSelectionPolicy.Select(selectableDesktopItems, selectableDesktopItems[0].FullPath, false, false, null);
+foreach (var item in selectableDesktopItems) item.IsSelected = desktopSelection.Paths.Contains(item.FullPath);
+desktopSelection = DesktopHostSelectionPolicy.Select(selectableDesktopItems, selectableDesktopItems[2].FullPath, true, false, desktopSelection.AnchorPath);
+foreach (var item in selectableDesktopItems) item.IsSelected = desktopSelection.Paths.Contains(item.FullPath);
+Check("a,c", string.Join(',', selectableDesktopItems.Where(item => desktopSelection.Paths.Contains(item.FullPath)).Select(item => item.Name)), "add an item to desktop selection with Ctrl-click");
+desktopSelection = DesktopHostSelectionPolicy.Select(selectableDesktopItems, selectableDesktopItems[3].FullPath, false, true, desktopSelection.AnchorPath);
+Check("c,d", string.Join(',', selectableDesktopItems.Where(item => desktopSelection.Paths.Contains(item.FullPath)).Select(item => item.Name)), "select an inclusive desktop range with Shift-click");
+Check(4, DesktopHostSelectionPolicy.SelectAll(selectableDesktopItems).Count, "select every desktop item with Ctrl+A");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Created), "refresh the desktop when a new item is created");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Renamed), "refresh the desktop when an item is renamed");
 Check(false, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.All), "ignore unknown desktop watcher event types");
