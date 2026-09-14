@@ -102,8 +102,10 @@ public partial class ExplorerWindow : Window
             ? sessionToRestore.Tabs[sessionToRestore.ActiveTabIndex].Location
             : startInThisPc && string.IsNullOrWhiteSpace(initialPath)
             ? new ExplorerLocation(null, IsDriveList: true)
-            : string.IsNullOrWhiteSpace(initialPath)
+                : string.IsNullOrWhiteSpace(initialPath)
                 ? new ExplorerLocation(null, IsHome: true)
+                : string.Equals(initialPath, "shell:MyComputerFolder", StringComparison.OrdinalIgnoreCase) || string.Equals(initialPath, "This PC", StringComparison.OrdinalIgnoreCase)
+                    ? new ExplorerLocation(null, IsDriveList: true)
                 : IsRecycleBinAddress(initialPath)
                     ? new ExplorerLocation(null, IsRecycleBin: true)
                 : Directory.Exists(initialPath)
@@ -157,6 +159,18 @@ public partial class ExplorerWindow : Window
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         if (!Directory.Exists(path)) throw new DirectoryNotFoundException($"The folder no longer exists: {path}");
         AddTab(new ExplorerLocation(Path.GetFullPath(path)));
+        Activate();
+    }
+
+    public void OpenShellLocationFromShell(string parsingName)
+    {
+        var location = parsingName.Trim().ToUpperInvariant() switch
+        {
+            "SHELL:MYCOMPUTERFOLDER" => new ExplorerLocation(null, IsDriveList: true),
+            "SHELL:RECYCLEBINFOLDER" => new ExplorerLocation(null, IsRecycleBin: true),
+            _ => throw new ArgumentException("That Shell location is not supported by Desktop Tuner Explorer.", nameof(parsingName))
+        };
+        AddTab(location);
         Activate();
     }
 

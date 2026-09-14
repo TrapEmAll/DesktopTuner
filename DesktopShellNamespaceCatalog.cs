@@ -5,6 +5,10 @@ namespace DesktopTuner;
 
 public static class DesktopShellNamespaceCatalog
 {
+    public static bool IsCompanionExplorerLocation(string parsingName) =>
+        string.Equals(parsingName, "shell:MyComputerFolder", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(parsingName, "shell:RecycleBinFolder", StringComparison.OrdinalIgnoreCase);
+
     public static IReadOnlyList<DesktopHostItem> ReadVirtualItems()
     {
         object? shell = null;

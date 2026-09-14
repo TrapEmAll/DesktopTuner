@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private const int WM_APP_ACTIVATE_SETTINGS = 0x8000 + 0x451;
     private const int WM_COPYDATA = 0x004A;
     private const long WM_COPYDATA_OPEN_FOLDER = 0x44544E52;
+    private const long WM_COPYDATA_OPEN_SHELL_LOCATION = 0x44544E53;
     private const uint SMTO_ABORTIFHUNG = 0x0002;
     private const uint MOD_ALT = 0x0001;
     private const uint MOD_CONTROL = 0x0002;
@@ -1022,6 +1023,12 @@ public partial class MainWindow : Window
             handled = true;
             return new IntPtr(1);
         }
+        if (message == WM_COPYDATA && TryReadOpenShellLocationCopyData(lParam, out var shellLocation))
+        {
+            _ = Dispatcher.BeginInvoke(new Action(() => OpenShellLocationFromShell(shellLocation)));
+            handled = true;
+            return new IntPtr(1);
+        }
         if (message == WM_DWMCOLORIZATIONCOLORCHANGED)
             DesktopTheme.Apply(_currentValues["explorer-app-mode"] == 0);
         if (message == WM_APP_ACTIVATE_SETTINGS)
@@ -1110,6 +1117,39 @@ public partial class MainWindow : Window
         finally { Marshal.FreeHGlobal(payload); }
     }
 
+    public static bool TryOpenShellLocationInExistingInstance(string shellLocation)
+    {
+        if (!DesktopShellNamespaceCatalog.IsCompanionExplorerLocation(shellLocation)) return false;
+        var payload = Marshal.StringToHGlobalUni(shellLocation);
+        try
+        {
+            var copyData = new CopyDataStruct
+            {
+                Data = new IntPtr(WM_COPYDATA_OPEN_SHELL_LOCATION),
+                ByteCount = checked((shellLocation.Length + 1) * sizeof(char)),
+                DataPointer = payload
+            };
+            for (var attempt = 0; attempt < 20; attempt++)
+            {
+                var window = FindWindow(null, "Desktop Tuner");
+                if (window == IntPtr.Zero)
+                {
+                    Thread.Sleep(50);
+                    continue;
+                }
+                if (SendCopyData(window, WM_COPYDATA, IntPtr.Zero, ref copyData, SMTO_ABORTIFHUNG, 500, out var result) != IntPtr.Zero)
+                {
+                    if (result != IntPtr.Zero) return true;
+                    Thread.Sleep(50);
+                    continue;
+                }
+                return false;
+            }
+            return false;
+        }
+        finally { Marshal.FreeHGlobal(payload); }
+    }
+
     private static bool TryReadOpenFolderCopyData(IntPtr dataPointer, out string folderPath)
     {
         folderPath = string.Empty;
@@ -1124,6 +1164,20 @@ public partial class MainWindow : Window
         return Path.IsPathFullyQualified(folderPath) && Directory.Exists(folderPath);
     }
 
+    private static bool TryReadOpenShellLocationCopyData(IntPtr dataPointer, out string shellLocation)
+    {
+        shellLocation = string.Empty;
+        if (dataPointer == IntPtr.Zero) return false;
+        var data = Marshal.PtrToStructure<CopyDataStruct>(dataPointer);
+        if (data.Data.ToInt64() != WM_COPYDATA_OPEN_SHELL_LOCATION || data.DataPointer == IntPtr.Zero || data.ByteCount is <= 0 or > 65536)
+            return false;
+        var value = Marshal.PtrToStringUni(data.DataPointer, data.ByteCount / sizeof(char));
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        var terminator = value.IndexOf('\0');
+        shellLocation = terminator >= 0 ? value[..terminator] : value;
+        return DesktopShellNamespaceCatalog.IsCompanionExplorerLocation(shellLocation);
+    }
+
     public void OpenFolderFromShell(string folderPath)
     {
         if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
@@ -1132,6 +1186,17 @@ public partial class MainWindow : Window
             return;
         }
         OpenExplorer(Path.GetFullPath(folderPath));
+    }
+
+    private void OpenShellLocationFromShell(string shellLocation)
+    {
+        if (!DesktopShellNamespaceCatalog.IsCompanionExplorerLocation(shellLocation)) return;
+        if (_explorerWindow is { IsVisible: true })
+        {
+            _explorerWindow.OpenShellLocationFromShell(shellLocation);
+            return;
+        }
+        OpenExplorer(shellLocation);
     }
 
     private void ShowStartMenu() => ShowStartMenu(null);

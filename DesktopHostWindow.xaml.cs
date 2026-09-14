@@ -227,6 +227,13 @@ public partial class DesktopHostWindow : Window
                 OpenFolderInCompanionExplorer(entry.FullPath);
                 return;
             }
+            if (_routeFoldersToCompanionExplorer && entry.IsShellNamespace &&
+                DesktopShellNamespaceCatalog.IsCompanionExplorerLocation(entry.FullPath))
+            {
+                if (!MainWindow.TryOpenShellLocationInExistingInstance(entry.FullPath))
+                    throw new InvalidOperationException("Desktop Tuner Explorer could not receive this location. It was not opened in Windows Explorer.");
+                return;
+            }
 
             var start = new ProcessStartInfo(entry.IsShellNamespace ? "explorer.exe" : entry.FullPath) { UseShellExecute = true };
             if (entry.IsShellNamespace) start.ArgumentList.Add(entry.FullPath);

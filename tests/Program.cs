@@ -252,6 +252,9 @@ Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, true), 
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, false), "integrate the native notification area in normal overlay mode");
 Check(true, ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(true), "keep desktop folder navigation inside the replacement shell");
 Check(false, ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(false), "preserve normal desktop-host folder activation outside replacement shell mode");
+Check(true, DesktopShellNamespaceCatalog.IsCompanionExplorerLocation("shell:MyComputerFolder"), "route the This PC desktop namespace item to companion Explorer");
+Check(true, DesktopShellNamespaceCatalog.IsCompanionExplorerLocation("shell:RecycleBinFolder"), "route the Recycle Bin desktop namespace item to companion Explorer");
+Check(false, DesktopShellNamespaceCatalog.IsCompanionExplorerLocation("shell:PrintersFolder"), "leave unsupported namespace items on their native Shell handler");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, false, true), "avoid hiding taskbars when Explorer is not the logon shell");
 Check(true, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true), "preserve the user's native taskbar replacement setting in normal mode");
 Check(true, ShellHostLaunchPolicy.ShouldLaunchExplorerOnShellHostExit(true, false), "start Explorer when a Shell Launcher host exits normally");
