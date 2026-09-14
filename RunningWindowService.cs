@@ -7,6 +7,7 @@ namespace DesktopTuner;
 
 public sealed record RunningWindow(nint Handle, string Title, string ApplicationName, string ExecutablePath, bool IsMinimized)
 {
+    public bool CanRunElevated => TaskbarPinCatalog.CanRunAsAdministrator(ApplicationName, ExecutablePath);
     public bool IsMaximized { get; init; }
     public bool IsForeground { get; init; }
     public bool? IsOnCurrentVirtualDesktop { get; init; }

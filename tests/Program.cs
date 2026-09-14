@@ -802,9 +802,16 @@ try
     var pinnedStartShortcut = new PinnedTaskbarApp("Editor", startShortcutPath);
     CheckTrue(pinnedStartShortcut.CanOpenLocation, "offer file location for an existing taskbar app pin");
     Check($"/select,\"{startShortcutPath}\"", TaskbarPinCatalog.BuildLocationLaunchInfo(pinnedStartShortcut).ArgumentList.Single(), "select the pinned app's executable or shortcut in Explorer");
+    CheckTrue(pinnedStartShortcut.CanRunElevated, "allow elevated launch for a taskbar shortcut pin");
+    CheckTrue(!TaskbarPinCatalog.CanRunAsAdministrator("Windows app", @"C:\Windows\System32\ApplicationFrameHost.exe"), "exclude the packaged-app frame host from elevated taskbar launch");
+    var elevatedPinLaunchInfo = TaskbarPinCatalog.BuildElevatedLaunchInfo(pinnedStartShortcut);
+    Check("runas", elevatedPinLaunchInfo.Verb, "request the Windows elevation prompt for a taskbar shortcut pin");
+    CheckTrue(elevatedPinLaunchInfo.UseShellExecute, "launch elevated taskbar pins through the Windows shell");
     var pinnedFolder = new PinnedTaskbarApp("ExplorerOperations", explorerTestDirectory, IsDirectory: true);
     CheckTrue(pinnedFolder.CanOpenLocation, "offer the folder itself for an existing taskbar folder pin");
     Check(explorerTestDirectory, TaskbarPinCatalog.BuildLocationLaunchInfo(pinnedFolder).FileName, "open a pinned folder directly in File Explorer");
+    Check(false, pinnedFolder.CanRunElevated, "do not offer elevated launch for a taskbar folder pin");
+    Throws<NotSupportedException>(() => TaskbarPinCatalog.BuildElevatedLaunchInfo(pinnedFolder), "reject elevated launch for a taskbar folder pin");
     var pinnedFolderMenuDirectory = Path.Combine(temporaryPreferencesDirectory, "PinnedFolderMenu");
     var pinnedFolderMenuSubdirectory = Path.Combine(pinnedFolderMenuDirectory, "AlphaFolder");
     Directory.CreateDirectory(pinnedFolderMenuSubdirectory);

@@ -854,6 +854,42 @@ public partial class TaskbarWindow : Window
         }
     }
 
+    private void RunPinnedAsAdministrator_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: PinnedTaskbarApp { CanRunElevated: true } app }) return;
+        try
+        {
+            System.Diagnostics.Process.Start(TaskbarPinCatalog.BuildElevatedLaunchInfo(app));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Windows could not start {app.Name} with administrator privileges.\n\n{ex.Message}", "Could not start elevated app", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void RunWindowAsAdministrator_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem item) return;
+        var window = item.Tag switch
+        {
+            RunningWindow runningWindow => runningWindow,
+            TaskbarWindowGroup group => group.Windows.FirstOrDefault(),
+            _ => null
+        };
+        if (window is null) return;
+
+        var app = new AppEntry(window.ApplicationName, window.ExecutablePath);
+        if (!TaskbarPinCatalog.CanRunAsAdministrator(app.Name, app.ShortcutPath)) return;
+        try
+        {
+            AppCatalogService.LaunchAsAdministrator(app);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Windows could not start {app.Name} with administrator privileges.\n\n{ex.Message}", "Could not start elevated app", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void PinnedFolderMenu_SubmenuOpened(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: PinnedTaskbarApp { IsDirectory: true } app } menu) return;

@@ -6,6 +6,18 @@ namespace DesktopTuner;
 public static class TaskbarPinCatalog
 {
     public const int MaximumPins = 40;
+    private static readonly HashSet<string> NonLaunchableShellHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ApplicationFrameHost.exe", "RuntimeBroker.exe", "SearchHost.exe", "StartMenuExperienceHost.exe",
+        "ShellExperienceHost.exe", "explorer.exe"
+    };
+
+    public static bool CanRunAsAdministrator(string name, string executablePath, bool isDirectory = false)
+    {
+        ArgumentNullException.ThrowIfNull(executablePath);
+        return !isDirectory && !NonLaunchableShellHosts.Contains(Path.GetFileName(executablePath))
+            && AppCatalogService.CanRunAsAdministrator(new AppEntry(name, executablePath));
+    }
 
     public static bool CanOpenLocation(PinnedTaskbarApp app)
     {
@@ -24,6 +36,15 @@ public static class TaskbarPinCatalog
         return app.IsDirectory
             ? new ProcessStartInfo(app.ExecutablePath) { UseShellExecute = true }
             : AppCatalogService.BuildFileLocationLaunchInfo(new AppEntry(app.Name, app.ExecutablePath));
+    }
+
+    public static ProcessStartInfo BuildElevatedLaunchInfo(PinnedTaskbarApp app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        if (!CanRunAsAdministrator(app.Name, app.ExecutablePath, app.IsDirectory))
+            throw new NotSupportedException("This taskbar pin cannot be started with administrator privileges.");
+
+        return AppCatalogService.BuildLaunchInfo(new AppEntry(app.Name, app.ExecutablePath), runAsAdministrator: true);
     }
 
     public static bool IsSupportedTarget(string itemPath, bool isDirectory = false) =>

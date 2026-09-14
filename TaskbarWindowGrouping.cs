@@ -2,6 +2,7 @@ namespace DesktopTuner;
 
 public sealed record TaskbarWindowGroup(string Label, string ApplicationName, IReadOnlyList<RunningWindow> Windows)
 {
+    public bool CanRunElevated => Windows.FirstOrDefault()?.CanRunElevated == true;
     public string ToolTip => string.Join(Environment.NewLine, Windows.Select(window => window.Title));
     public bool IsActive => Windows.Any(window => window.IsForeground);
 }
