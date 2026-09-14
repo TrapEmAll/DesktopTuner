@@ -53,6 +53,7 @@ public partial class MainWindow : Window
     private readonly NativeTaskbarVisibilityService _nativeTaskbarVisibility = new();
     private readonly DispatcherTimer _nativeTaskbarWatchTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly DispatcherTimer _displayRefreshTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
+    private readonly DispatcherTimer _shellHostHeartbeatTimer = new() { Interval = CustomShellPolicy.HostHeartbeatInterval };
     private WindowsKeyStartHook? _windowsKeyHook;
     private TaskbarEdge _taskbarEdge = TaskbarEdge.Bottom;
     private TaskbarSize _taskbarSize = TaskbarSize.Standard;
@@ -1389,8 +1390,13 @@ public partial class MainWindow : Window
     {
         if (!_shellHostMode || _shellHostReadySignaled) return;
         _shellHostReadySignaled = true;
+        _shellHostHeartbeatTimer.Tick += ShellHostHeartbeatTimer_Tick;
+        _shellHostHeartbeatTimer.Start();
+        CustomShellPolicy.SignalHostHeartbeat();
         CustomShellPolicy.SignalHostReady();
     }
+
+    private void ShellHostHeartbeatTimer_Tick(object? sender, EventArgs e) => CustomShellPolicy.SignalHostHeartbeat();
 
     private void DisplayRefreshTimer_Tick(object? sender, EventArgs e)
     {

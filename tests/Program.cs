@@ -367,6 +367,9 @@ Check(true, CustomShellPolicy.ShouldRestartHost(-1, 0), "retry the custom shell 
 Check(false, CustomShellPolicy.ShouldRestartHost(0, 0), "return to Explorer after a normal custom-shell exit");
 Check(false, CustomShellPolicy.ShouldRestartHost(-1, CustomShellPolicy.MaximumHostRestarts), "stop retrying and recover to Explorer after the restart limit");
 Check(TimeSpan.FromSeconds(60), CustomShellPolicy.HostStartupReadinessTimeout, "bound alternate-shell startup while waiting for the desktop readiness handshake");
+Check(TimeSpan.FromSeconds(10), CustomShellPolicy.HostHeartbeatInterval, "check custom-shell UI health on a bounded interval");
+Check(TimeSpan.FromSeconds(45), CustomShellPolicy.HostHeartbeatTimeout, "detect a custom-shell UI hang after missed dispatcher heartbeats");
+Check(true, CustomShellPolicy.HostHeartbeatTimeout > CustomShellPolicy.HostHeartbeatInterval * 2, "allow delayed UI heartbeats before recovering the custom shell");
 Check(true, CustomShellPolicy.ShouldRestartHostAfterStartupTimeout(0), "retry the alternate shell once after a startup readiness timeout");
 Check(false, CustomShellPolicy.ShouldRestartHostAfterStartupTimeout(CustomShellPolicy.MaximumHostRestarts), "recover to Explorer after the alternate shell startup timeout retry is exhausted");
 Check(false, CustomShellPolicy.ShouldDisablePolicyAfterHostFailure(-1, 0), "keep the custom-shell policy during its one recovery retry");

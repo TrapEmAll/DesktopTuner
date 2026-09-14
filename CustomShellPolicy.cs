@@ -11,7 +11,11 @@ public static class CustomShellPolicy
     private const string RegistryValue = "Shell";
     public const int MaximumHostRestarts = 1;
     public static readonly TimeSpan HostStartupReadinessTimeout = TimeSpan.FromSeconds(60);
+    public static readonly TimeSpan HostHeartbeatInterval = TimeSpan.FromSeconds(10);
+    public static readonly TimeSpan HostHeartbeatTimeout = TimeSpan.FromSeconds(45);
+    public static readonly TimeSpan HostHeartbeatPollInterval = TimeSpan.FromMilliseconds(500);
     private const string HostReadinessEventName = @"Local\DesktopTuner.CustomShellSupervisor.Ready";
+    private const string HostHeartbeatEventName = @"Local\DesktopTuner.CustomShellSupervisor.Heartbeat";
 
     public static bool IsSupportedEdition(string? editionId) =>
         !string.IsNullOrWhiteSpace(editionId) &&
@@ -81,6 +85,9 @@ public static class CustomShellPolicy
     internal static EventWaitHandle CreateHostReadinessSignal() =>
         new(false, EventResetMode.ManualReset, HostReadinessEventName, out _);
 
+    internal static EventWaitHandle CreateHostHeartbeatSignal() =>
+        new(false, EventResetMode.AutoReset, HostHeartbeatEventName, out _);
+
     internal static void SignalHostReady()
     {
         try
@@ -95,6 +102,23 @@ public static class CustomShellPolicy
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
             Trace.TraceError($"Could not signal custom-shell readiness: {ex}");
+        }
+    }
+
+    internal static void SignalHostHeartbeat()
+    {
+        try
+        {
+            using var heartbeatSignal = EventWaitHandle.OpenExisting(HostHeartbeatEventName);
+            heartbeatSignal.Set();
+        }
+        catch (WaitHandleCannotBeOpenedException)
+        {
+            Trace.TraceWarning("Could not signal custom-shell health because the supervisor event is unavailable.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+        {
+            Trace.TraceError($"Could not signal custom-shell health: {ex}");
         }
     }
 

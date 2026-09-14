@@ -152,9 +152,11 @@ public partial class App : Application
         }
 
         EventWaitHandle readinessSignal;
+        EventWaitHandle heartbeatSignal;
         try
         {
             readinessSignal = CustomShellPolicy.CreateHostReadinessSignal();
+            heartbeatSignal = CustomShellPolicy.CreateHostHeartbeatSignal();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
@@ -165,23 +167,36 @@ public partial class App : Application
         }
 
         using (readinessSignal)
+        using (heartbeatSignal)
         {
             var restartsUsed = 0;
             while (true)
             {
                 int exitCode;
                 var startupTimedOut = false;
+                var heartbeatTimedOut = false;
                 try
                 {
                     readinessSignal.Reset();
+                    heartbeatSignal.Reset();
                     var startInfo = new ProcessStartInfo(executablePath) { UseShellExecute = false };
                     startInfo.ArgumentList.Add(ShellHostLaunchPolicy.ShellHostWorkerArgument);
                     using var shellHost = Process.Start(startInfo);
                     if (shellHost is null) throw new InvalidOperationException("Windows did not start the Desktop Tuner shell host.");
                     if (await WaitForShellHostReadyAsync(shellHost, readinessSignal))
                     {
-                        await shellHost.WaitForExitAsync();
-                        exitCode = shellHost.ExitCode;
+                        if (await WaitForShellHostExitOrHeartbeatTimeoutAsync(shellHost, heartbeatSignal))
+                        {
+                            exitCode = shellHost.ExitCode;
+                        }
+                        else
+                        {
+                            heartbeatTimedOut = true;
+                            Trace.TraceError($"Desktop Tuner shell host stopped responding for {CustomShellPolicy.HostHeartbeatTimeout.TotalSeconds:0} seconds; applying the bounded recovery policy.");
+                            shellHost.Kill(entireProcessTree: true);
+                            await shellHost.WaitForExitAsync();
+                            exitCode = -1;
+                        }
                     }
                     else if (shellHost.HasExited)
                     {
@@ -227,7 +242,8 @@ public partial class App : Application
 
                 if (exitCode != 0)
                 {
-                    Trace.TraceError($"Desktop Tuner shell host exited with code {exitCode} after {restartsUsed} restart attempt(s); starting Explorer for recovery.");
+                    var reason = heartbeatTimedOut ? "stopped responding" : "exited unexpectedly";
+                    Trace.TraceError($"Desktop Tuner shell host {reason} (code {exitCode}) after {restartsUsed} restart attempt(s); starting Explorer for recovery.");
                     if (CustomShellPolicy.ShouldDisablePolicyAfterHostFailure(exitCode, restartsUsed))
                         DisableFailedCustomShell(executablePath);
                 }
@@ -247,6 +263,24 @@ public partial class App : Application
             if (await Task.WhenAny(exitTask, Task.Delay(250)) == exitTask) return false;
         }
         return readinessSignal.WaitOne(0);
+    }
+
+    private static async Task<bool> WaitForShellHostExitOrHeartbeatTimeoutAsync(Process shellHost, EventWaitHandle heartbeatSignal)
+    {
+        var lastHeartbeat = Stopwatch.StartNew();
+        var exitTask = shellHost.WaitForExitAsync();
+        while (!exitTask.IsCompleted)
+        {
+            if (heartbeatSignal.WaitOne(0)) lastHeartbeat.Restart();
+            if (lastHeartbeat.Elapsed >= CustomShellPolicy.HostHeartbeatTimeout) return false;
+            var remaining = CustomShellPolicy.HostHeartbeatTimeout - lastHeartbeat.Elapsed;
+            var delay = remaining < CustomShellPolicy.HostHeartbeatPollInterval
+                ? remaining
+                : CustomShellPolicy.HostHeartbeatPollInterval;
+            await Task.WhenAny(exitTask, Task.Delay(delay));
+        }
+        await exitTask;
+        return true;
     }
 
     private static void DisableFailedCustomShell(string executablePath)
