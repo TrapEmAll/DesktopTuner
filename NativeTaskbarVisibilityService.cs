@@ -115,7 +115,7 @@ public sealed class NativeTaskbarVisibilityService
         try
         {
             using var owner = Process.GetProcessById(ownerProcessId);
-            return owner.StartTime.ToUniversalTime() <= File.GetLastWriteTimeUtc(snapshotPath);
+            return TaskbarSnapshotOwnerPolicy.IsSnapshotOwner(owner.StartTime.ToUniversalTime(), File.GetLastWriteTimeUtc(snapshotPath));
         }
         catch (ArgumentException)
         {

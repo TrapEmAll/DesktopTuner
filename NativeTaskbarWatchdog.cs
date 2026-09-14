@@ -44,7 +44,9 @@ public static class NativeTaskbarWatchdog
         try
         {
             using var owner = Process.GetProcessById(ownerProcessId);
-            await owner.WaitForExitAsync().ConfigureAwait(false);
+            var snapshotLastWriteTime = File.GetLastWriteTimeUtc(snapshotPath);
+            if (TaskbarSnapshotOwnerPolicy.IsSnapshotOwner(owner.StartTime.ToUniversalTime(), snapshotLastWriteTime))
+                await owner.WaitForExitAsync().ConfigureAwait(false);
         }
         catch (ArgumentException)
         {
@@ -54,9 +56,10 @@ public static class NativeTaskbarWatchdog
         {
             // The process handle is no longer associated with a running owner.
         }
-        catch (Win32Exception ex)
+        catch (Exception ex) when (ex is Win32Exception or IOException or UnauthorizedAccessException)
         {
-            Trace.TraceError($"Could not wait for Desktop Tuner before taskbar recovery: {ex}");
+            Trace.TraceError($"Could not confirm Desktop Tuner taskbar snapshot ownership; preserving it for the next launch: {ex}");
+            return;
         }
 
         NativeTaskbarVisibilityService.RestoreSnapshot(snapshotPath);

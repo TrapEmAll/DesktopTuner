@@ -68,6 +68,8 @@ CheckTrue(ExplorerViewModeCatalog.Get(ExplorerViewMode.Tiles).WrapItems, "wrap E
 CheckTrue(NativeTaskbarWatchdog.IsWatchdogInvocation(["--taskbar-watchdog", "123", "snapshot.json"]), "recognize the taskbar recovery process entry point");
 CheckTrue(NativeTaskbarWatchdog.TryReadInvocation(["--taskbar-watchdog", "123", "snapshot.json"], out var watchdogOwner, out var watchdogSnapshot), "parse taskbar recovery process arguments");
 Check((123, "snapshot.json"), (watchdogOwner, watchdogSnapshot), "recover the watchdog owner and snapshot path");
+CheckTrue(TaskbarSnapshotOwnerPolicy.IsSnapshotOwner(DateTime.UtcNow.AddMinutes(-5), DateTime.UtcNow), "match a live process start to its newer taskbar snapshot");
+Check(false, TaskbarSnapshotOwnerPolicy.IsSnapshotOwner(DateTime.UtcNow, DateTime.UtcNow.AddMinutes(-5)), "reject a recycled process id started after the taskbar snapshot");
 Check(new TaskbarBounds(0, 1026, 1920, 54), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom), false), "bottom, standard");
 Check(new TaskbarBounds(0, 0, 1920, 46), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Top, TaskbarSize.Small), false), "top, small");
 Check(new TaskbarBounds(0, 0, 204, 1080), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Left, TaskbarSize.Large), false), "left, large");
