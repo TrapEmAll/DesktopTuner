@@ -77,10 +77,11 @@
                      KeyDown="SearchBox_KeyDown" />
         </DockPanel>
         <ListView x:Name="ItemsList" Grid.Row="2" Margin="0,10,0,0" MouseDoubleClick="ItemsList_MouseDoubleClick"
-                  SelectionMode="Single" ItemsPanel="{StaticResource ShellNamespaceVerticalItemsPanel}">
+                  PreviewMouseRightButtonDown="ItemsList_PreviewMouseRightButtonDown"
+                  SelectionMode="Extended" ItemsPanel="{StaticResource ShellNamespaceVerticalItemsPanel}">
             <ListView.ContextMenu>
                 <ContextMenu Opened="ItemContextMenu_Opened">
-                    <MenuItem Header="Open" Click="Open_Click" />
+                    <MenuItem x:Name="OpenMenuItem" Header="Open" Click="Open_Click" />
                     <MenuItem x:Name="ShowMoreOptionsMenuItem" Header="Show more options" Click="ShowMoreOptions_Click" />
                 </ContextMenu>
             </ListView.ContextMenu>

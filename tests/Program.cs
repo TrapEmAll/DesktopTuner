@@ -1117,9 +1117,12 @@ try
         CheckTrue(wasCanceled, "cancel a Shell namespace search before traversal starts");
     }
     CheckTrue(await NativeShellContextMenuService.ProbeItemsContextMenuAsync([nativeMenuFirst, nativeMenuSecond]), "build the Windows Shell context menu for a multi-selection");
+    CheckTrue(await NativeShellContextMenuService.ProbeShellItemsContextMenuAsync([nativeMenuFirst, nativeMenuSecond]), "build the namespace browser's combined native context menu for a multi-selection");
     CheckTrue(await NativeShellContextMenuService.ProbeFolderBackgroundContextMenuAsync(nativeMenuFolder), "build the Windows Shell folder-background context menu");
     CheckTrue(await NativeShellContextMenuService.ProbeShellItemContextMenuAsync("shell:RecycleBinFolder"), "build the Windows Shell context menu for the Recycle Bin namespace item");
     Check(2, NativeShellContextMenuPolicy.NormalizeSelection([nativeMenuFirst, nativeMenuSecond, nativeMenuFirst]).Count, "allow one native context menu for distinct items in the same folder");
+    Check(2, NativeShellContextMenuPolicy.NormalizeShellSelection([nativeMenuFirst, nativeMenuSecond, nativeMenuFirst]).Count, "deduplicate items for a Shell namespace multi-selection");
+    Throws<ArgumentException>(() => NativeShellContextMenuPolicy.NormalizeShellSelection(["", " "]), "reject an empty Shell namespace multi-selection");
     Throws<ArgumentException>(() => NativeShellContextMenuPolicy.NormalizeSelection([nativeMenuFirst, Path.Combine(nativeMenuOtherFolder, "third.txt")]), "reject mixed-parent native context menus");
     Throws<ArgumentException>(() => NativeShellContextMenuPolicy.NormalizeSelection([Path.GetPathRoot(temporaryPreferencesDirectory)!]), "reject drive-root native context menus");
 

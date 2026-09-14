@@ -28,6 +28,13 @@ public static class NativeShellContextMenuService
         return await ProcessShellItemAsync(owner, parsingName, showPopup: true);
     }
 
+    public static async Task<bool> ShowForShellItemsAsync(nint owner, IEnumerable<string> parsingNames)
+    {
+        var selection = NativeShellContextMenuPolicy.NormalizeShellSelection(parsingNames);
+        var absolutePidls = await Task.Run(() => ParseDisplayNames(selection));
+        return ShowForShellItems(owner, absolutePidls);
+    }
+
     internal static async Task<bool> ProbeItemsContextMenuAsync(IEnumerable<string> paths)
     {
         return await ProcessItemsAsync(nint.Zero, paths, showPopup: false);
@@ -36,6 +43,13 @@ public static class NativeShellContextMenuService
     internal static async Task<bool> ProbeShellItemContextMenuAsync(string parsingName)
     {
         return await ProcessShellItemAsync(nint.Zero, parsingName, showPopup: false);
+    }
+
+    internal static async Task<bool> ProbeShellItemsContextMenuAsync(IEnumerable<string> parsingNames)
+    {
+        var selection = NativeShellContextMenuPolicy.NormalizeShellSelection(parsingNames);
+        var absolutePidls = await Task.Run(() => ParseDisplayNames(selection));
+        return ShowForShellItems(nint.Zero, absolutePidls, showPopup: false);
     }
 
     private static async Task<bool> ProcessItemsAsync(nint owner, IEnumerable<string> paths, bool showPopup)
@@ -125,6 +139,36 @@ public static class NativeShellContextMenuService
             if (parent is not null) ReleaseComObject(parent);
             if (childArray != nint.Zero) Marshal.FreeHGlobal(childArray);
             Marshal.FreeCoTaskMem(absolutePidl);
+        }
+    }
+
+    private static bool ShowForShellItems(nint owner, nint[] absolutePidls, bool showPopup = true)
+    {
+        if (absolutePidls.Length == 0) throw new ArgumentException("Select at least one Windows Shell item.", nameof(absolutePidls));
+        IShellFolder? parent = null;
+        IContextMenu? contextMenu = null;
+        nint childArray = nint.Zero;
+        try
+        {
+            var parentLength = GetParentPidlLength(absolutePidls[0]);
+            if (absolutePidls.Skip(1).Any(pidl => !ParentPidlsEqual(absolutePidls[0], parentLength, pidl)))
+                throw new ArgumentException("Windows can show a shared context menu only for items in the same Shell folder.", nameof(absolutePidls));
+
+            var folderId = ShellFolderId;
+            ThrowForFailure(SHBindToParent(absolutePidls[0], ref folderId, out parent, out _), "Could not bind to the selected items' parent folder.");
+            var childPidls = absolutePidls.Select(pidl => pidl + GetParentPidlLength(pidl) - sizeof(ushort)).ToArray();
+            if (childPidls.Any(child => child == nint.Zero)) throw new COMException("Could not resolve the selected Shell items.");
+            childArray = AllocatePointerArray(childPidls);
+            var contextMenuId = ContextMenuId;
+            ThrowForFailure(parent.GetUIObjectOf(owner, (uint)childPidls.Length, childArray, ref contextMenuId, nint.Zero, out contextMenu), "Windows could not create a context menu for the selection.");
+            return showPopup ? ShowMenu(owner, contextMenu) : PopulateMenu(contextMenu, "Windows could not populate the context menu for the selection.");
+        }
+        finally
+        {
+            if (contextMenu is not null) ReleaseComObject(contextMenu);
+            if (parent is not null) ReleaseComObject(parent);
+            if (childArray != nint.Zero) Marshal.FreeHGlobal(childArray);
+            foreach (var absolutePidl in absolutePidls) Marshal.FreeCoTaskMem(absolutePidl);
         }
     }
 
@@ -237,6 +281,47 @@ public static class NativeShellContextMenuService
         var array = Marshal.AllocHGlobal(IntPtr.Size * pointers.Count);
         for (var index = 0; index < pointers.Count; index++) Marshal.WriteIntPtr(array, index * IntPtr.Size, pointers[index]);
         return array;
+    }
+
+    private static nint[] ParseDisplayNames(IReadOnlyList<string> parsingNames)
+    {
+        var pidls = new List<nint>(parsingNames.Count);
+        try
+        {
+            foreach (var parsingName in parsingNames) pidls.Add(ParseDisplayName(parsingName));
+            return pidls.ToArray();
+        }
+        catch
+        {
+            foreach (var pidl in pidls) Marshal.FreeCoTaskMem(pidl);
+            throw;
+        }
+    }
+
+    private static int GetParentPidlLength(nint pidl)
+    {
+        var offset = 0;
+        var lastItemLength = 0;
+        while (true)
+        {
+            var itemLength = (ushort)Marshal.ReadInt16(pidl, offset);
+            if (itemLength == 0) return offset + sizeof(ushort) - lastItemLength;
+            if (itemLength < sizeof(ushort)) throw new COMException("Windows returned an invalid Shell item identifier.");
+            lastItemLength = itemLength;
+            offset = checked(offset + itemLength);
+            if (offset > 65536) throw new COMException("Windows returned an oversized Shell item identifier.");
+        }
+    }
+
+    private static bool ParentPidlsEqual(nint first, int firstParentLength, nint second)
+    {
+        var secondParentLength = GetParentPidlLength(second);
+        if (firstParentLength != secondParentLength) return false;
+        // The absolute PIDL continues with a child item where a standalone parent PIDL
+        // would contain its two-byte terminator, so compare only the parent components.
+        for (var index = 0; index < firstParentLength - sizeof(ushort); index++)
+            if (Marshal.ReadByte(first, index) != Marshal.ReadByte(second, index)) return false;
+        return true;
     }
 
     private static void ThrowForFailure(int hresult, string message)

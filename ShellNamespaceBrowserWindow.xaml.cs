@@ -236,13 +236,23 @@ public partial class ShellNamespaceBrowserWindow : Window
         else StatusText.Text = "Enter an existing folder or a Windows Shell namespace path.";
     }
 
-    private void ItemsList_MouseDoubleClick(object sender, MouseButtonEventArgs e) => OpenSelectedItem();
+    private void ItemsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject source &&
+            ItemsControl.ContainerFromElement(ItemsList, source) is ListViewItem { Content: DesktopShellNamespaceEntry entry })
+            OpenItem(entry);
+    }
 
     private void Open_Click(object sender, RoutedEventArgs e) => OpenSelectedItem();
 
     private void OpenSelectedItem()
     {
-        if (ItemsList.SelectedItem is not DesktopShellNamespaceEntry entry) return;
+        if (ItemsList.SelectedItems.Count != 1 || ItemsList.SelectedItem is not DesktopShellNamespaceEntry entry) return;
+        OpenItem(entry);
+    }
+
+    private void OpenItem(DesktopShellNamespaceEntry entry)
+    {
         if (entry.IsFolder)
         {
             _ = NavigateAsync(entry.ParsingName);
@@ -260,15 +270,29 @@ public partial class ShellNamespaceBrowserWindow : Window
 
     private void ItemContextMenu_Opened(object sender, RoutedEventArgs e)
     {
-        ShowMoreOptionsMenuItem.IsEnabled = ItemsList.SelectedItem is DesktopShellNamespaceEntry;
+        OpenMenuItem.IsEnabled = ItemsList.SelectedItems.Count == 1;
+        ShowMoreOptionsMenuItem.IsEnabled = ItemsList.SelectedItems.Count > 0;
+    }
+
+    private void ItemsList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source ||
+            ItemsControl.ContainerFromElement(ItemsList, source) is not ListViewItem item) return;
+        if (!item.IsSelected)
+        {
+            ItemsList.SelectedItems.Clear();
+            item.IsSelected = true;
+        }
+        item.Focus();
     }
 
     private async void ShowMoreOptions_Click(object sender, RoutedEventArgs e)
     {
-        if (ItemsList.SelectedItem is not DesktopShellNamespaceEntry entry) return;
+        var selection = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().ToArray();
+        if (selection.Length == 0) return;
         try
         {
-            await NativeShellContextMenuService.ShowForShellItemAsync(new WindowInteropHelper(this).Handle, entry.ParsingName);
+            await NativeShellContextMenuService.ShowForShellItemsAsync(new WindowInteropHelper(this).Handle, selection.Select(entry => entry.ParsingName));
         }
         catch (Exception ex)
         {

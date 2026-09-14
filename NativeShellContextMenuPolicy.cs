@@ -4,6 +4,20 @@ namespace DesktopTuner;
 
 public static class NativeShellContextMenuPolicy
 {
+    public static IReadOnlyList<string> NormalizeShellSelection(IEnumerable<string> parsingNames)
+    {
+        ArgumentNullException.ThrowIfNull(parsingNames);
+        var normalized = parsingNames
+            .Select(name => name?.Trim())
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (normalized.Length == 0)
+            throw new ArgumentException("Select at least one valid Windows Shell item.", nameof(parsingNames));
+        return normalized;
+    }
+
     public static IReadOnlyList<string> NormalizeSelection(IEnumerable<string> paths)
     {
         ArgumentNullException.ThrowIfNull(paths);
