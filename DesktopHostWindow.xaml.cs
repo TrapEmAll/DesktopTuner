@@ -220,7 +220,11 @@ public partial class DesktopHostWindow : Window
         if (sender is not MenuItem { DataContext: DesktopHostItem { CanShowNativeContextMenu: true } entry }) return;
         try
         {
-            await NativeShellContextMenuService.ShowForItemsAsync(new WindowInteropHelper(this).Handle, [entry.FullPath]);
+            var owner = new WindowInteropHelper(this).Handle;
+            if (entry.IsShellNamespace)
+                await NativeShellContextMenuService.ShowForShellItemAsync(owner, entry.FullPath);
+            else
+                await NativeShellContextMenuService.ShowForItemsAsync(owner, [entry.FullPath]);
         }
         catch (Exception ex)
         {

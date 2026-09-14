@@ -39,7 +39,7 @@ public sealed class DesktopHostItem(string name, string fullPath, bool isDirecto
     }
 
     public ImageSource? Icon => IsShellNamespace ? TaskbarIconService.LoadNamespaceIcon(FullPath) : TaskbarIconService.LoadIcon(FullPath);
-    public bool CanShowNativeContextMenu => !IsShellNamespace && (File.Exists(FullPath) || Directory.Exists(FullPath));
+    public bool CanShowNativeContextMenu => IsShellNamespace || File.Exists(FullPath) || Directory.Exists(FullPath);
 
     public void SetPosition(DesktopHostPosition position)
     {

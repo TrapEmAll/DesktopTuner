@@ -23,9 +23,19 @@ public static class NativeShellContextMenuService
         return await ProcessItemsAsync(owner, paths, showPopup: true);
     }
 
+    public static async Task<bool> ShowForShellItemAsync(nint owner, string parsingName)
+    {
+        return await ProcessShellItemAsync(owner, parsingName, showPopup: true);
+    }
+
     internal static async Task<bool> ProbeItemsContextMenuAsync(IEnumerable<string> paths)
     {
         return await ProcessItemsAsync(nint.Zero, paths, showPopup: false);
+    }
+
+    internal static async Task<bool> ProbeShellItemContextMenuAsync(string parsingName)
+    {
+        return await ProcessShellItemAsync(nint.Zero, parsingName, showPopup: false);
     }
 
     private static async Task<bool> ProcessItemsAsync(nint owner, IEnumerable<string> paths, bool showPopup)
@@ -33,6 +43,13 @@ public static class NativeShellContextMenuService
         var selection = NativeShellContextMenuPolicy.NormalizeSelection(paths);
         var absolutePidl = await Task.Run(() => ParseDisplayName(selection[0]));
         return ShowForItems(owner, selection, absolutePidl, showPopup);
+    }
+
+    private static async Task<bool> ProcessShellItemAsync(nint owner, string parsingName, bool showPopup)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(parsingName);
+        var absolutePidl = await Task.Run(() => ParseDisplayName(parsingName));
+        return ShowForShellItem(owner, absolutePidl, showPopup);
     }
 
     internal static async Task<bool> ProbeFolderBackgroundContextMenuAsync(string folderPath)
@@ -83,6 +100,29 @@ public static class NativeShellContextMenuService
             if (contextMenu is not null) ReleaseComObject(contextMenu);
             if (parent is not null) ReleaseComObject(parent);
             foreach (var childPidl in childPidls) Marshal.FreeCoTaskMem(childPidl);
+            if (childArray != nint.Zero) Marshal.FreeHGlobal(childArray);
+            Marshal.FreeCoTaskMem(absolutePidl);
+        }
+    }
+
+    private static bool ShowForShellItem(nint owner, nint absolutePidl, bool showPopup)
+    {
+        IShellFolder? parent = null;
+        IContextMenu? contextMenu = null;
+        nint childArray = nint.Zero;
+        try
+        {
+            var folderId = ShellFolderId;
+            ThrowForFailure(SHBindToParent(absolutePidl, ref folderId, out parent, out var childPidl), "Could not bind to the Shell item's parent folder.");
+            childArray = AllocatePointerArray([childPidl]);
+            var contextMenuId = ContextMenuId;
+            ThrowForFailure(parent.GetUIObjectOf(owner, 1, childArray, ref contextMenuId, nint.Zero, out contextMenu), "Windows could not create a context menu for the Shell item.");
+            return showPopup ? ShowMenu(owner, contextMenu) : PopulateMenu(contextMenu, "Windows could not populate the Shell item's context menu.");
+        }
+        finally
+        {
+            if (contextMenu is not null) ReleaseComObject(contextMenu);
+            if (parent is not null) ReleaseComObject(parent);
             if (childArray != nint.Zero) Marshal.FreeHGlobal(childArray);
             Marshal.FreeCoTaskMem(absolutePidl);
         }

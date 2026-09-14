@@ -22,7 +22,8 @@ Check("Folder,Recycle Bin,shared.txt,This PC,user.txt", string.Join(',', desktop
 Check(true, desktopHostEntries.Single(entry => entry.Name == "Folder").IsDirectory, "identify desktop folders for shell item activation");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "This PC").IsShellNamespace, "mark This PC for Shell namespace activation");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "user.txt").CanShowNativeContextMenu, "allow native filesystem context verbs for a desktop file");
-Check(false, desktopHostEntries.Single(entry => entry.Name == "This PC").CanShowNativeContextMenu, "keep filesystem context verbs off a namespace shortcut without a filesystem context");
+Check(true, desktopHostEntries.Single(entry => entry.Name == "This PC").CanShowNativeContextMenu, "offer native Shell context verbs for This PC");
+Check(true, desktopHostEntries.Single(entry => entry.Name == "Recycle Bin").CanShowNativeContextMenu, "offer native Shell context verbs for Recycle Bin");
 CheckTrue(TaskbarIconService.LoadNamespaceIcon("shell:MyComputerFolder") is not null, "extract a shell icon for a namespace parsing name");
 var desktopLayoutStore = new DesktopHostLayoutStore(Path.Combine(desktopHostTestRoot, "desktop-layout.json"));
 var laidOutDesktopEntries = desktopLayoutStore.ApplyLayout(desktopHostEntries, 600, 400).ToArray();
@@ -922,6 +923,7 @@ try
     File.WriteAllText(nativeMenuSecond, "second");
     CheckTrue(await NativeShellContextMenuService.ProbeItemsContextMenuAsync([nativeMenuFirst, nativeMenuSecond]), "build the Windows Shell context menu for a multi-selection");
     CheckTrue(await NativeShellContextMenuService.ProbeFolderBackgroundContextMenuAsync(nativeMenuFolder), "build the Windows Shell folder-background context menu");
+    CheckTrue(await NativeShellContextMenuService.ProbeShellItemContextMenuAsync("shell:RecycleBinFolder"), "build the Windows Shell context menu for the Recycle Bin namespace item");
     Check(2, NativeShellContextMenuPolicy.NormalizeSelection([nativeMenuFirst, nativeMenuSecond, nativeMenuFirst]).Count, "allow one native context menu for distinct items in the same folder");
     Throws<ArgumentException>(() => NativeShellContextMenuPolicy.NormalizeSelection([nativeMenuFirst, Path.Combine(nativeMenuOtherFolder, "third.txt")]), "reject mixed-parent native context menus");
     Throws<ArgumentException>(() => NativeShellContextMenuPolicy.NormalizeSelection([Path.GetPathRoot(temporaryPreferencesDirectory)!]), "reject drive-root native context menus");
