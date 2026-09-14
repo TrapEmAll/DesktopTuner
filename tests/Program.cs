@@ -199,6 +199,9 @@ Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, true), "avoid t
 Check(true, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true, false), "hide Explorer taskbars in all-edition shell overlay mode");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, false, true), "avoid hiding taskbars when Explorer is not the logon shell");
 Check(true, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true), "preserve the user's native taskbar replacement setting in normal mode");
+Check(true, ShellHostLaunchPolicy.ShouldLaunchExplorerOnShellHostExit(true, false), "start Explorer when a Shell Launcher host exits normally");
+Check(false, ShellHostLaunchPolicy.ShouldLaunchExplorerOnShellHostExit(true, true), "let the per-user custom-shell supervisor restore Explorer itself");
+Check(false, ShellHostLaunchPolicy.ShouldLaunchExplorerOnShellHostExit(false, false), "keep normal overlay shutdown separate from Shell Launcher recovery");
 CheckTrue(NativeTaskbarWatchdog.TryReadInvocation(["--taskbar-watchdog", "123", "snapshot.json"], out var watchdogOwner, out var watchdogSnapshot), "parse taskbar recovery process arguments");
 Check((123, "snapshot.json"), (watchdogOwner, watchdogSnapshot), "recover the watchdog owner and snapshot path");
 CheckTrue(TaskbarSnapshotOwnerPolicy.IsSnapshotOwner(DateTime.UtcNow.AddMinutes(-5), DateTime.UtcNow), "match a live process start to its newer taskbar snapshot");

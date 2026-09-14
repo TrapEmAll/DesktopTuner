@@ -20,7 +20,7 @@ This gives the replacement bar a supported taskbar-like work-area contract. It d
 
 Windows [Shell Launcher](https://learn.microsoft.com/en-us/windows/configuration/shell-launcher/) can start a Win32 or UWP application in place of `Explorer.exe`. Microsoft supports it on Enterprise, Education, and IoT Enterprise editions; it is an optional Windows feature, and a shell assignment takes effect at sign-in. Shell Launcher v2 is a whole-shell transition, not a taskbar customization API. Its return-action mapping can restart a shell when it exits.
 
-Desktop Tuner now has an opt-in `--shell-host` runtime mode for use as a per-user Shell Launcher target. It starts the desktop host, brings up companion taskbars on every connected display, supplies the custom Start menu and settings window, routes the Windows key and `Ctrl+Esc` to the custom Start menu, and leaves Explorer-taskbar hiding disabled because Explorer is not the shell. `Ctrl+Shift+Esc` remains available for Task Manager. The companion settings window stays available from the custom taskbar and hides instead of closing the shell process. Exiting the desktop host ends the process; Shell Launcher should be configured to restart the shell after process exit.
+Desktop Tuner now has an opt-in `--shell-host` runtime mode for use as a per-user Shell Launcher target. It starts the desktop host, brings up companion taskbars on every connected display, supplies the custom Start menu and settings window, routes the Windows key and `Ctrl+Esc` to the custom Start menu, and leaves Explorer-taskbar hiding disabled because Explorer is not the shell. `Ctrl+Shift+Esc` remains available for Task Manager. The companion settings window stays available from the custom taskbar and hides instead of closing the shell process. On a normal Exit action, the Shell Launcher host starts Explorer before it returns; a nonzero exit still asks Shell Launcher to restart Desktop Tuner.
 
 ### Windows 11 Pro alternate-shell policy
 
@@ -45,11 +45,13 @@ $testSid = "S-1-5-21-REPLACE-WITH-TEST-ACCOUNT-SID"
 $executable = "C:\Users\TEST-ACCOUNT\AppData\Local\Programs\DesktopTuner\DesktopTuner.exe"
 $shell = "`"$executable`" --shell-host"
 $shellLauncher = [wmiclass]"\\localhost\root\standardcimv2\embedded:WESL_UserSetting"
-$shellLauncher.SetCustomShell($testSid, $shell, @(), @(), 0)
+# Return code 0 means the user chose Exit: start Explorer and leave it running.
+# Any other exit code uses DefaultAction 0 to restart Desktop Tuner after a crash.
+$shellLauncher.SetCustomShell($testSid, $shell, @([int]0), @([int]3), 0)
 $shellLauncher.SetEnabled($true)
 ```
 
-Sign out and back into the test account for the mapping to take effect. `DefaultAction` value `0` restarts the shell after exit. To roll back the test account mapping from an elevated PowerShell session, remove it and sign out/in again:
+Sign out and back into the test account for the mapping to take effect. The mapping sends a normal exit code of `0` to action `3` (do nothing), while the default action `0` restarts the shell after an abnormal exit. Desktop Tuner starts Explorer before returning `0` from its Exit action. To roll back the test account mapping from an elevated PowerShell session, remove it and sign out/in again:
 
 ```powershell
 $testSid = "S-1-5-21-REPLACE-WITH-TEST-ACCOUNT-SID"

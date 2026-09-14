@@ -90,7 +90,11 @@ public partial class App : Application
             desktopHost.Show();
             if (shellHostMode || shellOverlayMode)
             {
-                var shellControls = new MainWindow(shellHostMode: shellHostMode, shellOverlayMode: shellOverlayMode) { ShowInTaskbar = false };
+                var shellControls = new MainWindow(
+                    shellHostMode: shellHostMode,
+                    shellOverlayMode: shellOverlayMode,
+                    launchExplorerOnShellHostExit: ShellHostLaunchPolicy.ShouldLaunchExplorerOnShellHostExit(shellHostMode, customShellPolicyTargetsApp))
+                { ShowInTaskbar = false };
                 shellControls.Show();
                 shellControls.Hide();
             }
