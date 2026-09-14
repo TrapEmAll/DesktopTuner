@@ -1527,7 +1527,7 @@ public partial class MainWindow : Window
         {
             Content = "Use Desktop Tuner at sign-in",
             Style = (Style)FindResource(isConfigured ? "SecondaryButton" : "PrimaryButton"),
-            IsEnabled = supportedEdition && executablePath is not null && !hasOtherShell && !isConfigured,
+            IsEnabled = supportedEdition && executablePath is not null && !hasOtherShell && !isConfigured && !ShellLauncherService.HasOwnedConfiguration,
             Margin = new Thickness(0, 0, 10, 0)
         };
         configure.Click += ConfigureCustomShell_Click;
@@ -1543,10 +1543,79 @@ public partial class MainWindow : Window
         restore.Click += RestoreCustomShell_Click;
         actions.Children.Add(restore);
         PageContent.Children.Add(actions);
+
+        if (ShellLauncherService.IsSupportedWindowsEdition())
+        {
+            var shellLauncherConfigured = ShellLauncherService.HasOwnedConfiguration;
+            AddPageHeading("Windows Shell Launcher", "For licensed Enterprise, Education, and IoT Enterprise devices with the optional Shell Launcher feature enabled.");
+            PageContent.Children.Add(InfoCard("Per-user Shell Launcher", shellLauncherConfigured
+                ? "Desktop Tuner saved the previous default and enablement state while assigning its supervised shell to this account. Other accounts use Explorer."
+                : "This configures only the current account, keeps Explorer as the default for other accounts, and saves the prior default so Desktop Tuner can restore it. Existing or enabled Shell Launcher configurations are left unchanged. The device must be licensed for Shell Launcher, and its optional Windows feature must already be enabled."));
+
+            var shellLauncherActions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 16) };
+            var configureShellLauncher = new Button
+            {
+                Content = "Configure Shell Launcher for this user",
+                Style = (Style)FindResource("PrimaryButton"),
+                IsEnabled = !shellLauncherConfigured,
+                Margin = new Thickness(0, 0, 10, 0)
+            };
+            configureShellLauncher.Click += ConfigureShellLauncher_Click;
+            shellLauncherActions.Children.Add(configureShellLauncher);
+
+            var restoreShellLauncher = new Button
+            {
+                Content = "Restore Shell Launcher",
+                Style = (Style)FindResource("SecondaryButton"),
+                IsEnabled = shellLauncherConfigured
+            };
+            restoreShellLauncher.Click += RestoreShellLauncher_Click;
+            shellLauncherActions.Children.Add(restoreShellLauncher);
+            PageContent.Children.Add(shellLauncherActions);
+        }
+    }
+
+    private async void ConfigureShellLauncher_Click(object sender, RoutedEventArgs e)
+    {
+        var answer = MessageBox.Show(this,
+            "Desktop Tuner will configure Shell Launcher for this account and enable Shell Launcher for the device. Other accounts will keep Explorer as their default. The current Shell Launcher configuration is changed only when no existing mappings are present, and Desktop Tuner saves the previous default for restore. Administrator approval is required. Use a non-administrator test account and keep a separate administrator account on Explorer. Continue?",
+            "Configure Windows Shell Launcher", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (answer != MessageBoxResult.Yes) return;
+
+        var result = await ShellLauncherService.ConfigureCurrentUserAsync();
+        if (result.Status == ShellLauncherOperationStatus.Success)
+        {
+            SetStatus(result.Message);
+            RenderPage("Taskbar");
+            return;
+        }
+        MessageBox.Show(this, result.Message, "Shell Launcher was not configured", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
+    private async void RestoreShellLauncher_Click(object sender, RoutedEventArgs e)
+    {
+        var answer = MessageBox.Show(this,
+            "Remove Desktop Tuner's Shell Launcher mapping for this account and restore the saved default and enablement state when no other Shell Launcher mappings have been added? Administrator approval is required.",
+            "Restore Windows Shell Launcher", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (answer != MessageBoxResult.Yes) return;
+
+        var result = await ShellLauncherService.RestoreCurrentUserAsync();
+        if (result.Status == ShellLauncherOperationStatus.Success)
+        {
+            SetStatus(result.Message);
+            RenderPage("Taskbar");
+            return;
+        }
+        MessageBox.Show(this, result.Message, "Shell Launcher restore needs review", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     private void ConfigureCustomShell_Click(object sender, RoutedEventArgs e)
     {
+        if (ShellLauncherService.HasOwnedConfiguration)
+        {
+            MessageBox.Show(this, "Restore Desktop Tuner's Shell Launcher mapping before configuring the separate per-user alternate-shell policy.", "Another shell mode is active", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
         if (Environment.ProcessPath is not { } executablePath) return;
         var answer = MessageBox.Show(this,
             "Desktop Tuner will replace Explorer as this user's shell at the next sign-in. If it fails to start, use Ctrl+Alt+Delete, open Task Manager, and run explorer.exe; then return to Taskbar settings to restore Windows Explorer. Continue?",

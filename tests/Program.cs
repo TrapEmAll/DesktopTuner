@@ -226,6 +226,12 @@ Check(true, CustomShellPolicy.IsSupportedEdition("Enterprise"), "allow custom-sh
 Check(true, CustomShellPolicy.IsSupportedEdition("Education"), "allow custom-shell policy controls on Education editions");
 Check(true, CustomShellPolicy.IsSupportedEdition("IoTEnterpriseS"), "allow custom-shell policy controls on IoT Enterprise editions");
 Check(false, CustomShellPolicy.IsSupportedEdition("Core"), "leave custom-shell policy controls unavailable on Home editions");
+Check(true, ShellLauncherService.IsSupportedEdition("EnterpriseS"), "allow Shell Launcher controls on Enterprise editions");
+Check(true, ShellLauncherService.IsSupportedEdition("Education"), "allow Shell Launcher controls on Education editions");
+Check(true, ShellLauncherService.IsSupportedEdition("IoTEnterpriseS"), "allow Shell Launcher controls on IoT Enterprise editions");
+Check(false, ShellLauncherService.IsSupportedEdition("Professional"), "keep Shell Launcher controls unavailable on Pro editions");
+Check(false, ShellLauncherService.IsSupportedEdition("Core"), "keep Shell Launcher controls unavailable on Home editions");
+Check(@"""C:\Program Files\Desktop Tuner\DesktopTuner.exe"" --shell-host", ShellLauncherService.BuildShellCommand(@"C:\Program Files\Desktop Tuner\DesktopTuner.exe"), "quote the executable in the current-user Shell Launcher command");
 Check(true, CustomShellPolicy.ShouldRestartHost(-1, 0), "retry the custom shell once after a failed process exit");
 Check(false, CustomShellPolicy.ShouldRestartHost(0, 0), "return to Explorer after a normal custom-shell exit");
 Check(false, CustomShellPolicy.ShouldRestartHost(-1, CustomShellPolicy.MaximumHostRestarts), "stop retrying and recover to Explorer after the restart limit");

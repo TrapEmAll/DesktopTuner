@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
+    <EmbeddedResource Include="ShellLauncherAdmin.ps1" LogicalName="DesktopTuner.ShellLauncherAdmin.ps1" />
   </ItemGroup>
 
 </Project>
