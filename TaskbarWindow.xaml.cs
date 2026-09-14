@@ -1183,6 +1183,7 @@ public partial class TaskbarWindow : Window
         menu.Items.Add(new Separator());
         menu.Items.Add(CreatePowerUserMenuItem("explorer", "File Explorer"));
         menu.Items.Add(CreatePowerUserMenuItem("search", "Search"));
+        menu.Items.Add(CreatePowerUserMenuItem("run", "Run…"));
         menu.Items.Add(new Separator());
 
         var powerMenu = new MenuItem { Header = "Shut down or sign out" };

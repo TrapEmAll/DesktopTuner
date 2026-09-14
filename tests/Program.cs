@@ -968,10 +968,36 @@ Check(WindowsKeyAction.Suppress, shellPowerMenuShortcutGesture.KeyDown(0x5b), "c
 Check(WindowsKeyAction.OpenPowerUserMenu, shellPowerMenuShortcutGesture.KeyDown((uint)'X', canOpenPowerUserMenu: () => true), "route Win+X to the custom Power User menu when Explorer is absent");
 Check(WindowsKeyAction.Suppress, shellPowerMenuShortcutGesture.KeyUp((uint)'X'), "suppress Win+X release after opening the custom Power User menu");
 Check(WindowsKeyAction.Suppress, shellPowerMenuShortcutGesture.KeyUp(0x5b), "avoid opening Start after opening the custom Power User menu");
+var shellRunDialogShortcutGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
+shellRunDialogShortcutGesture.KeyDown(0x5b);
+Check(WindowsKeyAction.OpenRunDialog, shellRunDialogShortcutGesture.KeyDown((uint)'R', canOpenRunDialog: () => true), "route Win+R to the companion Run dialog when Explorer is absent");
+Check(WindowsKeyAction.Suppress, shellRunDialogShortcutGesture.KeyUp((uint)'R'), "suppress Win+R release after opening the companion Run dialog");
+Check(WindowsKeyAction.Suppress, shellRunDialogShortcutGesture.KeyUp(0x5b), "avoid opening Start after opening the companion Run dialog");
 Check("apps,power-options,event-viewer,system,device-manager,network-connections,disk-management,computer-management,terminal,task-manager,settings",
     string.Join(',', ShellHostPowerMenuCatalog.SystemCommands.Select(command => command.Id)), "provide the standard shell-host Power User system commands");
 Check("ms-settings:appsfeatures", ShellHostPowerMenuCatalog.SystemCommand("apps").Target, "open Installed apps from the Power User menu");
 Throws<ArgumentOutOfRangeException>(() => ShellHostPowerMenuCatalog.SystemCommand("missing"), "reject unknown Power User menu commands");
+Check("C:\\Program Files\\Example App\\tool.exe|--safe|two words",
+    string.Join('|', RunCommandService.ParseCommandLine("\"C:\\Program Files\\Example App\\tool.exe\" --safe \"two words\"")), "parse quoted executable paths and arguments for the Run dialog");
+var runStartInfo = RunCommandService.CreateStartInfo("\"C:\\Program Files\\Example App\\tool.exe\" --safe \"two words\"");
+Check("C:\\Program Files\\Example App\\tool.exe", runStartInfo.FileName, "launch the parsed Run command with its executable path intact");
+Check("--safe|two words", string.Join('|', runStartInfo.ArgumentList), "preserve parsed Run command arguments without re-quoting");
+Check(true, runStartInfo.UseShellExecute, "allow the Run dialog to open documents and registered Internet locations");
+Check(true, string.Equals(Path.Combine(Environment.SystemDirectory, "notepad.exe"), RunCommandService.CreateStartInfo(@"%SystemRoot%\System32\notepad.exe").FileName, StringComparison.OrdinalIgnoreCase), "expand environment variables in Run dialog commands");
+Check("runas", RunCommandService.CreateStartInfo("taskmgr.exe", runAsAdministrator: true).Verb, "request UAC elevation only when Run as administrator is selected");
+Throws<ArgumentException>(() => RunCommandService.CreateStartInfo("  "), "reject empty Run dialog commands");
+var runCommandProcessInfo = RunCommandService.CreateStartInfo($"\"{Path.Combine(Environment.SystemDirectory, "cmd.exe")}\" /c exit 17");
+runCommandProcessInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+using (var runCommandProcess = System.Diagnostics.Process.Start(runCommandProcessInfo)
+    ?? throw new InvalidOperationException("Windows did not start the Run command integration test."))
+{
+    if (!runCommandProcess.WaitForExit(5000))
+    {
+        runCommandProcess.Kill(entireProcessTree: true);
+        throw new InvalidOperationException("The Run command integration test did not exit within five seconds.");
+    }
+    Check(17, runCommandProcess.ExitCode, "launch Run commands with their parsed arguments through Windows ShellExecute");
+}
 Check("lock,sleep,hibernate,sign-out,shutdown,restart",
     string.Join(',', ShellHostPowerMenuCatalog.PowerActions.Select(action => action.Id)), "reuse all existing confirmed power actions in the Power User menu");
 var nativePowerMenuShortcutGesture = new WindowsKeyGesture();
@@ -979,6 +1005,11 @@ nativePowerMenuShortcutGesture.KeyDown(0x5b);
 Check(WindowsKeyAction.ForwardWindowsDownThenPass, nativePowerMenuShortcutGesture.KeyDown((uint)'X', canOpenPowerUserMenu: () => false), "preserve native Win+X outside replacement-shell mode");
 Check(WindowsKeyAction.PassThrough, nativePowerMenuShortcutGesture.KeyUp((uint)'X'), "pass through native Win+X release outside replacement-shell mode");
 Check(WindowsKeyAction.ForwardWindowsUpThenSuppress, nativePowerMenuShortcutGesture.KeyUp(0x5b), "release native Windows key after passing through Win+X");
+var nativeRunDialogShortcutGesture = new WindowsKeyGesture();
+nativeRunDialogShortcutGesture.KeyDown(0x5b);
+Check(WindowsKeyAction.ForwardWindowsDownThenPass, nativeRunDialogShortcutGesture.KeyDown((uint)'R', canOpenRunDialog: () => false), "preserve native Win+R outside replacement-shell mode");
+Check(WindowsKeyAction.PassThrough, nativeRunDialogShortcutGesture.KeyUp((uint)'R'), "pass through native Win+R release outside replacement-shell mode");
+Check(WindowsKeyAction.ForwardWindowsUpThenSuppress, nativeRunDialogShortcutGesture.KeyUp(0x5b), "release native Windows key after passing through Win+R");
 var nativeSystemAreaShortcutGesture = new WindowsKeyGesture();
 nativeSystemAreaShortcutGesture.KeyDown(0x5b);
 Check(WindowsKeyAction.ForwardWindowsDownThenPass, nativeSystemAreaShortcutGesture.KeyDown((uint)'B', canFocusTaskbarSystem: () => false), "preserve native Win+B outside replacement-shell mode");

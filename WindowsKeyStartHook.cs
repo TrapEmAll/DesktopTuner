@@ -35,11 +35,13 @@ public sealed class WindowsKeyStartHook : IDisposable
     private readonly Action _focusTaskbarSystem;
     private readonly Func<bool> _canOpenPowerUserMenu;
     private readonly Action _openPowerUserMenu;
+    private readonly Func<bool> _canOpenRunDialog;
+    private readonly Action _openRunDialog;
     private readonly HookProc _callback;
     private readonly WindowsKeyGesture _gesture;
     private nint _hook;
 
-    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Action<bool>? focusTaskbar = null, bool replaceBareWindowsKey = true, Func<bool>? canOpenExplorer = null, Action? openExplorer = null, bool replaceControlEscape = false, Func<bool>? canToggleDesktop = null, Action? toggleDesktop = null, Func<bool>? canFocusTaskbarSystem = null, Action? focusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Action? openPowerUserMenu = null)
+    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Action<bool>? focusTaskbar = null, bool replaceBareWindowsKey = true, Func<bool>? canOpenExplorer = null, Action? openExplorer = null, bool replaceControlEscape = false, Func<bool>? canToggleDesktop = null, Action? toggleDesktop = null, Func<bool>? canFocusTaskbarSystem = null, Action? focusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Action? openPowerUserMenu = null, Func<bool>? canOpenRunDialog = null, Action? openRunDialog = null)
     {
         _showStartMenu = showStartMenu;
         _canActivateTaskbarPin = replaceBareWindowsKey ? canActivateTaskbarPin ?? (_ => false) : _ => false;
@@ -54,6 +56,8 @@ public sealed class WindowsKeyStartHook : IDisposable
         _focusTaskbarSystem = focusTaskbarSystem ?? (() => { });
         _canOpenPowerUserMenu = canOpenPowerUserMenu ?? (() => false);
         _openPowerUserMenu = openPowerUserMenu ?? (() => { });
+        _canOpenRunDialog = canOpenRunDialog ?? (() => false);
+        _openRunDialog = openRunDialog ?? (() => { });
         _gesture = new WindowsKeyGesture(replaceBareWindowsKey, replaceControlEscape);
         _callback = KeyboardCallback;
     }
@@ -96,10 +100,13 @@ public sealed class WindowsKeyStartHook : IDisposable
             var canOpenPowerUserMenu = !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_MENU)
                 ? _canOpenPowerUserMenu
                 : static () => false;
+            var canOpenRunDialog = !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_MENU)
+                ? _canOpenRunDialog
+                : static () => false;
             var action = message switch
             {
                 WM_KEYDOWN or WM_SYSKEYDOWN => _gesture.KeyDown(data.VirtualKey, canActivateTaskbarPin, canFocusTaskbar, canOpenExplorer,
-                    IsModifierPressed(VK_CONTROL), IsModifierPressed(VK_MENU), IsModifierPressed(VK_SHIFT), canToggleDesktop, canFocusTaskbarSystem, canOpenPowerUserMenu),
+                    IsModifierPressed(VK_CONTROL), IsModifierPressed(VK_MENU), IsModifierPressed(VK_SHIFT), canToggleDesktop, canFocusTaskbarSystem, canOpenPowerUserMenu, canOpenRunDialog),
                 WM_KEYUP or WM_SYSKEYUP => _gesture.KeyUp(data.VirtualKey),
                 _ => WindowsKeyAction.PassThrough
             };
@@ -140,6 +147,9 @@ public sealed class WindowsKeyStartHook : IDisposable
                     return new nint(1);
                 case WindowsKeyAction.OpenPowerUserMenu:
                     Application.Current?.Dispatcher.BeginInvoke(_openPowerUserMenu, DispatcherPriority.Input);
+                    return new nint(1);
+                case WindowsKeyAction.OpenRunDialog:
+                    Application.Current?.Dispatcher.BeginInvoke(_openRunDialog, DispatcherPriority.Input);
                     return new nint(1);
             }
         }

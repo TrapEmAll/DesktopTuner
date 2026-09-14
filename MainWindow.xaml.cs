@@ -2015,7 +2015,8 @@ public partial class MainWindow : Window
             replaceControlEscape: _shellHostMode || _shellOverlayMode,
             canToggleDesktop: () => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible), toggleDesktop: ToggleShowDesktop,
             canFocusTaskbarSystem: CanFocusTaskbarSystemArea, focusTaskbarSystem: FocusTaskbarSystemArea,
-            canOpenPowerUserMenu: CanOpenPowerUserMenu, openPowerUserMenu: OpenPowerUserMenu);
+            canOpenPowerUserMenu: CanOpenPowerUserMenu, openPowerUserMenu: OpenPowerUserMenu,
+            canOpenRunDialog: CanOpenRunDialog, openRunDialog: ShowRunDialog);
         if (!hook.TryInstall(out var error))
         {
             hook.Dispose();
@@ -2071,6 +2072,39 @@ public partial class MainWindow : Window
         taskbar?.ShowPowerUserMenu();
     }
 
+    private bool CanOpenRunDialog() => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible);
+
+    private void ShowRunDialog()
+    {
+        if (!CanOpenRunDialog()) return;
+        if (_startMenuWindow?.IsVisible == true) _startMenuWindow.Close();
+        var dialog = new RunDialogWindow(ExecuteRunCommand);
+        dialog.Show();
+        dialog.Activate();
+    }
+
+    private void ExecuteRunCommand(string commandLine, bool runAsAdministrator)
+    {
+        var startInfo = RunCommandService.CreateStartInfo(commandLine, runAsAdministrator);
+        if (startInfo.ArgumentList.Count == 0 && DesktopShellNamespaceCatalog.IsShellNamespaceLocation(startInfo.FileName))
+        {
+            if (runAsAdministrator)
+                throw new InvalidOperationException("Shell namespace locations open in Desktop Tuner Explorer and cannot be elevated from this dialog.");
+            OpenShellLocationFromShell(startInfo.FileName);
+            return;
+        }
+        if (startInfo.ArgumentList.Count == 0 && Directory.Exists(startInfo.FileName))
+        {
+            if (runAsAdministrator)
+                throw new InvalidOperationException("Folders open in Desktop Tuner Explorer and cannot be elevated from this dialog.");
+            OpenExplorer(Path.GetFullPath(startInfo.FileName));
+            return;
+        }
+
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Windows did not start the requested program or open the requested location.");
+    }
+
     private void ExecuteShellHostPowerUserCommand(string commandId)
     {
         if (commandId.StartsWith("power:", StringComparison.OrdinalIgnoreCase))
@@ -2098,6 +2132,9 @@ public partial class MainWindow : Window
                     return;
                 case "search":
                     ShowStartMenu();
+                    return;
+                case "run":
+                    ShowRunDialog();
                     return;
                 case "desktop":
                     ToggleShowDesktop();
