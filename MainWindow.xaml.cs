@@ -64,6 +64,7 @@ public partial class MainWindow : Window
     private List<PinnedTaskbarApp> _pinnedApps = [];
     private List<AppEntry> _pinnedStartApps = [];
     private StartMenuPlacePreferences _startMenuPlaces = StartMenuPlaceCatalog.Normalize(null);
+    private ControlPanelAppletPreferences _controlPanelApplets = ControlPanelAppletCatalog.Normalize(null);
     private bool _replaceWindowsKey;
     private bool _replaceWindowsKeyPreference;
     private bool _replaceExplorerShortcut;
@@ -111,6 +112,7 @@ public partial class MainWindow : Window
         _pinnedApps = desktopPreferences.PinnedApps ?? [];
         _pinnedStartApps = StartPinCatalog.Normalize(desktopPreferences.PinnedStartApps).ToList();
         _startMenuPlaces = StartMenuPlaceCatalog.Normalize(desktopPreferences.StartMenuPlaces);
+        _controlPanelApplets = ControlPanelAppletCatalog.Normalize(desktopPreferences.ControlPanelApplets);
         _replaceWindowsKeyPreference = desktopPreferences.ReplaceWindowsKey;
         _replaceWindowsKey = shellHostMode || shellOverlayMode || desktopPreferences.ReplaceWindowsKey;
         _replaceExplorerShortcut = desktopPreferences.ReplaceExplorerShortcut;
@@ -319,6 +321,41 @@ public partial class MainWindow : Window
             }
             RefreshPlacesPanel();
             PageContent.Children.Add(new Border { Background = (Brush)FindResource("DesktopSurfaceBrush"), BorderBrush = (Brush)FindResource("DesktopBorderBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(12), Child = placesPanel });
+
+            AddPageHeading("Control Panel applets", "Choose which shortcuts appear in the Control Panel flyout and set their order.");
+            var appletsPanel = new StackPanel();
+            void RefreshControlPanelAppletsPanel()
+            {
+                appletsPanel.Children.Clear();
+                var visible = _controlPanelApplets.Visible!.ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var availableApplets = ControlPanelAppletCatalog.GetAvailableApplets(Environment.SystemDirectory)
+                    .ToDictionary(applet => applet.Id, StringComparer.OrdinalIgnoreCase);
+                foreach (var appletId in _controlPanelApplets.Order!)
+                {
+                    if (!availableApplets.TryGetValue(appletId, out var applet)) continue;
+                    var row = new Grid { Margin = new Thickness(0, 2, 0, 2) };
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                    var checkBox = new CheckBox { Content = applet.Label, IsChecked = visible.Contains(applet.Id), VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(4, 6, 8, 6) };
+                    checkBox.Checked += (_, _) => SaveControlPanelAppletVisibility(applet.Id, true, RefreshControlPanelAppletsPanel);
+                    checkBox.Unchecked += (_, _) => SaveControlPanelAppletVisibility(applet.Id, false, RefreshControlPanelAppletsPanel);
+                    Grid.SetColumn(checkBox, 0);
+                    row.Children.Add(checkBox);
+                    var reorder = new StackPanel { Orientation = Orientation.Horizontal };
+                    var index = _controlPanelApplets.Order.IndexOf(applet.Id);
+                    var up = new Button { Content = "↑", ToolTip = $"Move {applet.Label} up", IsEnabled = index > 0, Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(2) };
+                    var down = new Button { Content = "↓", ToolTip = $"Move {applet.Label} down", IsEnabled = index < _controlPanelApplets.Order.Count - 1, Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(2) };
+                    up.Click += (_, _) => MoveControlPanelApplet(applet.Id, -1, RefreshControlPanelAppletsPanel);
+                    down.Click += (_, _) => MoveControlPanelApplet(applet.Id, 1, RefreshControlPanelAppletsPanel);
+                    reorder.Children.Add(up);
+                    reorder.Children.Add(down);
+                    Grid.SetColumn(reorder, 1);
+                    row.Children.Add(reorder);
+                    appletsPanel.Children.Add(row);
+                }
+            }
+            RefreshControlPanelAppletsPanel();
+            PageContent.Children.Add(new Border { Background = (Brush)FindResource("DesktopSurfaceBrush"), BorderBrush = (Brush)FindResource("DesktopBorderBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(12), Child = appletsPanel });
         }
         else if (section == "Explorer")
         {
@@ -1014,7 +1051,7 @@ public partial class MainWindow : Window
             return;
         }
         _startMenuWindow = new StartMenuWindow(_startMenuStyle, _pinnedStartApps, SavePinnedStartApps,
-            startPlaces: _startMenuPlaces, recentAppCount: _startRecentAppCount);
+            startPlaces: _startMenuPlaces, recentAppCount: _startRecentAppCount, controlPanelApplets: _controlPanelApplets);
         _startMenuDisplay = display;
         _startMenuWindow.Closed += (_, _) => { _startMenuWindow = null; _startMenuDisplay = null; };
         if (display is not null)
@@ -1244,7 +1281,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets);
 
     private DesktopPreferences CreateTaskbarRuntimePreferences()
     {
@@ -1301,6 +1338,37 @@ public partial class MainWindow : Window
         }
     }
 
+    private void SaveControlPanelAppletVisibility(string appletId, bool isVisible, Action refresh)
+    {
+        var visible = _controlPanelApplets.Visible!.ToList();
+        if (isVisible && !visible.Contains(appletId, StringComparer.OrdinalIgnoreCase)) visible.Add(appletId);
+        else if (!isVisible) visible.RemoveAll(id => string.Equals(id, appletId, StringComparison.OrdinalIgnoreCase));
+        SaveControlPanelApplets(ControlPanelAppletCatalog.Normalize(_controlPanelApplets with { Visible = visible }), refresh);
+    }
+
+    private void MoveControlPanelApplet(string appletId, int offset, Action refresh) =>
+        SaveControlPanelApplets(ControlPanelAppletCatalog.Move(_controlPanelApplets, appletId, offset), refresh);
+
+    private bool SaveControlPanelApplets(ControlPanelAppletPreferences preferences, Action? refresh = null)
+    {
+        var normalized = ControlPanelAppletCatalog.Normalize(preferences);
+        try
+        {
+            _preferences.Save(CreateDesktopPreferences() with { ControlPanelApplets = normalized });
+            _controlPanelApplets = normalized;
+            _startMenuWindow?.SetControlPanelApplets(normalized);
+            SetStatus("Control Panel applet shortcuts saved.");
+            refresh?.Invoke();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not save Control Panel applets", MessageBoxButton.OK, MessageBoxImage.Error);
+            refresh?.Invoke();
+            return false;
+        }
+    }
+
     private bool SavePinnedStartApps(IReadOnlyList<AppEntry> apps)
     {
         var pins = StartPinCatalog.Normalize(apps).ToList();
@@ -1349,6 +1417,7 @@ public partial class MainWindow : Window
             _pinnedApps = preferences.PinnedApps ?? [];
             _pinnedStartApps = StartPinCatalog.Normalize(preferences.PinnedStartApps).ToList();
             _startMenuPlaces = StartMenuPlaceCatalog.Normalize(preferences.StartMenuPlaces);
+            _controlPanelApplets = ControlPanelAppletCatalog.Normalize(preferences.ControlPanelApplets);
             _replaceWindowsKeyPreference = preferences.ReplaceWindowsKey;
             _replaceWindowsKey = _shellHostMode || _shellOverlayMode || preferences.ReplaceWindowsKey;
             _replaceExplorerShortcut = preferences.ReplaceExplorerShortcut;
@@ -1381,6 +1450,7 @@ public partial class MainWindow : Window
             _startMenuWindow?.SetStyle(_startMenuStyle);
             _startMenuWindow?.SetRecentAppCount(_startRecentAppCount);
             _startMenuWindow?.SetStartPlaces(_startMenuPlaces);
+            _startMenuWindow?.SetControlPanelApplets(_controlPanelApplets);
             SetStatus("Desktop preferences saved.");
         }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not save taskbar preferences", MessageBoxButton.OK, MessageBoxImage.Error); }

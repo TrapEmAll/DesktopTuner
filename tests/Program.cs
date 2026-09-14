@@ -735,7 +735,24 @@ Check("main.cpl keyboard", string.Join(' ', keyboardApplet.ArgumentList), "pass 
 Check("/name Microsoft.Personalization", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("personalization").ArgumentList), "launch canonical Control Panel items with structured arguments");
 Check("/name Microsoft.CredentialManager", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("credential-manager").ArgumentList), "launch Credential Manager from the Control Panel applet flyout");
 Check("inetcpl.cpl", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("internet-options").ArgumentList), "launch Internet Options from the Control Panel applet flyout");
+var availableControlPanelApplets = ControlPanelAppletCatalog.GetAvailableApplets(@"C:\Windows\System32",
+    path => Path.GetFileName(path) is "appwiz.cpl" or "main.cpl");
+CheckTrue(availableControlPanelApplets.Any(applet => applet.Id == "programs"), "show a direct Control Panel applet when its module is installed");
+CheckTrue(availableControlPanelApplets.Any(applet => applet.Id == "keyboard"), "retain applet variants that share an installed Control Panel module");
+Check(false, availableControlPanelApplets.Any(applet => applet.Id == "power"), "hide a direct Control Panel applet when its module is absent");
+CheckTrue(availableControlPanelApplets.Any(applet => applet.Id == "personalization"), "retain canonical Control Panel entries without a direct cpl file");
 Check(21, ControlPanelAppletCatalog.Applets.Count, "offer the supported Control Panel applets in the Start flyout");
+var normalizedPartialControlPanelApplets = ControlPanelAppletCatalog.Normalize(new ControlPanelAppletPreferences(
+    ["credential-manager", "programs", "credential-manager", "unsupported"], ["programs", "unsupported"]));
+Check("credential-manager,programs", string.Join(',', normalizedPartialControlPanelApplets.Order!.Take(2)), "normalize and deduplicate a custom Control Panel applet order");
+Check(20, normalizedPartialControlPanelApplets.Visible!.Count, "default newly added Control Panel applets to visible for older saved preferences");
+var completeAppletOrder = ControlPanelAppletCatalog.Normalize(null).Order!;
+completeAppletOrder.Remove("credential-manager");
+completeAppletOrder.Insert(0, "credential-manager");
+var customControlPanelApplets = ControlPanelAppletCatalog.Normalize(new ControlPanelAppletPreferences(completeAppletOrder, ["programs"]));
+Check("programs", string.Join(',', customControlPanelApplets.Visible!), "keep only selected Control Panel applets visible");
+Check("programs,credential-manager", string.Join(',', ControlPanelAppletCatalog.Move(customControlPanelApplets, "credential-manager", 1).Order!.Take(2)), "move Control Panel applets within the configured order");
+Check(21, ControlPanelAppletCatalog.Normalize(null).Visible!.Count, "show all Control Panel applets for older preference files");
 Throws<ArgumentOutOfRangeException>(() => ControlPanelAppletCatalog.CreateStartInfo("unknown"), "reject unknown Control Panel applets");
 Check(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), StartMenuPlaceCatalog.ResolveTarget("music"), "open the user's Music folder from the Start places menu");
 Check(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), StartMenuPlaceCatalog.ResolveTarget("documents"), "resolve Documents from the Start dropdown places");
@@ -1501,6 +1518,8 @@ try
     Check(false, File.Exists(currentOwnerSnapshot), "remove an orphaned snapshot whose process id has been reused");
     var preferencesStore = new DesktopPreferencesStore(preferencesPath);
     var savedStartPlaces = StartMenuPlaceCatalog.Normalize(new StartMenuPlacePreferences(["run", "documents"], ["documents", "run"]));
+    var savedControlPanelApplets = ControlPanelAppletCatalog.Normalize(new ControlPanelAppletPreferences(
+        ["network-sharing", "programs", "credential-manager"], ["programs", "network-sharing"]));
     var savedTaskbarButtons = TaskbarSystemButtonVisibility.Default
         .WithVisibility(TaskbarSystemButton.Emoji, false)
         .WithVisibility(TaskbarSystemButton.Microphone, false)
@@ -1509,7 +1528,7 @@ try
         .WithVisibility(TaskbarSystemButton.Widgets, false);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons, CenterStartMenu: true, TaskbarWindowDisplayMode: TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, TaskbarShowWindowsFromAllVirtualDesktops: true);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons, CenterStartMenu: true, TaskbarWindowDisplayMode: TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, TaskbarShowWindowsFromAllVirtualDesktops: true, ControlPanelApplets: savedControlPanelApplets);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
@@ -1528,6 +1547,8 @@ try
     Check("Dev", loadedPreferences.PinnedStartApps!.Single().GroupName, "persist a pinned Start tile's group");
     Check(string.Join(',', savedStartPlaces.Order!), string.Join(',', loadedPreferences.StartMenuPlaces!.Order!), "persist custom Start system-place order");
     Check(string.Join(',', savedStartPlaces.Visible!), string.Join(',', loadedPreferences.StartMenuPlaces.Visible!), "persist custom Start system-place visibility");
+    Check(string.Join(',', savedControlPanelApplets.Order!), string.Join(',', loadedPreferences.ControlPanelApplets!.Order!), "persist custom Control Panel applet order");
+    Check(string.Join(',', savedControlPanelApplets.Visible!), string.Join(',', loadedPreferences.ControlPanelApplets.Visible!), "persist custom Control Panel applet visibility");
     Check(8, loadedPreferences.StartRecentAppCount, "persist the configured Start recent-app count");
     Check(false, loadedPreferences.TaskbarSystemButtons!.IsVisible(TaskbarSystemButton.Emoji), "persist hidden taskbar emoji button");
     Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.Microphone), "persist hidden taskbar microphone button");
@@ -1610,6 +1631,7 @@ try
     Check(TaskbarIconSize.Standard, preferencesStore.Load().TaskbarIconSize, "default legacy preferences to standard taskbar icons");
     Check(TaskbarButtonSpacing.Standard, preferencesStore.Load().TaskbarButtonSpacing, "default legacy preferences to standard button spacing");
     Check(11, preferencesStore.Load().StartMenuPlaces!.Visible!.Count, "show all Start places for older preference files");
+    Check(21, preferencesStore.Load().ControlPanelApplets!.Visible!.Count, "show all Control Panel applets for older preference files");
     Check(false, preferencesStore.Load().PinnedApps!.Single().IsDirectory, "default old pin records to app launch behavior");
     Check(StartPinCatalog.DefaultGroupName, preferencesStore.Load().PinnedStartApps!.Single().GroupName, "default older Start pin records to the Pinned group");
     File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"TaskbarButtonEffect":99}""");

@@ -1,8 +1,10 @@
 using System.Diagnostics;
+using System.IO;
 
 namespace DesktopTuner;
 
 public sealed record ControlPanelApplet(string Id, string Label, IReadOnlyList<string> Arguments);
+public sealed record ControlPanelAppletPreferences(List<string>? Order = null, List<string>? Visible = null);
 
 public static class ControlPanelAppletCatalog
 {
@@ -30,6 +32,49 @@ public static class ControlPanelAppletCatalog
         new("security-maintenance", "Security and Maintenance", ["wscui.cpl"]),
         new("ease-of-access", "Ease of Access Center", ["access.cpl"])
     ];
+
+    public static IReadOnlyList<ControlPanelApplet> GetAvailableApplets(
+        string systemDirectory,
+        Func<string, bool>? fileExists = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(systemDirectory);
+        fileExists ??= File.Exists;
+        return Applets.Where(applet =>
+        {
+            var target = applet.Arguments.FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(target) || target.StartsWith("/", StringComparison.Ordinal) ||
+                !target.EndsWith(".cpl", StringComparison.OrdinalIgnoreCase)) return true;
+            return fileExists(Path.Combine(systemDirectory, Path.GetFileName(target)));
+        }).ToArray();
+    }
+
+    public static ControlPanelAppletPreferences Normalize(ControlPanelAppletPreferences? preferences)
+    {
+        var validIds = Applets.Select(applet => applet.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var requestedOrder = preferences?.Order ?? [];
+        var order = requestedOrder.Where(validIds.Contains)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Concat(Applets.Select(applet => applet.Id).Where(id => !requestedOrder.Contains(id, StringComparer.OrdinalIgnoreCase)))
+            .ToList();
+        var visibleSet = preferences?.Visible is null
+            ? order.ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : preferences.Visible.Where(validIds.Contains).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (preferences?.Visible is not null)
+            foreach (var id in Applets.Select(applet => applet.Id).Where(id => !requestedOrder.Contains(id, StringComparer.OrdinalIgnoreCase)))
+                visibleSet.Add(id);
+        return new ControlPanelAppletPreferences(order, order.Where(visibleSet.Contains).ToList());
+    }
+
+    public static ControlPanelAppletPreferences Move(ControlPanelAppletPreferences? preferences, string appletId, int offset)
+    {
+        var normalized = Normalize(preferences);
+        if (offset is not (-1 or 1)) throw new ArgumentOutOfRangeException(nameof(offset));
+        var index = normalized.Order!.FindIndex(id => string.Equals(id, appletId, StringComparison.OrdinalIgnoreCase));
+        var destination = index + offset;
+        if (index < 0 || destination < 0 || destination >= normalized.Order.Count) return normalized;
+        (normalized.Order[index], normalized.Order[destination]) = (normalized.Order[destination], normalized.Order[index]);
+        return Normalize(normalized);
+    }
 
     public static ProcessStartInfo CreateStartInfo(string id)
     {

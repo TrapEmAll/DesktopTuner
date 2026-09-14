@@ -20,6 +20,7 @@ public partial class StartMenuWindow : Window
     private readonly StartMenuIdentity _identity;
     private readonly Func<IReadOnlyList<AppEntry>, bool>? _savePinnedApps;
     private StartMenuPlacePreferences _startPlaces;
+    private ControlPanelAppletPreferences _controlPanelApplets;
     private IReadOnlyList<AppEntry> _apps = [];
     private IReadOnlyList<AppEntry> _pinnedApps = [];
     private StartMenuStyle _style = StartMenuStyle.Modern;
@@ -32,7 +33,7 @@ public partial class StartMenuWindow : Window
     private Point _pinnedStartDrag;
     private bool _suppressPinnedStartClick;
 
-    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4)
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null)
     {
         InitializeComponent();
         _identity = StartMenuIdentityService.ReadCurrentUser();
@@ -60,11 +61,14 @@ public partial class StartMenuWindow : Window
         _savePinnedApps = savePinnedApps;
         _recentAppsStore = recentAppsStore ?? new StartRecentAppsStore();
         _startPlaces = StartMenuPlaceCatalog.Normalize(startPlaces);
+        _controlPanelApplets = ControlPanelAppletCatalog.Normalize(controlPanelApplets);
         _recentAppCount = Math.Clamp(recentAppCount, 0, StartRecentAppsStore.MaximumEntries);
         SetStyle(style);
     }
 
     public void SetStartPlaces(StartMenuPlacePreferences preferences) => _startPlaces = StartMenuPlaceCatalog.Normalize(preferences);
+
+    public void SetControlPanelApplets(ControlPanelAppletPreferences preferences) => _controlPanelApplets = ControlPanelAppletCatalog.Normalize(preferences);
 
     public void SetRecentAppCount(int count)
     {
@@ -997,12 +1001,20 @@ public partial class StartMenuWindow : Window
         menuItem.Items.Add(openControlPanel);
         menuItem.Items.Add(new Separator());
 
-        foreach (var applet in ControlPanelAppletCatalog.Applets)
+        var visibleApplets = _controlPanelApplets.Visible!.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var availableApplets = ControlPanelAppletCatalog.GetAvailableApplets(Environment.SystemDirectory)
+            .ToDictionary(applet => applet.Id, StringComparer.OrdinalIgnoreCase);
+        var appletCount = 0;
+        foreach (var appletId in _controlPanelApplets.Order!)
         {
+            if (!visibleApplets.Contains(appletId) || !availableApplets.TryGetValue(appletId, out var applet)) continue;
             var item = new MenuItem { Header = applet.Label, Tag = applet.Id };
             item.Click += ControlPanelApplet_Click;
             menuItem.Items.Add(item);
+            appletCount++;
         }
+        if (appletCount == 0)
+            menuItem.Items.Add(new MenuItem { Header = "No Control Panel applets selected", IsEnabled = false });
     }
 
     private void ControlPanelApplet_Click(object sender, RoutedEventArgs e)
