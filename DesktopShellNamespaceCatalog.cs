@@ -13,6 +13,7 @@ public sealed record DesktopShellNamespaceEntry(string Name, string ParsingName,
     private string _renameText = Name;
     private bool _canRename;
     private bool _renameCapabilityChecked;
+    private bool _isCut;
 
     public ImageSource? Icon { get; init; }
     public bool CanRename
@@ -36,6 +37,11 @@ public sealed record DesktopShellNamespaceEntry(string Name, string ParsingName,
         set { if (string.Equals(_renameText, value, StringComparison.Ordinal)) return; _renameText = value; OnPropertyChanged(); }
     }
     public string Type => IsFolder ? "Folder" : "Item";
+    public bool IsCut
+    {
+        get => _isCut;
+        set { if (_isCut == value) return; _isCut = value; OnPropertyChanged(); }
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

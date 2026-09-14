@@ -128,6 +128,15 @@
                     <GridViewColumn Header="Location" Width="300" DisplayMemberBinding="{Binding ParsingName}" />
                 </GridView>
             </ListView.View>
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsCut}" Value="True">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ListView.ItemContainerStyle>
         </ListView>
         <TextBlock x:Name="StatusText" Grid.Row="3" Margin="4,9,0,0" Foreground="{DynamicResource DesktopMutedTextBrush}" />
     </Grid>

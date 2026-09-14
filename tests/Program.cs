@@ -31,6 +31,10 @@ Check(ShellNamespaceOpenAction.NavigateCurrentWindow, ShellNamespaceOpenPolicy.R
 Check(ShellNamespaceOpenAction.OpenCompanionWindow, ShellNamespaceOpenPolicy.Resolve(isFolder: true, selectionCount: 2), "open selected Shell folders in separate companion windows");
 Check(ShellNamespaceOpenAction.UseShellHandler, ShellNamespaceOpenPolicy.Resolve(isFolder: false, selectionCount: 2), "open selected Shell documents through their registered handlers");
 var browserRenameEntry = new DesktopShellNamespaceEntry("Rename me", "shell:RenameFixture", false);
+browserRenameEntry.IsCut = true;
+Check(true, browserRenameEntry.IsCut, "mark a Shell namespace item as cut for Explorer-style dimming");
+browserRenameEntry.IsCut = false;
+Check(false, browserRenameEntry.IsCut, "clear cut-state dimming when the clipboard changes");
 Check(false, browserRenameEntry.CanRename, "keep Shell browser rename disabled until the native capability is checked");
 browserRenameEntry.SetRenameCapability(true);
 Check(true, browserRenameEntry.CanRename && browserRenameEntry.RenameCapabilityChecked, "cache native Shell rename capability on a browser item");

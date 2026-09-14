@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -11,6 +12,8 @@ namespace DesktopTuner;
 
 public partial class ShellNamespaceBrowserWindow : Window
 {
+    private const int MessageClipboardUpdate = 0x031D;
+    private static readonly HashSet<string> _cutParsingNames = new(StringComparer.OrdinalIgnoreCase);
     private readonly Stack<string> _back = new();
     private readonly Stack<string> _forward = new();
     private readonly DispatcherTimer _changeRefreshTimer = new() { Interval = TimeSpan.FromMilliseconds(300) };
@@ -27,6 +30,10 @@ public partial class ShellNamespaceBrowserWindow : Window
     private Point _dragStart;
     private string? _registeredChangeLocation;
     private DesktopShellChangeNotificationListener? _shellChangeNotifications;
+    private HwndSource? _windowSource;
+    private HwndSourceHook? _windowMessageHook;
+    private static uint _cutClipboardSequence;
+    private bool _clipboardListenerRegistered;
 
     public ShellNamespaceBrowserWindow(string location)
     {
@@ -44,6 +51,12 @@ public partial class ShellNamespaceBrowserWindow : Window
             _changeRefreshTimer.Stop();
             _shellChangeNotifications?.Dispose();
             _shellChangeNotifications = null;
+            var handle = new WindowInteropHelper(this).Handle;
+            if (_clipboardListenerRegistered) RemoveClipboardFormatListener(handle);
+            if (_windowSource is not null && _windowMessageHook is not null) _windowSource.RemoveHook(_windowMessageHook);
+            _clipboardListenerRegistered = false;
+            _windowSource = null;
+            _windowMessageHook = null;
             CancelSearch();
             _navigationVersion++;
         };
@@ -87,6 +100,7 @@ public partial class ShellNamespaceBrowserWindow : Window
                 .Select(entry => entry with { Icon = TaskbarIconService.LoadNamespaceIcon(entry.ParsingName) })
                 .ToArray());
             if (version != _navigationVersion || !IsVisible && IsLoaded) return;
+            ApplyCutState(entriesWithIcons);
             ItemsList.ItemsSource = entriesWithIcons;
             Title = $"{GetDisplayName(location)} — Desktop Tuner Explorer";
             StatusText.Text = entriesWithIcons.Length == 0 ? "This location is empty or Windows returned no items." : $"{entriesWithIcons.Length:N0} items";
@@ -215,6 +229,7 @@ public partial class ShellNamespaceBrowserWindow : Window
                 .Select(entry => entry with { Icon = TaskbarIconService.LoadNamespaceIcon(entry.ParsingName) })
                 .ToArray());
             if (cancellation.IsCancellationRequested || version != _navigationVersion || !IsVisible && IsLoaded) return;
+            ApplyCutState(entriesWithIcons);
             ItemsList.ItemsSource = entriesWithIcons;
             var statusParts = new List<string> { $"{entriesWithIcons.Length:N0} found." };
             if (result.SkippedItems > 0) statusParts.Add($"{result.SkippedItems:N0} item(s) skipped while searching.");
@@ -388,7 +403,9 @@ public partial class ShellNamespaceBrowserWindow : Window
         try
         {
             var owner = new WindowInteropHelper(this).Handle;
-            await NativeShellContextMenuService.CopyShellItemsToClipboardAsync(owner, selection.Select(entry => entry.ParsingName), cut);
+            var clipboardSequence = await NativeShellContextMenuService.CopyShellItemsToClipboardAsync(owner, selection.Select(entry => entry.ParsingName), cut);
+            if (cut) SetCutState(selection, clipboardSequence);
+            else ClearCutState();
             StatusText.Text = cut ? $"Cut {selection.Length:N0} item(s)." : $"Copied {selection.Length:N0} item(s).";
         }
         catch (Exception ex)
@@ -403,6 +420,7 @@ public partial class ShellNamespaceBrowserWindow : Window
         {
             var owner = new WindowInteropHelper(this).Handle;
             await NativeShellContextMenuService.PasteIntoShellFolderAsync(owner, _location);
+            ClearCutState();
         }
         catch (Exception ex)
         {
@@ -728,6 +746,67 @@ public partial class ShellNamespaceBrowserWindow : Window
     {
         _sourceInitialized = true;
         SystemBackdropService.TryApplyMica(this);
+        var handle = new WindowInteropHelper(this).Handle;
+        _windowSource = HwndSource.FromHwnd(handle);
+        if (_windowSource is not null)
+        {
+            _windowMessageHook = WindowMessageHook;
+            _windowSource.AddHook(_windowMessageHook);
+            _clipboardListenerRegistered = AddClipboardFormatListener(handle);
+        }
+        if (!_clipboardListenerRegistered)
+            Trace.TraceWarning($"Could not monitor clipboard changes for Shell cut-state display: {Marshal.GetLastWin32Error()}");
         RegisterShellChangeNotifications(_location);
     }
+
+    private void SetCutState(IEnumerable<DesktopShellNamespaceEntry> selectedItems, uint clipboardSequence)
+    {
+        if (!_clipboardListenerRegistered || NativeShellContextMenuService.ReadClipboardSequenceNumber() != clipboardSequence)
+        {
+            ClearCutState();
+            return;
+        }
+
+        _cutParsingNames.Clear();
+        foreach (var entry in selectedItems) _cutParsingNames.Add(entry.ParsingName);
+        _cutClipboardSequence = clipboardSequence;
+        ApplyCutState(ItemsList.Items.OfType<DesktopShellNamespaceEntry>());
+    }
+
+    private void ClearCutState()
+    {
+        _cutParsingNames.Clear();
+        _cutClipboardSequence = 0;
+        ApplyCutState(ItemsList.Items.OfType<DesktopShellNamespaceEntry>());
+    }
+
+    private void ApplyCutState(IEnumerable<DesktopShellNamespaceEntry> entries)
+    {
+        if (_cutParsingNames.Count > 0 && NativeShellContextMenuService.ReadClipboardSequenceNumber() != _cutClipboardSequence)
+        {
+            _cutParsingNames.Clear();
+            _cutClipboardSequence = 0;
+        }
+        foreach (var entry in entries) entry.IsCut = _cutParsingNames.Contains(entry.ParsingName);
+    }
+
+    private nint WindowMessageHook(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
+    {
+        if (message == MessageClipboardUpdate)
+        {
+            if (_cutParsingNames.Count > 0 && NativeShellContextMenuService.ReadClipboardSequenceNumber() != _cutClipboardSequence)
+                ClearCutState();
+            else
+                ApplyCutState(ItemsList.Items.OfType<DesktopShellNamespaceEntry>());
+        }
+        return nint.Zero;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AddClipboardFormatListener(nint window);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RemoveClipboardFormatListener(nint window);
 }

@@ -54,20 +54,21 @@ public static class NativeShellContextMenuService
     public static Task<bool> DeleteShellItemsAsync(nint owner, IEnumerable<string> parsingNames, bool shiftPressed = false) =>
         InvokeShellItemsVerbAsync(owner, parsingNames, "delete", shiftPressed);
 
-    public static async Task<bool> CopyShellItemsToClipboardAsync(nint owner, IEnumerable<string> parsingNames, bool cut)
+    public static async Task<uint> CopyShellItemsToClipboardAsync(nint owner, IEnumerable<string> parsingNames, bool cut)
     {
         var selection = NativeShellContextMenuPolicy.NormalizeShellSelection(parsingNames);
         var absolutePidls = await Task.Run(() => ParseDisplayNames(selection));
         try
         {
-            SetShellItemsClipboard(owner, absolutePidls, cut);
-            return true;
+            return SetShellItemsClipboard(owner, absolutePidls, cut);
         }
         finally
         {
             foreach (var absolutePidl in absolutePidls) Marshal.FreeCoTaskMem(absolutePidl);
         }
     }
+
+    internal static uint ReadClipboardSequenceNumber() => GetClipboardSequenceNumber();
 
     public static async Task<bool> PasteIntoShellFolderAsync(nint owner, string parsingName)
     {
@@ -475,7 +476,7 @@ public static class NativeShellContextMenuService
         }
     }
 
-    private static void SetShellItemsClipboard(nint owner, nint[] absolutePidls, bool cut)
+    private static uint SetShellItemsClipboard(nint owner, nint[] absolutePidls, bool cut)
     {
         var initializeResult = OleInitialize(nint.Zero);
         var uninitialize = initializeResult >= 0;
@@ -488,6 +489,7 @@ public static class NativeShellContextMenuService
             dataObject = CreateShellDataObject(owner, absolutePidls);
             SetPreferredDropEffect(dataObject, cut ? DropEffectMove : DropEffectCopy);
             ThrowForFailure(OleSetClipboard(dataObject), "Windows could not place the Shell selection on the clipboard.");
+            return GetClipboardSequenceNumber();
         }
         finally
         {
@@ -912,6 +914,9 @@ public static class NativeShellContextMenuService
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern uint RegisterClipboardFormat(string format);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetClipboardSequenceNumber();
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern nint GlobalAlloc(uint flags, nuint bytes);
