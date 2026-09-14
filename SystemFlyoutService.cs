@@ -12,11 +12,14 @@ public static class SystemFlyoutService
     private const ushort VK_RWIN = 0x5C;
     private const ushort VK_A = 0x41;
     private const ushort VK_B = 0x42;
+    private const ushort VK_CONTROL = 0x11;
     private const ushort VK_D = 0x44;
+    private const ushort VK_O = 0x4F;
     private const ushort VK_OEM_PERIOD = 0xBE;
     private const ushort VK_N = 0x4E;
     private const ushort VK_R = 0x52;
     private const ushort VK_S = 0x53;
+    private const ushort VK_SPACE = 0x20;
     private const ushort VK_TAB = 0x09;
     private const ushort VK_W = 0x57;
     private const uint INPUT_KEYBOARD = 1;
@@ -47,6 +50,22 @@ public static class SystemFlyoutService
         new(VK_LWIN, false),
         new(VK_B, false),
         new(VK_B, true),
+        new(VK_LWIN, true)
+    ]);
+    private static readonly IReadOnlyList<KeyboardKeyEvent> InputMethodSequence = Array.AsReadOnly<KeyboardKeyEvent>(
+    [
+        new(VK_LWIN, false),
+        new(VK_SPACE, false),
+        new(VK_SPACE, true),
+        new(VK_LWIN, true)
+    ]);
+    private static readonly IReadOnlyList<KeyboardKeyEvent> OnScreenKeyboardSequence = Array.AsReadOnly<KeyboardKeyEvent>(
+    [
+        new(VK_LWIN, false),
+        new(VK_CONTROL, false),
+        new(VK_O, false),
+        new(VK_O, true),
+        new(VK_CONTROL, true),
         new(VK_LWIN, true)
     ]);
     private static readonly IReadOnlyList<KeyboardKeyEvent> WidgetsSequence = Array.AsReadOnly<KeyboardKeyEvent>(
@@ -89,6 +108,8 @@ public static class SystemFlyoutService
     public static IReadOnlyList<KeyboardKeyEvent> GetQuickSettingsSequence() => QuickSettingsSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetEmojiPanelSequence() => EmojiPanelSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetNotificationAreaSequence() => NotificationAreaSequence;
+    public static IReadOnlyList<KeyboardKeyEvent> GetInputMethodSequence() => InputMethodSequence;
+    public static IReadOnlyList<KeyboardKeyEvent> GetOnScreenKeyboardSequence() => OnScreenKeyboardSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetWidgetsSequence() => WidgetsSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetRunDialogSequence() => RunDialogSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetWindowsSearchSequence() => WindowsSearchSequence;
@@ -102,6 +123,10 @@ public static class SystemFlyoutService
     public static bool OpenEmojiPanel() => SendWindowsShortcut(VK_OEM_PERIOD, EmojiPanelSequence, "emoji panel");
 
     public static bool FocusNotificationArea() => SendWindowsShortcut(VK_B, NotificationAreaSequence, "notification area");
+
+    public static bool OpenInputMethodSwitcher() => SendWindowsShortcut(VK_SPACE, InputMethodSequence, "keyboard layout picker");
+
+    public static bool OpenOnScreenKeyboard() => SendModifiedShortcut(OnScreenKeyboardSequence, "On-Screen Keyboard");
 
     public static bool OpenWidgets() => SendWindowsShortcut(VK_W, WidgetsSequence, "Widgets board");
 
@@ -125,6 +150,27 @@ public static class SystemFlyoutService
         var released = SendInput((uint)releases.Length, releases, Marshal.SizeOf<Input>());
         if (released != releases.Length)
             Trace.TraceError($"Could not release synthetic Windows+{(char)shortcutKey} keys after a partial send (released {released} of {releases.Length}).");
+        Trace.TraceWarning($"Could not access the Windows {featureName} (sent {sent} of {inputs.Length} key events; error {Marshal.GetLastWin32Error()}).");
+        return false;
+    }
+
+    private static bool SendModifiedShortcut(IReadOnlyList<KeyboardKeyEvent> sequence, string featureName)
+    {
+        if (IsKeyDown(VK_LWIN) || IsKeyDown(VK_RWIN) || IsKeyDown(VK_CONTROL)) return false;
+
+        Input[] inputs = sequence.Select(keyEvent => Keyboard(keyEvent.VirtualKey, keyEvent.KeyUp)).ToArray();
+        var sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Input>());
+        if (sent == inputs.Length) return true;
+
+        Input[] releases = sequence.Where(keyEvent => !keyEvent.KeyUp)
+            .Select(keyEvent => keyEvent.VirtualKey)
+            .Distinct()
+            .Reverse()
+            .Select(key => Keyboard(key, keyUp: true))
+            .ToArray();
+        var released = SendInput((uint)releases.Length, releases, Marshal.SizeOf<Input>());
+        if (released != releases.Length)
+            Trace.TraceError($"Could not release synthetic modifier keys after a partial send for the Windows {featureName} shortcut.");
         Trace.TraceWarning($"Could not access the Windows {featureName} (sent {sent} of {inputs.Length} key events; error {Marshal.GetLastWin32Error()}).");
         return false;
     }

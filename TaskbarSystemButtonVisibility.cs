@@ -6,6 +6,8 @@ public enum TaskbarSystemButton
     Tray,
     QuickSettings,
     Network,
+    InputMethod,
+    OnScreenKeyboard,
     Emoji,
     Volume,
     Battery,
@@ -30,6 +32,9 @@ public sealed record TaskbarSystemButtonVisibility(
     bool ShowDesktop = true,
     bool Clock = true)
 {
+    public bool InputMethod { get; init; } = true;
+    public bool OnScreenKeyboard { get; init; } = true;
+
     public static TaskbarSystemButtonVisibility Default { get; } = new();
 
     public static IReadOnlyList<TaskbarSystemButtonOption> Options { get; } = Array.AsReadOnly<TaskbarSystemButtonOption>(
@@ -38,6 +43,8 @@ public sealed record TaskbarSystemButtonVisibility(
         new(TaskbarSystemButton.Tray, "Notification area", "Focus the Windows notification area."),
         new(TaskbarSystemButton.QuickSettings, "Quick Settings", "Open Windows Quick Settings."),
         new(TaskbarSystemButton.Network, "Network", "Open Wi-Fi and network settings."),
+        new(TaskbarSystemButton.InputMethod, "Keyboard layout", "Open the Windows keyboard layout and input method picker."),
+        new(TaskbarSystemButton.OnScreenKeyboard, "On-Screen Keyboard", "Open the Windows On-Screen Keyboard."),
         new(TaskbarSystemButton.Emoji, "Emoji panel", "Open the Windows emoji panel."),
         new(TaskbarSystemButton.Volume, "Volume", "Adjust volume and select an audio output."),
         new(TaskbarSystemButton.Battery, "Battery", "Show battery status when available."),
@@ -55,6 +62,8 @@ public sealed record TaskbarSystemButtonVisibility(
         TaskbarSystemButton.Tray => Tray,
         TaskbarSystemButton.QuickSettings => QuickSettings,
         TaskbarSystemButton.Network => Network,
+        TaskbarSystemButton.InputMethod => InputMethod,
+        TaskbarSystemButton.OnScreenKeyboard => OnScreenKeyboard,
         TaskbarSystemButton.Emoji => Emoji,
         TaskbarSystemButton.Volume => Volume,
         TaskbarSystemButton.Battery => Battery,
@@ -71,6 +80,8 @@ public sealed record TaskbarSystemButtonVisibility(
         TaskbarSystemButton.Tray => this with { Tray = isVisible },
         TaskbarSystemButton.QuickSettings => this with { QuickSettings = isVisible },
         TaskbarSystemButton.Network => this with { Network = isVisible },
+        TaskbarSystemButton.InputMethod => this with { InputMethod = isVisible },
+        TaskbarSystemButton.OnScreenKeyboard => this with { OnScreenKeyboard = isVisible },
         TaskbarSystemButton.Emoji => this with { Emoji = isVisible },
         TaskbarSystemButton.Volume => this with { Volume = isVisible },
         TaskbarSystemButton.Battery => this with { Battery = isVisible },

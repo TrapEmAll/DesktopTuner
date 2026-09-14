@@ -117,6 +117,8 @@ public partial class TaskbarWindow : Window
         if (integratedBounds is { } trayIntegratedBounds) bounds = trayIntegratedBounds;
         SettingsButton.Visibility = !_nativeTrayExposed && systemButtons.Settings ? Visibility.Visible : Visibility.Collapsed;
         NetworkButton.Visibility = !_nativeTrayExposed && systemButtons.Network ? Visibility.Visible : Visibility.Collapsed;
+        InputMethodButton.Visibility = !_nativeTrayExposed && systemButtons.InputMethod ? Visibility.Visible : Visibility.Collapsed;
+        OnScreenKeyboardButton.Visibility = !_nativeTrayExposed && systemButtons.OnScreenKeyboard ? Visibility.Visible : Visibility.Collapsed;
         EmojiButton.Visibility = !_nativeTrayExposed && systemButtons.Emoji ? Visibility.Visible : Visibility.Collapsed;
         TrayButton.Visibility = !_nativeTrayExposed && systemButtons.Tray ? Visibility.Visible : Visibility.Collapsed;
         VolumeButton.Visibility = !_nativeTrayExposed && systemButtons.Volume ? Visibility.Visible : Visibility.Collapsed;
@@ -1061,6 +1063,10 @@ public partial class TaskbarWindow : Window
         try { Process.Start(new ProcessStartInfo(SystemFlyoutService.NetworkSettingsUri) { UseShellExecute = true }); }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open Network settings", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
+
+    private void InputMethod_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenInputMethodSwitcher();
+
+    private void OnScreenKeyboard_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenOnScreenKeyboard();
 
     private void AudioOutputContextMenu_Opened(object sender, RoutedEventArgs e)
     {

@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Globalization;
+using System.Text.Json;
 
 var count = 0;
 var navigationTestRoot = Path.Combine(Path.GetTempPath(), $"desktop-tuner-navigation-{Guid.NewGuid():N}");
@@ -549,6 +550,22 @@ CheckTrue(SystemFlyoutService.GetNotificationAreaSequence().SequenceEqual(
     new KeyboardKeyEvent((ushort)'B', true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+B notification-area shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetInputMethodSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent(0x20, false),
+    new KeyboardKeyEvent(0x20, true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+Space keyboard-layout picker shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetOnScreenKeyboardSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent(0x11, false),
+    new KeyboardKeyEvent((ushort)'O', false),
+    new KeyboardKeyEvent((ushort)'O', true),
+    new KeyboardKeyEvent(0x11, true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+Ctrl+O On-Screen Keyboard shortcut in balanced key order");
 CheckTrue(SystemFlyoutService.GetWidgetsSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),
@@ -1006,6 +1023,8 @@ try
     var savedStartPlaces = StartMenuPlaceCatalog.Normalize(new StartMenuPlacePreferences(["run", "documents"], ["documents", "run"]));
     var savedTaskbarButtons = TaskbarSystemButtonVisibility.Default
         .WithVisibility(TaskbarSystemButton.Emoji, false)
+        .WithVisibility(TaskbarSystemButton.InputMethod, false)
+        .WithVisibility(TaskbarSystemButton.OnScreenKeyboard, false)
         .WithVisibility(TaskbarSystemButton.Widgets, false);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
@@ -1022,9 +1041,16 @@ try
     Check(string.Join(',', savedStartPlaces.Visible!), string.Join(',', loadedPreferences.StartMenuPlaces.Visible!), "persist custom Start system-place visibility");
     Check(8, loadedPreferences.StartRecentAppCount, "persist the configured Start recent-app count");
     Check(false, loadedPreferences.TaskbarSystemButtons!.IsVisible(TaskbarSystemButton.Emoji), "persist hidden taskbar emoji button");
+    Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.InputMethod), "persist hidden taskbar keyboard-layout button");
+    Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.OnScreenKeyboard), "persist hidden taskbar On-Screen Keyboard button");
     Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.Widgets), "persist hidden taskbar Widgets button");
     Check(true, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.Clock), "preserve enabled taskbar clock visibility");
     Check(true, TaskbarSystemButtonVisibility.Normalize(null).IsVisible(TaskbarSystemButton.Emoji), "default older taskbar preferences to all system buttons visible");
+    Check(true, TaskbarSystemButtonVisibility.Normalize(null).IsVisible(TaskbarSystemButton.InputMethod), "default keyboard-layout button to visible for older taskbar preferences");
+    Check(true, TaskbarSystemButtonVisibility.Normalize(null).IsVisible(TaskbarSystemButton.OnScreenKeyboard), "default On-Screen Keyboard button to visible for older taskbar preferences");
+    var legacyTaskbarButtons = JsonSerializer.Deserialize<TaskbarSystemButtonVisibility>("""{"Settings":false,"Network":false}""")!;
+    Check(true, legacyTaskbarButtons.IsVisible(TaskbarSystemButton.InputMethod), "default keyboard-layout visibility when loading older custom system-button preferences");
+    Check(true, legacyTaskbarButtons.IsVisible(TaskbarSystemButton.OnScreenKeyboard), "default On-Screen Keyboard visibility when loading older custom system-button preferences");
     preferencesStore.Save(expectedPreferences with { StartRecentAppCount = 0 });
     Check(0, preferencesStore.Load().StartRecentAppCount, "allow disabling the Start recent-app section");
     preferencesStore.Save(expectedPreferences with { StartRecentAppCount = StartRecentAppsStore.MaximumEntries });
