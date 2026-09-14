@@ -1204,6 +1204,13 @@ try
     File.WriteAllText(sourceFile, "draft");
     CheckTrue(new ExplorerEntry("draft.txt", sourceFile, false, false, new FileInfo(sourceFile).Length, File.GetLastWriteTime(sourceFile)).Icon is not null, "expose shell file icons to Explorer rows");
     CheckTrue(new ExplorerEntry("ExplorerOperations", explorerTestDirectory, true, false, null, Directory.GetLastWriteTime(explorerTestDirectory)).Icon is not null, "expose shell folder icons to Explorer rows");
+    var editableEntry = new ExplorerEntry("draft.txt", sourceFile, false, false, 5, DateTime.Now);
+    var renameChanges = new List<string>();
+    editableEntry.PropertyChanged += (_, args) => renameChanges.Add(args.PropertyName!);
+    editableEntry.RenameText = "notes.txt";
+    editableEntry.IsRenaming = true;
+    editableEntry.IsRenaming = false;
+    Check("RenameText,IsRenaming,IsRenaming", string.Join(',', renameChanges), "notify Explorer name editors when their text and editing state change");
     var renamedFile = ExplorerFileOperationService.Rename(sourceFile, "notes.txt");
     Check(true, File.Exists(renamedFile), "rename a file within its current folder");
     Check(6, ExplorerRenamePolicy.GetInitialSelectionLength("report.pdf", isDirectory: false), "select a file name without its extension when renaming");

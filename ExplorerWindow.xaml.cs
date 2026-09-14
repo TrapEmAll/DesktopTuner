@@ -2048,16 +2048,6 @@ public partial class ExplorerWindow : Window
             Up_Click(this, new RoutedEventArgs());
             e.Handled = true;
         }
-        else if (e.Key == Key.Left && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
-        {
-            Back_Click(this, new RoutedEventArgs());
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Right && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
-        {
-            Forward_Click(this, new RoutedEventArgs());
-            e.Handled = true;
-        }
         else if (e.Key == Key.F2 && EntriesList.SelectedItems.Count == 1 && EntriesList.SelectedItem is ExplorerEntry { IsDrive: false })
         {
             RenameSelected();
@@ -2071,11 +2061,6 @@ public partial class ExplorerWindow : Window
         else if (e.Key == Key.F5)
         {
             RefreshCurrentView();
-            e.Handled = true;
-        }
-        else if (e.Key == Key.N && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift) && !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin)
-        {
-            CreateFolder();
             e.Handled = true;
         }
     }
@@ -2266,23 +2251,105 @@ public partial class ExplorerWindow : Window
 
     private void RenameSelected()
     {
-        if (_location.IsRecycleBin) return;
-        if (EntriesList.SelectedItem is not ExplorerEntry { IsDrive: false } entry) return;
+        if (_location.IsRecycleBin || EntriesList.SelectedItem is not ExplorerEntry { IsDrive: false, IsRecycleBinItem: false } entry) return;
+        if (entry.IsRenaming) return;
+
         var currentName = Path.GetFileName(entry.FullPath);
-        var selectionLength = ExplorerRenamePolicy.GetInitialSelectionLength(currentName, entry.IsDirectory);
-        var newName = PromptForName("Rename", "New name:", currentName, selectionLength);
-        if (newName is null || string.Equals(currentName, newName, StringComparison.Ordinal)) return;
+        entry.RenameText = currentName;
+        entry.IsRenaming = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            if (!entry.IsRenaming || EntriesList.ItemContainerGenerator.ContainerFromItem(entry) is not DependencyObject container) return;
+            var editor = FindVisualChild<TextBox>(container, candidate => ReferenceEquals(candidate.Tag, entry));
+            if (editor is null) return;
+            editor.Focus();
+            editor.Select(0, ExplorerRenamePolicy.GetInitialSelectionLength(currentName, entry.IsDirectory));
+        }));
+    }
+
+    private void RenameEditor_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox { Tag: ExplorerEntry entry }) return;
+        if (e.Key == Key.Enter)
+        {
+            CommitRename(entry);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            CancelRename(entry);
+            e.Handled = true;
+        }
+    }
+
+    private void RenameEditor_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is TextBox { Tag: ExplorerEntry entry }) CommitRename(entry, refreshImmediately: false);
+    }
+
+    private void CommitRename(ExplorerEntry entry, bool refreshImmediately = true)
+    {
+        if (!entry.IsRenaming) return;
+        var sourceTab = ActiveTab;
+        var sourceLocation = _location;
+        var currentName = Path.GetFileName(entry.FullPath);
+        var newName = entry.RenameText;
+        if (string.Equals(currentName, newName, StringComparison.Ordinal))
+        {
+            entry.IsRenaming = false;
+            return;
+        }
+
         try
         {
             var renamedPath = ExplorerFileOperationService.Rename(entry.FullPath, newName);
-            RefreshCurrentView();
-            if (!_isSearchView) EntriesList.SelectedItem = EntriesList.Items.Cast<ExplorerEntry>().FirstOrDefault(item => string.Equals(item.FullPath, renamedPath, StringComparison.OrdinalIgnoreCase));
+            entry.IsRenaming = false;
+            if (refreshImmediately)
+            {
+                RefreshCurrentView();
+                if (!_isSearchView) EntriesList.SelectedItem = EntriesList.Items.Cast<ExplorerEntry>().FirstOrDefault(item => string.Equals(item.FullPath, renamedPath, StringComparison.OrdinalIgnoreCase));
+            }
+            else Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (IsLoaded && ReferenceEquals(ActiveTab, sourceTab) && _location == sourceLocation)
+                    RefreshAfterRename(entry.FullPath, renamedPath);
+            }));
             SetStatus($"Renamed to {Path.GetFileName(renamedPath)}.");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
+            entry.IsRenaming = false;
+            entry.RenameText = currentName;
             ShowFileOperationError("Could not rename item", ex);
         }
+    }
+
+    private void RefreshAfterRename(string oldPath, string renamedPath)
+    {
+        var selectedPaths = EntriesList.SelectedItems.OfType<ExplorerEntry>()
+            .Select(entry => string.Equals(entry.FullPath, oldPath, StringComparison.OrdinalIgnoreCase) ? renamedPath : entry.FullPath)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        RefreshCurrentView();
+        if (_isSearchView) return;
+        foreach (var entry in EntriesList.Items.OfType<ExplorerEntry>())
+            if (selectedPaths.Contains(entry.FullPath)) EntriesList.SelectedItems.Add(entry);
+    }
+
+    private static void CancelRename(ExplorerEntry entry)
+    {
+        entry.RenameText = Path.GetFileName(entry.FullPath);
+        entry.IsRenaming = false;
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject parent, Func<T, bool> predicate) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match && predicate(match)) return match;
+            if (FindVisualChild(child, predicate) is { } descendant) return descendant;
+        }
+        return null;
     }
 
     private void DeleteSelected()
@@ -2357,39 +2424,6 @@ public partial class ExplorerWindow : Window
             : $"Permanently deleted {deleted:N0} item{(deleted == 1 ? "" : "s")}; {failures.Count:N0} failed.");
         if (failures.Count > 0)
             MessageBox.Show(this, string.Join(Environment.NewLine, failures), "Some items could not be deleted", MessageBoxButton.OK, MessageBoxImage.Error);
-    }
-
-    private string? PromptForName(string title, string prompt, string initialValue, int? initialSelectionLength = null)
-    {
-        var dialog = new Window
-        {
-            Title = title,
-            Owner = this,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            ResizeMode = ResizeMode.NoResize,
-            SizeToContent = SizeToContent.WidthAndHeight,
-            ShowInTaskbar = false,
-            Background = Background,
-            FontFamily = FontFamily
-        };
-        var panel = new StackPanel { Margin = new Thickness(20), MinWidth = 340 };
-        panel.Children.Add(new TextBlock { Text = prompt, Margin = new Thickness(0, 0, 0, 8) });
-        var nameBox = new TextBox { Text = initialValue, MinWidth = 340, Padding = new Thickness(8, 6, 8, 6) };
-        panel.Children.Add(nameBox);
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 16, 0, 0) };
-        var cancel = new Button { Content = "Cancel", IsCancel = true, MinWidth = 82, Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 8, 0) };
-        var confirm = new Button { Content = "OK", IsDefault = true, MinWidth = 82, Padding = new Thickness(12, 6, 12, 6) };
-        confirm.Click += (_, _) => dialog.DialogResult = true;
-        buttons.Children.Add(cancel);
-        buttons.Children.Add(confirm);
-        panel.Children.Add(buttons);
-        dialog.Content = panel;
-        dialog.Loaded += (_, _) =>
-        {
-            nameBox.Focus();
-            nameBox.Select(0, initialSelectionLength ?? nameBox.Text.Length);
-        };
-        return dialog.ShowDialog() == true ? nameBox.Text.Trim() : null;
     }
 
     private void ShowFileOperationError(string title, Exception ex) =>

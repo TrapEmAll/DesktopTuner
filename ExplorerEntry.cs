@@ -1,10 +1,38 @@
+using System.ComponentModel;
 using System.IO;
 using System.Windows.Media;
 
 namespace DesktopTuner;
 
-public sealed record ExplorerEntry(string Name, string FullPath, bool IsDirectory, bool IsDrive, long? Length, DateTime Modified)
+public sealed record ExplorerEntry(string Name, string FullPath, bool IsDirectory, bool IsDrive, long? Length, DateTime Modified) : INotifyPropertyChanged
 {
+    private bool _isRenaming;
+    private string _renameText = Name;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public bool IsRenaming
+    {
+        get => _isRenaming;
+        set
+        {
+            if (_isRenaming == value) return;
+            _isRenaming = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsRenaming)));
+        }
+    }
+
+    public string RenameText
+    {
+        get => _renameText;
+        set
+        {
+            if (string.Equals(_renameText, value, StringComparison.Ordinal)) return;
+            _renameText = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RenameText)));
+        }
+    }
+
     public bool IsReparsePoint { get; init; }
     public bool IsHidden { get; init; }
     public bool IsSystem { get; init; }
