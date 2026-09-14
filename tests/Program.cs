@@ -7,6 +7,22 @@ using System.Globalization;
 using System.Text.Json;
 
 var count = 0;
+var desktopHostTestRoot = Path.Combine(Path.GetTempPath(), $"desktop-tuner-desktop-host-{Guid.NewGuid():N}");
+var sharedDesktopRoot = Path.Combine(desktopHostTestRoot, "Shared");
+var userDesktopRoot = Path.Combine(desktopHostTestRoot, "User");
+Directory.CreateDirectory(sharedDesktopRoot);
+Directory.CreateDirectory(userDesktopRoot);
+File.WriteAllText(Path.Combine(sharedDesktopRoot, "shared.txt"), "shared");
+File.WriteAllText(Path.Combine(userDesktopRoot, "user.txt"), "user");
+Directory.CreateDirectory(Path.Combine(userDesktopRoot, "Folder"));
+File.WriteAllText(Path.Combine(userDesktopRoot, "hidden.txt"), "hidden");
+File.SetAttributes(Path.Combine(userDesktopRoot, "hidden.txt"), FileAttributes.Hidden);
+var desktopHostEntries = DesktopHostCatalog.ReadItems([userDesktopRoot, sharedDesktopRoot, userDesktopRoot, Path.Combine(desktopHostTestRoot, "Missing")]);
+Check("Folder,shared.txt,user.txt", string.Join(',', desktopHostEntries.Select(entry => entry.Name)), "merge desktop item roots, deduplicate paths, and skip hidden or missing entries");
+Check(true, desktopHostEntries.Single(entry => entry.Name == "Folder").IsDirectory, "identify desktop folders for shell item activation");
+CheckTrue(desktopHostEntries.Single(entry => entry.Name == "user.txt").Length is > 0, "expose desktop file metadata to icon tiles");
+File.SetAttributes(Path.Combine(userDesktopRoot, "hidden.txt"), FileAttributes.Normal);
+Directory.Delete(desktopHostTestRoot, recursive: true);
 var navigationTestRoot = Path.Combine(Path.GetTempPath(), $"desktop-tuner-navigation-{Guid.NewGuid():N}");
 try
 {

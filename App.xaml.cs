@@ -36,6 +36,24 @@ public partial class App : Application
             return;
         }
 
+        if (e.Args.Contains("--desktop-host", StringComparer.OrdinalIgnoreCase))
+        {
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
+            _instanceMutex = new Mutex(initiallyOwned: true, name: @"Local\DesktopTuner.DesktopHost.Singleton", out var desktopHostCreatedNew);
+            if (!desktopHostCreatedNew)
+            {
+                _instanceMutex.Dispose();
+                _instanceMutex = null;
+                Shutdown();
+                return;
+            }
+
+            var desktopHost = new DesktopHostWindow();
+            MainWindow = desktopHost;
+            desktopHost.Show();
+            return;
+        }
+
         var hasFolderShellInvocation = FolderShellIntegrationService.TryReadInvocation(e.Args, out var folderShellPath);
 
         ShutdownMode = ShutdownMode.OnMainWindowClose;
