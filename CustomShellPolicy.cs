@@ -9,6 +9,7 @@ public static class CustomShellPolicy
 {
     private const string RegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Policies\System";
     private const string RegistryValue = "Shell";
+    public const int MaximumHostRestarts = 1;
 
     public static bool IsSupportedEdition(string? editionId) =>
         !string.IsNullOrWhiteSpace(editionId) &&
@@ -65,6 +66,9 @@ public static class CustomShellPolicy
     public static bool CanConfigure(string? currentShellCommand, string? executablePath) =>
         !string.IsNullOrWhiteSpace(executablePath) &&
         (string.IsNullOrWhiteSpace(currentShellCommand) || TargetsExecutable(currentShellCommand, executablePath));
+
+    public static bool ShouldRestartHost(int exitCode, int restartsUsed) =>
+        exitCode != 0 && restartsUsed < MaximumHostRestarts;
 
     public static void ConfigureForExecutable(string executablePath)
     {

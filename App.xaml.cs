@@ -1,6 +1,10 @@
 ﻿using System.Configuration;
 using System.Data;
 using System.Windows;
+using System.Diagnostics;
+using System.ComponentModel;
+using System.IO;
+using Microsoft.Win32;
 
 namespace DesktopTuner;
 
@@ -10,6 +14,7 @@ namespace DesktopTuner;
 public partial class App : Application
 {
     private Mutex? _instanceMutex;
+    private bool _sessionEnding;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -36,8 +41,25 @@ public partial class App : Application
             return;
         }
 
-        var shellHostMode = ShellHostLaunchPolicy.IsShellHostInvocation(e.Args) ||
-            CustomShellPolicy.TargetsExecutable(CustomShellPolicy.ReadCurrentUserShellCommand(), Environment.ProcessPath);
+        var shellHostArgument = ShellHostLaunchPolicy.IsShellHostInvocation(e.Args);
+        var customShellPolicyTargetsApp = CustomShellPolicy.TargetsExecutable(CustomShellPolicy.ReadCurrentUserShellCommand(), Environment.ProcessPath);
+        if (customShellPolicyTargetsApp && !shellHostArgument)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _instanceMutex = new Mutex(initiallyOwned: true, name: @"Local\DesktopTuner.CustomShellSupervisor.Singleton", out var supervisorCreatedNew);
+            if (!supervisorCreatedNew)
+            {
+                _instanceMutex.Dispose();
+                _instanceMutex = null;
+                Shutdown();
+                return;
+            }
+            SystemEvents.SessionEnding += OnSystemSessionEnding;
+            RunCustomShellSupervisor();
+            return;
+        }
+
+        var shellHostMode = shellHostArgument || customShellPolicyTargetsApp;
         var shellOverlayMode = !shellHostMode && ShellHostLaunchPolicy.IsShellOverlayInvocation(e.Args);
         if (shellHostMode || shellOverlayMode || e.Args.Contains("--desktop-host", StringComparer.OrdinalIgnoreCase))
         {
@@ -109,8 +131,79 @@ public partial class App : Application
         finally { Shutdown(); }
     }
 
+    private async void RunCustomShellSupervisor()
+    {
+        var executablePath = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            StartExplorerFallback();
+            return;
+        }
+
+        var restartsUsed = 0;
+        while (true)
+        {
+            int exitCode;
+            try
+            {
+                var startInfo = new ProcessStartInfo(executablePath) { UseShellExecute = false };
+                startInfo.ArgumentList.Add("--shell-host");
+                using var shellHost = Process.Start(startInfo);
+                if (shellHost is null) throw new InvalidOperationException("Windows did not start the Desktop Tuner shell host.");
+                await shellHost.WaitForExitAsync();
+                exitCode = shellHost.ExitCode;
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                Trace.TraceError($"Could not start or monitor the Desktop Tuner custom shell: {ex}");
+                StartExplorerFallback();
+                return;
+            }
+
+            if (_sessionEnding)
+            {
+                Shutdown();
+                return;
+            }
+            if (CustomShellPolicy.ShouldRestartHost(exitCode, restartsUsed))
+            {
+                restartsUsed++;
+                await Task.Delay(750);
+                continue;
+            }
+
+            if (exitCode != 0)
+                Trace.TraceError($"Desktop Tuner shell host exited with code {exitCode} after {restartsUsed} restart attempt(s); starting Explorer for recovery.");
+            StartExplorerFallback();
+            return;
+        }
+    }
+
+    private void StartExplorerFallback()
+    {
+        if (_sessionEnding)
+        {
+            Shutdown();
+            return;
+        }
+
+        try
+        {
+            using var explorer = Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = true });
+            if (explorer is null) throw new InvalidOperationException("Windows did not start Explorer for shell recovery.");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            Trace.TraceError($"Could not start Explorer after the Desktop Tuner shell stopped: {ex}");
+        }
+        Shutdown();
+    }
+
+    private void OnSystemSessionEnding(object? sender, SessionEndingEventArgs e) => _sessionEnding = true;
+
     protected override void OnExit(ExitEventArgs e)
     {
+        SystemEvents.SessionEnding -= OnSystemSessionEnding;
         if (_instanceMutex is not null)
         {
             _instanceMutex.ReleaseMutex();

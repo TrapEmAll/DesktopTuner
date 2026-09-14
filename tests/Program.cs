@@ -144,6 +144,9 @@ Check(true, CustomShellPolicy.IsSupportedEdition("Enterprise"), "allow custom-sh
 Check(true, CustomShellPolicy.IsSupportedEdition("Education"), "allow custom-shell policy controls on Education editions");
 Check(true, CustomShellPolicy.IsSupportedEdition("IoTEnterpriseS"), "allow custom-shell policy controls on IoT Enterprise editions");
 Check(false, CustomShellPolicy.IsSupportedEdition("Core"), "leave custom-shell policy controls unavailable on Home editions");
+Check(true, CustomShellPolicy.ShouldRestartHost(-1, 0), "retry the custom shell once after a failed process exit");
+Check(false, CustomShellPolicy.ShouldRestartHost(0, 0), "return to Explorer after a normal custom-shell exit");
+Check(false, CustomShellPolicy.ShouldRestartHost(-1, CustomShellPolicy.MaximumHostRestarts), "stop retrying and recover to Explorer after the restart limit");
 CheckTrue(ShellHostLaunchPolicy.IsShellOverlayInvocation(["--SHELL-OVERLAY"]), "recognize all-edition shell overlay mode without depending on argument casing");
 Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(true, false), "start the companion taskbar in shell-host mode regardless of sign-in preferences");
 Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(false, true, false), "start the companion taskbar in shell overlay mode regardless of sign-in preferences");
