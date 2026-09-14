@@ -212,6 +212,10 @@ Check("ExplorerMediumIconTemplate", ExplorerViewModeCatalog.Get(ExplorerViewMode
 CheckTrue(ExplorerViewModeCatalog.Get(ExplorerViewMode.LargeIcons).WrapItems, "wrap large Explorer icons to the available viewport");
 Check("ExplorerSmallIconTemplate", ExplorerViewModeCatalog.Get(ExplorerViewMode.SmallIcons).ItemTemplateKey, "map the small icon layout to its item template");
 CheckTrue(ExplorerViewModeCatalog.Get(ExplorerViewMode.Tiles).WrapItems, "wrap Explorer tiles to the available viewport");
+Check("Details,List,SmallIcons,MediumIcons,LargeIcons,Tiles", string.Join(',', ShellNamespaceViewModeCatalog.Options.Select(option => option.Mode)), "offer the six familiar Explorer layouts in the Shell namespace browser");
+Check("ShellNamespaceMediumIconTemplate", ShellNamespaceViewModeCatalog.Get(ExplorerViewMode.MediumIcons).ItemTemplateKey, "map medium Shell namespace icons to their tile template");
+CheckTrue(ShellNamespaceViewModeCatalog.Get(ExplorerViewMode.LargeIcons).WrapItems, "wrap large Shell namespace icons to the available viewport");
+CheckTrue(ShellNamespaceViewModeCatalog.Get(ExplorerViewMode.Tiles).WrapItems, "wrap Shell namespace tiles to the available viewport");
 CheckTrue(NativeTaskbarWatchdog.IsWatchdogInvocation(["--taskbar-watchdog", "123", "snapshot.json"]), "recognize the taskbar recovery process entry point");
 CheckTrue(ShellHostLaunchPolicy.IsShellHostInvocation(["--SHELL-HOST"]), "recognize Shell Launcher mode without depending on argument casing");
 CheckTrue(ShellHostLaunchPolicy.IsShellHostWorkerInvocation(["--SHELL-HOST-WORKER"]), "recognize the internal shell-host worker without depending on argument casing");

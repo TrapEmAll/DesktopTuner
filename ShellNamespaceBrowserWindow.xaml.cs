@@ -15,6 +15,8 @@ public partial class ShellNamespaceBrowserWindow : Window
     private long _navigationVersion;
     private CancellationTokenSource? _searchCancellation;
     private bool _isSearchView;
+    private ExplorerViewMode _viewMode = ExplorerViewMode.Details;
+    private bool _updatingViewModeControl;
 
     public ShellNamespaceBrowserWindow(string location)
     {
@@ -22,6 +24,7 @@ public partial class ShellNamespaceBrowserWindow : Window
             throw new ArgumentException("The location is not a Windows Shell namespace or an existing folder.", nameof(location));
         _location = location;
         InitializeComponent();
+        ApplyViewMode(_viewMode);
         AddressBox.Text = location;
         Title = $"{GetDisplayName(location)} — Desktop Tuner Explorer";
         Closed += (_, _) =>
@@ -176,6 +179,40 @@ public partial class ShellNamespaceBrowserWindow : Window
         SearchBox.Text = string.Empty;
         _isSearchView = false;
         _ = NavigateAsync(_location, recordHistory: false);
+    }
+
+    private void ViewModeSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingViewModeControl || ViewModeSelector.SelectedItem is not ComboBoxItem { Tag: string modeName }
+            || !Enum.TryParse(modeName, out ExplorerViewMode mode) || !Enum.IsDefined(mode)) return;
+        _viewMode = mode;
+        ApplyViewMode(mode);
+    }
+
+    private void ApplyViewMode(ExplorerViewMode mode)
+    {
+        var option = ShellNamespaceViewModeCatalog.Get(mode);
+        _updatingViewModeControl = true;
+        try
+        {
+            ViewModeSelector.SelectedItem = ViewModeSelector.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(item => string.Equals(item.Tag as string, mode.ToString(), StringComparison.Ordinal));
+        }
+        finally { _updatingViewModeControl = false; }
+
+        if (mode == ExplorerViewMode.Details)
+        {
+            ItemsList.ItemTemplate = null;
+            ItemsList.ItemsPanel = (ItemsPanelTemplate)FindResource("ShellNamespaceVerticalItemsPanel");
+            ItemsList.View = ShellNamespaceDetailsGridView;
+            return;
+        }
+
+        ItemsList.View = null;
+        ItemsList.ItemTemplate = (DataTemplate)FindResource(option.ItemTemplateKey!);
+        ItemsList.ItemsPanel = (ItemsPanelTemplate)FindResource(option.WrapItems
+            ? "ShellNamespaceWrapItemsPanel"
+            : "ShellNamespaceVerticalItemsPanel");
     }
 
     private void CancelSearch()
