@@ -13,6 +13,7 @@
                 <DataTemplate>
                     <Button Width="92" Height="104" Margin="4" Padding="6" BorderThickness="0"
                             Background="Transparent" Foreground="White" ToolTip="Double-click to open"
+                            PreviewMouseLeftButtonDown="OnItemMouseDown" PreviewMouseMove="OnItemMouseMove"
                             MouseDoubleClick="OnItemDoubleClick">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Image Width="40" Height="40" Source="{Binding Icon}" Stretch="Uniform"/>

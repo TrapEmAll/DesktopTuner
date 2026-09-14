@@ -19,6 +19,8 @@ public partial class DesktopHostWindow : Window
     private readonly List<FileSystemWatcher> _desktopWatchers = [];
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private bool _isClosed;
+    private DesktopHostItem? _dragCandidate;
+    private Point _dragStart;
 
     public DesktopHostWindow()
     {
@@ -123,6 +125,25 @@ public partial class DesktopHostWindow : Window
             MessageBox.Show(this, ex.Message, "Could not open desktop item", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         e.Handled = true;
+    }
+
+    private void OnItemMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        _dragCandidate = (sender as Button)?.DataContext as DesktopHostItem;
+        _dragStart = e.GetPosition(this);
+    }
+
+    private void OnItemMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _dragCandidate is not { IsShellNamespace: false } item
+            || !File.Exists(item.FullPath) && !Directory.Exists(item.FullPath)) return;
+        var current = e.GetPosition(this);
+        if (Math.Abs(current.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(current.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+        _dragCandidate = null;
+        var data = new DataObject(DataFormats.FileDrop, new[] { item.FullPath });
+        DragDrop.DoDragDrop((DependencyObject)sender, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
     }
 
     private void OnRefreshClick(object sender, RoutedEventArgs e) => RefreshDesktop();
