@@ -48,6 +48,7 @@ public partial class MainWindow : Window
     private TaskbarEdge _taskbarEdge = TaskbarEdge.Bottom;
     private TaskbarSize _taskbarSize = TaskbarSize.Standard;
     private TaskbarStyle _taskbarLayout = TaskbarStyle.EdgeToEdge;
+    private TaskbarVisualStyle _taskbarVisualStyle = TaskbarVisualStyle.Windows11;
     private TaskbarGroupingMode _taskbarGrouping = TaskbarGroupingMode.Always;
     private TaskbarButtonAlignment _taskbarButtonAlignment = TaskbarButtonAlignment.Center;
     private TaskbarIconSize _taskbarIconSize = TaskbarIconSize.Standard;
@@ -90,6 +91,7 @@ public partial class MainWindow : Window
         _taskbarEdge = desktopPreferences.TaskbarEdge;
         _taskbarSize = desktopPreferences.TaskbarSize;
         _taskbarLayout = desktopPreferences.TaskbarLayout;
+        _taskbarVisualStyle = desktopPreferences.TaskbarVisualStyle;
         _taskbarIconSize = desktopPreferences.TaskbarIconSize;
         _taskbarButtonSpacing = desktopPreferences.TaskbarButtonSpacing;
         _taskbarButtonEffect = desktopPreferences.TaskbarButtonEffect;
@@ -432,6 +434,22 @@ public partial class MainWindow : Window
             });
 
             var styleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            var visualStyleSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
+            visualStyleSelector.Items.Add(new ComboBoxItem { Content = "Windows 11", Tag = TaskbarVisualStyle.Windows11 });
+            visualStyleSelector.Items.Add(new ComboBoxItem { Content = "Windows 10", Tag = TaskbarVisualStyle.Windows10 });
+            visualStyleSelector.Items.Add(new ComboBoxItem { Content = "Windows 7-inspired Aero", Tag = TaskbarVisualStyle.Windows7 });
+            visualStyleSelector.SelectedItem = visualStyleSelector.Items.Cast<ComboBoxItem>().First(item => item.Tag is TaskbarVisualStyle visualStyle && visualStyle == _taskbarVisualStyle);
+            visualStyleSelector.SelectionChanged += (_, _) =>
+            {
+                if (visualStyleSelector.SelectedItem is not ComboBoxItem { Tag: TaskbarVisualStyle visualStyle }) return;
+                _taskbarVisualStyle = visualStyle;
+                SaveDesktopPreferences();
+            };
+            var visualStyleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            visualStyleRow.Children.Add(new TextBlock { Text = "Taskbar visual style", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+            visualStyleRow.Children.Add(visualStyleSelector);
+            PageContent.Children.Add(visualStyleRow);
+
             styleRow.Children.Add(new TextBlock { Text = "Taskbar style", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
             var styleSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
             styleSelector.Items.Add(new ComboBoxItem { Content = "Full edge", Tag = TaskbarStyle.EdgeToEdge });
@@ -1158,7 +1176,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle);
 
     private void SetStartMenuCentered(bool centered)
     {
@@ -1263,6 +1281,7 @@ public partial class MainWindow : Window
             _taskbarWindowDisplayMode = preferences.TaskbarWindowDisplayMode;
             _taskbarShowWindowsFromAllVirtualDesktops = preferences.TaskbarShowWindowsFromAllVirtualDesktops;
             _taskbarLayout = preferences.TaskbarLayout;
+            _taskbarVisualStyle = preferences.TaskbarVisualStyle;
             _taskbarGrouping = preferences.TaskbarGrouping;
             _taskbarButtonAlignment = preferences.TaskbarButtonAlignment;
             _taskbarShowLabels = preferences.TaskbarShowLabels;

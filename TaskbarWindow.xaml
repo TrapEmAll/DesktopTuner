@@ -43,8 +43,8 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Grid>
-                            <Border x:Name="AuraGlow" CornerRadius="8" Background="{Binding AuraBrush}" Opacity="0" IsHitTestVisible="False" />
-                            <Border x:Name="ButtonBorder" CornerRadius="8" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <Border x:Name="AuraGlow" CornerRadius="{DynamicResource TaskbarButtonCornerRadius}" Background="{Binding AuraBrush}" Opacity="0" IsHitTestVisible="False" />
+                            <Border x:Name="ButtonBorder" CornerRadius="{DynamicResource TaskbarButtonCornerRadius}" Background="{TemplateBinding Background}" BorderBrush="{DynamicResource TaskbarButtonBorderBrush}" BorderThickness="{DynamicResource TaskbarButtonBorderThickness}" Padding="{TemplateBinding Padding}">
                                 <Grid>
                                     <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center" />
                                     <Border x:Name="RunningIndicator" Width="16" Height="2" Margin="0,0,0,2" VerticalAlignment="Bottom" HorizontalAlignment="Center" Background="{DynamicResource TaskbarRunningIndicatorBrush}" CornerRadius="1" Visibility="Collapsed" />

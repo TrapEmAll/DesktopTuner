@@ -5,6 +5,10 @@
     <Application.Resources>
         <Thickness x:Key="TouchMenuItemPadding">10,7,10,7</Thickness>
         <sys:Double x:Key="TouchMenuItemMinimumHeight" xmlns:sys="clr-namespace:System;assembly=mscorlib">32</sys:Double>
+        <CornerRadius x:Key="TaskbarButtonCornerRadius">8</CornerRadius>
+        <CornerRadius x:Key="TaskbarSegmentCornerRadius">11</CornerRadius>
+        <SolidColorBrush x:Key="TaskbarButtonBorderBrush" Color="Transparent" />
+        <Thickness x:Key="TaskbarButtonBorderThickness">0</Thickness>
         <Style TargetType="ContextMenu">
             <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />

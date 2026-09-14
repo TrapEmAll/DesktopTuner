@@ -768,6 +768,14 @@ Check("AppsUseLightTheme", appModeSetting.ValueName, "target Windows app color m
 Check("SystemUsesLightTheme", systemModeSetting.ValueName, "target Windows system color mode value");
 Check("#1B2434", TaskbarTheme.Resolve(dark: false).Foreground, "use dark taskbar text in Windows light system mode");
 Check("#F4F6FA", TaskbarTheme.Resolve(dark: true).Foreground, "use light taskbar text in Windows dark system mode");
+Check("#202020", TaskbarTheme.Resolve(dark: true, TaskbarVisualStyle.Windows10).Background, "use a flat Windows 10 taskbar surface in dark mode");
+Check("#20384C", TaskbarTheme.Resolve(dark: false, TaskbarVisualStyle.Windows7).Background, "use the classic Windows 7 taskbar palette independently of the system mode");
+Check("#FFFFFF", TaskbarTheme.Resolve(dark: true, TaskbarVisualStyle.Windows7).Foreground, "keep readable text on the Windows 7 Aero taskbar");
+Check(false, TaskbarTheme.UsesBackdrop(TaskbarVisualStyle.Windows7), "leave the Windows 7 Aero taskbar free of the Windows 11 DWM material");
+Check(true, TaskbarTheme.UsesBackdrop(TaskbarVisualStyle.Windows11), "keep the DWM material for the Windows 11 taskbar");
+var windows7TaskbarBackground = (LinearGradientBrush)TaskbarTheme.CreateBackground(dark: false, 70, TaskbarVisualStyle.Windows7);
+Check(3, windows7TaskbarBackground.GradientStops.Count, "draw the Windows 7 Aero surface as a three-stop glass gradient");
+Check((byte)77, windows7TaskbarBackground.GradientStops[0].Color.A, "apply taskbar transparency consistently to the Windows 7 Aero gradient");
 Check((byte)77, ((SolidColorBrush)TaskbarTheme.CreateBackground(dark: false, 70)).Color.A, "apply the selected transparency to the light taskbar surface");
 Check("EnableTransparency", transparencySetting.ValueName, "target Windows transparency setting");
 Check(SettingsCatalog.ExplorerCabinetState, fullPathSetting.RegistryPath, "use Windows Explorer's cabinet-state registry location");
@@ -1310,6 +1318,10 @@ try
     Check(true, loadedPreferences.ReplaceNativeTaskbar, "persist native taskbar replacement mode");
     Check(true, loadedPreferences.TaskbarDynamicTransparency, "persist adaptive taskbar transparency");
     Check(TaskbarButtonEffect.DynamicAura, loadedPreferences.TaskbarButtonEffect, "persist the Dynamic Aura button effect");
+    preferencesStore.Save(expectedPreferences with { TaskbarVisualStyle = TaskbarVisualStyle.Windows7 });
+    Check(TaskbarVisualStyle.Windows7, preferencesStore.Load().TaskbarVisualStyle, "persist the Windows 7 Aero taskbar visual style");
+    preferencesStore.Save(expectedPreferences with { TaskbarVisualStyle = TaskbarVisualStyle.Windows10 });
+    Check(TaskbarVisualStyle.Windows10, preferencesStore.Load().TaskbarVisualStyle, "persist the Windows 10 taskbar visual style");
     preferencesStore.Save(expectedPreferences with { StartMenuStyle = StartMenuStyle.Windows7 });
     Check(StartMenuStyle.Windows7, preferencesStore.Load().StartMenuStyle, "persist the Windows 7-inspired Start menu style");
     preferencesStore.Save(expectedPreferences with { StartMenuStyle = StartMenuStyle.Windows8 });
@@ -1352,6 +1364,7 @@ try
     Check(5, preferencesStore.Load().TaskbarTransparency, "default taskbar transparency for older preference files");
     Check(false, preferencesStore.Load().TaskbarDynamicTransparency, "disable adaptive transparency for older preference files");
     Check(TaskbarButtonEffect.Accent, preferencesStore.Load().TaskbarButtonEffect, "default older preference files to the Windows accent button effect");
+    Check(TaskbarVisualStyle.Windows11, preferencesStore.Load().TaskbarVisualStyle, "default older preference files to the Windows 11 taskbar visual style");
     Check(TaskbarStyle.EdgeToEdge, preferencesStore.Load().TaskbarLayout, "default legacy preferences to a full-edge taskbar");
     Check(TaskbarGroupingMode.Always, preferencesStore.Load().TaskbarGrouping, "default legacy preferences to grouped taskbar buttons");
     Check(TaskbarButtonAlignment.Center, preferencesStore.Load().TaskbarButtonAlignment, "default legacy preferences to centered taskbar buttons");
@@ -1363,6 +1376,8 @@ try
     Check(StartPinCatalog.DefaultGroupName, preferencesStore.Load().PinnedStartApps!.Single().GroupName, "default older Start pin records to the Pinned group");
     File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"TaskbarButtonEffect":99}""");
     Check(TaskbarButtonEffect.Accent, preferencesStore.Load().TaskbarButtonEffect, "reject an unknown taskbar button effect and fall back to the default");
+    File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"TaskbarVisualStyle":99}""");
+    Check(TaskbarVisualStyle.Windows11, preferencesStore.Load().TaskbarVisualStyle, "reject an unknown taskbar visual style and fall back to defaults");
 
     var profilePath = Path.Combine(temporaryPreferencesDirectory, "appearance-profile.json");
     var profileStore = new ProfileStore();
