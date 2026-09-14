@@ -2067,6 +2067,21 @@ public partial class ExplorerWindow : Window
         }
     }
 
+    private void ExplorerWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        switch (ExplorerMouseNavigationPolicy.Resolve(e.ChangedButton))
+        {
+            case ExplorerMouseNavigationAction.Back:
+                Back_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+                break;
+            case ExplorerMouseNavigationAction.Forward:
+                Forward_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+                break;
+        }
+    }
+
     private void EntriesList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (ItemsControl.ContainerFromElement(EntriesList, e.OriginalSource as DependencyObject) is ListViewItem item)

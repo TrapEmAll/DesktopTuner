@@ -583,6 +583,9 @@ Check(ExplorerKeyboardAction.ReopenClosedTab, ExplorerKeyboardPolicy.Resolve(Key
 Check(ExplorerKeyboardAction.NextPane, ExplorerKeyboardPolicy.Resolve(Key.F6, ModifierKeys.None), "cycle Explorer navigation panes with F6");
 Check(ExplorerKeyboardAction.PreviousPane, ExplorerKeyboardPolicy.Resolve(Key.F6, ModifierKeys.Shift), "cycle Explorer navigation panes in reverse with Shift+F6");
 Check(ExplorerKeyboardAction.None, ExplorerKeyboardPolicy.Resolve(Key.L, ModifierKeys.Control | ModifierKeys.Shift), "leave modified Ctrl+L combinations untouched");
+Check(ExplorerMouseNavigationAction.Back, ExplorerMouseNavigationPolicy.Resolve(MouseButton.XButton1), "navigate back in Explorer history with the first mouse side button");
+Check(ExplorerMouseNavigationAction.Forward, ExplorerMouseNavigationPolicy.Resolve(MouseButton.XButton2), "navigate forward in Explorer history with the second mouse side button");
+Check(ExplorerMouseNavigationAction.None, ExplorerMouseNavigationPolicy.Resolve(MouseButton.Left), "keep ordinary Explorer clicks out of history navigation");
 var folderCatalog = new[]
 {
     new AppEntry("Word", @"C:\Apps\Word.lnk", CategoryPath: @"Office\Editors"),
