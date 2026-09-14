@@ -1520,7 +1520,7 @@ public partial class MainWindow : Window
                 : hasOtherShell
                     ? "Another custom shell is configured. Desktop Tuner will leave that setting unchanged."
                     : "Windows Explorer remains the sign-in shell until you opt in here.";
-        PageContent.Children.Add(InfoCard("Desktop Tuner sign-in shell", status + " This replaces Explorer for this user at the next sign-in. A supervisor retries the custom shell once after a crash, then starts Explorer for recovery; a normal exit also returns to Explorer. Keep Ctrl+Alt+Delete recovery available and test on a separate account before using it every day."));
+        PageContent.Children.Add(InfoCard("Desktop Tuner sign-in shell", status + " This replaces Explorer for this user at the next sign-in. A supervisor retries once after a crash, then starts Explorer and clears Desktop Tuner's per-user shell setting if both attempts fail. A normal exit also returns to Explorer. Keep Ctrl+Alt+Delete recovery available and test on a separate account before using it every day."));
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 16) };
         var configure = new Button

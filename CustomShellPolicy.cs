@@ -70,6 +70,9 @@ public static class CustomShellPolicy
     public static bool ShouldRestartHost(int exitCode, int restartsUsed) =>
         exitCode != 0 && restartsUsed < MaximumHostRestarts;
 
+    public static bool ShouldDisablePolicyAfterHostFailure(int exitCode, int restartsUsed) =>
+        exitCode != 0 && !ShouldRestartHost(exitCode, restartsUsed);
+
     public static string FormatExecutableCommand(string executablePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);

@@ -43,8 +43,10 @@ public partial class App : Application
         }
 
         var shellHostArgument = ShellHostLaunchPolicy.IsShellHostInvocation(e.Args);
+        var shellHostWorkerArgument = ShellHostLaunchPolicy.IsShellHostWorkerInvocation(e.Args);
         var customShellPolicyTargetsApp = CustomShellPolicy.TargetsExecutable(CustomShellPolicy.ReadCurrentUserShellCommand(), Environment.ProcessPath);
-        if (customShellPolicyTargetsApp && !shellHostArgument)
+        var shellHostSupervisorActive = ShellHostLaunchPolicy.ShouldRunShellHostSupervisor(e.Args, customShellPolicyTargetsApp);
+        if (shellHostSupervisorActive)
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _instanceMutex = new Mutex(initiallyOwned: true, name: @"Local\DesktopTuner.CustomShellSupervisor.Singleton", out var supervisorCreatedNew);
@@ -79,7 +81,7 @@ public partial class App : Application
                 return;
             }
 
-            _launchExplorerOnShellHostExit = ShellHostLaunchPolicy.ShouldLaunchExplorerOnShellHostExit(shellHostMode, customShellPolicyTargetsApp);
+            _launchExplorerOnShellHostExit = ShellHostLaunchPolicy.ShouldLaunchExplorerOnShellHostExit(shellHostMode, shellHostWorkerArgument || customShellPolicyTargetsApp);
             if (_launchExplorerOnShellHostExit)
                 SystemEvents.SessionEnding += OnSystemSessionEnding;
 
@@ -155,7 +157,7 @@ public partial class App : Application
             try
             {
                 var startInfo = new ProcessStartInfo(executablePath) { UseShellExecute = false };
-                startInfo.ArgumentList.Add("--shell-host");
+                startInfo.ArgumentList.Add(ShellHostLaunchPolicy.ShellHostWorkerArgument);
                 using var shellHost = Process.Start(startInfo);
                 if (shellHost is null) throw new InvalidOperationException("Windows did not start the Desktop Tuner shell host.");
                 await shellHost.WaitForExitAsync();
@@ -164,6 +166,13 @@ public partial class App : Application
             catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException or System.Security.SecurityException)
             {
                 Trace.TraceError($"Could not start or monitor the Desktop Tuner custom shell: {ex}");
+                if (CustomShellPolicy.ShouldRestartHost(-1, restartsUsed))
+                {
+                    restartsUsed++;
+                    await Task.Delay(750);
+                    continue;
+                }
+                DisableFailedCustomShell(executablePath);
                 StartExplorerFallback();
                 return;
             }
@@ -181,9 +190,26 @@ public partial class App : Application
             }
 
             if (exitCode != 0)
+            {
                 Trace.TraceError($"Desktop Tuner shell host exited with code {exitCode} after {restartsUsed} restart attempt(s); starting Explorer for recovery.");
+                if (CustomShellPolicy.ShouldDisablePolicyAfterHostFailure(exitCode, restartsUsed))
+                    DisableFailedCustomShell(executablePath);
+            }
             StartExplorerFallback();
             return;
+        }
+    }
+
+    private static void DisableFailedCustomShell(string executablePath)
+    {
+        try
+        {
+            if (CustomShellPolicy.RestoreDefaultShell(executablePath))
+                Trace.TraceWarning("Disabled Desktop Tuner's per-user custom-shell policy after shell startup failed; Windows Explorer will remain the shell at the next sign-in.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or ArgumentException)
+        {
+            Trace.TraceError($"Could not disable the failed Desktop Tuner custom-shell policy: {ex}");
         }
     }
 

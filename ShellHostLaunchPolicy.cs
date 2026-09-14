@@ -2,10 +2,27 @@ namespace DesktopTuner;
 
 public static class ShellHostLaunchPolicy
 {
+    public const string ShellHostWorkerArgument = "--shell-host-worker";
+
     public static bool IsShellHostInvocation(IEnumerable<string> arguments)
     {
         ArgumentNullException.ThrowIfNull(arguments);
-        return arguments.Contains("--shell-host", StringComparer.OrdinalIgnoreCase);
+        return arguments.Any(argument => string.Equals(argument, "--shell-host", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(argument, ShellHostWorkerArgument, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static bool IsShellHostWorkerInvocation(IEnumerable<string> arguments)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        return arguments.Contains(ShellHostWorkerArgument, StringComparer.OrdinalIgnoreCase);
+    }
+
+    public static bool ShouldRunShellHostSupervisor(IEnumerable<string> arguments, bool customShellPolicyTargetsApp)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        var values = arguments.ToArray();
+        if (values.Any(argument => string.Equals(argument, ShellHostWorkerArgument, StringComparison.OrdinalIgnoreCase))) return false;
+        return customShellPolicyTargetsApp || values.Any(argument => string.Equals(argument, "--shell-host", StringComparison.OrdinalIgnoreCase));
     }
 
     public static bool IsShellOverlayInvocation(IEnumerable<string> arguments)

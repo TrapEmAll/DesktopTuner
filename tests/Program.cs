@@ -209,6 +209,11 @@ Check("ExplorerSmallIconTemplate", ExplorerViewModeCatalog.Get(ExplorerViewMode.
 CheckTrue(ExplorerViewModeCatalog.Get(ExplorerViewMode.Tiles).WrapItems, "wrap Explorer tiles to the available viewport");
 CheckTrue(NativeTaskbarWatchdog.IsWatchdogInvocation(["--taskbar-watchdog", "123", "snapshot.json"]), "recognize the taskbar recovery process entry point");
 CheckTrue(ShellHostLaunchPolicy.IsShellHostInvocation(["--SHELL-HOST"]), "recognize Shell Launcher mode without depending on argument casing");
+CheckTrue(ShellHostLaunchPolicy.IsShellHostWorkerInvocation(["--SHELL-HOST-WORKER"]), "recognize the internal shell-host worker without depending on argument casing");
+Check(true, ShellHostLaunchPolicy.ShouldRunShellHostSupervisor(["--shell-host"], false), "supervise an explicit Shell Launcher entry point");
+Check(false, ShellHostLaunchPolicy.ShouldRunShellHostSupervisor(["--shell-host-worker"], true), "avoid recursively supervising the shell-host worker");
+Check(true, ShellHostLaunchPolicy.ShouldRunShellHostSupervisor([], true), "supervise the per-user alternate-shell policy entry point");
+Check(false, ShellHostLaunchPolicy.ShouldRunShellHostSupervisor(["--shell-overlay"], false), "keep shell overlay startup outside the logon-shell supervisor");
 CheckTrue(CustomShellPolicy.TargetsExecutable(@"C:\Users\test\Desktop Tuner\DesktopTuner.exe", @"C:\Users\test\Desktop Tuner\DesktopTuner.exe"), "recognize a per-user custom-shell policy that targets the current executable");
 CheckTrue(CustomShellPolicy.TargetsExecutable(@"""C:\Users\test\Desktop Tuner\DesktopTuner.exe"" --shell-host", @"C:\Users\test\Desktop Tuner\DesktopTuner.exe"), "recognize a quoted custom-shell command with arguments");
 Check(false, CustomShellPolicy.TargetsExecutable(@"C:\Windows\explorer.exe", @"C:\Users\test\DesktopTuner.exe"), "keep Explorer's custom-shell fallback from activating Desktop Tuner shell-host mode");
@@ -224,6 +229,9 @@ Check(false, CustomShellPolicy.IsSupportedEdition("Core"), "leave custom-shell p
 Check(true, CustomShellPolicy.ShouldRestartHost(-1, 0), "retry the custom shell once after a failed process exit");
 Check(false, CustomShellPolicy.ShouldRestartHost(0, 0), "return to Explorer after a normal custom-shell exit");
 Check(false, CustomShellPolicy.ShouldRestartHost(-1, CustomShellPolicy.MaximumHostRestarts), "stop retrying and recover to Explorer after the restart limit");
+Check(false, CustomShellPolicy.ShouldDisablePolicyAfterHostFailure(-1, 0), "keep the custom-shell policy during its one recovery retry");
+Check(true, CustomShellPolicy.ShouldDisablePolicyAfterHostFailure(-1, CustomShellPolicy.MaximumHostRestarts), "disable the failing per-user custom-shell policy after recovery retries are exhausted");
+Check(false, CustomShellPolicy.ShouldDisablePolicyAfterHostFailure(0, CustomShellPolicy.MaximumHostRestarts), "preserve the custom-shell policy after a normal user exit");
 Check(@"""C:\Program Files\Desktop Tuner\DesktopTuner.exe""", CustomShellPolicy.FormatExecutableCommand(@"C:\Program Files\Desktop Tuner\DesktopTuner.exe"), "quote custom-shell executable paths so spaces are handled by Winlogon");
 CheckTrue(ShellHostLaunchPolicy.IsShellOverlayInvocation(["--SHELL-OVERLAY"]), "recognize all-edition shell overlay mode without depending on argument casing");
 Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(true, false), "start the companion taskbar in shell-host mode regardless of sign-in preferences");
