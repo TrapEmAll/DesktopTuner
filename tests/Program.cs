@@ -963,6 +963,22 @@ Check(WindowsKeyAction.Suppress, shellSystemAreaShortcutGesture.KeyDown(0x5b), "
 Check(WindowsKeyAction.FocusTaskbarSystem, shellSystemAreaShortcutGesture.KeyDown((uint)'B', canFocusTaskbarSystem: () => true), "route Win+B to the custom taskbar system area when Explorer is absent");
 Check(WindowsKeyAction.Suppress, shellSystemAreaShortcutGesture.KeyUp((uint)'B'), "suppress Win+B release after focusing the custom taskbar system area");
 Check(WindowsKeyAction.Suppress, shellSystemAreaShortcutGesture.KeyUp(0x5b), "avoid opening Start after focusing the custom taskbar system area");
+var shellPowerMenuShortcutGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
+Check(WindowsKeyAction.Suppress, shellPowerMenuShortcutGesture.KeyDown(0x5b), "capture Windows before routing shell-host Power User menu");
+Check(WindowsKeyAction.OpenPowerUserMenu, shellPowerMenuShortcutGesture.KeyDown((uint)'X', canOpenPowerUserMenu: () => true), "route Win+X to the custom Power User menu when Explorer is absent");
+Check(WindowsKeyAction.Suppress, shellPowerMenuShortcutGesture.KeyUp((uint)'X'), "suppress Win+X release after opening the custom Power User menu");
+Check(WindowsKeyAction.Suppress, shellPowerMenuShortcutGesture.KeyUp(0x5b), "avoid opening Start after opening the custom Power User menu");
+Check("apps,power-options,event-viewer,system,device-manager,network-connections,disk-management,computer-management,terminal,task-manager,settings",
+    string.Join(',', ShellHostPowerMenuCatalog.SystemCommands.Select(command => command.Id)), "provide the standard shell-host Power User system commands");
+Check("ms-settings:appsfeatures", ShellHostPowerMenuCatalog.SystemCommand("apps").Target, "open Installed apps from the Power User menu");
+Throws<ArgumentOutOfRangeException>(() => ShellHostPowerMenuCatalog.SystemCommand("missing"), "reject unknown Power User menu commands");
+Check("lock,sleep,hibernate,sign-out,shutdown,restart",
+    string.Join(',', ShellHostPowerMenuCatalog.PowerActions.Select(action => action.Id)), "reuse all existing confirmed power actions in the Power User menu");
+var nativePowerMenuShortcutGesture = new WindowsKeyGesture();
+nativePowerMenuShortcutGesture.KeyDown(0x5b);
+Check(WindowsKeyAction.ForwardWindowsDownThenPass, nativePowerMenuShortcutGesture.KeyDown((uint)'X', canOpenPowerUserMenu: () => false), "preserve native Win+X outside replacement-shell mode");
+Check(WindowsKeyAction.PassThrough, nativePowerMenuShortcutGesture.KeyUp((uint)'X'), "pass through native Win+X release outside replacement-shell mode");
+Check(WindowsKeyAction.ForwardWindowsUpThenSuppress, nativePowerMenuShortcutGesture.KeyUp(0x5b), "release native Windows key after passing through Win+X");
 var nativeSystemAreaShortcutGesture = new WindowsKeyGesture();
 nativeSystemAreaShortcutGesture.KeyDown(0x5b);
 Check(WindowsKeyAction.ForwardWindowsDownThenPass, nativeSystemAreaShortcutGesture.KeyDown((uint)'B', canFocusTaskbarSystem: () => false), "preserve native Win+B outside replacement-shell mode");

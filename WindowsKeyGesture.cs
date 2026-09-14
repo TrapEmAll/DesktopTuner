@@ -11,6 +11,7 @@ public enum WindowsKeyAction
     FocusTaskbar,
     FocusTaskbarPrevious,
     FocusTaskbarSystem,
+    OpenPowerUserMenu,
     OpenExplorer,
     ForwardWindowsTapThenSuppress,
     ToggleDesktop
@@ -43,7 +44,7 @@ public sealed class WindowsKeyGesture
 
     public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Func<bool>? canOpenExplorer = null,
         bool controlPressed = false, bool altPressed = false, bool shiftPressed = false, Func<bool>? canToggleDesktop = null,
-        Func<bool>? canFocusTaskbarSystem = null)
+        Func<bool>? canFocusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null)
     {
         if (_controlEscapeHeld && key == VK_ESCAPE) return WindowsKeyAction.Suppress;
         if (_replaceControlEscape && key == VK_ESCAPE && controlPressed && !altPressed && !shiftPressed)
@@ -81,6 +82,12 @@ public sealed class WindowsKeyGesture
                 _taskbarShortcutConsumed = true;
                 _suppressedShortcutKeys.Add(key);
                 return WindowsKeyAction.FocusTaskbarSystem;
+            }
+            if (key == (uint)'X' && canOpenPowerUserMenu?.Invoke() == true)
+            {
+                _taskbarShortcutConsumed = true;
+                _suppressedShortcutKeys.Add(key);
+                return WindowsKeyAction.OpenPowerUserMenu;
             }
             if (key == (uint)'D' && canToggleDesktop?.Invoke() == true)
             {

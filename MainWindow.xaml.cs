@@ -1367,7 +1367,8 @@ public partial class MainWindow : Window
     {
         var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, _taskbarWindowOrder, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication,
             showDesktop: _shellHostMode ? ToggleShowDesktop : null,
-            focusSystemArea: _shellHostMode ? FocusTaskbarSystemArea : null);
+            focusSystemArea: _shellHostMode ? FocusTaskbarSystemArea : null,
+            executePowerUserCommand: _shellHostMode ? ExecuteShellHostPowerUserCommand : null);
         taskbar.ContentRendered += TaskbarWindow_ContentRendered;
         taskbar.Closed += (_, _) =>
         {
@@ -2013,7 +2014,8 @@ public partial class MainWindow : Window
             replaceBareWindowsKey: _replaceWindowsKey, canOpenExplorer: () => _replaceExplorerShortcut, openExplorer: () => OpenExplorer(),
             replaceControlEscape: _shellHostMode || _shellOverlayMode,
             canToggleDesktop: () => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible), toggleDesktop: ToggleShowDesktop,
-            canFocusTaskbarSystem: CanFocusTaskbarSystemArea, focusTaskbarSystem: FocusTaskbarSystemArea);
+            canFocusTaskbarSystem: CanFocusTaskbarSystemArea, focusTaskbarSystem: FocusTaskbarSystemArea,
+            canOpenPowerUserMenu: CanOpenPowerUserMenu, openPowerUserMenu: OpenPowerUserMenu);
         if (!hook.TryInstall(out var error))
         {
             hook.Dispose();
@@ -2056,6 +2058,59 @@ public partial class MainWindow : Window
         if (!_taskbarWindows.Any(window => window.HasKeyboardTaskbarFocus))
             _taskbarFocusReturnWindow = GetForegroundWindow();
         taskbar.FocusTaskbarSystemArea(_taskbarFocusReturnWindow);
+    }
+
+    private bool CanOpenPowerUserMenu() => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible);
+
+    private void OpenPowerUserMenu()
+    {
+        if (!CanOpenPowerUserMenu()) return;
+        if (_startMenuWindow?.IsVisible == true) _startMenuWindow.Close();
+        var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
+            ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
+        taskbar?.ShowPowerUserMenu();
+    }
+
+    private void ExecuteShellHostPowerUserCommand(string commandId)
+    {
+        if (commandId.StartsWith("power:", StringComparison.OrdinalIgnoreCase))
+        {
+            var action = StartPowerActionCatalog.ById(commandId["power:".Length..]);
+            if (action.RequiresConfirmation)
+            {
+                var choice = MessageBox.Show(this,
+                    $"Are you sure you want to {action.Label.ToLowerInvariant()}? Save your work in open apps first.",
+                    action.Label, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+                if (choice != MessageBoxResult.Yes) return;
+            }
+
+            try { StartPowerActionService.Execute(action.Id); }
+            catch (Exception ex) { MessageBox.Show(this, ex.Message, $"Could not {action.Label.ToLowerInvariant()}", MessageBoxButton.OK, MessageBoxImage.Error); }
+            return;
+        }
+
+        try
+        {
+            switch (commandId)
+            {
+                case "explorer":
+                    OpenExplorer();
+                    return;
+                case "search":
+                    ShowStartMenu();
+                    return;
+                case "desktop":
+                    ToggleShowDesktop();
+                    return;
+                default:
+                    AppCatalogService.OpenLocation(ShellHostPowerMenuCatalog.SystemCommand(commandId).Target!);
+                    return;
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not open system tool", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void ToggleShowDesktop()

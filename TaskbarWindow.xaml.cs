@@ -37,6 +37,7 @@ public partial class TaskbarWindow : Window
     private readonly Action _quitApplication;
     private readonly Action _showDesktop;
     private readonly Action? _focusSystemArea;
+    private readonly Action<string>? _executePowerUserCommand;
     private DesktopPreferences _preferences = new(TaskbarEdge.Bottom);
     private TaskbarEdge _edge;
     private TaskbarSize _size;
@@ -68,7 +69,7 @@ public partial class TaskbarWindow : Window
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null)
     {
         InitializeComponent();
         _isDark = TaskbarTheme.ReadSystemDarkMode();
@@ -83,6 +84,7 @@ public partial class TaskbarWindow : Window
         _quitApplication = quitApplication;
         _showDesktop = showDesktop ?? (() => SystemFlyoutService.ShowDesktop());
         _focusSystemArea = focusSystemArea;
+        _executePowerUserCommand = executePowerUserCommand;
         _refreshTimer.Tick += (_, _) => RefreshWindows();
         _batteryRefreshTimer.Tick += (_, _) => UpdateBatteryStatus();
         _microphoneRefreshTimer.Tick += (_, _) => UpdateMicrophoneStatus();
@@ -1158,6 +1160,64 @@ public partial class TaskbarWindow : Window
             target.Focus();
             Keyboard.Focus(target);
         }), DispatcherPriority.Input);
+    }
+
+    public void ShowPowerUserMenu()
+    {
+        if (!_nativeReady || _executePowerUserCommand is null || !StartButton.IsVisible) return;
+        _autoHideTimer.Stop();
+        _keyboardFocusActive = false;
+        if (_collapsed)
+        {
+            _collapsed = false;
+            ApplyLayout();
+        }
+        Activate();
+
+        var menu = new ContextMenu();
+        foreach (var command in ShellHostPowerMenuCatalog.SystemCommands.Take(4))
+            menu.Items.Add(CreatePowerUserMenuItem(command.Id, command.Label));
+        menu.Items.Add(new Separator());
+        foreach (var command in ShellHostPowerMenuCatalog.SystemCommands.Skip(4))
+            menu.Items.Add(CreatePowerUserMenuItem(command.Id, command.Label));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(CreatePowerUserMenuItem("explorer", "File Explorer"));
+        menu.Items.Add(CreatePowerUserMenuItem("search", "Search"));
+        menu.Items.Add(new Separator());
+
+        var powerMenu = new MenuItem { Header = "Shut down or sign out" };
+        foreach (var action in ShellHostPowerMenuCatalog.PowerActions)
+        {
+            if (action.Id is "sign-out" or "shutdown") powerMenu.Items.Add(new Separator());
+            var item = new MenuItem { Header = action.Label, Tag = $"power:{action.Id}" };
+            item.Click += PowerUserMenuItem_Click;
+            powerMenu.Items.Add(item);
+        }
+        menu.Items.Add(powerMenu);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(CreatePowerUserMenuItem("desktop", "Desktop"));
+        menu.PlacementTarget = StartButton;
+        menu.Placement = _edge switch
+        {
+            TaskbarEdge.Top => PlacementMode.Bottom,
+            TaskbarEdge.Left => PlacementMode.Right,
+            TaskbarEdge.Right => PlacementMode.Left,
+            _ => PlacementMode.Top
+        };
+        StartButton.ContextMenu = menu;
+        menu.IsOpen = true;
+    }
+
+    private MenuItem CreatePowerUserMenuItem(string commandId, string label)
+    {
+        var item = new MenuItem { Header = label, Tag = commandId };
+        item.Click += PowerUserMenuItem_Click;
+        return item;
+    }
+
+    private void PowerUserMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: string commandId }) _executePowerUserCommand?.Invoke(commandId);
     }
 
     private void Taskbar_PreviewKeyDown(object sender, KeyEventArgs e)
