@@ -13,6 +13,7 @@ public static class SystemBackdropService
     private const int WindowCornerPreferenceAttribute = 33;
     private const int MainWindowBackdrop = 2;
     private const int TransientWindowBackdrop = 3;
+    private const int NoSystemBackdrop = 1;
     private const int SmallRoundedCorners = 3;
 
     public static bool TryApplyMica(Window window)
@@ -81,21 +82,27 @@ public static class SystemBackdropService
     }
 
     public static bool TryApplyTransientBackdrop(IntPtr windowHandle)
+        => TrySetBackdrop(windowHandle, TransientWindowBackdrop, "DWM acrylic backdrop", "a transient window");
+
+    public static bool TryClearSystemBackdrop(IntPtr windowHandle)
+        => TrySetBackdrop(windowHandle, NoSystemBackdrop, "clearing the DWM backdrop", "a window");
+
+    private static bool TrySetBackdrop(IntPtr windowHandle, int backdropType, string operation, string description)
     {
         if (windowHandle == IntPtr.Zero) return false;
         try
         {
-            var result = SetSystemBackdrop(windowHandle, TransientWindowBackdrop);
+            var result = SetSystemBackdrop(windowHandle, backdropType);
             if (result == 0) return true;
-            Trace.TraceInformation($"DWM acrylic backdrop is unavailable for a transient window (HRESULT 0x{result:X8}); keeping its solid background.");
+            Trace.TraceInformation($"{operation} is unavailable for {description} (HRESULT 0x{result:X8}); keeping its themed background.");
         }
         catch (DllNotFoundException ex)
         {
-            Trace.TraceInformation($"DWM is unavailable for a transient window: {ex.Message}");
+            Trace.TraceInformation($"DWM is unavailable for {description}: {ex.Message}");
         }
         catch (EntryPointNotFoundException ex)
         {
-            Trace.TraceInformation($"DWM transient backdrops are unavailable: {ex.Message}");
+            Trace.TraceInformation($"DWM backdrop support is unavailable for {description}: {ex.Message}");
         }
         return false;
     }

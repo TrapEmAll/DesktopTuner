@@ -408,6 +408,7 @@ public partial class MainWindow : Window
             styleSelector.Items.Add(new ComboBoxItem { Content = "Full edge", Tag = TaskbarStyle.EdgeToEdge });
             styleSelector.Items.Add(new ComboBoxItem { Content = "Floating", Tag = TaskbarStyle.Floating });
             styleSelector.Items.Add(new ComboBoxItem { Content = "Segmented", Tag = TaskbarStyle.Segmented });
+            styleSelector.Items.Add(new ComboBoxItem { Content = "Apps dock", Tag = TaskbarStyle.DockLike });
             styleSelector.SelectedIndex = (int)_taskbarLayout;
             styleSelector.SelectionChanged += (_, _) =>
             {

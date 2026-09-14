@@ -6,7 +6,7 @@ namespace DesktopTuner;
 
 public enum TaskbarEdge { Bottom, Top, Left, Right }
 public enum TaskbarSize { Small, Standard, Large }
-public enum TaskbarStyle { EdgeToEdge, Floating, Segmented }
+public enum TaskbarStyle { EdgeToEdge, Floating, Segmented, DockLike }
 public enum TaskbarGroupingMode { Always, WhenFull, Never }
 public enum TaskbarButtonAlignment { Left, Center }
 public enum TaskbarIconSize { Small, Standard, Large }

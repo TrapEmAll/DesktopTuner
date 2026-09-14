@@ -38,6 +38,7 @@ public partial class TaskbarWindow : Window
     private bool _maximizedWindowOnDisplay;
     private bool _collapsed;
     private bool _nativeReady;
+    private bool? _systemBackdropForCurrentStyle;
     private bool _nativeTrayExposed;
     private bool _isDark;
     private bool _keyboardFocusActive;
@@ -77,7 +78,6 @@ public partial class TaskbarWindow : Window
             _nativeReady = true;
             var handle = new WindowInteropHelper(this).Handle;
             HwndSource.FromHwnd(handle)?.AddHook(WindowProc);
-            SystemBackdropService.TryApplyTransientBackdrop(handle);
             ApplyLayout();
             Display = TaskbarDisplayService.ReadWindowDpi(Display, this);
             ApplyLayout();
@@ -103,6 +103,7 @@ public partial class TaskbarWindow : Window
 
     private void ApplyLayout()
     {
+        UpdateSystemBackdrop();
         var layoutPreferences = _preferences with { TaskbarEdge = _edge, TaskbarSize = _size, AutoHide = _autoHide };
         RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, GetEffectiveTransparency());
         RootBorder.BorderBrush = TaskbarTheme.GetBrush("TaskbarBorderBrush");
@@ -199,15 +200,24 @@ public partial class TaskbarWindow : Window
             RootBorder.BorderThickness = new Thickness(1);
             ResetSegments();
         }
-        else if (_preferences.TaskbarLayout == TaskbarStyle.Segmented)
+        else if (_preferences.TaskbarLayout is TaskbarStyle.Segmented or TaskbarStyle.DockLike)
         {
             RootBorder.CornerRadius = new CornerRadius(0);
             RootBorder.Background = Brushes.Transparent;
             RootBorder.BorderBrush = Brushes.Transparent;
             RootBorder.BorderThickness = new Thickness(0);
-            StyleSegment(StartSegment, vertical);
+            ResetSegments();
             StyleSegment(AppsSegment, vertical);
-            StyleSegment(SystemSegment, vertical);
+            if (_preferences.TaskbarLayout == TaskbarStyle.DockLike)
+            {
+                AppsSegment.HorizontalAlignment = vertical ? HorizontalAlignment.Stretch : HorizontalAlignment.Center;
+                AppsSegment.VerticalAlignment = vertical ? VerticalAlignment.Center : VerticalAlignment.Stretch;
+            }
+            else
+            {
+                StyleSegment(StartSegment, vertical);
+                StyleSegment(SystemSegment, vertical);
+            }
         }
         else
         {
@@ -225,6 +235,8 @@ public partial class TaskbarWindow : Window
     {
         foreach (var segment in new[] { StartSegment, AppsSegment, SystemSegment })
         {
+            segment.HorizontalAlignment = HorizontalAlignment.Stretch;
+            segment.VerticalAlignment = VerticalAlignment.Stretch;
             segment.Background = Brushes.Transparent;
             segment.BorderBrush = Brushes.Transparent;
             segment.BorderThickness = new Thickness(0);
@@ -232,6 +244,18 @@ public partial class TaskbarWindow : Window
             segment.Margin = new Thickness(0);
             segment.Padding = new Thickness(0);
         }
+    }
+
+    private void UpdateSystemBackdrop()
+    {
+        if (!_nativeReady) return;
+        var shouldApplyBackdrop = _preferences.TaskbarLayout != TaskbarStyle.DockLike;
+        if (_systemBackdropForCurrentStyle == shouldApplyBackdrop) return;
+
+        var handle = new WindowInteropHelper(this).Handle;
+        if (shouldApplyBackdrop) SystemBackdropService.TryApplyTransientBackdrop(handle);
+        else SystemBackdropService.TryClearSystemBackdrop(handle);
+        _systemBackdropForCurrentStyle = shouldApplyBackdrop;
     }
 
     private void StyleSegment(Border segment, bool vertical)
@@ -420,8 +444,16 @@ public partial class TaskbarWindow : Window
         var canPin = GetDroppableItems(e.Data).Any();
         e.Effects = canPin ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
-        RootBorder.BorderBrush = canPin ? TaskbarTheme.GetBrush("TaskbarAccentFallbackBrush") : TaskbarTheme.GetBrush("TaskbarBorderBrush");
-        RootBorder.Background = canPin ? TaskbarTheme.GetBrush("TaskbarHoverBrush") : TaskbarTheme.CreateBackground(_isDark, GetEffectiveTransparency());
+        if (_preferences.TaskbarLayout == TaskbarStyle.DockLike)
+        {
+            AppsSegment.BorderBrush = canPin ? TaskbarTheme.GetBrush("TaskbarAccentFallbackBrush") : TaskbarTheme.GetBrush("TaskbarSegmentBorderBrush");
+            AppsSegment.Background = canPin ? TaskbarTheme.GetBrush("TaskbarHoverBrush") : TaskbarTheme.CreateBackground(_isDark, GetEffectiveTransparency());
+        }
+        else
+        {
+            RootBorder.BorderBrush = canPin ? TaskbarTheme.GetBrush("TaskbarAccentFallbackBrush") : TaskbarTheme.GetBrush("TaskbarBorderBrush");
+            RootBorder.Background = canPin ? TaskbarTheme.GetBrush("TaskbarHoverBrush") : TaskbarTheme.CreateBackground(_isDark, GetEffectiveTransparency());
+        }
     }
 
     private void Window_DragLeave(object sender, DragEventArgs e) => ResetDropHighlight();
@@ -451,7 +483,14 @@ public partial class TaskbarWindow : Window
 
     private void ResetDropHighlight()
     {
-        if (_preferences.TaskbarLayout == TaskbarStyle.Segmented)
+        if (_preferences.TaskbarLayout == TaskbarStyle.DockLike)
+        {
+            RootBorder.BorderBrush = Brushes.Transparent;
+            RootBorder.Background = Brushes.Transparent;
+            AppsSegment.BorderBrush = TaskbarTheme.GetBrush("TaskbarSegmentBorderBrush");
+            AppsSegment.Background = TaskbarTheme.CreateBackground(_isDark, GetEffectiveTransparency());
+        }
+        else if (_preferences.TaskbarLayout == TaskbarStyle.Segmented)
         {
             RootBorder.BorderBrush = Brushes.Transparent;
             RootBorder.Background = Brushes.Transparent;

@@ -39,6 +39,7 @@ finally
 }
 
 Check(false, SystemBackdropService.TryApplyTransientBackdrop(IntPtr.Zero), "leave unsupported menu handles on the solid background");
+Check(false, SystemBackdropService.TryClearSystemBackdrop(IntPtr.Zero), "leave unsupported window handles unchanged when clearing a backdrop");
 Check(false, SystemBackdropService.TryApplySmallRoundedCorners(IntPtr.Zero), "leave unsupported menu handles with system-default corners");
 Check(false, new DesktopPreferences(TaskbarEdge.Bottom).TaskbarOnAllDisplays, "preserve the primary-display behavior for older preference data");
 Check(false, new DesktopPreferences(TaskbarEdge.Bottom).ReplaceNativeTaskbar, "leave native taskbar replacement disabled by default");
@@ -72,11 +73,13 @@ Check(new TaskbarBounds(0, 1076, 1920, 4), TaskbarLayoutCalculator.Calculate(192
 Check(new TaskbarBounds(288, 1014, 1344, 54), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom, TaskbarSize.Standard, TaskbarLayout: TaskbarStyle.Floating), false), "center a floating bar with a bottom screen inset");
 Check(new TaskbarBounds(12, 162, 176, 756), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Left, TaskbarSize.Standard, TaskbarLayout: TaskbarStyle.Floating), false), "shorten and inset a floating vertical bar");
 Check(new TaskbarBounds(0, 1026, 1920, 54), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom, TaskbarSize.Standard, TaskbarLayout: TaskbarStyle.Segmented), false), "keep segmented taskbar regions across the selected screen edge");
+Check(new TaskbarBounds(0, 1026, 1920, 54), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom, TaskbarSize.Standard, TaskbarLayout: TaskbarStyle.DockLike), false), "keep the dock-style taskbar host aligned to the selected screen edge");
 Check(new TaskbarBounds(0, 0, 176, 1080), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Left, TaskbarSize.Standard, TaskbarLayout: TaskbarStyle.Segmented), false), "retain full-height geometry for vertical segmented regions");
 var trayDisplay = new TaskbarDisplay("DISPLAY1", 0, 0, 1920, 1080, true);
 var nativeTray = new TaskbarBounds(1500, 1030, 420, 50);
 Check(new TaskbarBounds(0, 1026, 1500, 54), TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Bottom), nativeTray), "leave the native notification area uncovered on an edge-to-edge bar");
 Check(new TaskbarBounds(0, 1026, 1500, 54), TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Bottom, TaskbarLayout: TaskbarStyle.Segmented), nativeTray), "leave the native notification area uncovered on a segmented bar");
+Check(new TaskbarBounds(0, 1026, 1500, 54), TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Bottom, TaskbarLayout: TaskbarStyle.DockLike), nativeTray), "preserve the native notification area beside the dock-style bar");
 Check(new TaskbarBounds(0, 0, 1500, 46), TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Top, TaskbarSize.Small), new(1500, 0, 420, 50)), "leave a top-edge native notification area uncovered");
 Check(new TaskbarBounds(0, 0, 176, 800), TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Left), new(0, 800, 176, 280)), "leave a bottom-corner native notification area uncovered on a left bar");
 Check(new TaskbarBounds(1744, 0, 176, 800), TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Right), new(1744, 800, 176, 280)), "leave a bottom-corner native notification area uncovered on a right bar");
@@ -1045,6 +1048,8 @@ try
     Check(false, new DesktopPreferences(TaskbarEdge.Bottom).StartWithWindows, "leave automatic taskbar startup disabled for older preferences");
     preferencesStore.Save(expectedPreferences with { TaskbarLayout = TaskbarStyle.Segmented });
     Check(TaskbarStyle.Segmented, preferencesStore.Load().TaskbarLayout, "persist segmented taskbar style");
+    preferencesStore.Save(expectedPreferences with { TaskbarLayout = TaskbarStyle.DockLike });
+    Check(TaskbarStyle.DockLike, preferencesStore.Load().TaskbarLayout, "persist the apps-dock taskbar style");
     preferencesStore.Save(expectedPreferences with { TaskbarGrouping = TaskbarGroupingMode.Never });
     Check(TaskbarGroupingMode.Never, preferencesStore.Load().TaskbarGrouping, "persist ungrouped taskbar mode");
     preferencesStore.Save(expectedPreferences with { TaskbarButtonAlignment = TaskbarButtonAlignment.Left });
