@@ -645,6 +645,9 @@ public partial class ExplorerWindow : Window
                 case ExplorerKeyboardAction.NavigateForward:
                     Forward_Click(this, new RoutedEventArgs());
                     break;
+                case ExplorerKeyboardAction.CreateFolder:
+                    CreateFolder();
+                    break;
                 case ExplorerKeyboardAction.ReopenClosedTab:
                     ReopenClosedTab();
                     break;

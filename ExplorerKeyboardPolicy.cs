@@ -7,6 +7,7 @@ public enum ExplorerKeyboardAction
     None,
     NavigateBack,
     NavigateForward,
+    CreateFolder,
     OpenNewWindow,
     ReopenClosedTab,
     FocusAddress,
@@ -26,6 +27,7 @@ public static class ExplorerKeyboardPolicy
         {
             (Key.Left, ModifierKeys.Alt) => ExplorerKeyboardAction.NavigateBack,
             (Key.Right, ModifierKeys.Alt) => ExplorerKeyboardAction.NavigateForward,
+            (Key.N, ModifierKeys.Control | ModifierKeys.Shift) => ExplorerKeyboardAction.CreateFolder,
             (Key.N, ModifierKeys.Control) => ExplorerKeyboardAction.OpenNewWindow,
             (Key.T, ModifierKeys.Control | ModifierKeys.Shift) => ExplorerKeyboardAction.ReopenClosedTab,
             (Key.L, ModifierKeys.Control) or (Key.D, ModifierKeys.Alt) => ExplorerKeyboardAction.FocusAddress,

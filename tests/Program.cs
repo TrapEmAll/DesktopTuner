@@ -733,7 +733,7 @@ Throws<ArgumentException>(() => StartSearchTargetBuilder.WindowsSearch("  "), "r
 Throws<ArgumentException>(() => StartSearchTargetBuilder.WebSearch(string.Empty), "reject empty web search requests");
 Check(ExplorerKeyboardAction.FocusAddress, ExplorerKeyboardPolicy.Resolve(Key.L, ModifierKeys.Control), "focus the Explorer address field with Ctrl+L");
 Check(ExplorerKeyboardAction.OpenNewWindow, ExplorerKeyboardPolicy.Resolve(Key.N, ModifierKeys.Control), "open the current Explorer location in a new window with Ctrl+N");
-Check(ExplorerKeyboardAction.None, ExplorerKeyboardPolicy.Resolve(Key.N, ModifierKeys.Control | ModifierKeys.Shift), "leave Ctrl+Shift+N available for creating folders");
+Check(ExplorerKeyboardAction.CreateFolder, ExplorerKeyboardPolicy.Resolve(Key.N, ModifierKeys.Control | ModifierKeys.Shift), "create a folder with Ctrl+Shift+N");
 Check(ExplorerKeyboardAction.FocusAddress, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.D), "focus the Explorer address field with Alt+D system-key events");
 Check(ExplorerKeyboardAction.NavigateBack, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.Left), "navigate back through Explorer history with Alt+Left system-key events");
 Check(ExplorerKeyboardAction.NavigateForward, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.Right), "navigate forward through Explorer history with Alt+Right system-key events");
