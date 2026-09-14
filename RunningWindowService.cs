@@ -19,9 +19,12 @@ public sealed class RunningWindowService
     private const int SW_RESTORE = 9;
     private const int SW_MINIMIZE = 6;
     private const uint WM_CLOSE = 0x0010;
+    private static readonly SharedSnapshotCache<RunningWindow> SnapshotCache = new(TimeSpan.FromMilliseconds(200));
     private readonly uint _ownProcessId = (uint)Environment.ProcessId;
 
-    public IReadOnlyList<RunningWindow> Enumerate()
+    public IReadOnlyList<RunningWindow> Enumerate() => SnapshotCache.GetOrRefresh(EnumerateWindows);
+
+    private IReadOnlyList<RunningWindow> EnumerateWindows()
     {
         var windows = new List<RunningWindow>();
         var shell = GetShellWindow();

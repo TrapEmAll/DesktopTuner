@@ -466,6 +466,17 @@ CheckTrue(ExplorerTabOrdering.Transfer(transferSourceTabs, transferTargetTabs, 1
 Check("Home", string.Join(',', transferSourceTabs), "remove a transferred tab from its source window");
 Check("Documents,Downloads", string.Join(',', transferTargetTabs), "insert a transferred tab at its target position");
 CheckTrue(!ExplorerTabOrdering.Transfer(transferSourceTabs, transferTargetTabs, 1, 1), "ignore a transfer with an invalid source index");
+var snapshotTime = 0L;
+var snapshotRefreshes = 0;
+var sharedSnapshotCache = new SharedSnapshotCache<string>(TimeSpan.FromMilliseconds(200), () => snapshotTime);
+var firstSharedSnapshot = sharedSnapshotCache.GetOrRefresh(() => { snapshotRefreshes++; return ["window-a"]; });
+var reusedSharedSnapshot = sharedSnapshotCache.GetOrRefresh(() => { snapshotRefreshes++; return ["window-b"]; });
+Check(1, snapshotRefreshes, "reuse the taskbar window snapshot across displays inside its lifetime");
+CheckTrue(ReferenceEquals(firstSharedSnapshot, reusedSharedSnapshot), "reuse the same taskbar snapshot object across displays");
+Check("window-a", reusedSharedSnapshot.Single(), "share one consistent taskbar window snapshot across displays");
+snapshotTime = 200;
+Check("window-b", sharedSnapshotCache.GetOrRefresh(() => { snapshotRefreshes++; return ["window-b"]; }).Single(), "refresh the taskbar window snapshot after its lifetime expires");
+Check(2, snapshotRefreshes, "refresh shared taskbar metadata only once after the cache expires");
 var closedExplorerTabs = new List<ExplorerTabState>();
 var closedDocumentsTab = new ExplorerTabState(new ExplorerLocation(@"C:\Users\test\Documents"));
 var closedDownloadsTab = new ExplorerTabState(new ExplorerLocation(@"C:\Users\test\Downloads"));
