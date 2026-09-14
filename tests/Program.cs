@@ -705,6 +705,9 @@ Check(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), StartMen
 Check(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"), StartMenuPlaceCatalog.ResolveTarget("downloads"), "resolve Downloads from the Start dropdown places");
 Check(5, StartMenuPlaceCatalog.DropdownPlaces.Count, "show the supported Start places with dropdown navigation");
 Check(6, StartMenuPlaceCatalog.AdditionalPlaces.Count, "show the remaining additional Start system places");
+Check(true, StartMenuPlaceCatalog.CanExpand(new StartMenuPlaceEntry("Folder", @"C:\Folder", IsDirectory: true, IsReparsePoint: false)), "allow a normal directory to expose another Start place dropdown level");
+Check(false, StartMenuPlaceCatalog.CanExpand(new StartMenuPlaceEntry("File.txt", @"C:\File.txt", IsDirectory: false, IsReparsePoint: false)), "keep files as direct Start place entries without submenus");
+Check(false, StartMenuPlaceCatalog.CanExpand(new StartMenuPlaceEntry("Linked folder", @"C:\Linked folder", IsDirectory: true, IsReparsePoint: true)), "prevent Start place dropdown traversal through linked folders");
 Check("Run...", StartMenuPlaceCatalog.AdditionalPlaces.Single(place => place.Id == "run").Label, "offer the classic Run dialog from the Start places menu");
 var defaultStartPlaces = StartMenuPlaceCatalog.Normalize(null);
 Check(11, defaultStartPlaces.Order!.Count, "include every supported system place in the default order");

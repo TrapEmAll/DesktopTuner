@@ -114,4 +114,10 @@ public static class StartMenuPlaceCatalog
             .Select(item => item.Entry)
             .ToArray();
     }
+
+    public static bool CanExpand(StartMenuPlaceEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        return entry.IsDirectory && !entry.IsReparsePoint;
+    }
 }

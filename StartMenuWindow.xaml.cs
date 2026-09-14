@@ -984,7 +984,7 @@ public partial class StartMenuWindow : Window
     private void PlaceFlyout_Opened(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: string placeId } menuItem) return;
-        FillPlaceFlyout(menuItem, StartMenuPlaceCatalog.ResolveTarget(placeId), depth: 0);
+        FillPlaceFlyout(menuItem, StartMenuPlaceCatalog.ResolveTarget(placeId));
     }
 
     private void ControlPanelFlyout_Opened(object sender, RoutedEventArgs e)
@@ -1022,10 +1022,10 @@ public partial class StartMenuWindow : Window
     private void NestedPlaceFlyout_Opened(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: StartMenuPlaceEntry { IsDirectory: true } entry } menuItem) return;
-        FillPlaceFlyout(menuItem, entry.FullPath, depth: 1);
+        FillPlaceFlyout(menuItem, entry.FullPath);
     }
 
-    private void FillPlaceFlyout(MenuItem menuItem, string directoryPath, int depth)
+    private void FillPlaceFlyout(MenuItem menuItem, string directoryPath)
     {
         menuItem.Items.Clear();
         var entries = StartMenuPlaceCatalog.ReadChildren(directoryPath);
@@ -1039,7 +1039,7 @@ public partial class StartMenuWindow : Window
         {
             var item = new MenuItem { Header = entry.Name, Tag = entry };
             item.Click += StartPlaceEntry_Click;
-            if (entry.IsDirectory && !entry.IsReparsePoint && depth < 1)
+            if (StartMenuPlaceCatalog.CanExpand(entry))
                 item.SubmenuOpened += NestedPlaceFlyout_Opened;
             menuItem.Items.Add(item);
         }
