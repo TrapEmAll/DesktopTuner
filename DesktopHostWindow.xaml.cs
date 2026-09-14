@@ -352,6 +352,15 @@ public partial class DesktopHostWindow : Window
             else ApplySelection(new HashSet<string>(StringComparer.OrdinalIgnoreCase), null);
             e.Handled = true;
         }
+        else if (e.Key == Key.F2)
+        {
+            var selected = _desktopItems.Where(item => item.IsSelected).ToArray();
+            var target = selected.Length == 1 ? selected[0]
+                : selected.Length == 0 && TryGetFocusedDesktopItem(out _, out var renameFocusedItem) ? renameFocusedItem
+                : null;
+            if (target is { CanRename: true, IsRenaming: false }) BeginRename(target);
+            e.Handled = true;
+        }
         else if (TryGetFocusedDesktopItem(out var focusedButton, out var focusedItem) &&
                  TryGetNavigationDirection(e.Key, out var direction))
         {
@@ -418,6 +427,90 @@ public partial class DesktopHostWindow : Window
         button = null!;
         item = null!;
         return false;
+    }
+
+    private void BeginRename(DesktopHostItem item)
+    {
+        if (!item.CanRename || !File.Exists(item.FullPath) && !Directory.Exists(item.FullPath)) return;
+        item.RenameText = item.Name;
+        item.IsRenaming = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (!item.IsRenaming) return;
+            var editor = FindVisualChildren<TextBox>(DesktopItems)
+                .FirstOrDefault(candidate => ReferenceEquals(candidate.DataContext, item));
+            if (editor is null)
+            {
+                item.IsRenaming = false;
+                return;
+            }
+            editor.Focus();
+            Keyboard.Focus(editor);
+            editor.Select(0, ExplorerRenamePolicy.GetInitialSelectionLength(item.Name, item.IsDirectory));
+        }));
+    }
+
+    private void RenameEditor_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox { DataContext: DesktopHostItem item }) return;
+        if (e.Key == Key.Enter)
+        {
+            CommitRename(item);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            item.RenameText = item.Name;
+            item.IsRenaming = false;
+            e.Handled = true;
+        }
+    }
+
+    private void RenameEditor_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is TextBox { DataContext: DesktopHostItem item }) CommitRename(item);
+    }
+
+    private void CommitRename(DesktopHostItem item)
+    {
+        if (!item.IsRenaming) return;
+        var originalPath = item.FullPath;
+        var newName = item.RenameText;
+        if (string.Equals(item.Name, newName, StringComparison.Ordinal))
+        {
+            item.IsRenaming = false;
+            return;
+        }
+
+        try
+        {
+            var renamedPath = ExplorerFileOperationService.Rename(originalPath, newName);
+            item.IsRenaming = false;
+            if (!_layoutStore.RenamePath(originalPath, renamedPath))
+                System.Diagnostics.Trace.TraceWarning($"The desktop item '{renamedPath}' was renamed, but its saved icon position could not be migrated.");
+            RefreshDesktop();
+            if (!_desktopItems.Any(candidate => string.Equals(candidate.FullPath, renamedPath, StringComparison.OrdinalIgnoreCase))) return;
+            ApplySelection(new HashSet<string>([renamedPath], StringComparer.OrdinalIgnoreCase), renamedPath);
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+            {
+                var renamedButton = FindVisualChildren<Button>(DesktopItems)
+                    .FirstOrDefault(candidate => candidate.DataContext is DesktopHostItem desktopItem &&
+                        string.Equals(desktopItem.FullPath, renamedPath, StringComparison.OrdinalIgnoreCase));
+                renamedButton?.Focus();
+                if (renamedButton is not null) Keyboard.Focus(renamedButton);
+            }));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            item.IsRenaming = false;
+            item.RenameText = item.Name;
+            MessageBox.Show(this, ex.Message, "Could not rename desktop item", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void OnRenameItemClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { DataContext: DesktopHostItem { CanRename: true } item }) BeginRename(item);
     }
 
     private void OnItemDoubleClick(object sender, MouseButtonEventArgs e)

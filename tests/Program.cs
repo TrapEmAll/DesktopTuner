@@ -22,7 +22,9 @@ Check("Folder,Recycle Bin,shared.txt,This PC,user.txt", string.Join(',', desktop
 Check(true, desktopHostEntries.Single(entry => entry.Name == "Folder").IsDirectory, "identify desktop folders for shell item activation");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "This PC").IsShellNamespace, "mark This PC for Shell namespace activation");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "user.txt").CanShowNativeContextMenu, "allow native filesystem context verbs for a desktop file");
+Check(true, desktopHostEntries.Single(entry => entry.Name == "user.txt").CanRename, "allow inline rename for filesystem desktop items");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "This PC").CanShowNativeContextMenu, "offer native Shell context verbs for This PC");
+Check(false, desktopHostEntries.Single(entry => entry.Name == "This PC").CanRename, "leave namespace item rename to its native Shell context menu");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "Recycle Bin").CanShowNativeContextMenu, "offer native Shell context verbs for Recycle Bin");
 CheckTrue(TaskbarIconService.LoadNamespaceIcon("shell:MyComputerFolder") is not null, "extract a shell icon for a namespace parsing name");
 var shellNamespaceDesktopEntries = DesktopHostCatalog.ReadItems([userDesktopRoot, sharedDesktopRoot], includeDesktopNamespace: true);
@@ -45,6 +47,21 @@ var restoredDesktopEntries = desktopLayoutStore.ApplyLayout(desktopHostEntries, 
 Check("user.txt,Folder,Recycle Bin,shared.txt,This PC", string.Join(',', restoredDesktopEntries.Select(entry => entry.Name)), "restore the saved icon order while appending unrecorded items");
 Check(new DesktopHostPosition(0, 112), new DesktopHostPosition(restoredDesktopEntries.Single(entry => entry.Name == "user.txt").Left, restoredDesktopEntries.Single(entry => entry.Name == "user.txt").Top), "restore a desktop icon's free-form position");
 Check(new DesktopHostPosition(0, 0), new DesktopHostPosition(restoredDesktopEntries.Single(entry => entry.Name == "Folder").Left, restoredDesktopEntries.Single(entry => entry.Name == "Folder").Top), "place newly added desktop items in an unoccupied icon slot");
+var renameLayoutStore = new DesktopHostLayoutStore(Path.Combine(desktopHostTestRoot, "desktop-rename-layout.json"));
+var oldDesktopNamePath = Path.Combine(userDesktopRoot, "before.txt");
+var newDesktopNamePath = Path.Combine(userDesktopRoot, "after.txt");
+var renameLayoutItems = new[]
+{
+    new DesktopHostItem("before.txt", oldDesktopNamePath, false),
+    new DesktopHostItem("second.txt", Path.Combine(userDesktopRoot, "second.txt"), false)
+};
+renameLayoutItems[0].SetPosition(new DesktopHostPosition(224, 56));
+Check(true, renameLayoutStore.SaveLayout(renameLayoutItems), "save desktop icon layout before a rename");
+Check(true, renameLayoutStore.RenamePath(oldDesktopNamePath, newDesktopNamePath), "migrate a renamed desktop item's saved layout identity");
+var restoredRenamedLayout = renameLayoutStore.ApplyLayout(
+    [new DesktopHostItem("after.txt", newDesktopNamePath, false), renameLayoutItems[1]], 600, 400);
+Check("after.txt,second.txt", string.Join(',', restoredRenamedLayout.Select(item => item.Name)), "preserve desktop icon order across a rename");
+Check(new DesktopHostPosition(224, 56), new DesktopHostPosition(restoredRenamedLayout[0].Left, restoredRenamedLayout[0].Top), "preserve desktop icon position across a rename");
 var desktopMonitorViewports = new DesktopHostMonitorViewport[]
 {
     new("DISPLAY1", 0, 0, 600, 400, true),

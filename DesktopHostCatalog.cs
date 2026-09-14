@@ -11,11 +11,14 @@ public sealed class DesktopHostItem(string name, string fullPath, bool isDirecto
     private bool _isSelected;
     private double _left;
     private double _top;
+    private bool _isRenaming;
+    private string _renameText = name;
 
     public string Name { get; } = name;
     public string FullPath { get; } = fullPath;
     public bool IsDirectory { get; } = isDirectory;
     public bool IsShellNamespace { get; } = isShellNamespace;
+    public bool CanRename => !IsShellNamespace;
     public string? MonitorDeviceName { get; internal set; }
     public double Left
     {
@@ -37,6 +40,18 @@ public sealed class DesktopHostItem(string name, string fullPath, bool isDirecto
             _isSelected = value;
             OnPropertyChanged();
         }
+    }
+
+    public bool IsRenaming
+    {
+        get => _isRenaming;
+        set { if (_isRenaming == value) return; _isRenaming = value; OnPropertyChanged(); }
+    }
+
+    public string RenameText
+    {
+        get => _renameText;
+        set { if (string.Equals(_renameText, value, StringComparison.Ordinal)) return; _renameText = value; OnPropertyChanged(); }
     }
 
     public ImageSource? Icon => IsShellNamespace ? TaskbarIconService.LoadNamespaceIcon(FullPath) : TaskbarIconService.LoadIcon(FullPath);

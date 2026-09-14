@@ -42,17 +42,29 @@
                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
                                          Opened="OnItemContextMenuOpened">
                                 <MenuItem x:Name="OpenDesktopItemMenuItem" Header="Open" Click="OnOpenItemClick"/>
+                                <MenuItem Header="Rename" IsEnabled="{Binding CanRename}" Click="OnRenameItemClick"/>
                                 <MenuItem Header="Show more options" IsEnabled="{Binding CanShowNativeContextMenu}"
                                           Click="OnShowNativeContextMenuClick"/>
                             </ContextMenu>
                         </Button.ContextMenu>
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Image Width="40" Height="40" Source="{Binding Icon}" Stretch="Uniform"/>
-                            <TextBlock Margin="0,6,0,0" Text="{Binding Name}" TextAlignment="Center"
-                                       TextWrapping="Wrap" MaxHeight="38" Foreground="White"
-                                       Effect="{DynamicResource DesktopHostTextShadow}"/>
+                            <Grid Margin="0,6,0,0">
+                                <TextBlock x:Name="DesktopItemNameText" Text="{Binding Name}" TextAlignment="Center"
+                                           TextWrapping="Wrap" MaxHeight="38" Foreground="White"
+                                           Effect="{DynamicResource DesktopHostTextShadow}"/>
+                                <TextBox x:Name="DesktopItemNameEditor" Text="{Binding RenameText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         Visibility="Collapsed" MinWidth="80" MaxWidth="100" Padding="2,0"
+                                         PreviewKeyDown="RenameEditor_PreviewKeyDown" LostKeyboardFocus="RenameEditor_LostKeyboardFocus"/>
+                            </Grid>
                         </StackPanel>
                     </Button>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsRenaming}" Value="True">
+                            <Setter TargetName="DesktopItemNameText" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="DesktopItemNameEditor" Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>

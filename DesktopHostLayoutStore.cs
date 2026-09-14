@@ -147,6 +147,32 @@ public sealed class DesktopHostLayoutStore
 
     public bool SaveOrder(IEnumerable<DesktopHostItem> items) => SaveLayout(items);
 
+    public bool RenamePath(string oldPath, string newPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(oldPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(newPath);
+        var layout = ReadLayout();
+        var changed = false;
+        var orderIndex = layout.Order.FindIndex(path => string.Equals(path, oldPath, StringComparison.OrdinalIgnoreCase));
+        if (orderIndex >= 0)
+        {
+            var duplicateIndex = layout.Order.FindIndex(path => string.Equals(path, newPath, StringComparison.OrdinalIgnoreCase));
+            if (duplicateIndex >= 0 && duplicateIndex != orderIndex)
+            {
+                layout.Order.RemoveAt(duplicateIndex);
+                if (duplicateIndex < orderIndex) orderIndex--;
+            }
+            layout.Order[orderIndex] = newPath;
+            changed = true;
+        }
+        if (layout.Positions.Remove(oldPath, out var position))
+        {
+            layout.Positions[newPath] = position;
+            changed = true;
+        }
+        return !changed || WriteLayout(layout);
+    }
+
     public bool SaveLayout(IEnumerable<DesktopHostItem> items)
     {
         ArgumentNullException.ThrowIfNull(items);
