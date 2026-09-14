@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     private readonly TaskbarWindowOrder _taskbarWindowOrder = new();
     private readonly NativeTaskbarVisibilityService _nativeTaskbarVisibility = new();
     private readonly DispatcherTimer _nativeTaskbarWatchTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private readonly DispatcherTimer _displayRefreshTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
     private WindowsKeyStartHook? _windowsKeyHook;
     private TaskbarEdge _taskbarEdge = TaskbarEdge.Bottom;
     private TaskbarSize _taskbarSize = TaskbarSize.Standard;
@@ -67,7 +68,7 @@ public partial class MainWindow : Window
     private bool _startWithWindows;
     private readonly bool _startInBackground;
     private bool _closingTaskbars;
-    private bool _displayRefreshPending;
+    private bool _reconcilingDisplayTopology;
 
     public MainWindow(bool startInBackground = false)
     {
@@ -77,6 +78,7 @@ public partial class MainWindow : Window
         Closed += MainWindow_Closed;
         _settings = new RegistrySettingsService(_profileStore);
         SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
+        _displayRefreshTimer.Tick += DisplayRefreshTimer_Tick;
         var desktopPreferences = _preferences.Load();
         _taskbarEdge = desktopPreferences.TaskbarEdge;
         _taskbarSize = desktopPreferences.TaskbarSize;
@@ -758,6 +760,8 @@ public partial class MainWindow : Window
     private void MainWindow_Closed(object? sender, EventArgs e)
     {
         SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
+        _displayRefreshTimer.Stop();
+        _displayRefreshTimer.Tick -= DisplayRefreshTimer_Tick;
         CloseTaskbars();
         _nativeTaskbarWatchTimer.Stop();
         _nativeTaskbarVisibility.Restore();
@@ -789,16 +793,10 @@ public partial class MainWindow : Window
             handled = true;
             return IntPtr.Zero;
         }
-        if (message == WM_DISPLAYCHANGE && !_displayRefreshPending && _taskbarWindows.Any(window => window.IsVisible))
+        if (message == WM_DISPLAYCHANGE && _taskbarWindows.Any(window => window.IsVisible))
         {
-            _displayRefreshPending = true;
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                _displayRefreshPending = false;
-                if (!_taskbarWindows.Any(window => window.IsVisible)) return;
-                CloseTaskbars();
-                ShowTaskbar();
-            }));
+            _displayRefreshTimer.Stop();
+            _displayRefreshTimer.Start();
         }
         if (message == WM_HOTKEY && wParam.ToInt32() == StartMenuHotkeyId)
         {
@@ -916,16 +914,7 @@ public partial class MainWindow : Window
         {
             var preferences = CreateDesktopPreferences();
             foreach (var display in TaskbarDisplayService.Select(_taskbarOnAllDisplays))
-            {
-                var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, _taskbarWindowOrder, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication);
-                taskbar.Closed += (_, _) =>
-                {
-                    _taskbarWindows.Remove(taskbar);
-                    if (!_closingTaskbars) CloseTaskbars();
-                };
-                _taskbarWindows.Add(taskbar);
-                taskbar.Show();
-            }
+                AddTaskbarWindow(display, preferences);
             if (_replaceNativeTaskbar)
             {
                 var displays = TaskbarDisplayService.Select(_taskbarOnAllDisplays);
@@ -957,12 +946,76 @@ public partial class MainWindow : Window
         }
     }
 
+    private void AddTaskbarWindow(TaskbarDisplay display, DesktopPreferences preferences)
+    {
+        var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, _taskbarWindowOrder, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication);
+        taskbar.Closed += (_, _) =>
+        {
+            _taskbarWindows.Remove(taskbar);
+            if (!_closingTaskbars && !_reconcilingDisplayTopology) CloseTaskbars();
+        };
+        _taskbarWindows.Add(taskbar);
+        taskbar.Show();
+    }
+
+    private void DisplayRefreshTimer_Tick(object? sender, EventArgs e)
+    {
+        _displayRefreshTimer.Stop();
+        if (!_taskbarWindows.Any(window => window.IsVisible)) return;
+
+        try
+        {
+            var desiredDisplays = TaskbarDisplayService.Select(_taskbarOnAllDisplays);
+            var topology = TaskbarDisplayService.PlanTopologyChange(_taskbarWindows.Select(window => window.Display), desiredDisplays);
+            var preferences = CreateDesktopPreferences();
+            _reconcilingDisplayTopology = true;
+            try
+            {
+                foreach (var deviceName in topology.RemovedDeviceNames)
+                {
+                    var removed = _taskbarWindows.FirstOrDefault(window => string.Equals(window.Display.DeviceName, deviceName, StringComparison.OrdinalIgnoreCase));
+                    if (removed is null) continue;
+                    if (removed.IsVisible) removed.Close();
+                    _taskbarWindows.Remove(removed);
+                }
+            }
+            finally { _reconcilingDisplayTopology = false; }
+
+            foreach (var display in topology.Retained)
+            {
+                var taskbar = _taskbarWindows.FirstOrDefault(window => string.Equals(window.Display.DeviceName, display.DeviceName, StringComparison.OrdinalIgnoreCase));
+                taskbar?.UpdateDisplay(display);
+            }
+            foreach (var display in topology.Added) AddTaskbarWindow(display, preferences);
+
+            if (_replaceNativeTaskbar) MaintainNativeTaskbars();
+            RepositionOpenStartMenu();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.TraceError($"Could not reconcile taskbars after a display change: {ex}");
+            SetStatus("Display layout changed, but the taskbar layout could not be fully refreshed. Retry by toggling taskbar display coverage in Settings.");
+        }
+    }
+
+    private void RepositionOpenStartMenu()
+    {
+        if (_startMenuWindow?.IsVisible != true) return;
+        var taskbar = _taskbarWindows.FirstOrDefault(window => window.IsVisible && _startMenuDisplay is not null
+                && string.Equals(window.Display.DeviceName, _startMenuDisplay.DeviceName, StringComparison.OrdinalIgnoreCase))
+            ?? _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
+            ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
+        _startMenuDisplay = taskbar?.Display;
+        PositionStartMenuWindow(taskbar?.Display);
+    }
+
     private void CloseTaskbars()
     {
         if (_closingTaskbars) return;
         _closingTaskbars = true;
         try
         {
+            _displayRefreshTimer.Stop();
             _nativeTaskbarWatchTimer.Stop();
             foreach (var taskbar in _taskbarWindows.ToArray())
                 if (taskbar.IsVisible) taskbar.Close();

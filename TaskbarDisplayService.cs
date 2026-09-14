@@ -15,6 +15,11 @@ public sealed record TaskbarDisplay(
     double ScaleX = 1,
     double ScaleY = 1);
 
+public sealed record TaskbarDisplayTopologyPlan(
+    IReadOnlyList<TaskbarDisplay> Retained,
+    IReadOnlyList<TaskbarDisplay> Added,
+    IReadOnlyList<string> RemovedDeviceNames);
+
 public static class TaskbarDisplayService
 {
     private const uint MonitorInfoPrimary = 0x00000001;
@@ -68,6 +73,26 @@ public static class TaskbarDisplayService
         if (displays.Count == 0) throw new ArgumentException("At least one display is required.", nameof(connectedDisplays));
         if (allDisplays) return displays;
         return [displays.FirstOrDefault(display => display.IsPrimary) ?? displays[0]];
+    }
+
+    public static TaskbarDisplayTopologyPlan PlanTopologyChange(IEnumerable<TaskbarDisplay> currentDisplays, IEnumerable<TaskbarDisplay> desiredDisplays)
+    {
+        ArgumentNullException.ThrowIfNull(currentDisplays);
+        ArgumentNullException.ThrowIfNull(desiredDisplays);
+        var currentByName = currentDisplays.ToDictionary(display => display.DeviceName, StringComparer.OrdinalIgnoreCase);
+        var desired = desiredDisplays
+            .OrderByDescending(display => display.IsPrimary)
+            .ThenBy(display => display.DeviceName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (desired.Count == 0) throw new ArgumentException("At least one display is required.", nameof(desiredDisplays));
+        if (desired.Select(display => display.DeviceName).Distinct(StringComparer.OrdinalIgnoreCase).Count() != desired.Count)
+            throw new ArgumentException("Display device names must be unique.", nameof(desiredDisplays));
+
+        var desiredNames = desired.Select(display => display.DeviceName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var retained = desired.Where(display => currentByName.ContainsKey(display.DeviceName)).ToList();
+        var added = desired.Where(display => !currentByName.ContainsKey(display.DeviceName)).ToList();
+        var removed = currentByName.Keys.Where(name => !desiredNames.Contains(name)).ToList();
+        return new(retained, added, removed);
     }
 
     public static bool Overlaps(TaskbarBounds bounds, TaskbarDisplay display) =>

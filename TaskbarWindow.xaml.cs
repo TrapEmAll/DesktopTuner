@@ -101,6 +101,16 @@ public partial class TaskbarWindow : Window
         else if (IsLoaded) _autoHideTimer.Start();
     }
 
+    public void UpdateDisplay(TaskbarDisplay display)
+    {
+        ArgumentNullException.ThrowIfNull(display);
+        if (!string.Equals(Display.DeviceName, display.DeviceName, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("A taskbar window can only be reassigned to the same display.", nameof(display));
+        Display = _nativeReady ? TaskbarDisplayService.ReadWindowDpi(display, this) : display;
+        ApplyLayout();
+        if (IsLoaded) RefreshWindows();
+    }
+
     private void ApplyLayout()
     {
         UpdateSystemBackdrop();

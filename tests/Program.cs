@@ -94,6 +94,15 @@ Check<TaskbarBounds?>(null, TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(
 Check<TaskbarBounds?>(null, TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Bottom), new(100, 1030, 100, 50)), "keep shortcut fallback when the tray boundary leaves too little taskbar space");
 Check<TaskbarBounds?>(null, TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Bottom), new(1500, 700, 420, 50)), "keep shortcut fallback when tray is not at the bottom edge");
 var secondaryDisplay = new TaskbarDisplay("DISPLAY2", -1920, -200, 1920, 1080, false, 1.5, 1.5);
+var changedPrimaryDisplay = new TaskbarDisplay("DISPLAY1", 0, 0, 2560, 1440, true, 1.25, 1.25);
+var connectedDisplay = new TaskbarDisplay("DISPLAY3", 2560, 0, 1920, 1080, false);
+var displayChangePlan = TaskbarDisplayService.PlanTopologyChange([trayDisplay, secondaryDisplay], [changedPrimaryDisplay, connectedDisplay]);
+Check("DISPLAY1", string.Join(',', displayChangePlan.Retained.Select(display => display.DeviceName)), "retain taskbar windows for displays that remain connected");
+Check("DISPLAY3", string.Join(',', displayChangePlan.Added.Select(display => display.DeviceName)), "add taskbar windows only for newly connected displays");
+Check("DISPLAY2", string.Join(',', displayChangePlan.RemovedDeviceNames), "remove taskbar windows only for disconnected displays");
+var primaryOnlyPlan = TaskbarDisplayService.PlanTopologyChange([trayDisplay, secondaryDisplay], [trayDisplay]);
+Check(0, primaryOnlyPlan.Added.Count, "avoid adding bars outside the selected primary-display coverage");
+Check("DISPLAY2", string.Join(',', primaryOnlyPlan.RemovedDeviceNames), "drop secondary taskbar bars when display coverage narrows");
 Check(new TaskbarBounds(-1920, 799, 1320, 81), TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(secondaryDisplay, new(TaskbarEdge.Bottom), new(-600, 835, 600, 45)), "preserve native tray geometry on a scaled secondary display");
 CheckTrue(TaskbarDisplayService.Overlaps(nativeTray, trayDisplay), "match native taskbar windows to their display bounds");
 CheckTrue(!TaskbarDisplayService.Overlaps(nativeTray, secondaryDisplay), "keep native taskbars scoped to selected displays");
