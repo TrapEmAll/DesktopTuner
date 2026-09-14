@@ -176,6 +176,7 @@
                 <TabItem Header="Share">
                     <StackPanel Orientation="Horizontal" Margin="8,6">
                         <Button x:Name="OpenSelectedButton" Content="Open" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Click="OpenSelected_Click" />
+                        <Button x:Name="RestoreButton" Content="Restore" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Visibility="Collapsed" Click="RestoreSelected_Click" />
                         <Button x:Name="OpenInNewTabButton" Content="Open in new tab" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Click="OpenInNewTab_Click" />
                         <Button x:Name="OpenInNewWindowButton" Content="Open in new window" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Click="OpenInNewWindow_Click" />
                         <Button x:Name="CopyPathButton" Content="Copy path" Padding="14,6" IsEnabled="False" Click="CopyPath_Click" />
@@ -227,6 +228,7 @@
                         <Button Content="Documents" Tag="documents" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
                         <Button Content="Downloads" Tag="downloads" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
                         <Button Content="Pictures" Tag="pictures" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
+                        <Button Content="Recycle Bin" Tag="recycle-bin" HorizontalContentAlignment="Left" Padding="10,8" Click="QuickLocation_Click" />
                         <TextBlock Text="PINNED FOLDERS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DesktopSoftTextBrush}" Margin="8,18,0,6" />
                         <StackPanel x:Name="QuickAccessPinsPanel" AllowDrop="True" DragOver="QuickAccessPinsPanel_DragOver" Drop="QuickAccessPinsPanel_Drop" />
                         <TextBlock Text="THIS PC" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DesktopSoftTextBrush}" Margin="8,18,0,10" />
@@ -264,6 +266,7 @@
                         <ListView.ContextMenu>
                             <ContextMenu Opened="EntriesContextMenu_Opened">
                                 <MenuItem Header="Open" Click="OpenSelected_Click" />
+                                <MenuItem x:Name="RestoreMenuItem" Header="Restore" Click="RestoreSelected_Click" />
                                 <MenuItem x:Name="PropertiesMenuItem" Header="Properties" Click="Properties_Click" />
                                 <Separator />
                                 <MenuItem x:Name="OpenInNewTabMenuItem" Header="Open in new tab" Click="OpenInNewTab_Click" />

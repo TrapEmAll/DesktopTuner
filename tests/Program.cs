@@ -775,6 +775,17 @@ try
     CheckTrue(!ExplorerPropertiesService.CanShowProperties([propertiesFileEntry, new ExplorerEntry("C:\\", "C:\\", true, true, null, DateTime.Now)]), "disable merged Properties when selection contains a drive-list entry");
     CheckTrue(!ExplorerPropertiesService.CanShowProperties(new ExplorerEntry("C:\\", "C:\\", true, true, null, DateTime.Now)), "keep drive-list entries out of file Properties selection");
     CheckTrue(!ExplorerPropertiesService.CanShowProperties(new ExplorerEntry("Missing", Path.Combine(explorerTestDirectory, "missing.txt"), false, false, null, DateTime.Now)), "disable Properties for a removed item");
+    var recycledFileEntry = new ExplorerEntry("restored.txt", Path.Combine(explorerTestDirectory, "$R123-restored.txt"), false, false, 16, DateTime.Now)
+    {
+        IsRecycleBinItem = true,
+        ShellItemPath = Path.Combine(explorerTestDirectory, "$R123-restored.txt"),
+        OriginalLocation = explorerTestDirectory,
+        RecycleDeleted = new DateTime(2025, 6, 1)
+    };
+    CheckTrue(!ExplorerPropertiesService.CanShowProperties(recycledFileEntry), "keep recycled Shell payload paths out of filesystem Properties handling");
+    Check(explorerTestDirectory, ExplorerSelectionSummaryService.Resolve([recycledFileEntry]).Location, "show the original folder for a Recycle Bin selection");
+    Check(new DateTime(2025, 6, 1).ToString("f"), ExplorerSelectionSummaryService.Resolve([recycledFileEntry]).Modified, "show the deletion date in Recycle Bin item details");
+    CheckTrue(ExplorerRecycleBinService.ReadEntries().All(entry => entry.IsRecycleBinItem && !string.IsNullOrWhiteSpace(entry.ShellItemPath)), "enumerate Windows Recycle Bin entries as virtual Explorer rows");
     var startShortcutDirectory = Path.Combine(temporaryPreferencesDirectory, "Start Shortcuts");
     Directory.CreateDirectory(startShortcutDirectory);
     var startShortcutPath = Path.Combine(startShortcutDirectory, "Editor Preview.lnk");
@@ -852,7 +863,7 @@ try
     var savedExplorerSession = new ExplorerSession(1,
     [
         new ExplorerTabSession(new ExplorerLocation(explorerTestDirectory), [new ExplorerLocation(null, IsHome: true)], ViewMode: ExplorerViewMode.LargeIcons),
-        new ExplorerTabSession(new ExplorerLocation(null, IsHome: true, SearchQuery: "report"), SortColumn: ExplorerSortColumn.DateModified, SortAscending: false, GroupDrives: false)
+        new ExplorerTabSession(new ExplorerLocation(null, IsHome: true, SearchQuery: "report"), [new ExplorerLocation(null, IsRecycleBin: true)], SortColumn: ExplorerSortColumn.DateModified, SortAscending: false, GroupDrives: false)
     ], DetailsPaneHeight: 245, DetailsPaneVisible: false);
     explorerSessionStore.Save(savedExplorerSession);
     var loadedExplorerSession = explorerSessionStore.Load();
@@ -862,6 +873,7 @@ try
     Check(ExplorerSortColumn.DateModified, loadedExplorerSession.Tabs[1].SortColumn, "restore each Explorer tab's sort column");
     Check(false, loadedExplorerSession.Tabs[1].SortAscending, "restore each Explorer tab's sort direction");
     Check("report", loadedExplorerSession.Tabs[1].Location.SearchQuery, "restore a companion Explorer tab's search query");
+    Check(true, loadedExplorerSession.Tabs[1].Back!.Single().IsRecycleBin, "restore Recycle Bin navigation history from an Explorer session");
     Check(new ExplorerLocation(null, IsHome: true), loadedExplorerSession.Tabs[0].Back!.Single(), "restore companion Explorer navigation history");
     Check(245d, loadedExplorerSession.DetailsPaneHeight, "restore the companion Explorer details pane height");
     Check(false, loadedExplorerSession.DetailsPaneVisible, "restore a hidden companion Explorer details pane");

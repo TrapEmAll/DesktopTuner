@@ -22,7 +22,7 @@ public static class ExplorerSelectionSummaryService
         if (drives > 0) types.Add(Pluralize(drives, "drive"));
 
         var locations = selection
-            .Select(entry => entry.IsDrive ? null : Path.GetDirectoryName(entry.FullPath))
+            .Select(entry => entry.IsDrive ? null : entry.IsRecycleBinItem ? entry.OriginalLocation : Path.GetDirectoryName(entry.FullPath))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
         var location = locations.Length == 1 && locations[0] is not null ? locations[0]! : "Multiple locations";
@@ -60,9 +60,9 @@ public static class ExplorerSelectionSummaryService
     private static ExplorerSelectionSummary ResolveSingle(ExplorerEntry entry) => new(
         entry.DisplayName,
         entry.Type,
-        entry.FullPath,
+        entry.IsRecycleBinItem ? entry.OriginalLocation ?? "Recycle Bin" : entry.FullPath,
         entry.SizeText.Length == 0 ? (entry.IsDirectory ? "Folder" : "—") : entry.SizeText,
-        entry.Modified == DateTime.MinValue ? "—" : entry.Modified.ToString("f"),
+        entry.IsRecycleBinItem && entry.RecycleDeleted is DateTime deleted ? deleted.ToString("f") : entry.Modified == DateTime.MinValue ? "—" : entry.Modified.ToString("f"),
         FormatOptionalDate(entry.Created),
         FormatOptionalDate(entry.Accessed));
 

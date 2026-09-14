@@ -104,6 +104,8 @@ public partial class ExplorerWindow : Window
             ? new ExplorerLocation(null, IsDriveList: true)
             : string.IsNullOrWhiteSpace(initialPath)
                 ? new ExplorerLocation(null, IsHome: true)
+                : IsRecycleBinAddress(initialPath)
+                    ? new ExplorerLocation(null, IsRecycleBin: true)
                 : Directory.Exists(initialPath)
                     ? new ExplorerLocation(Path.GetFullPath(initialPath))
                     : new ExplorerLocation(null, IsHome: true);
@@ -223,6 +225,7 @@ public partial class ExplorerWindow : Window
         if (tab.IsSearchView) return $"Search: {tab.Location.SearchQuery}";
         if (tab.Location.IsHome) return "Home";
         if (tab.Location.IsDriveList) return "This PC";
+        if (tab.Location.IsRecycleBin) return "Recycle Bin";
         var path = tab.Location.Path ?? "Home";
         return Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) is { Length: > 0 } name ? name : path;
     }
@@ -468,6 +471,11 @@ public partial class ExplorerWindow : Window
 
     private void EntriesList_PreviewMouseMove(object sender, MouseEventArgs e)
     {
+        if (_location.IsRecycleBin)
+        {
+            _entryDragCandidate = null;
+            return;
+        }
         if (e.LeftButton != MouseButtonState.Pressed || _entryDragCandidate is not { } candidate) return;
         var current = e.GetPosition(EntriesList);
         if (Math.Abs(current.X - _entryDragStart.X) < SystemParameters.MinimumHorizontalDragDistance
@@ -475,7 +483,7 @@ public partial class ExplorerWindow : Window
 
         _entryDragCandidate = null;
         var paths = EntriesList.SelectedItems.OfType<ExplorerEntry>()
-            .Where(entry => !entry.IsDrive)
+            .Where(entry => !entry.IsDrive && !entry.IsRecycleBinItem)
             .Select(entry => entry.FullPath)
             .ToList();
         if (!paths.Contains(candidate.FullPath, StringComparer.OrdinalIgnoreCase)) paths = [candidate.FullPath];
@@ -697,7 +705,7 @@ public partial class ExplorerWindow : Window
 
     private void Navigate(ExplorerLocation target, bool addHistory = true)
     {
-        if (!target.IsDriveList && !target.IsHome && (string.IsNullOrWhiteSpace(target.Path) || !Directory.Exists(target.Path)))
+        if (!target.IsDriveList && !target.IsHome && !target.IsRecycleBin && (string.IsNullOrWhiteSpace(target.Path) || !Directory.Exists(target.Path)))
         {
             SetStatus("That folder is unavailable or no longer exists.");
             return;
@@ -709,7 +717,7 @@ public partial class ExplorerWindow : Window
         }
         CancelSearch();
         _isSearchView = false;
-        _location = target.IsDriveList || target.IsHome ? target : new ExplorerLocation(Path.GetFullPath(target.Path!), SearchQuery: target.SearchQuery);
+        _location = target.IsDriveList || target.IsHome || target.IsRecycleBin ? target : new ExplorerLocation(Path.GetFullPath(target.Path!), SearchQuery: target.SearchQuery);
         RestoreFolderViewPreferences(ActiveTab);
         UpdateSortPresentation();
         ApplyExplorerViewMode(ActiveTab.ViewMode);
@@ -742,11 +750,13 @@ public partial class ExplorerWindow : Window
         string? loadError = null;
         try
         {
-            entries = _location.IsHome
+            entries = _location.IsRecycleBin
+                ? ExplorerRecycleBinService.ReadEntries().Select(ApplyDisplayName).ToList()
+                : _location.IsHome
                 ? ExplorerHomeService.ReadHomeFiles(_showRecentItems, _showHiddenItems).Select(ApplyDisplayName).ToList()
-                : _location.IsHome ? [] : _location.IsDriveList ? ReadDrives() : ReadDirectory(_location.Path!);
+                : _location.IsDriveList ? ReadDrives() : ReadDirectory(_location.Path!);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or InvalidOperationException or COMException)
         {
             entries = [];
             loadError = $"Could not read this location: {ex.Message}";
@@ -760,20 +770,24 @@ public partial class ExplorerWindow : Window
         GroupDrivesToggle.IsEnabled = _location.IsDriveList;
         _updatingDriveGroupingControl = false;
         UpdateSelectionCommands();
-        NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome;
-        SearchBox.IsEnabled = SearchButton.IsEnabled = !_location.IsDriveList && !_location.IsHome;
-        var title = _location.IsHome ? "Home" : _location.IsDriveList ? "This PC" : Path.GetFileName(_location.Path!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin;
+        SearchBox.IsEnabled = SearchButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin;
+        DeleteButton.Content = _location.IsRecycleBin ? "Delete permanently" : "Delete";
+        DeleteMenuItem.Header = _location.IsRecycleBin ? "Delete permanently" : "Send to Recycle Bin";
+        var title = _location.IsHome ? "Home" : _location.IsDriveList ? "This PC" : _location.IsRecycleBin ? "Recycle Bin" : Path.GetFileName(_location.Path!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         if (string.IsNullOrEmpty(title)) title = _location.Path ?? "Home";
         LocationTitle.Text = title;
         LocationSubtitle.Text = _location.IsHome
             ? _showRecentItems ? "Recently opened files · newest first" : "Recent activity is disabled in Windows"
-            : _location.IsDriveList ? "Browse available drives" : _location.Path;
+            : _location.IsDriveList ? "Browse available drives" : _location.IsRecycleBin ? "Restore deleted files or remove them permanently" : _location.Path;
         UpdateAddressLocation();
         UpdateExplorerTabTitles();
         BackButton.IsEnabled = _back.Count > 0;
         ForwardButton.IsEnabled = _forward.Count > 0;
-        UpButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && Directory.GetParent(_location.Path!) is not null;
-        EmptyMessage.Text = _location.IsHome
+        UpButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin && Directory.GetParent(_location.Path!) is not null;
+        EmptyMessage.Text = _location.IsRecycleBin
+            ? "The Recycle Bin is empty."
+            : _location.IsHome
             ? _showRecentItems ? "No recent files are available." : "Recent items are turned off in Windows."
             : "This folder is empty.";
         EmptyMessage.Visibility = entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -863,7 +877,7 @@ public partial class ExplorerWindow : Window
     private async Task SynchronizeNavigationTreeAsync()
     {
         var generation = ++_navigationSyncGeneration;
-        if (_location.IsHome)
+        if (_location.IsHome || _location.IsRecycleBin)
         {
             SetNavigationSelection(null);
             return;
@@ -1054,7 +1068,7 @@ public partial class ExplorerWindow : Window
 
     private void Up_Click(object sender, RoutedEventArgs e)
     {
-        if (!_location.IsDriveList && !_location.IsHome && Directory.GetParent(_location.Path!) is { } parent) Navigate(new ExplorerLocation(parent.FullName));
+        if (!_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin && Directory.GetParent(_location.Path!) is { } parent) Navigate(new ExplorerLocation(parent.FullName));
     }
 
     private void Go_Click(object sender, RoutedEventArgs e) => NavigateFromAddress();
@@ -1062,11 +1076,11 @@ public partial class ExplorerWindow : Window
 
     private void UpdateAddressLocation()
     {
-        AddressBox.Text = _location.IsHome ? "Home" : _location.IsDriveList ? "This PC" : _location.Path;
+        AddressBox.Text = _location.IsHome ? "Home" : _location.IsDriveList ? "This PC" : _location.IsRecycleBin ? "Recycle Bin" : _location.Path;
         AddressBreadcrumbs.Children.Clear();
-        if (_location.IsHome || _location.IsDriveList)
+        if (_location.IsHome || _location.IsDriveList || _location.IsRecycleBin)
         {
-            var label = _location.IsHome ? "Home" : "This PC";
+            var label = _location.IsHome ? "Home" : _location.IsDriveList ? "This PC" : "Recycle Bin";
             var shortcut = new Button
             {
                 Content = label,
@@ -1222,6 +1236,8 @@ public partial class ExplorerWindow : Window
             Navigate(new ExplorerLocation(null, IsHome: true));
         else if (string.Equals(target, "This PC", StringComparison.OrdinalIgnoreCase))
             Navigate(new ExplorerLocation(null, IsDriveList: true));
+        else if (string.Equals(target, "Recycle Bin", StringComparison.OrdinalIgnoreCase))
+            Navigate(new ExplorerLocation(null, IsRecycleBin: true));
         else
             Navigate(new ExplorerLocation(target));
     }
@@ -1239,15 +1255,25 @@ public partial class ExplorerWindow : Window
             Navigate(new ExplorerLocation(null, IsDriveList: true));
             return;
         }
+        if (IsRecycleBinAddress(entered))
+        {
+            Navigate(new ExplorerLocation(null, IsRecycleBin: true));
+            return;
+        }
         try { Navigate(new ExplorerLocation(Environment.ExpandEnvironmentVariables(entered))); }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { SetStatus($"That path is not valid: {ex.Message}"); }
     }
+
+    private static bool IsRecycleBinAddress(string? value) =>
+        string.Equals(value?.Trim(), "Recycle Bin", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(value?.Trim(), "shell:RecycleBinFolder", StringComparison.OrdinalIgnoreCase);
 
     private void QuickLocation_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: string target }) return;
         if (target == "home") { Navigate(new ExplorerLocation(null, IsHome: true)); return; }
         if (target == "drives") { Navigate(new ExplorerLocation(null, IsDriveList: true)); return; }
+        if (target == "recycle-bin") { Navigate(new ExplorerLocation(null, IsRecycleBin: true)); return; }
         var specialFolder = target switch
         {
             "desktop" => Environment.SpecialFolder.DesktopDirectory,
@@ -1711,7 +1737,10 @@ public partial class ExplorerWindow : Window
         finally { _updatingSortControls = false; }
 
         NameColumnHeader.Content = HeaderLabel("Name", _sortColumn == ExplorerSortColumn.Name, _sortAscending);
-        DateModifiedColumnHeader.Content = HeaderLabel("DateModified", _sortColumn == ExplorerSortColumn.DateModified, _sortAscending);
+        var dateModifiedOption = SortBySelector.Items.OfType<ComboBoxItem>()
+            .FirstOrDefault(item => string.Equals(item.Tag as string, ExplorerSortColumn.DateModified.ToString(), StringComparison.Ordinal));
+        if (dateModifiedOption is not null) dateModifiedOption.Content = _location.IsRecycleBin ? "Date deleted" : "Date modified";
+        DateModifiedColumnHeader.Content = HeaderLabel(_location.IsRecycleBin ? "DateDeleted" : "DateModified", _sortColumn == ExplorerSortColumn.DateModified, _sortAscending);
         TypeColumnHeader.Content = HeaderLabel("Type", _sortColumn == ExplorerSortColumn.Type, _sortAscending);
         SizeColumnHeader.Content = HeaderLabel("Size", _sortColumn == ExplorerSortColumn.Size, _sortAscending);
         DateCreatedColumnHeader.Content = HeaderLabel("DateCreated", _sortColumn == ExplorerSortColumn.DateCreated, _sortAscending);
@@ -1724,6 +1753,7 @@ public partial class ExplorerWindow : Window
         {
             "Name" => "Name",
             "DateModified" => "Date modified",
+            "DateDeleted" => "Date deleted",
             "Type" => "Type",
             "Size" => "Size",
             "DateCreated" => "Date created",
@@ -1821,20 +1851,23 @@ public partial class ExplorerWindow : Window
     private void UpdateSelectionCommands()
     {
         var selection = EntriesList.SelectedItems.OfType<ExplorerEntry>().ToList();
-        var canTransferSelection = selection.Count > 0 && selection.All(entry => !entry.IsDrive);
+        var canTransferSelection = !_location.IsRecycleBin && selection.Count > 0 && selection.All(entry => !entry.IsDrive && !entry.IsRecycleBinItem);
         CopyButton.IsEnabled = CutButton.IsEnabled = canTransferSelection;
-        RenameButton.IsEnabled = selection.Count == 1 && !selection[0].IsDrive;
+        RenameButton.IsEnabled = !_location.IsRecycleBin && selection.Count == 1 && !selection[0].IsDrive;
         DeleteButton.IsEnabled = selection.Count > 0 && selection.All(entry => !entry.IsDrive);
         OpenSelectedButton.IsEnabled = selection.Count == 1;
-        OpenInNewTabButton.IsEnabled = selection.Count == 1 && selection[0].IsDirectory;
-        OpenInNewWindowButton.IsEnabled = selection.Count == 1 && selection[0].IsDirectory;
+        RestoreButton.IsEnabled = _location.IsRecycleBin && selection.Count > 0 && selection.All(entry => entry.IsRecycleBinItem);
+        RestoreButton.Visibility = _location.IsRecycleBin ? Visibility.Visible : Visibility.Collapsed;
+        OpenInNewTabButton.IsEnabled = !_location.IsRecycleBin && selection.Count == 1 && selection[0].IsDirectory;
+        OpenInNewWindowButton.IsEnabled = !_location.IsRecycleBin && selection.Count == 1 && selection[0].IsDirectory;
         CopyPathButton.IsEnabled = canTransferSelection;
-        NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_isSearchView;
-        PasteButton.IsEnabled = !ActiveTab.Location.IsDriveList && !ActiveTab.Location.IsHome && ClipboardHasFileDrop();
+        NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin && !_isSearchView;
+        PasteButton.IsEnabled = !ActiveTab.Location.IsDriveList && !ActiveTab.Location.IsHome && !ActiveTab.Location.IsRecycleBin && ClipboardHasFileDrop();
     }
 
     private void CopyPath_Click(object sender, RoutedEventArgs e)
     {
+        if (_location.IsRecycleBin) return;
         var paths = EntriesList.SelectedItems.OfType<ExplorerEntry>()
             .Where(entry => !entry.IsDrive)
             .Select(entry => entry.FullPath)
@@ -1858,6 +1891,7 @@ public partial class ExplorerWindow : Window
 
     private void CopyOrCutSelection(bool move)
     {
+        if (_location.IsRecycleBin) return;
         var paths = EntriesList.SelectedItems.OfType<ExplorerEntry>()
             .Where(entry => !entry.IsDrive)
             .Select(entry => entry.FullPath)
@@ -1955,6 +1989,11 @@ public partial class ExplorerWindow : Window
 
     private void OpenEntry(ExplorerEntry entry)
     {
+        if (_location.IsRecycleBin && entry.IsRecycleBinItem)
+        {
+            RestoreEntries([entry]);
+            return;
+        }
         if (entry.IsDirectory)
         {
             var location = new ExplorerLocation(entry.FullPath);
@@ -1991,7 +2030,7 @@ public partial class ExplorerWindow : Window
             OpenEntry(selectedEntry);
             e.Handled = true;
         }
-        else if (e.Key == Key.Back && !_location.IsDriveList && !_location.IsHome)
+        else if (e.Key == Key.Back && !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin)
         {
             Up_Click(this, new RoutedEventArgs());
             e.Handled = true;
@@ -2021,7 +2060,7 @@ public partial class ExplorerWindow : Window
             RefreshCurrentView();
             e.Handled = true;
         }
-        else if (e.Key == Key.N && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift) && !_location.IsDriveList && !_location.IsHome)
+        else if (e.Key == Key.N && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift) && !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin)
         {
             CreateFolder();
             e.Handled = true;
@@ -2037,31 +2076,35 @@ public partial class ExplorerWindow : Window
     private void EntriesContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         var selection = EntriesList.SelectedItems.OfType<ExplorerEntry>().ToList();
-        var hasTransferableSelection = selection.Count > 0 && selection.All(entry => !entry.IsDrive);
+        var hasTransferableSelection = !_location.IsRecycleBin && selection.Count > 0 && selection.All(entry => !entry.IsDrive && !entry.IsRecycleBinItem);
         var hasSingleSelection = selection.Count == 1;
         PropertiesMenuItem.IsEnabled = ExplorerPropertiesService.CanShowProperties(selection);
+        RestoreMenuItem.Visibility = _location.IsRecycleBin ? Visibility.Visible : Visibility.Collapsed;
+        RestoreMenuItem.IsEnabled = _location.IsRecycleBin && selection.Count > 0 && selection.All(entry => entry.IsRecycleBinItem);
         CopyMenuItem.IsEnabled = CutMenuItem.IsEnabled = hasTransferableSelection;
-        PasteMenuItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && ClipboardHasFileDrop();
-        OpenInNewTabMenuItem.IsEnabled = hasSingleSelection && selection[0].IsDirectory;
-        OpenInNewWindowMenuItem.IsEnabled = hasSingleSelection && selection[0].IsDirectory;
-        var selectedDirectory = hasSingleSelection && selection[0].IsDirectory && !selection[0].IsDrive;
+        PasteMenuItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin && ClipboardHasFileDrop();
+        OpenInNewTabMenuItem.IsEnabled = !_location.IsRecycleBin && hasSingleSelection && selection[0].IsDirectory;
+        OpenInNewWindowMenuItem.IsEnabled = !_location.IsRecycleBin && hasSingleSelection && selection[0].IsDirectory;
+        var selectedDirectory = !_location.IsRecycleBin && hasSingleSelection && selection[0].IsDirectory && !selection[0].IsDrive;
         var isPinned = selectedDirectory && _quickAccessStore.Load().Any(pin => string.Equals(pin.Path, selection[0].FullPath, StringComparison.OrdinalIgnoreCase));
         PinQuickAccessMenuItem.Visibility = selectedDirectory && !isPinned ? Visibility.Visible : Visibility.Collapsed;
         PinQuickAccessMenuItem.IsEnabled = selectedDirectory && !isPinned;
         UnpinQuickAccessMenuItem.Visibility = isPinned ? Visibility.Visible : Visibility.Collapsed;
         UnpinQuickAccessMenuItem.IsEnabled = isPinned;
-        RenameMenuItem.IsEnabled = hasSingleSelection && !selection[0].IsDrive;
+        RenameMenuItem.IsEnabled = !_location.IsRecycleBin && hasSingleSelection && !selection[0].IsDrive;
         DeleteMenuItem.IsEnabled = hasTransferableSelection;
+        if (_location.IsRecycleBin) DeleteMenuItem.IsEnabled = selection.Count > 0 && selection.All(entry => entry.IsRecycleBinItem);
         NativeShellContextMenuItem.IsEnabled = CanShowNativeShellContextMenu(selection);
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open")) is { } openItem)
             openItem.IsEnabled = hasSingleSelection;
-        NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_isSearchView;
+        NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin && !_isSearchView;
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "New folder")) is { } newFolderItem)
-            newFolderItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_isSearchView;
+            newFolderItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin && !_isSearchView;
     }
 
     private bool CanShowNativeShellContextMenu(IReadOnlyList<ExplorerEntry> selection)
     {
+        if (_location.IsRecycleBin) return false;
         if (selection.Count == 0) return !_location.IsHome && !_location.IsDriveList && _location.Path is { } folder && Directory.Exists(folder);
         if (selection.Any(entry => entry.IsDrive)) return false;
         try
@@ -2083,7 +2126,7 @@ public partial class ExplorerWindow : Window
         {
             if (selection.Count == 0)
             {
-                if (_location.Path is { } folder && !_location.IsHome && !_location.IsDriveList)
+                if (_location.Path is { } folder && !_location.IsHome && !_location.IsDriveList && !_location.IsRecycleBin)
                     await NativeShellContextMenuService.ShowForFolderBackgroundAsync(owner, folder);
             }
             else
@@ -2107,6 +2150,35 @@ public partial class ExplorerWindow : Window
         if (EntriesList.SelectedItem is ExplorerEntry entry) OpenEntry(entry);
     }
 
+    private void RestoreSelected_Click(object sender, RoutedEventArgs e) =>
+        RestoreEntries(EntriesList.SelectedItems.OfType<ExplorerEntry>().Where(entry => entry.IsRecycleBinItem).ToArray());
+
+    private void RestoreEntries(IReadOnlyList<ExplorerEntry> entries)
+    {
+        if (!_location.IsRecycleBin || entries.Count == 0) return;
+        var restored = 0;
+        var failures = new List<string>();
+        foreach (var entry in entries)
+        {
+            try
+            {
+                ExplorerRecycleBinService.Restore(entry.ShellItemPath ?? entry.FullPath);
+                restored++;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or COMException)
+            {
+                failures.Add($"{entry.Name}: {ex.Message}");
+            }
+        }
+
+        RefreshLocation();
+        SetStatus(failures.Count == 0
+            ? $"Restored {restored:N0} item{(restored == 1 ? "" : "s")} to the original location{(restored == 1 ? "" : "s")}."
+            : $"Restored {restored:N0} item{(restored == 1 ? "" : "s")}; {failures.Count:N0} failed.");
+        if (failures.Count > 0)
+            MessageBox.Show(this, string.Join(Environment.NewLine, failures), "Some items could not be restored", MessageBoxButton.OK, MessageBoxImage.Error);
+    }
+
     private void Properties_Click(object sender, RoutedEventArgs e)
     {
         var selection = EntriesList.SelectedItems.OfType<ExplorerEntry>().ToList();
@@ -2125,7 +2197,7 @@ public partial class ExplorerWindow : Window
 
     private void CreateFolder()
     {
-        if (_location.IsDriveList || _location.IsHome || _isSearchView) return;
+        if (_location.IsDriveList || _location.IsHome || _location.IsRecycleBin || _isSearchView) return;
         try
         {
             var createdPath = ExplorerFileOperationService.CreateFolder(_location.Path!);
@@ -2141,6 +2213,7 @@ public partial class ExplorerWindow : Window
 
     private void RenameSelected()
     {
+        if (_location.IsRecycleBin) return;
         if (EntriesList.SelectedItem is not ExplorerEntry { IsDrive: false } entry) return;
         var currentName = Path.GetFileName(entry.FullPath);
         var selectionLength = ExplorerRenamePolicy.GetInitialSelectionLength(currentName, entry.IsDirectory);
@@ -2167,6 +2240,11 @@ public partial class ExplorerWindow : Window
             .OrderByDescending(entry => entry.FullPath.Length)
             .ToList();
         if (entries.Count == 0) return;
+        if (_location.IsRecycleBin)
+        {
+            DeletePermanently(entries);
+            return;
+        }
         var description = entries.Count == 1
             ? $"Send ‘{entries[0].Name}’ to the Recycle Bin?"
             : $"Send {entries.Count:N0} selected items to the Recycle Bin?";
@@ -2193,6 +2271,37 @@ public partial class ExplorerWindow : Window
         SetStatus(failures.Count == 0
             ? $"Sent {deleted:N0} item{(deleted == 1 ? "" : "s")} to the Recycle Bin."
             : $"Sent {deleted:N0} item{(deleted == 1 ? "" : "s")} to the Recycle Bin; {failures.Count:N0} failed.");
+        if (failures.Count > 0)
+            MessageBox.Show(this, string.Join(Environment.NewLine, failures), "Some items could not be deleted", MessageBoxButton.OK, MessageBoxImage.Error);
+    }
+
+    private void DeletePermanently(IReadOnlyList<ExplorerEntry> entries)
+    {
+        var description = entries.Count == 1
+            ? $"Permanently delete ‘{entries[0].Name}’? This cannot be undone."
+            : $"Permanently delete {entries.Count:N0} selected items? This cannot be undone.";
+        var result = MessageBox.Show(this, description, "Delete permanently", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+        if (result != MessageBoxResult.Yes) return;
+
+        var deleted = 0;
+        var failures = new List<string>();
+        foreach (var entry in entries)
+        {
+            try
+            {
+                ExplorerRecycleBinService.DeletePermanently(entry.ShellItemPath ?? entry.FullPath);
+                deleted++;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or COMException)
+            {
+                failures.Add($"{entry.Name}: {ex.Message}");
+            }
+        }
+
+        RefreshLocation();
+        SetStatus(failures.Count == 0
+            ? $"Permanently deleted {deleted:N0} item{(deleted == 1 ? "" : "s")}."
+            : $"Permanently deleted {deleted:N0} item{(deleted == 1 ? "" : "s")}; {failures.Count:N0} failed.");
         if (failures.Count > 0)
             MessageBox.Show(this, string.Join(Environment.NewLine, failures), "Some items could not be deleted", MessageBoxButton.OK, MessageBoxImage.Error);
     }
@@ -2256,6 +2365,16 @@ public partial class ExplorerWindow : Window
             DetailsSize.Text = FormatItemCount(itemCount);
             DetailsModified.Text = "Select an item to see its modified date.";
             DetailsCreated.Text = DetailsAccessed.Text = "Select an item to see its creation and access dates.";
+            return;
+        }
+        if (_location.IsRecycleBin)
+        {
+            DetailsName.Text = "Recycle Bin";
+            DetailsType.Text = "Deleted items";
+            DetailsLocation.Text = "Original locations shown for each item";
+            DetailsSize.Text = FormatItemCount(itemCount);
+            DetailsModified.Text = "Select an item to see its deletion date.";
+            DetailsCreated.Text = DetailsAccessed.Text = "—";
             return;
         }
         DetailsName.Text = _location.IsDriveList ? "This PC" : Path.GetFileName(_location.Path!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));

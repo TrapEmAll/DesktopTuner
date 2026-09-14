@@ -12,7 +12,7 @@ public static class ExplorerPropertiesService
     public static bool CanShowProperties(ExplorerEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        return !entry.IsDrive && (File.Exists(entry.FullPath) || Directory.Exists(entry.FullPath));
+        return !entry.IsDrive && !entry.IsRecycleBinItem && (File.Exists(entry.FullPath) || Directory.Exists(entry.FullPath));
     }
 
     public static bool ShowProperties(ExplorerEntry entry, IntPtr parentWindow)

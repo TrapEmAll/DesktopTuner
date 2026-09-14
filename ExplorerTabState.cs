@@ -1,6 +1,6 @@
 namespace DesktopTuner;
 
-public sealed record ExplorerLocation(string? Path, bool IsDriveList = false, string? SearchQuery = null, bool IsHome = false);
+public sealed record ExplorerLocation(string? Path, bool IsDriveList = false, string? SearchQuery = null, bool IsHome = false, bool IsRecycleBin = false);
 
 public sealed class ExplorerTabState(ExplorerLocation location)
 {
