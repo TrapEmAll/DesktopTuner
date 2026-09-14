@@ -136,6 +136,14 @@ CheckTrue(CustomShellPolicy.TargetsExecutable(@"C:\Users\test\Desktop Tuner\Desk
 CheckTrue(CustomShellPolicy.TargetsExecutable(@"""C:\Users\test\Desktop Tuner\DesktopTuner.exe"" --shell-host", @"C:\Users\test\Desktop Tuner\DesktopTuner.exe"), "recognize a quoted custom-shell command with arguments");
 Check(false, CustomShellPolicy.TargetsExecutable(@"C:\Windows\explorer.exe", @"C:\Users\test\DesktopTuner.exe"), "keep Explorer's custom-shell fallback from activating Desktop Tuner shell-host mode");
 Check(false, CustomShellPolicy.TargetsExecutable(null, @"C:\Users\test\DesktopTuner.exe"), "leave shell-host mode disabled when the per-user custom-shell policy is absent");
+Check(true, CustomShellPolicy.CanConfigure(null, @"C:\Users\test\DesktopTuner.exe"), "allow custom-shell setup when no per-user shell is configured");
+Check(false, CustomShellPolicy.CanConfigure(null, null), "require a current executable path before custom-shell setup");
+Check(false, CustomShellPolicy.CanConfigure(@"C:\Windows\explorer.exe", @"C:\Users\test\DesktopTuner.exe"), "preserve another custom shell rather than overwrite its setting");
+Check(true, CustomShellPolicy.IsSupportedEdition("Professional"), "allow custom-shell policy controls on Pro editions");
+Check(true, CustomShellPolicy.IsSupportedEdition("Enterprise"), "allow custom-shell policy controls on Enterprise editions");
+Check(true, CustomShellPolicy.IsSupportedEdition("Education"), "allow custom-shell policy controls on Education editions");
+Check(true, CustomShellPolicy.IsSupportedEdition("IoTEnterpriseS"), "allow custom-shell policy controls on IoT Enterprise editions");
+Check(false, CustomShellPolicy.IsSupportedEdition("Core"), "leave custom-shell policy controls unavailable on Home editions");
 CheckTrue(ShellHostLaunchPolicy.IsShellOverlayInvocation(["--SHELL-OVERLAY"]), "recognize all-edition shell overlay mode without depending on argument casing");
 Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(true, false), "start the companion taskbar in shell-host mode regardless of sign-in preferences");
 Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(false, true, false), "start the companion taskbar in shell overlay mode regardless of sign-in preferences");

@@ -592,6 +592,7 @@ public partial class MainWindow : Window
             PageContent.Children.Add(launchButton);
             var overlayInfo = InfoCard(_shellOverlayMode ? "All-edition shell overlay" : _replaceNativeTaskbar ? "Experimental taskbar replacement" : "Live taskbar overlay", "Choose an edge, bar size and style, transparency or dynamic translucency, app button labels, icon size, spacing, and optional auto-hide. Aura highlights use each app icon's primary color; Dynamic Aura moves the highlight with the pointer. The custom taskbar lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and opens the native Widgets board. Enable sign-in startup to keep the taskbar running in the background; right-click the bar to reopen Desktop Tuner settings or exit. In replacement mode, the built-in taskbar is hidden only on displays covered by Desktop Tuner and restored when its windows close; Quick Settings opens the native Wi-Fi, Bluetooth, brightness, and volume controls. Otherwise, the overlay can leave Windows' native notification area visible on supported bottom layouts. The shell overlay starts the custom desktop, Start, and taskbars at sign-in while Explorer remains available behind them.");
             PageContent.Children.Add(overlayInfo);
+            RenderCustomShellControls();
             var info = InfoCard("Experimental Windows setting", "Microsoft may change or ignore these taskbar registry preferences in a future Windows release. The app stores the previous values so you can undo its last apply.");
             PageContent.Children.Add(info);
         }
@@ -1424,6 +1425,89 @@ public partial class MainWindow : Window
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         RenderPage("Taskbar");
         Activate();
+    }
+
+    private void RenderCustomShellControls()
+    {
+        var executablePath = Environment.ProcessPath;
+        var shellCommand = CustomShellPolicy.ReadCurrentUserShellCommand();
+        var isConfigured = CustomShellPolicy.TargetsExecutable(shellCommand, executablePath);
+        var supportedEdition = CustomShellPolicy.IsSupportedWindowsEdition();
+        var hasOtherShell = !string.IsNullOrWhiteSpace(shellCommand) && !isConfigured;
+        var status = !supportedEdition
+            ? "The per-user alternate-shell policy is supported on Windows Pro, Enterprise, Education, and IoT Enterprise editions."
+            : isConfigured
+                ? "Desktop Tuner is configured as this user's shell. The change takes effect at sign-in."
+                : hasOtherShell
+                    ? "Another custom shell is configured. Desktop Tuner will leave that setting unchanged."
+                    : "Windows Explorer remains the sign-in shell until you opt in here.";
+        PageContent.Children.Add(InfoCard("Desktop Tuner sign-in shell", status + " This replaces Explorer for this user at the next sign-in and does not enable Shell Launcher's crash-restart behavior. If the custom shell fails, use Ctrl+Alt+Delete, open Task Manager, and run explorer.exe. Test on a separate account before using it every day."));
+
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 16) };
+        var configure = new Button
+        {
+            Content = "Use Desktop Tuner at sign-in",
+            Style = (Style)FindResource(isConfigured ? "SecondaryButton" : "PrimaryButton"),
+            IsEnabled = supportedEdition && executablePath is not null && !hasOtherShell && !isConfigured,
+            Margin = new Thickness(0, 0, 10, 0)
+        };
+        configure.Click += ConfigureCustomShell_Click;
+        actions.Children.Add(configure);
+
+        var restore = new Button
+        {
+            Content = "Restore Windows Explorer",
+            Style = (Style)FindResource("SecondaryButton"),
+            IsEnabled = isConfigured,
+            Margin = new Thickness(0, 0, 10, 0)
+        };
+        restore.Click += RestoreCustomShell_Click;
+        actions.Children.Add(restore);
+        PageContent.Children.Add(actions);
+    }
+
+    private void ConfigureCustomShell_Click(object sender, RoutedEventArgs e)
+    {
+        if (Environment.ProcessPath is not { } executablePath) return;
+        var answer = MessageBox.Show(this,
+            "Desktop Tuner will replace Explorer as this user's shell at the next sign-in. If it fails to start, use Ctrl+Alt+Delete, open Task Manager, and run explorer.exe; then return to Taskbar settings to restore Windows Explorer. Continue?",
+            "Use Desktop Tuner as the sign-in shell", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (answer != MessageBoxResult.Yes) return;
+
+        try
+        {
+            CustomShellPolicy.ConfigureForExecutable(executablePath);
+            SetStatus("Desktop Tuner will start as this user's shell at the next sign-in.");
+            RenderPage("Taskbar");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or System.Security.SecurityException)
+        {
+            MessageBox.Show(this, ex.Message, "Could not configure Desktop Tuner as the shell", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void RestoreCustomShell_Click(object sender, RoutedEventArgs e)
+    {
+        if (Environment.ProcessPath is not { } executablePath) return;
+        var answer = MessageBox.Show(this,
+            "Remove Desktop Tuner's per-user shell setting? Windows Explorer will start as this user's shell after the next sign-in.",
+            "Restore Windows Explorer", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (answer != MessageBoxResult.Yes) return;
+
+        try
+        {
+            if (!CustomShellPolicy.RestoreDefaultShell(executablePath))
+            {
+                MessageBox.Show(this, "The current shell setting no longer points to Desktop Tuner, so it was left unchanged.", "Shell setting unchanged", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            SetStatus("Windows Explorer will start as this user's shell at the next sign-in.");
+            RenderPage("Taskbar");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or System.Security.SecurityException)
+        {
+            MessageBox.Show(this, ex.Message, "Could not restore Windows Explorer as the shell", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void OpenExplorer(string? initialPath = null)
