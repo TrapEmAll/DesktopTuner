@@ -56,9 +56,20 @@
             <TextBlock Text="Desktop host prototype · F5 to refresh" Foreground="White"/>
         </Border>
         <Grid.ContextMenu>
-            <ContextMenu>
+            <ContextMenu Opened="OnBackgroundContextMenuOpened">
                 <MenuItem Header="Refresh" Click="OnRefreshClick"/>
                 <MenuItem Header="New folder" Click="OnNewFolderClick"/>
+                <Separator/>
+                <MenuItem Header="View">
+                    <MenuItem x:Name="AutoArrangeMenuItem" Header="Auto arrange icons" IsCheckable="True" Click="OnAutoArrangeClick"/>
+                    <MenuItem x:Name="AlignToGridMenuItem" Header="Align icons to grid" IsCheckable="True" Click="OnAlignToGridClick"/>
+                </MenuItem>
+                <MenuItem x:Name="SortMenuItem" Header="Sort by">
+                    <MenuItem Header="Name" Tag="Name" IsCheckable="True" Click="OnSortByClick"/>
+                    <MenuItem Header="Item type" Tag="ItemType" IsCheckable="True" Click="OnSortByClick"/>
+                    <MenuItem Header="Size" Tag="Size" IsCheckable="True" Click="OnSortByClick"/>
+                    <MenuItem Header="Date modified" Tag="DateModified" IsCheckable="True" Click="OnSortByClick"/>
+                </MenuItem>
                 <Separator/>
                 <MenuItem Header="Show more options" Click="OnShowDesktopContextMenuClick"/>
                 <Separator/>

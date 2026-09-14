@@ -72,6 +72,41 @@ Check(new DesktopHostPosition(500, 288), new DesktopHostPosition(clampedDesktopE
 var legacyLayoutPath = Path.Combine(desktopHostTestRoot, "legacy-layout.json");
 File.WriteAllText(legacyLayoutPath, JsonSerializer.Serialize(new[] { desktopHostEntries.Single(entry => entry.Name == "Folder").FullPath }));
 Check("Folder,Recycle Bin,shared.txt,This PC,user.txt", string.Join(',', new DesktopHostLayoutStore(legacyLayoutPath).ApplyLayout(desktopHostEntries, 600, 400).Select(entry => entry.Name)), "continue reading legacy order-only desktop layout files");
+var desktopPreferencesStore = new DesktopHostLayoutStore(Path.Combine(desktopHostTestRoot, "desktop-preferences.json"));
+Check(new DesktopHostLayoutPreferences(), desktopPreferencesStore.ReadPreferences(), "default desktop layout to manual positions with name sorting");
+var savedDesktopPreferences = new DesktopHostLayoutPreferences(AutoArrange: true, AlignToGrid: true, SortMode: DesktopHostSortMode.Size);
+Check(true, desktopPreferencesStore.SavePreferences(savedDesktopPreferences), "save desktop layout preferences");
+Check(savedDesktopPreferences, desktopPreferencesStore.ReadPreferences(), "restore auto-arrange, grid, and sort preferences");
+desktopPreferencesStore.SaveLayout(desktopHostEntries);
+Check(savedDesktopPreferences, desktopPreferencesStore.ReadPreferences(), "preserve desktop layout preferences when icon positions are saved");
+
+var sortTestRoot = Path.Combine(desktopHostTestRoot, "Sort");
+Directory.CreateDirectory(sortTestRoot);
+var largeTextPath = Path.Combine(sortTestRoot, "a.txt");
+var smallBinaryPath = Path.Combine(sortTestRoot, "b.bin");
+File.WriteAllBytes(largeTextPath, [1, 2, 3]);
+File.WriteAllBytes(smallBinaryPath, [1]);
+File.SetLastWriteTime(largeTextPath, new DateTime(2021, 1, 1));
+File.SetLastWriteTime(smallBinaryPath, new DateTime(2022, 1, 1));
+var sortableDesktopItems = new[]
+{
+    new DesktopHostItem("b.bin", smallBinaryPath, false),
+    new DesktopHostItem("a.txt", largeTextPath, false)
+};
+Check("a.txt,b.bin", string.Join(',', DesktopHostArrangementPolicy.Sort(sortableDesktopItems, DesktopHostSortMode.Name).Select(item => item.Name)), "sort desktop icons by name");
+Check("b.bin,a.txt", string.Join(',', DesktopHostArrangementPolicy.Sort(sortableDesktopItems, DesktopHostSortMode.ItemType).Select(item => item.Name)), "sort desktop icons by item type");
+Check("b.bin,a.txt", string.Join(',', DesktopHostArrangementPolicy.Sort(sortableDesktopItems, DesktopHostSortMode.Size).Select(item => item.Name)), "sort desktop icons by file size");
+Check("a.txt,b.bin", string.Join(',', DesktopHostArrangementPolicy.Sort(sortableDesktopItems, DesktopHostSortMode.DateModified).Select(item => item.Name)), "sort desktop icons by modification date");
+var arrangeItems = new[] { "c", "a", "b" }.Select(name => new DesktopHostItem(name, Path.Combine(desktopHostTestRoot, name), false)).ToArray();
+foreach (var item in arrangeItems) item.SetPosition(new DesktopHostPosition(250, 200));
+DesktopHostArrangementPolicy.Arrange(arrangeItems, [desktopMonitorViewports[0]], DesktopHostSortMode.Name);
+Check(new DesktopHostPosition(0, 0), new DesktopHostPosition(arrangeItems.Single(item => item.Name == "a").Left, arrangeItems.Single(item => item.Name == "a").Top), "auto-arrange icons from the upper-left in name order");
+Check(new DesktopHostPosition(0, 112), new DesktopHostPosition(arrangeItems.Single(item => item.Name == "b").Left, arrangeItems.Single(item => item.Name == "b").Top), "stack auto-arranged desktop icons down each column");
+var gridItems = new[] { new DesktopHostItem("first", "first", false), new DesktopHostItem("second", "second", false) };
+foreach (var item in gridItems) item.SetPosition(new DesktopHostPosition(205, 126));
+DesktopHostArrangementPolicy.AlignToGrid(gridItems, [desktopMonitorViewports[0]]);
+Check(new DesktopHostPosition(200, 112), new DesktopHostPosition(gridItems[0].Left, gridItems[0].Top), "align desktop icons to their nearest grid cells");
+Check(new DesktopHostPosition(100, 112), new DesktopHostPosition(gridItems[1].Left, gridItems[1].Top), "move colliding grid icons into the nearest free cell");
 var selectableDesktopItems = new[] { "a", "b", "c", "d" }
     .Select(name => new DesktopHostItem(name, Path.Combine(desktopHostTestRoot, name), false))
     .ToArray();

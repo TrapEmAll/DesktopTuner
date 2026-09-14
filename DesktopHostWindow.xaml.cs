@@ -101,9 +101,17 @@ public partial class DesktopHostWindow : Window
             .Select(item => item.FullPath)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var entries = DesktopHostCatalog.ReadItems([_userDesktop, _publicDesktop], includeDesktopNamespace: true);
+        var preferences = _layoutStore.ReadPreferences();
         var ordered = _desktopMonitors.Count > 0
             ? _layoutStore.ApplyMonitorLayout(entries, _desktopMonitors)
             : _layoutStore.ApplyLayout(entries, DesktopItems.ActualWidth, DesktopItems.ActualHeight);
+        if (_desktopMonitors.Count > 0)
+        {
+            if (preferences.AutoArrange)
+                DesktopHostArrangementPolicy.Arrange(ordered, _desktopMonitors, preferences.SortMode);
+            else if (preferences.AlignToGrid)
+                DesktopHostArrangementPolicy.AlignToGrid(ordered, _desktopMonitors);
+        }
         _desktopItems.Clear();
         foreach (var item in ordered)
         {
@@ -450,6 +458,63 @@ public partial class DesktopHostWindow : Window
     }
 
     private void OnRefreshClick(object sender, RoutedEventArgs e) => RefreshDesktop();
+
+    private void OnBackgroundContextMenuOpened(object sender, RoutedEventArgs e)
+    {
+        var preferences = _layoutStore.ReadPreferences();
+        AutoArrangeMenuItem.IsChecked = preferences.AutoArrange;
+        AlignToGridMenuItem.IsChecked = preferences.AlignToGrid;
+        foreach (var item in SortMenuItem.Items.OfType<MenuItem>())
+            item.IsChecked = Enum.TryParse<DesktopHostSortMode>(item.Tag as string, out var mode) && mode == preferences.SortMode;
+    }
+
+    private void OnAutoArrangeClick(object sender, RoutedEventArgs e)
+    {
+        var preferences = _layoutStore.ReadPreferences() with { AutoArrange = AutoArrangeMenuItem.IsChecked };
+        if (!SaveLayoutPreferences(preferences)) return;
+        if (preferences.AutoArrange) ApplyDesktopArrangement(preferences.SortMode);
+    }
+
+    private void OnAlignToGridClick(object sender, RoutedEventArgs e)
+    {
+        var preferences = _layoutStore.ReadPreferences() with { AlignToGrid = AlignToGridMenuItem.IsChecked };
+        if (!SaveLayoutPreferences(preferences)) return;
+        if (preferences.AlignToGrid) ApplyDesktopGridAlignment();
+    }
+
+    private void OnSortByClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string value } || !Enum.TryParse<DesktopHostSortMode>(value, out var mode)) return;
+        foreach (var item in SortMenuItem.Items.OfType<MenuItem>())
+            item.IsChecked = ReferenceEquals(item, sender);
+        var preferences = _layoutStore.ReadPreferences() with { SortMode = mode };
+        if (!SaveLayoutPreferences(preferences)) return;
+        ApplyDesktopArrangement(mode);
+    }
+
+    private bool SaveLayoutPreferences(DesktopHostLayoutPreferences preferences)
+    {
+        if (_layoutStore.SavePreferences(preferences)) return true;
+        MessageBox.Show(this, "Desktop layout preferences could not be saved.", "Desktop layout", MessageBoxButton.OK, MessageBoxImage.Warning);
+        return false;
+    }
+
+    private void ApplyDesktopArrangement(DesktopHostSortMode sortMode)
+    {
+        DesktopHostArrangementPolicy.Arrange(_desktopItems, GetLayoutViewports(), sortMode);
+        SaveDesktopLayout("Icons were arranged for this session, but their positions could not be saved.");
+    }
+
+    private void ApplyDesktopGridAlignment()
+    {
+        DesktopHostArrangementPolicy.AlignToGrid(_desktopItems, GetLayoutViewports());
+        SaveDesktopLayout("Icons were aligned for this session, but their positions could not be saved.");
+    }
+
+    private IReadOnlyList<DesktopHostMonitorViewport> GetLayoutViewports() => _desktopMonitors.Count > 0
+        ? _desktopMonitors
+        : [new DesktopHostMonitorViewport("DISPLAY1", 0, 0,
+            Math.Max(DesktopIconWidth, DesktopItems.ActualWidth), Math.Max(DesktopIconHeight, DesktopItems.ActualHeight), true)];
 
     private void OnNewFolderClick(object sender, RoutedEventArgs e)
     {

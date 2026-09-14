@@ -20,6 +20,23 @@ public sealed class DesktopHostLayoutStore
             "DesktopTuner", "desktop-host-layout.json");
     }
 
+    public DesktopHostLayoutPreferences ReadPreferences()
+    {
+        var layout = ReadLayout();
+        return new DesktopHostLayoutPreferences(layout.AutoArrange, layout.AlignToGrid, layout.SortMode);
+    }
+
+    public bool SavePreferences(DesktopHostLayoutPreferences preferences)
+    {
+        ArgumentNullException.ThrowIfNull(preferences);
+        if (!Enum.IsDefined(preferences.SortMode)) throw new ArgumentOutOfRangeException(nameof(preferences));
+        var layout = ReadLayout();
+        layout.AutoArrange = preferences.AutoArrange;
+        layout.AlignToGrid = preferences.AlignToGrid;
+        layout.SortMode = preferences.SortMode;
+        return WriteLayout(layout);
+    }
+
     public IReadOnlyList<DesktopHostItem> ApplyLayout(IEnumerable<DesktopHostItem> items, double viewportWidth, double viewportHeight)
     {
         ArgumentNullException.ThrowIfNull(items);
@@ -156,6 +173,7 @@ public sealed class DesktopHostLayoutStore
     private PersistedLayout CreateLayout(IEnumerable<DesktopHostItem> items, Func<DesktopHostItem, PersistedPosition> positionSelector)
     {
         var entries = items.Take(MaximumItems).ToArray();
+        var preferences = ReadLayout();
         return new PersistedLayout
         {
             Order = entries.Select(item => item.FullPath)
@@ -163,7 +181,10 @@ public sealed class DesktopHostLayoutStore
                 .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             Positions = entries.Where(item => !string.IsNullOrWhiteSpace(item.FullPath))
                 .GroupBy(item => item.FullPath, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(group => group.Key, group => positionSelector(group.First()), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => positionSelector(group.First()), StringComparer.OrdinalIgnoreCase),
+            AutoArrange = preferences.AutoArrange,
+            AlignToGrid = preferences.AlignToGrid,
+            SortMode = preferences.SortMode
         };
     }
 
@@ -214,6 +235,7 @@ public sealed class DesktopHostLayoutStore
                     double.IsFinite(pair.Value.Left) && double.IsFinite(pair.Value.Top))
                 .Take(MaximumItems)
                 .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+            if (!Enum.IsDefined(values.SortMode)) values.SortMode = DesktopHostSortMode.Name;
             return values;
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException or ArgumentException)
@@ -284,6 +306,9 @@ public sealed class DesktopHostLayoutStore
     {
         public List<string> Order { get; set; } = [];
         public Dictionary<string, PersistedPosition> Positions { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public bool AutoArrange { get; set; }
+        public bool AlignToGrid { get; set; }
+        public DesktopHostSortMode SortMode { get; set; } = DesktopHostSortMode.Name;
     }
 
     private sealed record PersistedPosition(double Left, double Top, string? DeviceName = null);
