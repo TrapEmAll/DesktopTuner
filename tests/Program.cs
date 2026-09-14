@@ -147,6 +147,7 @@ Check(false, CustomShellPolicy.IsSupportedEdition("Core"), "leave custom-shell p
 Check(true, CustomShellPolicy.ShouldRestartHost(-1, 0), "retry the custom shell once after a failed process exit");
 Check(false, CustomShellPolicy.ShouldRestartHost(0, 0), "return to Explorer after a normal custom-shell exit");
 Check(false, CustomShellPolicy.ShouldRestartHost(-1, CustomShellPolicy.MaximumHostRestarts), "stop retrying and recover to Explorer after the restart limit");
+Check(@"""C:\Program Files\Desktop Tuner\DesktopTuner.exe""", CustomShellPolicy.FormatExecutableCommand(@"C:\Program Files\Desktop Tuner\DesktopTuner.exe"), "quote custom-shell executable paths so spaces are handled by Winlogon");
 CheckTrue(ShellHostLaunchPolicy.IsShellOverlayInvocation(["--SHELL-OVERLAY"]), "recognize all-edition shell overlay mode without depending on argument casing");
 Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(true, false), "start the companion taskbar in shell-host mode regardless of sign-in preferences");
 Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(false, true, false), "start the companion taskbar in shell overlay mode regardless of sign-in preferences");

@@ -70,6 +70,12 @@ public static class CustomShellPolicy
     public static bool ShouldRestartHost(int exitCode, int restartsUsed) =>
         exitCode != 0 && restartsUsed < MaximumHostRestarts;
 
+    public static string FormatExecutableCommand(string executablePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
+        return $"\"{Path.GetFullPath(executablePath)}\"";
+    }
+
     public static void ConfigureForExecutable(string executablePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
@@ -82,7 +88,7 @@ public static class CustomShellPolicy
 
         using var key = Registry.CurrentUser.CreateSubKey(RegistryPath, writable: true)
             ?? throw new IOException("Could not open the per-user Windows custom-shell policy for writing.");
-        key.SetValue(RegistryValue, fullExecutablePath, RegistryValueKind.String);
+        key.SetValue(RegistryValue, FormatExecutableCommand(fullExecutablePath), RegistryValueKind.String);
     }
 
     public static bool RestoreDefaultShell(string executablePath)
