@@ -16,7 +16,7 @@ public static class TaskbarLayoutCalculator
             local.Height * display.ScaleY);
     }
 
-    public static TaskbarBounds CalculateStartMenu(TaskbarDisplay display, double menuWidth, double menuHeight, DesktopPreferences preferences)
+    public static TaskbarBounds CalculateStartMenu(TaskbarDisplay display, double menuWidth, double menuHeight, DesktopPreferences preferences, bool centered = false)
     {
         ArgumentNullException.ThrowIfNull(display);
         ArgumentNullException.ThrowIfNull(preferences);
@@ -40,7 +40,14 @@ public static class TaskbarLayoutCalculator
             TaskbarEdge.Bottom => taskbar.Top - height - gapY,
             _ => preferences.TaskbarLayout == TaskbarStyle.Floating ? taskbar.Top + gapY : display.Top + gapY
         };
-        if (preferences.TaskbarLayout == TaskbarStyle.Floating && preferences.TaskbarEdge is TaskbarEdge.Top or TaskbarEdge.Bottom)
+        if (centered)
+        {
+            if (preferences.TaskbarEdge is TaskbarEdge.Top or TaskbarEdge.Bottom)
+                left = display.Left + (display.Width - width) / 2;
+            else
+                top = display.Top + (display.Height - height) / 2;
+        }
+        if (!centered && preferences.TaskbarLayout == TaskbarStyle.Floating && preferences.TaskbarEdge is TaskbarEdge.Top or TaskbarEdge.Bottom)
             left = taskbar.Left + gapX;
 
         var minLeft = display.Left + 8 * display.ScaleX;

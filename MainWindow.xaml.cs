@@ -61,6 +61,7 @@ public partial class MainWindow : Window
     private bool _replaceWindowsKey;
     private StartMenuStyle _startMenuStyle = StartMenuStyle.Modern;
     private int _startRecentAppCount = 4;
+    private bool _centerStartMenu;
     private bool _taskbarOnAllDisplays = true;
     private bool _replaceNativeTaskbar;
     private bool _startWithWindows;
@@ -95,6 +96,7 @@ public partial class MainWindow : Window
         _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
         _startMenuStyle = desktopPreferences.StartMenuStyle;
         _startRecentAppCount = desktopPreferences.StartRecentAppCount;
+        _centerStartMenu = desktopPreferences.CenterStartMenu;
         _taskbarOnAllDisplays = desktopPreferences.TaskbarOnAllDisplays;
         _replaceNativeTaskbar = desktopPreferences.ReplaceNativeTaskbar;
         _nativeTaskbarWatchTimer.Tick += (_, _) => MaintainNativeTaskbars();
@@ -225,6 +227,10 @@ public partial class MainWindow : Window
             };
             menuStyleRow.Children.Add(menuStyleSelector);
             PageContent.Children.Add(menuStyleRow);
+            var centerStartMenu = new CheckBox { Content = "Center the Start menu along the taskbar edge", IsChecked = _centerStartMenu, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
+            centerStartMenu.Checked += (_, _) => SetStartMenuCentered(true);
+            centerStartMenu.Unchecked += (_, _) => SetStartMenuCentered(false);
+            PageContent.Children.Add(centerStartMenu);
             var recentAppsRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
             recentAppsRow.Children.Add(new TextBlock { Text = "Recent apps", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
             var recentAppsSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
@@ -861,7 +867,7 @@ public partial class MainWindow : Window
         if (display is not null)
         {
             var bounds = TaskbarLayoutCalculator.CalculateStartMenu(display, _startMenuWindow.Width, _startMenuWindow.Height,
-                new DesktopPreferences(_taskbarEdge, _taskbarSize, _taskbarAutoHide, TaskbarLayout: _taskbarLayout, AutoHideWhenMaximized: _taskbarAutoHideWhenMaximized));
+                CreateDesktopPreferences(), _centerStartMenu);
             if (!TaskbarDisplayService.PositionWindow(_startMenuWindow, bounds))
                 System.Diagnostics.Trace.TraceError($"Could not place Start menu on display {display.DeviceName}.");
             return;
@@ -889,6 +895,13 @@ public partial class MainWindow : Window
                 _startMenuWindow.Left = workArea.Left + 12;
                 _startMenuWindow.Top = Math.Max(workArea.Top + 12, workArea.Bottom - _startMenuWindow.Height - 12);
                 break;
+        }
+        if (_centerStartMenu)
+        {
+            if (edge is TaskbarEdge.Top or TaskbarEdge.Bottom)
+                _startMenuWindow.Left = workArea.Left + (workArea.Width - _startMenuWindow.Width) / 2;
+            else
+                _startMenuWindow.Top = workArea.Top + (workArea.Height - _startMenuWindow.Height) / 2;
         }
     }
 
@@ -978,7 +991,14 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu);
+
+    private void SetStartMenuCentered(bool centered)
+    {
+        _centerStartMenu = centered;
+        SaveDesktopPreferences();
+        PositionStartMenuWindow();
+    }
 
     private void SetTaskbarSystemButton(TaskbarSystemButton button, bool isVisible)
     {
@@ -1070,6 +1090,7 @@ public partial class MainWindow : Window
             _replaceWindowsKey = preferences.ReplaceWindowsKey;
             _startMenuStyle = preferences.StartMenuStyle;
             _startRecentAppCount = preferences.StartRecentAppCount;
+            _centerStartMenu = preferences.CenterStartMenu;
             _taskbarOnAllDisplays = preferences.TaskbarOnAllDisplays;
             _taskbarLayout = preferences.TaskbarLayout;
             _taskbarGrouping = preferences.TaskbarGrouping;

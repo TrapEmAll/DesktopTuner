@@ -119,6 +119,18 @@ Check(new TaskbarBounds(976, 234, 760, 232), TaskbarPreviewLayoutPolicy.Calculat
 var secondaryStart = TaskbarLayoutCalculator.CalculateStartMenu(secondaryDisplay, 470, 650, new(TaskbarEdge.Bottom));
 Check(-1902d, secondaryStart.Left, "anchor Start menu to the selected secondary display");
 Check(-188d, secondaryStart.Top, "keep Start menu within display bounds above its taskbar");
+var centeredBottomStart = TaskbarLayoutCalculator.CalculateStartMenu(primaryDisplay, 470, 650, new(TaskbarEdge.Bottom), centered: true);
+Check(986.25d, centeredBottomStart.Left, "center Start menu horizontally along the bottom taskbar on a scaled display");
+Check(545d, centeredBottomStart.Top, "keep a centered Start menu adjacent to the bottom taskbar");
+var centeredTopStart = TaskbarLayoutCalculator.CalculateStartMenu(primaryDisplay, 470, 650, new(TaskbarEdge.Top), centered: true);
+Check(986.25d, centeredTopStart.Left, "center Start menu horizontally along the top taskbar on a scaled display");
+Check(82.5d, centeredTopStart.Top, "keep a centered Start menu adjacent to the top taskbar");
+var centeredLeftStart = TaskbarLayoutCalculator.CalculateStartMenu(secondaryDisplay, 470, 650, new(TaskbarEdge.Left), centered: true);
+Check(-1638d, centeredLeftStart.Left, "keep a centered Start menu beside a left taskbar");
+Check(-147.5d, centeredLeftStart.Top, "center Start menu vertically along a left taskbar on a scaled secondary display");
+var centeredRightStart = TaskbarLayoutCalculator.CalculateStartMenu(secondaryDisplay, 470, 650, new(TaskbarEdge.Right), centered: true);
+Check(-987d, centeredRightStart.Left, "keep a centered Start menu beside a right taskbar");
+Check(-147.5d, centeredRightStart.Top, "center Start menu vertically along a right taskbar on a scaled secondary display");
 var floatingStart = TaskbarLayoutCalculator.CalculateStartMenu(secondaryDisplay, 470, 650, new(TaskbarEdge.Bottom, TaskbarSize.Standard, TaskbarLayout: TaskbarStyle.Floating));
 Check(-1614d, floatingStart.Left, "anchor Start menu to the floating taskbar segment");
 Check(2, TaskbarDisplayService.Select([secondaryDisplay, primaryDisplay], true).Count, "select all connected displays");
@@ -1031,6 +1043,7 @@ try
     var freshPreferencesStore = new DesktopPreferencesStore(Path.Combine(temporaryPreferencesDirectory, "new-install.json"));
     Check(true, freshPreferencesStore.Load().TaskbarOnAllDisplays, "enable all displays by default for a new installation");
     Check(TaskbarStyle.EdgeToEdge, freshPreferencesStore.Load().TaskbarLayout, "default a new install to the full-edge taskbar layout");
+    Check(false, freshPreferencesStore.Load().CenterStartMenu, "default new installs to taskbar-aligned Start menus");
     var staleTaskbarSnapshot = Path.Combine(temporaryPreferencesDirectory, "taskbar-restore.json");
     File.WriteAllText(staleTaskbarSnapshot, """[{"Handle":-1,"WasVisible":true}]""");
     NativeTaskbarVisibilityService.RestoreSnapshot(staleTaskbarSnapshot);
@@ -1044,12 +1057,13 @@ try
         .WithVisibility(TaskbarSystemButton.Widgets, false);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons, CenterStartMenu: true);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
     Check(expectedPreferences.TaskbarSize, loadedPreferences.TaskbarSize, "persist taskbar size");
     Check(expectedPreferences.StartMenuStyle, loadedPreferences.StartMenuStyle, "persist Start menu style");
+    Check(true, loadedPreferences.CenterStartMenu, "persist centered Start menu preference");
     Check("Editor", loadedPreferences.PinnedStartApps!.Single().Name, "persist pinned Start apps");
     Check(StartTileSize.Wide, loadedPreferences.PinnedStartApps!.Single().TileSize, "persist a pinned Start tile's size");
     Check("Dev", loadedPreferences.PinnedStartApps!.Single().GroupName, "persist a pinned Start tile's group");
