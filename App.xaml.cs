@@ -42,9 +42,16 @@ public partial class App : Application
             return;
         }
 
+        var hasFolderShellInvocation = FolderShellIntegrationService.TryReadInvocation(e.Args, out var folderShellPath);
         var shellHostArgument = ShellHostLaunchPolicy.IsShellHostInvocation(e.Args);
         var shellHostWorkerArgument = ShellHostLaunchPolicy.IsShellHostWorkerInvocation(e.Args);
         var customShellPolicyTargetsApp = CustomShellPolicy.TargetsExecutable(CustomShellPolicy.ReadCurrentUserShellCommand(), Environment.ProcessPath);
+        if (hasFolderShellInvocation && DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(folderShellPath))
+        {
+            Shutdown();
+            return;
+        }
+
         var shellHostSupervisorActive = ShellHostLaunchPolicy.ShouldRunShellHostSupervisor(e.Args, customShellPolicyTargetsApp);
         if (shellHostSupervisorActive)
         {
@@ -107,8 +114,6 @@ public partial class App : Application
             }
             return;
         }
-
-        var hasFolderShellInvocation = FolderShellIntegrationService.TryReadInvocation(e.Args, out var folderShellPath);
 
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         var startInBackground = e.Args.Contains("--startup", StringComparer.OrdinalIgnoreCase);
