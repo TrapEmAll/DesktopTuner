@@ -33,9 +33,15 @@ public partial class DesktopHostWindow : Window
     private readonly DispatcherTimer _wallpaperRefreshTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private string? _wallpaperSignature;
     private bool _isClosed;
+    private bool _isMarqueeSelecting;
+    private bool _marqueeTogglesSelection;
     private DesktopHostItem? _dragCandidate;
     private string? _selectionAnchorPath;
     private Point _dragStart;
+    private Point _marqueeStart;
+    private HashSet<string> _marqueeInitialSelection = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _marqueeSelectionBefore = new(StringComparer.OrdinalIgnoreCase);
+    private string? _marqueeAnchorBefore;
 
     public DesktopHostWindow(bool routeFoldersToCompanionExplorer = false)
     {
@@ -342,7 +348,8 @@ public partial class DesktopHostWindow : Window
         }
         else if (e.Key == Key.Escape)
         {
-            ApplySelection(new HashSet<string>(StringComparer.OrdinalIgnoreCase), null);
+            if (_isMarqueeSelecting) CancelDesktopMarquee();
+            else ApplySelection(new HashSet<string>(StringComparer.OrdinalIgnoreCase), null);
             e.Handled = true;
         }
     }
@@ -440,6 +447,124 @@ public partial class DesktopHostWindow : Window
         foreach (var item in _desktopItems)
             item.IsSelected = selectedPaths.Contains(item.FullPath);
         _selectionAnchorPath = anchorPath;
+    }
+
+    private void OnDesktopMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left || IsInsideDesktopItem(e.OriginalSource as DependencyObject)) return;
+        _dragCandidate = null;
+        _isMarqueeSelecting = true;
+        _marqueeStart = e.GetPosition(this);
+        _marqueeTogglesSelection = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        _marqueeSelectionBefore = _desktopItems.Where(item => item.IsSelected).Select(item => item.FullPath)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _marqueeAnchorBefore = _selectionAnchorPath;
+        _marqueeInitialSelection = _marqueeTogglesSelection
+            ? new HashSet<string>(_marqueeSelectionBefore, StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!_marqueeTogglesSelection) ApplySelection(_marqueeInitialSelection, null);
+        SelectionMarquee.Visibility = Visibility.Visible;
+        UpdateDesktopMarquee(_marqueeStart);
+        if (!Mouse.Capture(DesktopSurface, CaptureMode.SubTree)) FinishDesktopMarquee();
+    }
+
+    private void OnDesktopMouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isMarqueeSelecting) return;
+        if (e.LeftButton != MouseButtonState.Pressed)
+        {
+            FinishDesktopMarquee();
+            return;
+        }
+        UpdateDesktopMarquee(e.GetPosition(this));
+    }
+
+    private void OnDesktopMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Left && _isMarqueeSelecting)
+        {
+            UpdateDesktopMarquee(e.GetPosition(this));
+            FinishDesktopMarquee();
+        }
+    }
+
+    private void OnDesktopLostMouseCapture(object sender, MouseEventArgs e)
+    {
+        if (_isMarqueeSelecting) FinishDesktopMarquee();
+    }
+
+    private void UpdateDesktopMarquee(Point current)
+    {
+        var rectangle = DesktopHostMarqueePolicy.CreateRectangle(_marqueeStart, current);
+        Canvas.SetLeft(SelectionMarquee, rectangle.Left);
+        Canvas.SetTop(SelectionMarquee, rectangle.Top);
+        SelectionMarquee.Width = rectangle.Width;
+        SelectionMarquee.Height = rectangle.Height;
+        var items = GetDesktopMarqueeItems();
+        var selection = DesktopHostMarqueePolicy.ResolveSelection(items, rectangle, _marqueeInitialSelection, _marqueeTogglesSelection);
+        ApplySelection(selection, _selectionAnchorPath);
+    }
+
+    private void FinishDesktopMarquee()
+    {
+        if (!_isMarqueeSelecting) return;
+        _isMarqueeSelecting = false;
+        SelectionMarquee.Visibility = Visibility.Collapsed;
+        var selected = _desktopItems.Where(item => item.IsSelected).Select(item => item.FullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (_selectionAnchorPath is null || !selected.Contains(_selectionAnchorPath))
+            _selectionAnchorPath = selected.LastOrDefault();
+        if (Mouse.Captured == DesktopSurface) Mouse.Capture(null);
+    }
+
+    private void CancelDesktopMarquee()
+    {
+        if (!_isMarqueeSelecting) return;
+        _isMarqueeSelecting = false;
+        SelectionMarquee.Visibility = Visibility.Collapsed;
+        ApplySelection(_marqueeSelectionBefore, _marqueeAnchorBefore);
+        if (Mouse.Captured == DesktopSurface) Mouse.Capture(null);
+    }
+
+    private IReadOnlyList<DesktopHostMarqueeItem> GetDesktopMarqueeItems()
+    {
+        var result = new List<DesktopHostMarqueeItem>(_desktopItems.Count);
+        foreach (var item in _desktopItems)
+        {
+            if (DesktopItems.ItemContainerGenerator.ContainerFromItem(item) is not DependencyObject container) continue;
+            var button = FindVisualChildren<Button>(container).FirstOrDefault();
+            if (button is null || button.ActualWidth <= 0 || button.ActualHeight <= 0) continue;
+            try
+            {
+                var origin = button.TransformToAncestor(this).Transform(new Point(0, 0));
+                result.Add(new DesktopHostMarqueeItem(item.FullPath,
+                    new Rect(origin.X, origin.Y, button.ActualWidth, button.ActualHeight)));
+            }
+            catch (InvalidOperationException) { }
+        }
+        return result;
+    }
+
+    private static bool IsInsideDesktopItem(DependencyObject? source)
+    {
+        while (source is not null)
+        {
+            if (source is Button) return true;
+            source = source is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(source)
+                : LogicalTreeHelper.GetParent(source);
+        }
+        return false;
+    }
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+    {
+        if (parent is not Visual and not System.Windows.Media.Media3D.Visual3D) yield break;
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match) yield return match;
+            foreach (var descendant in FindVisualChildren<T>(child)) yield return descendant;
+        }
     }
 
     private void OnItemMouseMove(object sender, MouseEventArgs e)

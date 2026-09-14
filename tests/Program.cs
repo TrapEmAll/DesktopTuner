@@ -118,6 +118,20 @@ Check("a,c", string.Join(',', selectableDesktopItems.Where(item => desktopSelect
 desktopSelection = DesktopHostSelectionPolicy.Select(selectableDesktopItems, selectableDesktopItems[3].FullPath, false, true, desktopSelection.AnchorPath);
 Check("c,d", string.Join(',', selectableDesktopItems.Where(item => desktopSelection.Paths.Contains(item.FullPath)).Select(item => item.Name)), "select an inclusive desktop range with Shift-click");
 Check(4, DesktopHostSelectionPolicy.SelectAll(selectableDesktopItems).Count, "select every desktop item with Ctrl+A");
+var marqueeRectangle = DesktopHostMarqueePolicy.CreateRectangle(new Point(20, 20), new Point(0, 0));
+Check(new Rect(0, 0, 20, 20), marqueeRectangle, "normalize a desktop marquee dragged from bottom-right to top-left");
+var marqueeItems = new[]
+{
+    new DesktopHostMarqueeItem("a", new Rect(2, 2, 8, 8)),
+    new DesktopHostMarqueeItem("b", new Rect(12, 12, 8, 8)),
+    new DesktopHostMarqueeItem("c", new Rect(30, 30, 8, 8))
+};
+var marqueeSelection = DesktopHostMarqueePolicy.ResolveSelection(marqueeItems, marqueeRectangle, [], toggleIntersectedItems: false);
+Check("a,b", string.Join(',', marqueeSelection.OrderBy(path => path)), "select only desktop icons intersecting a marquee rectangle");
+marqueeSelection = DesktopHostMarqueePolicy.ResolveSelection(marqueeItems, marqueeRectangle, ["a", "c"], toggleIntersectedItems: true);
+Check("b,c", string.Join(',', marqueeSelection.OrderBy(path => path)), "toggle intersected desktop icons with Ctrl-marquee while preserving outside items");
+Check("a,c", string.Join(',', DesktopHostMarqueePolicy.ResolveSelection(marqueeItems, Rect.Empty, ["a", "c"], toggleIntersectedItems: true).OrderBy(path => path)),
+    "preserve the selection when the marquee rectangle has no area");
 selectableDesktopItems[0].IsSelected = true;
 selectableDesktopItems[2].IsSelected = true;
 desktopSelection = DesktopHostSelectionPolicy.PreserveSelectionForContextMenu(selectableDesktopItems, selectableDesktopItems[2].FullPath);

@@ -4,7 +4,9 @@
         Title="Desktop Tuner Desktop Host (prototype)" WindowStyle="None" ResizeMode="NoResize"
         WindowStartupLocation="Manual" ShowInTaskbar="False" ShowActivated="False" Background="#273044"
         KeyDown="OnKeyDown" Loaded="OnLoaded">
-    <Grid AllowDrop="True" DragOver="OnDesktopDragOver" Drop="OnDesktopDrop">
+    <Grid x:Name="DesktopSurface" Background="Transparent" AllowDrop="True" DragOver="OnDesktopDragOver" Drop="OnDesktopDrop"
+          PreviewMouseLeftButtonDown="OnDesktopMouseDown" PreviewMouseMove="OnDesktopMouseMove"
+          PreviewMouseLeftButtonUp="OnDesktopMouseUp" LostMouseCapture="OnDesktopLostMouseCapture">
         <Canvas x:Name="WallpaperLayer" IsHitTestVisible="False"/>
         <ItemsControl x:Name="DesktopItems" Margin="12" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
             <ItemsControl.ItemsPanel>
@@ -54,6 +56,10 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <Canvas IsHitTestVisible="False">
+            <Rectangle x:Name="SelectionMarquee" Visibility="Collapsed" Stroke="#FF80B5FF" StrokeThickness="1"
+                       Fill="#3080B5FF"/>
+        </Canvas>
         <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12" Padding="10,6"
                 Background="#B0202020" CornerRadius="6" IsHitTestVisible="False">
             <TextBlock Text="Desktop host prototype · F5 to refresh" Foreground="White"/>
