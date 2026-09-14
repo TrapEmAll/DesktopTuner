@@ -347,8 +347,26 @@ public partial class ShellNamespaceBrowserWindow : Window
 
     private void OpenSelectedItem()
     {
-        if (ItemsList.SelectedItems.Count != 1 || ItemsList.SelectedItem is not DesktopShellNamespaceEntry entry) return;
-        OpenItem(entry);
+        var selection = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().ToArray();
+        if (selection.Length == 0) return;
+        foreach (var entry in selection)
+        {
+            var action = ShellNamespaceOpenPolicy.Resolve(entry.IsFolder, selection.Length);
+            if (action is ShellNamespaceOpenAction.NavigateCurrentWindow or ShellNamespaceOpenAction.UseShellHandler)
+            {
+                OpenItem(entry);
+                continue;
+            }
+
+            try
+            {
+                new ShellNamespaceBrowserWindow(entry.ParsingName) { Owner = this }.Show();
+            }
+            catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or System.Security.SecurityException or InvalidOperationException)
+            {
+                MessageBox.Show(this, ex.Message, $"Could not open {entry.Name}", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 
     private void OpenItem(DesktopShellNamespaceEntry entry)
@@ -371,7 +389,7 @@ public partial class ShellNamespaceBrowserWindow : Window
     private async void ItemContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         var hasSelection = ItemsList.SelectedItems.Count > 0;
-        OpenMenuItem.IsEnabled = ItemsList.SelectedItems.Count == 1;
+        OpenMenuItem.IsEnabled = ItemsList.SelectedItems.Count > 0;
         RenameMenuItem.IsEnabled = false;
         if (ItemsList.SelectedItems.Count == 1 && ItemsList.SelectedItem is DesktopShellNamespaceEntry entry)
             RenameMenuItem.IsEnabled = await CanRenameAsync(entry);
