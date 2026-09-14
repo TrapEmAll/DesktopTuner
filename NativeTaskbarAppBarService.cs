@@ -12,6 +12,8 @@ public sealed class NativeTaskbarAppBarService : IDisposable
     private const uint AppBarRemove = 0x00000001;
     private const uint AppBarQueryPosition = 0x00000002;
     private const uint AppBarSetPosition = 0x00000003;
+    private const uint AppBarActivate = 0x00000006;
+    private const uint AppBarWindowPositionChanged = 0x00000009;
     private const uint AppBarEdgeLeft = 0;
     private const uint AppBarEdgeRight = 1;
     private const uint AppBarEdgeTop = 2;
@@ -93,6 +95,10 @@ public sealed class NativeTaskbarAppBarService : IDisposable
         }
     }
 
+    public void NotifyActivated() => NotifyWindowMessage(AppBarActivate);
+
+    public void NotifyWindowPositionChanged() => NotifyWindowMessage(AppBarWindowPositionChanged);
+
     public void Unregister()
     {
         if (!IsRegistered) return;
@@ -116,6 +122,20 @@ public sealed class NativeTaskbarAppBarService : IDisposable
     }
 
     public void Dispose() => Unregister();
+
+    private void NotifyWindowMessage(uint message)
+    {
+        if (!IsRegistered) return;
+        try
+        {
+            var data = NewData(_window);
+            SHAppBarMessage(message, ref data);
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+        {
+            Trace.TraceWarning($"Could not notify Windows about replacement taskbar window state: {ex.Message}");
+        }
+    }
 
     private static bool SameBounds(TaskbarBounds left, TaskbarBounds right) =>
         left.Left == right.Left && left.Top == right.Top && left.Width == right.Width && left.Height == right.Height;

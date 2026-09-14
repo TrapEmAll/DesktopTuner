@@ -346,6 +346,11 @@ public partial class TaskbarWindow : Window
 
     private nint WindowProc(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
     {
+        if (_nativeAppBar.IsRegistered && message == 0x0006)
+            _nativeAppBar.NotifyActivated();
+        else if (_nativeAppBar.IsRegistered && message == 0x0047)
+            _nativeAppBar.NotifyWindowPositionChanged();
+
         if (message == NativeTaskbarAppBarService.CallbackMessage
             && unchecked((int)wParam.ToInt64()) == NativeTaskbarAppBarService.PositionChangedNotification
             && _nativeAppBar.IsRegistered)

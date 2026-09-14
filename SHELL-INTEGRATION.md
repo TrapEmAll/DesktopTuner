@@ -10,7 +10,7 @@ The Windows workflow builds the x64 DLL, checks its COM exports, and asks `MakeA
 
 ## Replacement taskbar work area
 
-Edge-docked replacement taskbars register as Windows application desktop toolbars (AppBars). They query and set their approved screen rectangle, reserve that edge from maximized windows, and respond when the shell reports that taskbar or AppBar positions changed. Closing the taskbar unregisters the AppBar. Floating taskbars do not register because they do not occupy a screen edge and continue to overlay the desktop.
+Edge-docked replacement taskbars register as Windows application desktop toolbars (AppBars). They query and set their approved screen rectangle, reserve that edge from maximized windows, and report activation and window-position changes so Windows can coordinate AppBar z-order. They also respond when the shell reports that taskbar or AppBar positions changed. Closing the taskbar unregisters the AppBar. Floating taskbars do not register because they do not occupy a screen edge and continue to overlay the desktop.
 
 CI verifies the edge geometry policy, but does not launch the custom taskbar or confirm work-area changes interactively. Positioning with a hidden native taskbar, multi-monitor layouts, auto-hide, cleanup after unexpected process exit, and floating behavior still need validation on supported Windows 11 desktop builds.
 
