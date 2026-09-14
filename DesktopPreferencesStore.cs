@@ -8,6 +8,7 @@ public enum TaskbarEdge { Bottom, Top, Left, Right }
 public enum TaskbarSize { Small, Standard, Large }
 public enum TaskbarStyle { EdgeToEdge, Floating, Segmented, DockLike }
 public enum TaskbarGroupingMode { Always, WhenFull, Never }
+public enum TaskbarWindowDisplayMode { AllTaskbars, TaskbarOnWhichWindowIsOpen, PrimaryAndTaskbarOnWhichWindowIsOpen }
 public enum TaskbarButtonAlignment { Left, Center }
 public enum TaskbarIconSize { Small, Standard, Large }
 public enum TaskbarButtonSpacing { Compact, Standard, Relaxed }
@@ -19,7 +20,7 @@ public sealed record PinnedTaskbarApp(string Name, string ExecutablePath, bool I
     [JsonIgnore]
     public bool CanOpenLocation => TaskbarPinCatalog.CanOpenLocation(this);
 }
-public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern, bool TaskbarOnAllDisplays = false, TaskbarStyle TaskbarLayout = TaskbarStyle.EdgeToEdge, TaskbarGroupingMode TaskbarGrouping = TaskbarGroupingMode.Always, TaskbarButtonAlignment TaskbarButtonAlignment = TaskbarButtonAlignment.Center, bool TaskbarShowLabels = true, TaskbarIconSize TaskbarIconSize = TaskbarIconSize.Standard, TaskbarButtonSpacing TaskbarButtonSpacing = TaskbarButtonSpacing.Standard, bool StartWithWindows = false, bool AutoHideWhenMaximized = false, int TaskbarTransparency = 5, List<AppEntry>? PinnedStartApps = null, bool ReplaceNativeTaskbar = false, bool TaskbarDynamicTransparency = false, TaskbarButtonEffect TaskbarButtonEffect = TaskbarButtonEffect.Accent, StartMenuPlacePreferences? StartMenuPlaces = null, int StartRecentAppCount = 4, TaskbarSystemButtonVisibility? TaskbarSystemButtons = null, bool CenterStartMenu = false);
+public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern, bool TaskbarOnAllDisplays = false, TaskbarStyle TaskbarLayout = TaskbarStyle.EdgeToEdge, TaskbarGroupingMode TaskbarGrouping = TaskbarGroupingMode.Always, TaskbarButtonAlignment TaskbarButtonAlignment = TaskbarButtonAlignment.Center, bool TaskbarShowLabels = true, TaskbarIconSize TaskbarIconSize = TaskbarIconSize.Standard, TaskbarButtonSpacing TaskbarButtonSpacing = TaskbarButtonSpacing.Standard, bool StartWithWindows = false, bool AutoHideWhenMaximized = false, int TaskbarTransparency = 5, List<AppEntry>? PinnedStartApps = null, bool ReplaceNativeTaskbar = false, bool TaskbarDynamicTransparency = false, TaskbarButtonEffect TaskbarButtonEffect = TaskbarButtonEffect.Accent, StartMenuPlacePreferences? StartMenuPlaces = null, int StartRecentAppCount = 4, TaskbarSystemButtonVisibility? TaskbarSystemButtons = null, bool CenterStartMenu = false, TaskbarWindowDisplayMode TaskbarWindowDisplayMode = TaskbarWindowDisplayMode.AllTaskbars);
 
 public sealed class DesktopPreferencesStore
 {
@@ -36,7 +37,7 @@ public sealed class DesktopPreferencesStore
         try
         {
             var value = JsonSerializer.Deserialize<DesktopPreferences>(File.ReadAllText(_path));
-            if (value is null || !Enum.IsDefined(value.TaskbarEdge) || !Enum.IsDefined(value.TaskbarSize) || !Enum.IsDefined(value.StartMenuStyle) || !Enum.IsDefined(value.TaskbarLayout) || !Enum.IsDefined(value.TaskbarGrouping) || !Enum.IsDefined(value.TaskbarButtonAlignment) || !Enum.IsDefined(value.TaskbarIconSize) || !Enum.IsDefined(value.TaskbarButtonSpacing) || !Enum.IsDefined(value.TaskbarButtonEffect))
+            if (value is null || !Enum.IsDefined(value.TaskbarEdge) || !Enum.IsDefined(value.TaskbarSize) || !Enum.IsDefined(value.StartMenuStyle) || !Enum.IsDefined(value.TaskbarLayout) || !Enum.IsDefined(value.TaskbarGrouping) || !Enum.IsDefined(value.TaskbarButtonAlignment) || !Enum.IsDefined(value.TaskbarIconSize) || !Enum.IsDefined(value.TaskbarButtonSpacing) || !Enum.IsDefined(value.TaskbarButtonEffect) || !Enum.IsDefined(value.TaskbarWindowDisplayMode))
                 return new DesktopPreferences(TaskbarEdge.Bottom);
             var pins = (value.PinnedApps ?? [])
                 .Where(app => app is not null && !string.IsNullOrWhiteSpace(app.Name) && !string.IsNullOrWhiteSpace(app.ExecutablePath) &&

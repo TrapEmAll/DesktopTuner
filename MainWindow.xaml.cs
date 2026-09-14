@@ -64,6 +64,7 @@ public partial class MainWindow : Window
     private int _startRecentAppCount = 4;
     private bool _centerStartMenu;
     private bool _taskbarOnAllDisplays = true;
+    private TaskbarWindowDisplayMode _taskbarWindowDisplayMode = TaskbarWindowDisplayMode.AllTaskbars;
     private bool _replaceNativeTaskbar;
     private bool _startWithWindows;
     private readonly bool _startInBackground;
@@ -100,6 +101,7 @@ public partial class MainWindow : Window
         _startRecentAppCount = desktopPreferences.StartRecentAppCount;
         _centerStartMenu = desktopPreferences.CenterStartMenu;
         _taskbarOnAllDisplays = desktopPreferences.TaskbarOnAllDisplays;
+        _taskbarWindowDisplayMode = desktopPreferences.TaskbarWindowDisplayMode;
         _replaceNativeTaskbar = desktopPreferences.ReplaceNativeTaskbar;
         _nativeTaskbarWatchTimer.Tick += (_, _) => MaintainNativeTaskbars();
         _startWithWindows = desktopPreferences.StartWithWindows;
@@ -470,6 +472,21 @@ public partial class MainWindow : Window
             allDisplays.Checked += (_, _) => { _taskbarOnAllDisplays = true; SaveDesktopPreferences(); };
             allDisplays.Unchecked += (_, _) => { _taskbarOnAllDisplays = false; SaveDesktopPreferences(); };
             PageContent.Children.Add(allDisplays);
+            var appDisplayRow = new StackPanel { Margin = new Thickness(0, 0, 0, 16) };
+            appDisplayRow.Children.Add(new TextBlock { Text = "Show running apps on", FontSize = 13, Margin = new Thickness(0, 0, 0, 6) });
+            var appDisplaySelector = new ComboBox { MinWidth = 300, HorizontalAlignment = HorizontalAlignment.Left };
+            appDisplaySelector.Items.Add(new ComboBoxItem { Content = "All taskbars", Tag = TaskbarWindowDisplayMode.AllTaskbars });
+            appDisplaySelector.Items.Add(new ComboBoxItem { Content = "The taskbar where the window is open", Tag = TaskbarWindowDisplayMode.TaskbarOnWhichWindowIsOpen });
+            appDisplaySelector.Items.Add(new ComboBoxItem { Content = "The taskbar where the window is open and the primary taskbar", Tag = TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen });
+            appDisplaySelector.SelectedItem = appDisplaySelector.Items.Cast<ComboBoxItem>().First(item => item.Tag is TaskbarWindowDisplayMode mode && mode == _taskbarWindowDisplayMode);
+            appDisplaySelector.SelectionChanged += (_, _) =>
+            {
+                if (appDisplaySelector.SelectedItem is not ComboBoxItem { Tag: TaskbarWindowDisplayMode mode }) return;
+                _taskbarWindowDisplayMode = mode;
+                SaveDesktopPreferences();
+            };
+            appDisplayRow.Children.Add(appDisplaySelector);
+            PageContent.Children.Add(appDisplayRow);
             var replaceNativeTaskbar = new CheckBox
             {
                 Content = "Replace the Windows taskbar while Desktop Tuner is running (experimental)",
@@ -1044,7 +1061,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode);
 
     private void SetStartMenuCentered(bool centered)
     {
@@ -1145,6 +1162,7 @@ public partial class MainWindow : Window
             _startRecentAppCount = preferences.StartRecentAppCount;
             _centerStartMenu = preferences.CenterStartMenu;
             _taskbarOnAllDisplays = preferences.TaskbarOnAllDisplays;
+            _taskbarWindowDisplayMode = preferences.TaskbarWindowDisplayMode;
             _taskbarLayout = preferences.TaskbarLayout;
             _taskbarGrouping = preferences.TaskbarGrouping;
             _taskbarButtonAlignment = preferences.TaskbarButtonAlignment;

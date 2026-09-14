@@ -329,9 +329,9 @@ public partial class TaskbarWindow : Window
 
     private void RefreshWindows()
     {
-        var windows = _windowOrder.Synchronize(_windows.Enumerate());
+        var allWindows = _windowOrder.Synchronize(_windows.Enumerate());
         var wasMaximizedWindowOnDisplay = _maximizedWindowOnDisplay;
-        _maximizedWindowOnDisplay = TaskbarAutoHidePolicy.HasMaximizedWindowOnDisplay(windows, Display);
+        _maximizedWindowOnDisplay = TaskbarAutoHidePolicy.HasMaximizedWindowOnDisplay(allWindows, Display);
         var layoutChanged = _preferences.TaskbarDynamicTransparency && wasMaximizedWindowOnDisplay != _maximizedWindowOnDisplay;
         if (wasMaximizedWindowOnDisplay && !_maximizedWindowOnDisplay && !_autoHide && _collapsed)
         {
@@ -339,6 +339,9 @@ public partial class TaskbarWindow : Window
             layoutChanged = true;
         }
         if (layoutChanged) ApplyLayout();
+        var windows = _preferences.TaskbarWindowDisplayMode == TaskbarWindowDisplayMode.AllTaskbars
+            ? allWindows
+            : TaskbarWindowDisplayPolicy.Filter(allWindows, Display, TaskbarDisplayService.Enumerate(), _preferences.TaskbarWindowDisplayMode);
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         var pinnedApps = _preferences.PinnedApps!;
         PinnedItems.ItemsSource = pinnedApps.Select(app =>

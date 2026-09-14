@@ -119,6 +119,16 @@ CheckTrue(!TaskbarAutoHidePolicy.HasMaximizedWindowOnDisplay([halfScreenWindow],
 var backgroundMaximizedWindow = maximizedOnSecondary with { IsForeground = false };
 CheckTrue(!TaskbarAutoHidePolicy.HasMaximizedWindowOnDisplay([backgroundMaximizedWindow], secondaryDisplay), "do not hide for a maximized app behind the foreground window");
 var primaryDisplay = new TaskbarDisplay("DISPLAY1", 0, 0, 2560, 1440, true, 1.25, 1.25);
+RunningWindow[] windowsAcrossDisplays =
+[
+    new RunningWindow((nint)201, "Primary", "Editor", @"C:\Apps\editor.exe", false) { Bounds = new(100, 100, 600, 500) },
+    new RunningWindow((nint)202, "Secondary", "Browser", @"C:\Apps\browser.exe", false) { Bounds = new(-1800, -100, 900, 700) },
+    new RunningWindow((nint)203, "Spanning", "Mail", @"C:\Apps\mail.exe", false) { Bounds = new(-200, 200, 700, 500) }
+];
+Check("201,202,203", string.Join(',', TaskbarWindowDisplayPolicy.Filter(windowsAcrossDisplays, primaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.AllTaskbars).Select(window => window.Handle)), "show all app windows on every taskbar in the default mode");
+Check("201,203", string.Join(',', TaskbarWindowDisplayPolicy.Filter(windowsAcrossDisplays, primaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.TaskbarOnWhichWindowIsOpen).Select(window => window.Handle)), "show app windows on the display containing their center point");
+Check("202", string.Join(',', TaskbarWindowDisplayPolicy.Filter(windowsAcrossDisplays, secondaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.TaskbarOnWhichWindowIsOpen).Select(window => window.Handle)), "show a secondary app only on its own taskbar");
+Check("201,202,203", string.Join(',', TaskbarWindowDisplayPolicy.Filter(windowsAcrossDisplays, primaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen).Select(window => window.Handle)), "also show all app windows on the primary taskbar");
 var secondaryBar = TaskbarLayoutCalculator.Calculate(secondaryDisplay, new(TaskbarEdge.Bottom), false);
 Check(-1920d, secondaryBar.Left, "place taskbar on a monitor with negative desktop coordinates");
 Check(799d, secondaryBar.Top, "scale taskbar thickness for a high-DPI display");
@@ -1077,6 +1087,7 @@ try
 
     var freshPreferencesStore = new DesktopPreferencesStore(Path.Combine(temporaryPreferencesDirectory, "new-install.json"));
     Check(true, freshPreferencesStore.Load().TaskbarOnAllDisplays, "enable all displays by default for a new installation");
+    Check(TaskbarWindowDisplayMode.AllTaskbars, freshPreferencesStore.Load().TaskbarWindowDisplayMode, "show app windows on every taskbar by default");
     Check(TaskbarStyle.EdgeToEdge, freshPreferencesStore.Load().TaskbarLayout, "default a new install to the full-edge taskbar layout");
     Check(false, freshPreferencesStore.Load().CenterStartMenu, "default new installs to taskbar-aligned Start menus");
     var staleTaskbarSnapshot = Path.Combine(temporaryPreferencesDirectory, "taskbar-restore.json");
@@ -1092,13 +1103,14 @@ try
         .WithVisibility(TaskbarSystemButton.Widgets, false);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons, CenterStartMenu: true);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons, CenterStartMenu: true, TaskbarWindowDisplayMode: TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
     Check(expectedPreferences.TaskbarSize, loadedPreferences.TaskbarSize, "persist taskbar size");
     Check(expectedPreferences.StartMenuStyle, loadedPreferences.StartMenuStyle, "persist Start menu style");
     Check(true, loadedPreferences.CenterStartMenu, "persist centered Start menu preference");
+    Check(TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, loadedPreferences.TaskbarWindowDisplayMode, "persist the taskbar app display mode");
     Check("Editor", loadedPreferences.PinnedStartApps!.Single().Name, "persist pinned Start apps");
     Check(StartTileSize.Wide, loadedPreferences.PinnedStartApps!.Single().TileSize, "persist a pinned Start tile's size");
     Check("Dev", loadedPreferences.PinnedStartApps!.Single().GroupName, "persist a pinned Start tile's group");
