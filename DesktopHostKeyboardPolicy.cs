@@ -12,6 +12,12 @@ public enum DesktopHostClipboardAction
 
 public static class DesktopHostKeyboardPolicy
 {
+    public static bool ShouldShowProperties(Key key, ModifierKeys modifiers, bool hasSelection, bool isEditingName = false, Key systemKey = Key.None)
+    {
+        if (key == Key.System) key = systemKey;
+        return key == Key.Enter && modifiers == ModifierKeys.Alt && hasSelection && !isEditingName;
+    }
+
     public static bool ShouldDeleteSelection(Key key, ModifierKeys modifiers, bool hasSelection, bool isEditingName = false) =>
         key == Key.Delete && (modifiers is ModifierKeys.None or ModifierKeys.Shift) && hasSelection && !isEditingName;
 

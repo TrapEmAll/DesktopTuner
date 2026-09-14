@@ -371,6 +371,12 @@ public partial class DesktopHostWindow : Window
             else
                 _ = PasteDesktopItemsAsync();
         }
+        else if (DesktopHostKeyboardPolicy.ShouldShowProperties(e.Key, Keyboard.Modifiers,
+                     selectedItems.Length > 0, e.OriginalSource is TextBox, e.SystemKey))
+        {
+            e.Handled = true;
+            _ = ShowSelectedDesktopPropertiesAsync();
+        }
         else if (DesktopHostKeyboardPolicy.ShouldDeleteSelection(e.Key, Keyboard.Modifiers, selectedItems.Length > 0,
                 e.OriginalSource is TextBox))
         {
@@ -627,6 +633,21 @@ public partial class DesktopHostWindow : Window
         finally
         {
             RefreshDesktop();
+        }
+    }
+
+    private async Task ShowSelectedDesktopPropertiesAsync()
+    {
+        var selection = _desktopItems.Where(item => item.IsSelected && item.CanShowNativeContextMenu).ToArray();
+        if (selection.Length == 0) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.ShowPropertiesForShellItemsAsync(owner, selection.Select(item => item.FullPath));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not open desktop item properties", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

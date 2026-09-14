@@ -168,6 +168,14 @@ Check(new DesktopHostPosition(100, 112), new DesktopHostPosition(gridItems[1].Le
 var selectableDesktopItems = new[] { "a", "b", "c", "d" }
     .Select(name => new DesktopHostItem(name, Path.Combine(desktopHostTestRoot, name), false))
     .ToArray();
+Check(true, DesktopHostKeyboardPolicy.ShouldShowProperties(Key.Enter, ModifierKeys.Alt, hasSelection: true),
+    "open native properties for selected replacement desktop items with Alt+Enter");
+Check(true, DesktopHostKeyboardPolicy.ShouldShowProperties(Key.System, ModifierKeys.Alt, hasSelection: true, systemKey: Key.Enter),
+    "recognize WPF system-key events for replacement desktop Alt+Enter");
+Check(false, DesktopHostKeyboardPolicy.ShouldShowProperties(Key.Enter, ModifierKeys.Alt, hasSelection: false),
+    "leave Alt+Enter unhandled when the replacement desktop selection is empty");
+Check(false, DesktopHostKeyboardPolicy.ShouldShowProperties(Key.Enter, ModifierKeys.Alt, hasSelection: true, isEditingName: true),
+    "preserve Alt+Enter while editing a replacement desktop item name");
 Check(true, DesktopHostKeyboardPolicy.ShouldDeleteSelection(Key.Delete, ModifierKeys.None, hasSelection: true),
     "delete selected replacement desktop items with the Delete key");
 Check(true, DesktopHostKeyboardPolicy.ShouldDeleteSelection(Key.Delete, ModifierKeys.Shift, hasSelection: true),
