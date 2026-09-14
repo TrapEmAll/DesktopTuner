@@ -121,7 +121,7 @@ public sealed class NativeTaskbarVisibilityService
         {
             return false;
         }
-        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
         {
             Trace.TraceWarning($"Could not confirm whether process {ownerProcessId} still owns taskbar recovery snapshot '{snapshotPath}': {ex.Message}");
             return true;
