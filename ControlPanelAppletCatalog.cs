@@ -23,7 +23,12 @@ public static class ControlPanelAppletCatalog
         new("personalization", "Personalization", ["/name", "Microsoft.Personalization"]),
         new("devices-printers", "Devices and Printers", ["/name", "Microsoft.DevicesAndPrinters"]),
         new("user-accounts", "User Accounts", ["/name", "Microsoft.UserAccounts"]),
-        new("firewall", "Windows Defender Firewall", ["firewall.cpl"])
+        new("firewall", "Windows Defender Firewall", ["firewall.cpl"]),
+        new("network-sharing", "Network and Sharing Center", ["/name", "Microsoft.NetworkAndSharingCenter"]),
+        new("internet-options", "Internet Options", ["inetcpl.cpl"]),
+        new("credential-manager", "Credential Manager", ["/name", "Microsoft.CredentialManager"]),
+        new("security-maintenance", "Security and Maintenance", ["wscui.cpl"]),
+        new("ease-of-access", "Ease of Access Center", ["access.cpl"])
     ];
 
     public static ProcessStartInfo CreateStartInfo(string id)

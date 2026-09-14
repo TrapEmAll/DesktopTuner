@@ -698,7 +698,9 @@ Check(true, programsApplet.UseShellExecute, "launch Control Panel applets throug
 var keyboardApplet = ControlPanelAppletCatalog.CreateStartInfo("keyboard");
 Check("main.cpl keyboard", string.Join(' ', keyboardApplet.ArgumentList), "pass the Keyboard applet selector as a separate argument");
 Check("/name Microsoft.Personalization", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("personalization").ArgumentList), "launch canonical Control Panel items with structured arguments");
-Check(16, ControlPanelAppletCatalog.Applets.Count, "offer the supported Control Panel applets in the Start flyout");
+Check("/name Microsoft.CredentialManager", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("credential-manager").ArgumentList), "launch Credential Manager from the Control Panel applet flyout");
+Check("inetcpl.cpl", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("internet-options").ArgumentList), "launch Internet Options from the Control Panel applet flyout");
+Check(21, ControlPanelAppletCatalog.Applets.Count, "offer the supported Control Panel applets in the Start flyout");
 Throws<ArgumentOutOfRangeException>(() => ControlPanelAppletCatalog.CreateStartInfo("unknown"), "reject unknown Control Panel applets");
 Check(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), StartMenuPlaceCatalog.ResolveTarget("music"), "open the user's Music folder from the Start places menu");
 Check(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), StartMenuPlaceCatalog.ResolveTarget("documents"), "resolve Documents from the Start dropdown places");
