@@ -88,7 +88,7 @@
                     <MenuItem Header="Date modified" Tag="DateModified" IsCheckable="True" Click="OnSortByClick"/>
                 </MenuItem>
                 <Separator/>
-                <MenuItem Header="Show more options" Click="OnShowDesktopContextMenuClick"/>
+                <MenuItem Header="More desktop options" Click="OnShowDesktopContextMenuClick"/>
                 <Separator/>
                 <MenuItem Header="Open Desktop folder" Click="OnOpenDesktopFolderClick"/>
                 <Separator/>

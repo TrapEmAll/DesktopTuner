@@ -294,6 +294,34 @@ public static class NativeShellContextMenuService
         return await ProcessFolderBackgroundAsync(owner, parsingName, showPopup: true);
     }
 
+    public static Task<bool> ShowForDesktopBackgroundAsync(nint owner) => Task.FromResult(ShowDesktopBackground(owner, showPopup: true));
+
+    internal static Task<bool> ProbeDesktopBackgroundContextMenuAsync() => Task.FromResult(ShowDesktopBackground(nint.Zero, showPopup: false));
+
+    private static bool ShowDesktopBackground(nint owner, bool showPopup)
+    {
+        var initializeResult = CoInitializeEx(nint.Zero, 0);
+        var uninitialize = initializeResult >= 0;
+        if (initializeResult < 0 && initializeResult != unchecked((int)0x80010106))
+            ThrowForFailure(initializeResult, "Could not initialize the Windows desktop context menu.");
+
+        IShellFolder? desktop = null;
+        IContextMenu? contextMenu = null;
+        try
+        {
+            ThrowForFailure(SHGetDesktopFolder(out desktop), "Windows could not open the desktop Shell folder.");
+            var contextMenuId = ContextMenuId;
+            ThrowForFailure(desktop.CreateViewObject(owner, ref contextMenuId, out contextMenu), "Windows could not create the desktop background context menu.");
+            return showPopup ? ShowMenu(owner, contextMenu) : PopulateMenu(contextMenu, "Windows could not populate the desktop background context menu.");
+        }
+        finally
+        {
+            if (contextMenu is not null) ReleaseComObject(contextMenu);
+            if (desktop is not null) ReleaseComObject(desktop);
+            if (uninitialize) CoUninitialize();
+        }
+    }
+
     private static bool ShowFolderBackground(nint owner, nint absolutePidl, bool showPopup)
     {
         IShellFolder? parent = null;
@@ -533,6 +561,9 @@ public static class NativeShellContextMenuService
 
     [DllImport("shell32.dll", PreserveSig = true)]
     private static extern int SHGetNameFromIDList(nint pidl, uint nameType, out nint name);
+
+    [DllImport("shell32.dll", PreserveSig = true)]
+    private static extern int SHGetDesktopFolder([MarshalAs(UnmanagedType.Interface)] out IShellFolder desktopFolder);
 
     [DllImport("ole32.dll")]
     private static extern int CoInitializeEx(nint reserved, uint concurrencyModel);

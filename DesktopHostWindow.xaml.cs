@@ -1016,7 +1016,7 @@ public partial class DesktopHostWindow : Window
         try
         {
             var owner = new WindowInteropHelper(this).Handle;
-            await NativeShellContextMenuService.ShowForFolderBackgroundAsync(owner, _userDesktop);
+            await NativeShellContextMenuService.ShowForDesktopBackgroundAsync(owner);
         }
         catch (Exception ex)
         {
