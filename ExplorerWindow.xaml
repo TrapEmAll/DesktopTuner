@@ -177,6 +177,7 @@
                     <StackPanel Orientation="Horizontal" Margin="8,6">
                         <Button x:Name="OpenSelectedButton" Content="Open" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Click="OpenSelected_Click" />
                         <Button x:Name="OpenInNewTabButton" Content="Open in new tab" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Click="OpenInNewTab_Click" />
+                        <Button x:Name="OpenInNewWindowButton" Content="Open in new window" Padding="14,6" Margin="0,0,5,0" IsEnabled="False" Click="OpenInNewWindow_Click" />
                         <Button x:Name="CopyPathButton" Content="Copy path" Padding="14,6" IsEnabled="False" Click="CopyPath_Click" />
                     </StackPanel>
                 </TabItem>
@@ -266,6 +267,7 @@
                                 <MenuItem x:Name="PropertiesMenuItem" Header="Properties" Click="Properties_Click" />
                                 <Separator />
                                 <MenuItem x:Name="OpenInNewTabMenuItem" Header="Open in new tab" Click="OpenInNewTab_Click" />
+                                <MenuItem x:Name="OpenInNewWindowMenuItem" Header="Open in new window" Click="OpenInNewWindow_Click" />
                                 <MenuItem x:Name="PinQuickAccessMenuItem" Header="Pin to quick access" Click="PinQuickAccess_Click" />
                                 <MenuItem x:Name="UnpinQuickAccessMenuItem" Header="Remove from quick access" Click="UnpinQuickAccess_Click" />
                                 <MenuItem Header="New folder" Click="NewFolder_Click" />

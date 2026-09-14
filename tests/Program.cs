@@ -526,6 +526,8 @@ Check("https://www.bing.com/search?q=caf%C3%A9%20%2F%20tea", StartSearchTargetBu
 Throws<ArgumentException>(() => StartSearchTargetBuilder.WindowsSearch("  "), "reject empty Windows Search requests");
 Throws<ArgumentException>(() => StartSearchTargetBuilder.WebSearch(string.Empty), "reject empty web search requests");
 Check(ExplorerKeyboardAction.FocusAddress, ExplorerKeyboardPolicy.Resolve(Key.L, ModifierKeys.Control), "focus the Explorer address field with Ctrl+L");
+Check(ExplorerKeyboardAction.OpenNewWindow, ExplorerKeyboardPolicy.Resolve(Key.N, ModifierKeys.Control), "open the current Explorer location in a new window with Ctrl+N");
+Check(ExplorerKeyboardAction.None, ExplorerKeyboardPolicy.Resolve(Key.N, ModifierKeys.Control | ModifierKeys.Shift), "leave Ctrl+Shift+N available for creating folders");
 Check(ExplorerKeyboardAction.FocusAddress, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.D), "focus the Explorer address field with Alt+D system-key events");
 Check(ExplorerKeyboardAction.FocusSearch, ExplorerKeyboardPolicy.Resolve(Key.F, ModifierKeys.Control), "focus Explorer search with Ctrl+F");
 Check(ExplorerKeyboardAction.ShowProperties, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.Enter), "open Properties for the current Explorer selection with Alt+Enter");

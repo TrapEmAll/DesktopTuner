@@ -79,7 +79,7 @@ public partial class ExplorerWindow : Window
         SystemBackdropService.TryApplyMica(this);
     }
 
-    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null, ExplorerFolderViewStore? folderViewStore = null, ExplorerSessionStore? sessionStore = null)
+    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null, ExplorerFolderViewStore? folderViewStore = null, ExplorerSessionStore? sessionStore = null, bool restoreSavedSession = true, bool saveSession = true, bool? openFoldersInNewTab = null)
     {
         InitializeComponent();
         Loaded += (_, _) => _hasCompletedInitialLayout = true;
@@ -92,12 +92,12 @@ public partial class ExplorerWindow : Window
         _folderViewStore = folderViewStore ?? new ExplorerFolderViewStore();
         _sessionStore = sessionStore ?? new ExplorerSessionStore();
         RefreshQuickAccessPins();
-        var savedSession = _sessionStore.Load();
-        _openFoldersInNewTab = savedSession?.OpenFoldersInNewTab ?? false;
+        var savedSession = restoreSavedSession ? _sessionStore.Load() : null;
+        _openFoldersInNewTab = openFoldersInNewTab ?? savedSession?.OpenFoldersInNewTab ?? false;
         OpenFoldersInNewTabToggle.IsChecked = _openFoldersInNewTab;
-        var restoreSession = string.IsNullOrWhiteSpace(initialPath) && !startInThisPc ? savedSession : null;
-        var initialLocation = restoreSession is not null
-            ? restoreSession.Tabs[restoreSession.ActiveTabIndex].Location
+        var sessionToRestore = string.IsNullOrWhiteSpace(initialPath) && !startInThisPc ? savedSession : null;
+        var initialLocation = sessionToRestore is not null
+            ? sessionToRestore.Tabs[sessionToRestore.ActiveTabIndex].Location
             : startInThisPc && string.IsNullOrWhiteSpace(initialPath)
             ? new ExplorerLocation(null, IsDriveList: true)
             : string.IsNullOrWhiteSpace(initialPath)
@@ -105,14 +105,14 @@ public partial class ExplorerWindow : Window
                 : Directory.Exists(initialPath)
                     ? new ExplorerLocation(Path.GetFullPath(initialPath))
                     : new ExplorerLocation(null, IsHome: true);
-        if (restoreSession is null)
+        if (sessionToRestore is null)
         {
             _tabs.Add(new ExplorerTabState(initialLocation));
             RestoreFolderViewPreferences(ActiveTab);
         }
         else
         {
-            foreach (var savedTab in restoreSession.Tabs)
+            foreach (var savedTab in sessionToRestore.Tabs)
             {
                 var tab = new ExplorerTabState(savedTab.Location)
                 {
@@ -129,10 +129,10 @@ public partial class ExplorerWindow : Window
                 tab.Forward.AddRange(savedTab.Forward ?? []);
                 _tabs.Add(tab);
             }
-            _activeTabIndex = restoreSession.ActiveTabIndex;
-            _detailsPaneHeight = restoreSession.DetailsPaneHeight;
-            DetailsPaneToggle.IsChecked = restoreSession.DetailsPaneVisible;
-            SetDetailsPaneVisibility(restoreSession.DetailsPaneVisible, captureCurrentHeight: false);
+            _activeTabIndex = sessionToRestore.ActiveTabIndex;
+            _detailsPaneHeight = sessionToRestore.DetailsPaneHeight;
+            DetailsPaneToggle.IsChecked = sessionToRestore.DetailsPaneVisible;
+            SetDetailsPaneVisibility(sessionToRestore.DetailsPaneVisible, captureCurrentHeight: false);
         }
         RestoreColumnWidths(ActiveTab.Location.Path);
         UpdateSortPresentation();
@@ -140,7 +140,7 @@ public partial class ExplorerWindow : Window
         SyncExplorerTabs();
         Closed += (_, _) =>
         {
-            SaveExplorerSession();
+            if (saveSession) SaveExplorerSession();
             _navigationLoadCancellation.Cancel();
             _navigationLoadCancellation.Dispose();
             foreach (var tab in _tabs) CancelSearch(tab);
@@ -553,6 +553,31 @@ public partial class ExplorerWindow : Window
             AddTab(location);
     }
 
+    private void OpenInNewWindow_Click(object sender, RoutedEventArgs e)
+    {
+        if (EntriesList.SelectedItem is ExplorerEntry { IsDirectory: true } entry)
+            OpenLocationInNewWindow(new ExplorerLocation(Path.GetFullPath(entry.FullPath)));
+    }
+
+    private void OpenLocationInNewWindow(ExplorerLocation location)
+    {
+        var path = location.IsHome || location.IsDriveList ? null : location.Path;
+        var window = new ExplorerWindow(
+            initialPath: path,
+            showHiddenItems: _showHiddenItems,
+            hideFileExtensions: _hideFileExtensions,
+            startInThisPc: location.IsDriveList,
+            showRecentItems: _showRecentItems,
+            quickAccessStore: _quickAccessStore,
+            folderViewStore: _folderViewStore,
+            sessionStore: _sessionStore,
+            restoreSavedSession: false,
+            saveSession: false,
+            openFoldersInNewTab: _openFoldersInNewTab)
+        { Owner = this };
+        window.Show();
+    }
+
     private void EntriesList_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Middle
@@ -571,6 +596,9 @@ public partial class ExplorerWindow : Window
             {
                 case ExplorerKeyboardAction.ReopenClosedTab:
                     ReopenClosedTab();
+                    break;
+                case ExplorerKeyboardAction.OpenNewWindow:
+                    OpenLocationInNewWindow(_location);
                     break;
                 case ExplorerKeyboardAction.FocusAddress:
                     AddressBreadcrumbsScroll.Visibility = Visibility.Collapsed;
@@ -1759,6 +1787,7 @@ public partial class ExplorerWindow : Window
         DeleteButton.IsEnabled = selection.Count > 0 && selection.All(entry => !entry.IsDrive);
         OpenSelectedButton.IsEnabled = selection.Count == 1;
         OpenInNewTabButton.IsEnabled = selection.Count == 1 && selection[0].IsDirectory;
+        OpenInNewWindowButton.IsEnabled = selection.Count == 1 && selection[0].IsDirectory;
         CopyPathButton.IsEnabled = canTransferSelection;
         NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_isSearchView;
         PasteButton.IsEnabled = !ActiveTab.Location.IsDriveList && !ActiveTab.Location.IsHome && ClipboardHasFileDrop();
@@ -1974,6 +2003,7 @@ public partial class ExplorerWindow : Window
         CopyMenuItem.IsEnabled = CutMenuItem.IsEnabled = hasTransferableSelection;
         PasteMenuItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && ClipboardHasFileDrop();
         OpenInNewTabMenuItem.IsEnabled = hasSingleSelection && selection[0].IsDirectory;
+        OpenInNewWindowMenuItem.IsEnabled = hasSingleSelection && selection[0].IsDirectory;
         var selectedDirectory = hasSingleSelection && selection[0].IsDirectory && !selection[0].IsDrive;
         var isPinned = selectedDirectory && _quickAccessStore.Load().Any(pin => string.Equals(pin.Path, selection[0].FullPath, StringComparison.OrdinalIgnoreCase));
         PinQuickAccessMenuItem.Visibility = selectedDirectory && !isPinned ? Visibility.Visible : Visibility.Collapsed;
