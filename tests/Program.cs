@@ -265,6 +265,9 @@ Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true, true), "
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, true), "integrate the native notification area in shell overlay mode without changing the saved replacement preference");
 Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, true), "leave native tray integration disabled in normal replacement mode");
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, false), "integrate the native notification area in normal overlay mode");
+Check(true, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(true, false), "route Win+E to companion Explorer in shell replacement mode regardless of the saved preference");
+Check(true, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(false, true), "honor opt-in Win+E routing outside shell replacement mode");
+Check(false, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(false, false), "preserve native Win+E behavior when companion Explorer routing is disabled");
 Check(true, ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(true), "keep desktop folder navigation inside the replacement shell");
 Check(false, ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(false), "preserve normal desktop-host folder activation outside replacement shell mode");
 Check(true, ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(true, true, false), "route filesystem-backed Start places through companion Explorer in replacement mode");

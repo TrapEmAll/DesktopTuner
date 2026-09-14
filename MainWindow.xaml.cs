@@ -122,7 +122,7 @@ public partial class MainWindow : Window
         _controlPanelApplets = ControlPanelAppletCatalog.Normalize(desktopPreferences.ControlPanelApplets);
         _replaceWindowsKeyPreference = desktopPreferences.ReplaceWindowsKey;
         _replaceWindowsKey = shellHostMode || shellOverlayMode || desktopPreferences.ReplaceWindowsKey;
-        _replaceExplorerShortcut = desktopPreferences.ReplaceExplorerShortcut;
+        _replaceExplorerShortcut = ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(shellHostMode, desktopPreferences.ReplaceExplorerShortcut);
         _startMenuStyle = desktopPreferences.StartMenuStyle;
         _startRecentAppCount = desktopPreferences.StartRecentAppCount;
         _centerStartMenu = desktopPreferences.CenterStartMenu;
@@ -369,7 +369,14 @@ public partial class MainWindow : Window
             var explorerButton = new Button { Content = "Open Desktop Tuner Explorer", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             explorerButton.Click += (_, _) => OpenExplorer();
             PageContent.Children.Add(explorerButton);
-            var replaceExplorerShortcut = new CheckBox { Content = "Open Desktop Tuner Explorer with Win+E while this app is running", IsChecked = _replaceExplorerShortcut, Margin = new Thickness(0, 0, 0, 12), FontSize = 13 };
+            var replaceExplorerShortcut = new CheckBox
+            {
+                Content = _shellHostMode ? "Open Desktop Tuner Explorer with Win+E in shell replacement mode" : "Open Desktop Tuner Explorer with Win+E while this app is running",
+                IsChecked = _replaceExplorerShortcut,
+                IsEnabled = !_shellHostMode,
+                Margin = new Thickness(0, 0, 0, 12),
+                FontSize = 13
+            };
             replaceExplorerShortcut.Checked += (_, _) => ToggleExplorerShortcutReplacement(replaceExplorerShortcut, true);
             replaceExplorerShortcut.Unchecked += (_, _) => ToggleExplorerShortcutReplacement(replaceExplorerShortcut, false);
             PageContent.Children.Add(replaceExplorerShortcut);
@@ -1607,7 +1614,7 @@ public partial class MainWindow : Window
             _controlPanelApplets = ControlPanelAppletCatalog.Normalize(preferences.ControlPanelApplets);
             _replaceWindowsKeyPreference = preferences.ReplaceWindowsKey;
             _replaceWindowsKey = _shellHostMode || _shellOverlayMode || preferences.ReplaceWindowsKey;
-            _replaceExplorerShortcut = preferences.ReplaceExplorerShortcut;
+            _replaceExplorerShortcut = ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(_shellHostMode, preferences.ReplaceExplorerShortcut);
             _startMenuStyle = preferences.StartMenuStyle;
             _startRecentAppCount = preferences.StartRecentAppCount;
             _centerStartMenu = preferences.CenterStartMenu;
