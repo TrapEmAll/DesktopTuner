@@ -37,12 +37,15 @@ public partial class App : Application
         }
 
         var shellHostMode = ShellHostLaunchPolicy.IsShellHostInvocation(e.Args);
-        if (shellHostMode || e.Args.Contains("--desktop-host", StringComparer.OrdinalIgnoreCase))
+        var shellOverlayMode = !shellHostMode && ShellHostLaunchPolicy.IsShellOverlayInvocation(e.Args);
+        if (shellHostMode || shellOverlayMode || e.Args.Contains("--desktop-host", StringComparer.OrdinalIgnoreCase))
         {
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             var mutexName = shellHostMode
                 ? @"Local\DesktopTuner.ShellHost.Singleton"
-                : @"Local\DesktopTuner.DesktopHost.Singleton";
+                : shellOverlayMode
+                    ? @"Local\DesktopTuner.Singleton"
+                    : @"Local\DesktopTuner.DesktopHost.Singleton";
             _instanceMutex = new Mutex(initiallyOwned: true, name: mutexName, out var desktopHostCreatedNew);
             if (!desktopHostCreatedNew)
             {
@@ -52,12 +55,19 @@ public partial class App : Application
                 return;
             }
 
+            if (shellOverlayMode)
+            {
+                var recoveredOverlayTaskbars = NativeTaskbarVisibilityService.RestoreOrphanedSnapshots();
+                if (recoveredOverlayTaskbars > 0)
+                    System.Diagnostics.Trace.TraceWarning($"Recovered {recoveredOverlayTaskbars} orphaned Windows taskbar visibility snapshot(s) before starting shell overlay mode.");
+            }
+
             var desktopHost = new DesktopHostWindow();
             MainWindow = desktopHost;
             desktopHost.Show();
-            if (shellHostMode)
+            if (shellHostMode || shellOverlayMode)
             {
-                var shellControls = new MainWindow(shellHostMode: true) { ShowInTaskbar = false };
+                var shellControls = new MainWindow(shellHostMode: shellHostMode, shellOverlayMode: shellOverlayMode) { ShowInTaskbar = false };
                 shellControls.Show();
                 shellControls.Hide();
             }

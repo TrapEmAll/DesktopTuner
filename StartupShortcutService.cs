@@ -11,20 +11,21 @@ public static class StartupShortcutService
 {
     private const string ShortcutName = "Desktop Tuner.lnk";
 
-    public static StartupLaunchCommand BuildCommand(string processPath, string entryAssemblyPath)
+    public static StartupLaunchCommand BuildCommand(string processPath, string entryAssemblyPath, bool shellOverlayMode = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(processPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(entryAssemblyPath);
 
         var workingDirectory = Path.GetDirectoryName(entryAssemblyPath)
             ?? throw new ArgumentException("The application assembly must have a directory.", nameof(entryAssemblyPath));
+        var arguments = shellOverlayMode ? "--shell-overlay" : "--startup";
         if (string.Equals(Path.GetFileNameWithoutExtension(processPath), "dotnet", StringComparison.OrdinalIgnoreCase))
-            return new StartupLaunchCommand(processPath, $"{QuoteArgument(entryAssemblyPath)} --startup", workingDirectory);
+            return new StartupLaunchCommand(processPath, $"{QuoteArgument(entryAssemblyPath)} {arguments}", workingDirectory);
 
-        return new StartupLaunchCommand(processPath, "--startup", workingDirectory);
+        return new StartupLaunchCommand(processPath, arguments, workingDirectory);
     }
 
-    public static void SetEnabled(bool enabled)
+    public static void SetEnabled(bool enabled, bool shellOverlayMode = false)
     {
         var startupDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
         if (string.IsNullOrWhiteSpace(startupDirectory))
@@ -42,7 +43,7 @@ public static class StartupShortcutService
         var assemblyPath = Assembly.GetEntryAssembly()?.Location;
         if (string.IsNullOrWhiteSpace(assemblyPath))
             throw new InvalidOperationException("Windows could not determine the application assembly path.");
-        var command = BuildCommand(processPath, assemblyPath);
+        var command = BuildCommand(processPath, assemblyPath, shellOverlayMode);
         Directory.CreateDirectory(startupDirectory);
 
         object? shellObject = null;
@@ -60,7 +61,9 @@ public static class StartupShortcutService
             shortcut.TargetPath = command.TargetPath;
             shortcut.Arguments = command.Arguments;
             shortcut.WorkingDirectory = command.WorkingDirectory;
-            shortcut.Description = "Start the Desktop Tuner taskbar at sign-in.";
+            shortcut.Description = shellOverlayMode
+                ? "Start the Desktop Tuner shell overlay at sign-in."
+                : "Start the Desktop Tuner taskbar at sign-in.";
             shortcut.WindowStyle = 7;
             shortcut.IconLocation = $"{command.TargetPath},0";
             shortcut.Save();

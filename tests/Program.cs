@@ -123,9 +123,14 @@ Check("ExplorerSmallIconTemplate", ExplorerViewModeCatalog.Get(ExplorerViewMode.
 CheckTrue(ExplorerViewModeCatalog.Get(ExplorerViewMode.Tiles).WrapItems, "wrap Explorer tiles to the available viewport");
 CheckTrue(NativeTaskbarWatchdog.IsWatchdogInvocation(["--taskbar-watchdog", "123", "snapshot.json"]), "recognize the taskbar recovery process entry point");
 CheckTrue(ShellHostLaunchPolicy.IsShellHostInvocation(["--SHELL-HOST"]), "recognize Shell Launcher mode without depending on argument casing");
+CheckTrue(ShellHostLaunchPolicy.IsShellOverlayInvocation(["--SHELL-OVERLAY"]), "recognize all-edition shell overlay mode without depending on argument casing");
 Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(true, false), "start the companion taskbar in shell-host mode regardless of sign-in preferences");
+Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(false, true, false), "start the companion taskbar in shell overlay mode regardless of sign-in preferences");
 Check(true, ShellHostLaunchPolicy.ShouldCoverAllDisplays(true, false), "cover every display in shell-host mode regardless of overlay preferences");
+Check(true, ShellHostLaunchPolicy.ShouldCoverAllDisplays(false, false, true), "cover every display in shell overlay mode regardless of display preferences");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, true), "avoid trying to hide an Explorer taskbar when running as the logon shell");
+Check(true, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true, false), "hide Explorer taskbars in all-edition shell overlay mode");
+Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, false, true), "avoid hiding taskbars when Explorer is not the logon shell");
 Check(true, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true), "preserve the user's native taskbar replacement setting in normal mode");
 CheckTrue(NativeTaskbarWatchdog.TryReadInvocation(["--taskbar-watchdog", "123", "snapshot.json"], out var watchdogOwner, out var watchdogSnapshot), "parse taskbar recovery process arguments");
 Check((123, "snapshot.json"), (watchdogOwner, watchdogSnapshot), "recover the watchdog owner and snapshot path");
@@ -825,11 +830,21 @@ var appHostStartup = StartupShortcutService.BuildCommand(
     @"C:\Program Files\Desktop Tuner\DesktopTuner.dll");
 Check(@"C:\Program Files\Desktop Tuner\DesktopTuner.exe", appHostStartup.TargetPath, "launch the packaged app host at sign-in");
 Check("--startup", appHostStartup.Arguments, "start the taskbar in background mode at sign-in");
+var appHostShellOverlayStartup = StartupShortcutService.BuildCommand(
+    @"C:\Program Files\Desktop Tuner\DesktopTuner.exe",
+    @"C:\Program Files\Desktop Tuner\DesktopTuner.dll",
+    shellOverlayMode: true);
+Check("--shell-overlay", appHostShellOverlayStartup.Arguments, "start the all-edition shell overlay from the packaged app host");
 var dotnetStartup = StartupShortcutService.BuildCommand(
     @"C:\Program Files\dotnet\dotnet.exe",
     @"C:\Program Files\Desktop Tuner\DesktopTuner.dll");
 Check(@"C:\Program Files\dotnet\dotnet.exe", dotnetStartup.TargetPath, "support development launches through dotnet at sign-in");
 Check("\"C:\\Program Files\\Desktop Tuner\\DesktopTuner.dll\" --startup", dotnetStartup.Arguments, "quote an assembly path with spaces in the Startup shortcut");
+var dotnetShellOverlayStartup = StartupShortcutService.BuildCommand(
+    @"C:\Program Files\dotnet\dotnet.exe",
+    @"C:\Program Files\Desktop Tuner\DesktopTuner.dll",
+    shellOverlayMode: true);
+Check("\"C:\\Program Files\\Desktop Tuner\\DesktopTuner.dll\" --shell-overlay", dotnetShellOverlayStartup.Arguments, "quote an assembly path for a development shell overlay Startup shortcut");
 Throws<ArgumentOutOfRangeException>(() => TaskbarLayoutCalculator.Calculate(0, 1080, new(TaskbarEdge.Bottom), false), "rejects invalid screen bounds");
 var appModeSetting = SettingsCatalog.ById("explorer-app-mode");
 var systemModeSetting = SettingsCatalog.ById("explorer-system-mode");

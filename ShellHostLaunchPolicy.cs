@@ -8,10 +8,25 @@ public static class ShellHostLaunchPolicy
         return arguments.Contains("--shell-host", StringComparer.OrdinalIgnoreCase);
     }
 
+    public static bool IsShellOverlayInvocation(IEnumerable<string> arguments)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        return arguments.Contains("--shell-overlay", StringComparer.OrdinalIgnoreCase);
+    }
+
     public static bool ShouldStartTaskbar(bool shellHostMode, bool startWithWindows) => shellHostMode || startWithWindows;
+
+    public static bool ShouldStartTaskbar(bool shellHostMode, bool shellOverlayMode, bool startWithWindows) =>
+        shellHostMode || shellOverlayMode || startWithWindows;
 
     public static bool ShouldCoverAllDisplays(bool shellHostMode, bool allDisplaysPreference) => shellHostMode || allDisplaysPreference;
 
+    public static bool ShouldCoverAllDisplays(bool shellHostMode, bool allDisplaysPreference, bool shellOverlayMode) =>
+        shellHostMode || shellOverlayMode || allDisplaysPreference;
+
     public static bool ShouldHideNativeTaskbar(bool shellHostMode, bool replaceNativeTaskbarPreference) =>
         !shellHostMode && replaceNativeTaskbarPreference;
+
+    public static bool ShouldHideNativeTaskbar(bool shellHostMode, bool shellOverlayMode, bool replaceNativeTaskbarPreference) =>
+        shellOverlayMode || (!shellHostMode && replaceNativeTaskbarPreference);
 }
