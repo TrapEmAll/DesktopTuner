@@ -33,6 +33,10 @@ Check(ShellNamespaceOpenAction.UseShellHandler, ShellNamespaceOpenPolicy.Resolve
 var browserRenameEntry = new DesktopShellNamespaceEntry("Rename me", "shell:RenameFixture", false);
 browserRenameEntry.IsCut = true;
 Check(true, browserRenameEntry.IsCut, "mark a Shell namespace item as cut for Explorer-style dimming");
+Check(true, ShellClipboardPolicy.IsCutDropEffect(2), "recognize the native Shell move effect as a cut operation");
+Check(false, ShellClipboardPolicy.IsCutDropEffect(1), "keep copied clipboard items at normal opacity");
+Check(false, ShellClipboardPolicy.IsCutDropEffect(0), "leave clipboard data without a preferred transfer effect unmarked");
+Check(false, ShellClipboardPolicy.IsCutDropEffect(3), "avoid treating an ambiguous combined transfer effect as a cut");
 browserRenameEntry.IsCut = false;
 Check(false, browserRenameEntry.IsCut, "clear cut-state dimming when the clipboard changes");
 Check(false, browserRenameEntry.CanRename, "keep Shell browser rename disabled until the native capability is checked");

@@ -790,15 +790,39 @@ public partial class ShellNamespaceBrowserWindow : Window
         foreach (var entry in entries) entry.IsCut = _cutParsingNames.Contains(entry.ParsingName);
     }
 
+    private void RefreshCutStateFromClipboard()
+    {
+        var clipboardSequence = NativeShellContextMenuService.ReadClipboardSequenceNumber();
+        if (_cutParsingNames.Count > 0 && clipboardSequence == _cutClipboardSequence)
+        {
+            ApplyCutState(ItemsList.Items.OfType<DesktopShellNamespaceEntry>());
+            return;
+        }
+
+        var paths = NativeShellContextMenuService.ReadCutFilePathsFromClipboard();
+        if (paths.Count == 0)
+        {
+            ClearCutState();
+            return;
+        }
+
+        _cutParsingNames.Clear();
+        foreach (var path in paths)
+        {
+            try { _cutParsingNames.Add(Path.GetFullPath(path)); }
+            catch (Exception ex) when (ex is ArgumentException or IOException or NotSupportedException)
+            {
+                _cutParsingNames.Add(path);
+            }
+        }
+        _cutClipboardSequence = clipboardSequence;
+        ApplyCutState(ItemsList.Items.OfType<DesktopShellNamespaceEntry>());
+    }
+
     private nint WindowMessageHook(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
     {
         if (message == MessageClipboardUpdate)
-        {
-            if (_cutParsingNames.Count > 0 && NativeShellContextMenuService.ReadClipboardSequenceNumber() != _cutClipboardSequence)
-                ClearCutState();
-            else
-                ApplyCutState(ItemsList.Items.OfType<DesktopShellNamespaceEntry>());
-        }
+            RefreshCutStateFromClipboard();
         return nint.Zero;
     }
 

@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 using System.IO;
 using System.ComponentModel;
+using System.Text;
 using System.Windows.Interop;
 
 namespace DesktopTuner;
@@ -21,6 +23,7 @@ public static class NativeShellContextMenuService
     private const uint CommandShiftDown = 0x00000100;
     private const uint DropEffectCopy = 0x00000001;
     private const uint DropEffectMove = 0x00000002;
+    private const uint ClipboardFormatHDrop = 15;
     private const uint GlobalMemoryMoveable = 0x0002;
     private const uint GlobalMemoryZeroInit = 0x0040;
     private const uint MouseButtonMask = 0x00000013;
@@ -69,6 +72,54 @@ public static class NativeShellContextMenuService
     }
 
     internal static uint ReadClipboardSequenceNumber() => GetClipboardSequenceNumber();
+
+    internal static IReadOnlyList<string> ReadCutFilePathsFromClipboard()
+    {
+        if (!OpenClipboard(nint.Zero)) return [];
+        try
+        {
+            var preferredDropEffectFormat = RegisterClipboardFormat("Preferred DropEffect");
+            if (preferredDropEffectFormat == 0) return [];
+            var effectHandle = GetClipboardData(preferredDropEffectFormat);
+            if (effectHandle == nint.Zero) return [];
+            var effectPointer = GlobalLock(effectHandle);
+            if (effectPointer == nint.Zero) return [];
+            uint effect;
+            try
+            {
+                if (GlobalSize(effectHandle) < sizeof(uint)) return [];
+                effect = unchecked((uint)Marshal.ReadInt32(effectPointer));
+            }
+            finally
+            {
+                GlobalUnlock(effectHandle);
+            }
+            if (!ShellClipboardPolicy.IsCutDropEffect(effect)) return [];
+
+            var fileDropHandle = GetClipboardData(ClipboardFormatHDrop);
+            if (fileDropHandle == nint.Zero) return [];
+            var fileCount = DragQueryFile(fileDropHandle, uint.MaxValue, null, 0);
+            var paths = new List<string>(checked((int)fileCount));
+            for (uint index = 0; index < fileCount; index++)
+            {
+                var length = DragQueryFile(fileDropHandle, index, null, 0);
+                if (length == 0) continue;
+                var path = new StringBuilder(checked((int)length + 1));
+                if (DragQueryFile(fileDropHandle, index, path, checked(length + 1)) > 0)
+                    paths.Add(path.ToString());
+            }
+            return paths;
+        }
+        catch (Exception ex) when (ex is Win32Exception or OverflowException or ArgumentException)
+        {
+            Trace.TraceWarning($"Could not read filesystem cut items from the Windows clipboard: {ex.Message}");
+            return [];
+        }
+        finally
+        {
+            CloseClipboard();
+        }
+    }
 
     public static async Task<bool> PasteIntoShellFolderAsync(nint owner, string parsingName)
     {
@@ -918,11 +969,28 @@ public static class NativeShellContextMenuService
     [DllImport("user32.dll")]
     private static extern uint GetClipboardSequenceNumber();
 
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool OpenClipboard(nint owner);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseClipboard();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern nint GetClipboardData(uint format);
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint DragQueryFile(nint drop, uint fileIndex, StringBuilder? fileName, uint characterCount);
+
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern nint GlobalAlloc(uint flags, nuint bytes);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern nint GlobalLock(nint memory);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern nuint GlobalSize(nint memory);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
