@@ -1561,6 +1561,8 @@ try
     Check(2, NativeShellContextMenuPolicy.NormalizeShellSelection([nativeMenuFirst, nativeMenuSecond, nativeMenuFirst]).Count, "deduplicate items for a Shell namespace multi-selection");
     Throws<ArgumentException>(() => NativeShellContextMenuPolicy.NormalizeShellSelection(["", " "]), "reject an empty Shell namespace multi-selection");
     Throws<ArgumentException>(() => NativeShellContextMenuPolicy.NormalizeSelection([nativeMenuFirst, Path.Combine(nativeMenuOtherFolder, "third.txt")]), "reject mixed-parent native context menus");
+    Check(0x40u, ShellFileOperationPolicy.GetDeleteFlags(permanentDelete: false), "route native Shell deletes to the Recycle Bin by default");
+    Check(0x4000u, ShellFileOperationPolicy.GetDeleteFlags(permanentDelete: true), "request the Shell's permanent-delete warning for Shift+Delete");
     Throws<ArgumentException>(() => NativeShellContextMenuPolicy.NormalizeSelection([Path.GetPathRoot(temporaryPreferencesDirectory)!]), "reject drive-root native context menus");
 
     var explorerTestDirectory = Path.Combine(temporaryPreferencesDirectory, "ExplorerOperations");

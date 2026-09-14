@@ -23,6 +23,7 @@ public static class NativeShellContextMenuService
     private const uint CommandShiftDown = 0x00000100;
     private const uint DropEffectCopy = 0x00000001;
     private const uint DropEffectMove = 0x00000002;
+    private const uint FileOperationAllowUndo = 0x00000040;
     private const uint ClipboardFormatHDrop = 15;
     private const int MaximumClipboardPayloadBytes = 32 * 1024 * 1024;
     private const uint MaximumClipboardItemCount = 4096;
@@ -36,6 +37,8 @@ public static class NativeShellContextMenuService
     private static readonly Guid ShellFolderId = new("000214E6-0000-0000-C000-000000000046");
     private static readonly Guid ContextMenuId = new("000214E4-0000-0000-C000-000000000046");
     private static readonly Guid DataObjectId = new("0000010E-0000-0000-C000-000000000046");
+    private static readonly Guid FileOperationClassId = new("3AD05575-8857-4850-9277-11B85BDB8E09");
+    private static readonly Guid ShellItemId = new("43826D1E-E718-42EE-BC55-A1E261C37BFE");
 
     public static async Task<bool> ShowForItemsAsync(nint owner, IEnumerable<string> paths)
     {
@@ -194,9 +197,12 @@ public static class NativeShellContextMenuService
         var absolutePidls = await Task.Run(() => ParseDisplayNames(selection));
         try
         {
-            if (absolutePidls.Length == 1 || absolutePidls.Skip(1).All(pidl =>
-                    ParentPidlsEqual(absolutePidls[0], GetParentPidlLength(absolutePidls[0]), pidl)))
+            var sameParent = absolutePidls.Length == 1 || absolutePidls.Skip(1).All(pidl =>
+                ParentPidlsEqual(absolutePidls[0], GetParentPidlLength(absolutePidls[0]), pidl));
+            if (sameParent)
                 InvokeShellItemVerb(owner, absolutePidls, verb, shiftPressed);
+            else if (string.Equals(verb, "delete", StringComparison.OrdinalIgnoreCase))
+                return DeleteShellItemsAcrossParents(owner, absolutePidls, shiftPressed);
             else
                 foreach (var absolutePidl in absolutePidls) InvokeShellItemVerb(owner, [absolutePidl], verb, shiftPressed);
             return true;
@@ -205,6 +211,71 @@ public static class NativeShellContextMenuService
         {
             foreach (var absolutePidl in absolutePidls) Marshal.FreeCoTaskMem(absolutePidl);
         }
+    }
+
+    private static bool DeleteShellItemsAcrossParents(nint owner, IReadOnlyList<nint> absolutePidls, bool shiftPressed)
+    {
+        if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
+            return RunOnStaThread(() => DeleteShellItemsAcrossParents(owner, absolutePidls, shiftPressed));
+
+        var initializeResult = CoInitializeEx(nint.Zero, 0);
+        var uninitialize = initializeResult >= 0;
+        if (initializeResult < 0)
+            ThrowForFailure(initializeResult, "Could not initialize the Windows Shell file operation.");
+
+        IFileOperation? operation = null;
+        var shellItems = new List<IShellItem>();
+        try
+        {
+            var operationType = Type.GetTypeFromCLSID(FileOperationClassId, throwOnError: true)
+                ?? throw new COMException("Windows could not create the Shell file operation.");
+            operation = (IFileOperation?)Activator.CreateInstance(operationType)
+                ?? throw new COMException("Windows could not create the Shell file operation.");
+
+            var flags = ShellFileOperationPolicy.GetDeleteFlags(shiftPressed);
+            ThrowForFailure(operation.SetOperationFlags(flags), "Windows could not configure the Shell delete operation.");
+            ThrowForFailure(operation.SetOwnerWindow(owner), "Windows could not associate the Shell delete operation with its owner window.");
+
+            foreach (var absolutePidl in absolutePidls)
+            {
+                var itemId = ShellItemId;
+                ThrowForFailure(SHCreateItemFromIDList(absolutePidl, ref itemId, out var shellItem),
+                    "Windows could not resolve one of the selected Shell items for deletion.");
+                shellItems.Add(shellItem);
+                ThrowForFailure(operation.DeleteItem(shellItem, nint.Zero),
+                    "Windows could not queue one of the selected Shell items for deletion.");
+            }
+
+            ThrowForFailure(operation.PerformOperations(), "Windows could not delete the selected Shell items.");
+            ThrowForFailure(operation.GetAnyOperationsAborted(out var aborted), "Windows could not determine whether the Shell delete operation completed.");
+            return !aborted;
+        }
+        finally
+        {
+            foreach (var shellItem in shellItems) ReleaseComObject(shellItem);
+            if (operation is not null) ReleaseComObject(operation);
+            if (uninitialize) CoUninitialize();
+        }
+    }
+
+    private static T RunOnStaThread<T>(Func<T> action)
+    {
+        T? result = default;
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try { result = action(); }
+            catch (Exception ex) { failure = ex; }
+        })
+        {
+            IsBackground = true,
+            Name = "Desktop Tuner Shell file operation"
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+        if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+        return result!;
     }
 
     public static async Task<bool> DragShellItemsAsync(nint owner, IEnumerable<string> parsingNames)
@@ -984,6 +1055,40 @@ public static class NativeShellContextMenuService
         [PreserveSig] int HandleMenuMsg2(uint message, nint wParam, nint lParam, out nint result);
     }
 
+    [ComImport]
+    [Guid("43826D1E-E718-42EE-BC55-A1E261C37BFE")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IShellItem
+    {
+    }
+
+    [ComImport]
+    [Guid("947AAB5F-0A5C-4C13-B4D6-4BF7836FC9F8")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IFileOperation
+    {
+        [PreserveSig] int Advise(nint progressSink, out uint cookie);
+        [PreserveSig] int Unadvise(uint cookie);
+        [PreserveSig] int SetOperationFlags(uint flags);
+        [PreserveSig] int SetProgressMessage([MarshalAs(UnmanagedType.LPWStr)] string message);
+        [PreserveSig] int SetProgressDialog(nint progressDialog);
+        [PreserveSig] int SetProperties(nint propertyChangeArray);
+        [PreserveSig] int SetOwnerWindow(nint owner);
+        [PreserveSig] int ApplyPropertiesToItem([MarshalAs(UnmanagedType.Interface)] IShellItem item);
+        [PreserveSig] int ApplyPropertiesToItems(nint items);
+        [PreserveSig] int RenameItem([MarshalAs(UnmanagedType.Interface)] IShellItem item, [MarshalAs(UnmanagedType.LPWStr)] string name, nint progressSink);
+        [PreserveSig] int RenameItems(nint items, [MarshalAs(UnmanagedType.LPWStr)] string name);
+        [PreserveSig] int MoveItem([MarshalAs(UnmanagedType.Interface)] IShellItem item, [MarshalAs(UnmanagedType.Interface)] IShellItem destination, [MarshalAs(UnmanagedType.LPWStr)] string name, nint progressSink);
+        [PreserveSig] int MoveItems(nint items, [MarshalAs(UnmanagedType.Interface)] IShellItem destination);
+        [PreserveSig] int CopyItem([MarshalAs(UnmanagedType.Interface)] IShellItem item, [MarshalAs(UnmanagedType.Interface)] IShellItem destination, [MarshalAs(UnmanagedType.LPWStr)] string name, nint progressSink);
+        [PreserveSig] int CopyItems(nint items, [MarshalAs(UnmanagedType.Interface)] IShellItem destination);
+        [PreserveSig] int DeleteItem([MarshalAs(UnmanagedType.Interface)] IShellItem item, nint progressSink);
+        [PreserveSig] int DeleteItems(nint items);
+        [PreserveSig] int NewItem([MarshalAs(UnmanagedType.Interface)] IShellItem destination, uint attributes, [MarshalAs(UnmanagedType.LPWStr)] string name, [MarshalAs(UnmanagedType.LPWStr)] string templateName, nint progressSink);
+        [PreserveSig] int PerformOperations();
+        [PreserveSig] int GetAnyOperationsAborted([MarshalAs(UnmanagedType.Bool)] out bool aborted);
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     private struct NativePoint
     {
@@ -996,6 +1101,9 @@ public static class NativeShellContextMenuService
 
     [DllImport("shell32.dll", PreserveSig = true)]
     private static extern int SHGetNameFromIDList(nint pidl, uint nameType, out nint name);
+
+    [DllImport("shell32.dll", PreserveSig = true)]
+    private static extern int SHCreateItemFromIDList(nint pidl, ref Guid interfaceId, [MarshalAs(UnmanagedType.Interface)] out IShellItem item);
 
     [DllImport("shell32.dll", PreserveSig = true)]
     private static extern nint ILCombine(nint parentPidl, nint childPidl);
