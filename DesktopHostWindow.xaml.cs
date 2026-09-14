@@ -14,6 +14,8 @@ namespace DesktopTuner;
 public partial class DesktopHostWindow : Window
 {
     private const string ItemIdentityFormat = "DesktopTuner.DesktopItemIdentity";
+    private const double DesktopIconWidth = 100;
+    private const double DesktopIconHeight = 112;
     private static readonly IntPtr HwndBottom = new(1);
     private static readonly IntPtr HwndNotTopmost = new(-2);
     private readonly string _userDesktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
@@ -40,6 +42,7 @@ public partial class DesktopHostWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        RefreshDesktop();
         if (DesktopWallpaperService.LoadPrimaryWallpaper() is { } wallpaper)
             Background = new ImageBrush(wallpaper) { Stretch = Stretch.UniformToFill };
         var handle = new WindowInteropHelper(this).Handle;
@@ -52,7 +55,8 @@ public partial class DesktopHostWindow : Window
         var selectedPaths = _desktopItems.Where(item => item.IsSelected)
             .Select(item => item.FullPath)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var ordered = _layoutStore.ApplyOrder(DesktopHostCatalog.ReadItems([_userDesktop, _publicDesktop]));
+        var ordered = _layoutStore.ApplyLayout(DesktopHostCatalog.ReadItems([_userDesktop, _publicDesktop]),
+            DesktopItems.ActualWidth, DesktopItems.ActualHeight);
         _desktopItems.Clear();
         foreach (var item in ordered)
         {
@@ -243,10 +247,9 @@ public partial class DesktopHostWindow : Window
 
     private void OnDesktopDragOver(object sender, DragEventArgs e)
     {
-        e.Effects = !e.Data.GetDataPresent(ItemIdentityFormat)
-            && e.Data.GetDataPresent(DataFormats.FileDrop) && Directory.Exists(_userDesktop)
-            ? DragDropEffects.Copy
-            : DragDropEffects.None;
+        e.Effects = e.Data.GetDataPresent(ItemIdentityFormat)
+            ? DragDropEffects.Move
+            : e.Data.GetDataPresent(DataFormats.FileDrop) && Directory.Exists(_userDesktop) ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
 
@@ -254,7 +257,15 @@ public partial class DesktopHostWindow : Window
     {
         if (e.Data.GetDataPresent(ItemIdentityFormat))
         {
-            e.Effects = DragDropEffects.None;
+            if (e.Data.GetData(ItemIdentityFormat) is string sourcePath &&
+                _desktopItems.FirstOrDefault(item => string.Equals(item.FullPath, sourcePath, StringComparison.OrdinalIgnoreCase)) is { } source)
+            {
+                var point = e.GetPosition(DesktopItems);
+                source.SetPosition(ClampPosition(new DesktopHostPosition(point.X - DesktopIconWidth / 2, point.Y - DesktopIconHeight / 2)));
+                SaveDesktopLayout("Icon moved for this session, but its position could not be saved.");
+                e.Effects = DragDropEffects.Move;
+            }
+            else e.Effects = DragDropEffects.None;
             e.Handled = true;
             return;
         }
@@ -296,10 +307,22 @@ public partial class DesktopHostWindow : Window
 
         var source = _desktopItems[sourceIndex];
         var target = _desktopItems[targetIndex];
+        var sourcePosition = new DesktopHostPosition(source.Left, source.Top);
+        source.SetPosition(new DesktopHostPosition(target.Left, target.Top));
+        target.SetPosition(sourcePosition);
         _desktopItems.RemoveAt(sourceIndex);
         _desktopItems.Insert(_desktopItems.IndexOf(target), source);
-        if (!_layoutStore.SaveOrder(_desktopItems))
-            MessageBox.Show(this, "Icon order changed for this session, but could not be saved.", "Desktop layout", MessageBoxButton.OK, MessageBoxImage.Warning);
+        SaveDesktopLayout("Icon layout changed for this session, but could not be saved.");
+    }
+
+    private DesktopHostPosition ClampPosition(DesktopHostPosition position) => new(
+        Math.Clamp(position.Left, 0, Math.Max(0, DesktopItems.ActualWidth - DesktopIconWidth)),
+        Math.Clamp(position.Top, 0, Math.Max(0, DesktopItems.ActualHeight - DesktopIconHeight)));
+
+    private void SaveDesktopLayout(string failureMessage)
+    {
+        if (!_layoutStore.SaveLayout(_desktopItems))
+            MessageBox.Show(this, failureMessage, "Desktop layout", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     private void OnRefreshClick(object sender, RoutedEventArgs e) => RefreshDesktop();

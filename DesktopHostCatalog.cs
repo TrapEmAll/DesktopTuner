@@ -9,11 +9,23 @@ namespace DesktopTuner;
 public sealed class DesktopHostItem(string name, string fullPath, bool isDirectory, bool isShellNamespace = false) : INotifyPropertyChanged
 {
     private bool _isSelected;
+    private double _left;
+    private double _top;
 
     public string Name { get; } = name;
     public string FullPath { get; } = fullPath;
     public bool IsDirectory { get; } = isDirectory;
     public bool IsShellNamespace { get; } = isShellNamespace;
+    public double Left
+    {
+        get => _left;
+        set { if (_left.Equals(value)) return; _left = value; OnPropertyChanged(); }
+    }
+    public double Top
+    {
+        get => _top;
+        set { if (_top.Equals(value)) return; _top = value; OnPropertyChanged(); }
+    }
 
     public bool IsSelected
     {
@@ -28,6 +40,12 @@ public sealed class DesktopHostItem(string name, string fullPath, bool isDirecto
 
     public ImageSource? Icon => IsShellNamespace ? TaskbarIconService.LoadNamespaceIcon(FullPath) : TaskbarIconService.LoadIcon(FullPath);
     public bool CanShowNativeContextMenu => !IsShellNamespace && (File.Exists(FullPath) || Directory.Exists(FullPath));
+
+    public void SetPosition(DesktopHostPosition position)
+    {
+        Left = position.Left;
+        Top = position.Top;
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

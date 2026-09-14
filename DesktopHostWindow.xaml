@@ -5,10 +5,16 @@
         WindowState="Maximized" ShowInTaskbar="False" ShowActivated="False" Background="#273044"
         KeyDown="OnKeyDown" Loaded="OnLoaded">
     <Grid AllowDrop="True" DragOver="OnDesktopDragOver" Drop="OnDesktopDrop">
-        <ItemsControl x:Name="DesktopItems" Margin="12" HorizontalAlignment="Left" VerticalAlignment="Top">
+        <ItemsControl x:Name="DesktopItems" Margin="12" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
             <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><WrapPanel Orientation="Vertical" MaxHeight="850"/></ItemsPanelTemplate>
+                <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemContainerStyle>
+                <Style TargetType="ContentPresenter">
+                    <Setter Property="Canvas.Left" Value="{Binding Left}"/>
+                    <Setter Property="Canvas.Top" Value="{Binding Top}"/>
+                </Style>
+            </ItemsControl.ItemContainerStyle>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Button Width="92" Height="104" Margin="4" Padding="6" AllowDrop="True"

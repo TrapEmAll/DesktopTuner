@@ -25,8 +25,19 @@ Check(true, desktopHostEntries.Single(entry => entry.Name == "user.txt").CanShow
 Check(false, desktopHostEntries.Single(entry => entry.Name == "This PC").CanShowNativeContextMenu, "keep filesystem context verbs off a namespace shortcut without a filesystem context");
 CheckTrue(TaskbarIconService.LoadNamespaceIcon("shell:MyComputerFolder") is not null, "extract a shell icon for a namespace parsing name");
 var desktopLayoutStore = new DesktopHostLayoutStore(Path.Combine(desktopHostTestRoot, "desktop-layout.json"));
-Check(true, desktopLayoutStore.SaveOrder([desktopHostEntries.Single(entry => entry.Name == "user.txt"), desktopHostEntries.Single(entry => entry.Name == "Folder")]), "save the user's desktop icon order");
-Check("user.txt,Folder,Recycle Bin,shared.txt,This PC", string.Join(',', desktopLayoutStore.ApplyOrder(desktopHostEntries).Select(entry => entry.Name)), "restore the saved icon order while appending unrecorded items");
+var laidOutDesktopEntries = desktopLayoutStore.ApplyLayout(desktopHostEntries, 600, 400).ToArray();
+laidOutDesktopEntries.Single(entry => entry.Name == "user.txt").SetPosition(new DesktopHostPosition(214, 137));
+Check(true, desktopLayoutStore.SaveOrder([laidOutDesktopEntries.Single(entry => entry.Name == "user.txt"), laidOutDesktopEntries.Single(entry => entry.Name == "Folder")]), "save desktop icon order and positions");
+var restoredDesktopEntries = desktopLayoutStore.ApplyLayout(desktopHostEntries, 600, 400);
+Check("user.txt,Folder,Recycle Bin,shared.txt,This PC", string.Join(',', restoredDesktopEntries.Select(entry => entry.Name)), "restore the saved icon order while appending unrecorded items");
+Check(new DesktopHostPosition(214, 137), new DesktopHostPosition(restoredDesktopEntries.Single(entry => entry.Name == "user.txt").Left, restoredDesktopEntries.Single(entry => entry.Name == "user.txt").Top), "restore a desktop icon's free-form position");
+restoredDesktopEntries.Single(entry => entry.Name == "user.txt").SetPosition(new DesktopHostPosition(900, 900));
+Check(true, desktopLayoutStore.SaveLayout(restoredDesktopEntries), "save an icon position outside the current screen bounds");
+var clampedDesktopEntry = desktopLayoutStore.ApplyLayout(desktopHostEntries, 600, 400).Single(entry => entry.Name == "user.txt");
+Check(new DesktopHostPosition(500, 288), new DesktopHostPosition(clampedDesktopEntry.Left, clampedDesktopEntry.Top), "clamp saved icon positions to the current display bounds");
+var legacyLayoutPath = Path.Combine(desktopHostTestRoot, "legacy-layout.json");
+File.WriteAllText(legacyLayoutPath, JsonSerializer.Serialize(new[] { desktopHostEntries.Single(entry => entry.Name == "Folder").FullPath }));
+Check("Folder,Recycle Bin,shared.txt,This PC,user.txt", string.Join(',', new DesktopHostLayoutStore(legacyLayoutPath).ApplyLayout(desktopHostEntries, 600, 400).Select(entry => entry.Name)), "continue reading legacy order-only desktop layout files");
 var selectableDesktopItems = new[] { "a", "b", "c", "d" }
     .Select(name => new DesktopHostItem(name, Path.Combine(desktopHostTestRoot, name), false))
     .ToArray();
