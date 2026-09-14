@@ -3,6 +3,7 @@
 #include <shlwapi.h>
 #include <string>
 #include <new>
+#include "WindowsCommandLine.h"
 
 namespace
 {
@@ -79,7 +80,7 @@ namespace
         std::wstring installDirectory;
         if (!GetInstallDirectory(installDirectory)) return HRESULT_FROM_WIN32(GetLastError());
         const std::wstring executable = installDirectory + L"\\DesktopTuner.exe";
-        const std::wstring command = L"\"" + executable + L"\" --open-folder \"" + folderPath + L"\"";
+        const std::wstring command = QuoteWindowsCommandLineArgument(executable) + L" --open-folder " + QuoteWindowsCommandLineArgument(folderPath);
         std::wstring mutableCommand = command;
 
         STARTUPINFOW startup{};

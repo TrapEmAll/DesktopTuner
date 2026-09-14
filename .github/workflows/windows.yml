@@ -57,6 +57,18 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $exports -notmatch 'DllGetClassObject' -or $exports -notmatch 'DllCanUnloadNow') {
             throw 'The native Explorer command DLL is missing a required COM server export.'
           }
+          & $msbuild shell/ExplorerContextMenu/tests/WindowsCommandLineTests.vcxproj /m /p:Configuration=Release /p:Platform=x64 "/p:PlatformToolset=$platformToolset" /v:minimal
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The Windows command-line quoting test failed to build.'
+          }
+          $commandLineTests = Join-Path (Get-Location) 'shell/ExplorerContextMenu/tests/bin/x64/Release/DesktopTuner.WindowsCommandLineTests.exe'
+          if (-not (Test-Path $commandLineTests)) {
+            throw "The Windows command-line quoting test executable was not produced at $commandLineTests"
+          }
+          & $commandLineTests
+          if ($LASTEXITCODE -ne 0) {
+            throw "The Windows command-line quoting tests failed with exit code $LASTEXITCODE"
+          }
 
       - name: Build Desktop Tuner
         run: dotnet build DesktopTuner.csproj --configuration Release
