@@ -33,3 +33,6 @@ Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: postinstall nowait skipifsilent
+
+[UninstallRun]
+Filename: "{app}\{#AppExeName}"; Parameters: "--remove-folder-shell-integration"; Flags: runhidden waituntilterminated

@@ -315,6 +315,14 @@ Check(new Thickness(0, 4, 0, 4), TaskbarButtonSpacingPolicy.GetButtonMargin(Task
 Throws<ArgumentOutOfRangeException>(() => TaskbarButtonSpacingPolicy.GetGap((TaskbarButtonSpacing)99), "reject unknown taskbar spacing values");
 CheckTrue(TaskbarIconService.LoadIcon(Environment.ProcessPath!) is not null, "extract a taskbar icon from an executable file");
 CheckTrue(new AppEntry("Desktop Tuner", Environment.ProcessPath!).Icon is not null, "expose extracted app icons to Start menu entries");
+var shellFolderPath = Path.GetFullPath(Environment.CurrentDirectory);
+CheckTrue(FolderShellIntegrationService.TryReadInvocation(["--OPEN-FOLDER", shellFolderPath], out var parsedShellFolder), "recognize case-insensitive folder context-menu launch arguments");
+Check(shellFolderPath, parsedShellFolder, "normalize the folder passed by a context-menu command");
+Check(false, FolderShellIntegrationService.TryReadInvocation(["--open-folder", "relative\\folder"], out _), "reject a relative folder context-menu target");
+Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe")}\" --open-folder \"%1\"", FolderShellIntegrationService.BuildCommand(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe", "%1"), "quote executable and selected-folder arguments in the directory context command");
+Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe")}\" --open-folder \"%V\"", FolderShellIntegrationService.BuildCommand(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe", "%V"), "quote the current-folder argument for empty-space context menus");
+Throws<ArgumentOutOfRangeException>(() => FolderShellIntegrationService.BuildCommand(Environment.ProcessPath!, "%*"), "reject unrecognized shell path substitutions");
+Check(2, FolderShellIntegrationService.VerbPaths.Count, "register folder and folder-background context menu commands");
 var auraIcon = BitmapSource.Create(5, 1, 96, 96, PixelFormats.Bgra32, null,
 new byte[]
 {
@@ -1123,6 +1131,7 @@ try
     Check(TaskbarWindowDisplayMode.AllTaskbars, freshPreferencesStore.Load().TaskbarWindowDisplayMode, "show app windows on every taskbar by default");
     Check(TaskbarStyle.EdgeToEdge, freshPreferencesStore.Load().TaskbarLayout, "default a new install to the full-edge taskbar layout");
     Check(false, freshPreferencesStore.Load().CenterStartMenu, "default new installs to taskbar-aligned Start menus");
+    Check(false, freshPreferencesStore.Load().FolderShellIntegrationEnabled, "keep folder context menu integration opt-in on new installs");
     var staleTaskbarSnapshot = Path.Combine(temporaryPreferencesDirectory, "taskbar-restore.json");
     File.WriteAllText(staleTaskbarSnapshot, """[{"Handle":-1,"WasVisible":true}]""");
     NativeTaskbarVisibilityService.RestoreSnapshot(staleTaskbarSnapshot);
@@ -1144,6 +1153,9 @@ try
     Check(expectedPreferences.StartMenuStyle, loadedPreferences.StartMenuStyle, "persist Start menu style");
     Check(true, loadedPreferences.CenterStartMenu, "persist centered Start menu preference");
     Check(TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, loadedPreferences.TaskbarWindowDisplayMode, "persist the taskbar app display mode");
+    preferencesStore.Save(expectedPreferences with { FolderShellIntegrationEnabled = true });
+    Check(true, preferencesStore.Load().FolderShellIntegrationEnabled, "persist folder context menu integration");
+    preferencesStore.Save(expectedPreferences);
     Check("Editor", loadedPreferences.PinnedStartApps!.Single().Name, "persist pinned Start apps");
     Check(StartTileSize.Wide, loadedPreferences.PinnedStartApps!.Single().TileSize, "persist a pinned Start tile's size");
     Check("Dev", loadedPreferences.PinnedStartApps!.Single().GroupName, "persist a pinned Start tile's group");

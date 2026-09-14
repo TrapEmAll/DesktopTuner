@@ -148,6 +148,14 @@ public partial class ExplorerWindow : Window
         RefreshLocation();
     }
 
+    public void OpenFolderFromShell(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (!Directory.Exists(path)) throw new DirectoryNotFoundException($"The folder no longer exists: {path}");
+        AddTab(new ExplorerLocation(Path.GetFullPath(path)));
+        Activate();
+    }
+
     private void SaveExplorerSession()
     {
         try

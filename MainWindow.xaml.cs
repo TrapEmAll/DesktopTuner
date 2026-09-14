@@ -18,6 +18,9 @@ public partial class MainWindow : Window
     private const int WM_DISPLAYCHANGE = 0x007E;
     private const int WM_DWMCOLORIZATIONCOLORCHANGED = 0x0320;
     private const int WM_APP_ACTIVATE_SETTINGS = 0x8000 + 0x451;
+    private const int WM_COPYDATA = 0x004A;
+    private const long WM_COPYDATA_OPEN_FOLDER = 0x44544E52;
+    private const uint SMTO_ABORTIFHUNG = 0x0002;
     private const uint MOD_ALT = 0x0001;
     private const uint MOD_CONTROL = 0x0002;
     private const uint MOD_WIN = 0x0008;
@@ -67,6 +70,7 @@ public partial class MainWindow : Window
     private TaskbarWindowDisplayMode _taskbarWindowDisplayMode = TaskbarWindowDisplayMode.AllTaskbars;
     private bool _replaceNativeTaskbar;
     private bool _startWithWindows;
+    private bool _folderShellIntegrationEnabled;
     private readonly bool _startInBackground;
     private bool _closingTaskbars;
     private bool _reconcilingDisplayTopology;
@@ -103,6 +107,7 @@ public partial class MainWindow : Window
         _taskbarOnAllDisplays = desktopPreferences.TaskbarOnAllDisplays;
         _taskbarWindowDisplayMode = desktopPreferences.TaskbarWindowDisplayMode;
         _replaceNativeTaskbar = desktopPreferences.ReplaceNativeTaskbar;
+        _folderShellIntegrationEnabled = desktopPreferences.FolderShellIntegrationEnabled;
         _nativeTaskbarWatchTimer.Tick += (_, _) => MaintainNativeTaskbars();
         _startWithWindows = desktopPreferences.StartWithWindows;
         foreach (var setting in SettingsCatalog.All)
@@ -295,6 +300,11 @@ public partial class MainWindow : Window
             var explorerButton = new Button { Content = "Open Desktop Tuner Explorer", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             explorerButton.Click += (_, _) => OpenExplorer();
             PageContent.Children.Add(explorerButton);
+            var folderShellIntegration = new CheckBox { Content = "Add “Open with Desktop Tuner” to folder context menus", IsChecked = _folderShellIntegrationEnabled, Margin = new Thickness(0, 0, 0, 12), FontSize = 13 };
+            folderShellIntegration.Checked += (_, _) => SetFolderShellIntegration(folderShellIntegration, true);
+            folderShellIntegration.Unchecked += (_, _) => SetFolderShellIntegration(folderShellIntegration, false);
+            PageContent.Children.Add(folderShellIntegration);
+            PageContent.Children.Add(InfoCard("Folder context menus", "Adds per-user commands for filesystem folders and empty-folder backgrounds. The command opens the selected location in Desktop Tuner Explorer and leaves Windows' default folder handler unchanged. Windows 11 may place these commands under Show more options."));
             PageContent.Children.Add(InfoCard("Classic browsing tools", "The companion Explorer includes a command strip, quick access locations, current-folder search, and a bottom details pane. Double-click folders to browse or files to open them with their default app."));
         }
         if (section == "Taskbar")
@@ -802,6 +812,12 @@ public partial class MainWindow : Window
 
     private IntPtr WindowMessageHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if (message == WM_COPYDATA && TryReadOpenFolderCopyData(lParam, out var folderPath))
+        {
+            _ = Dispatcher.BeginInvoke(new Action(() => OpenFolderFromShell(folderPath)));
+            handled = true;
+            return new IntPtr(1);
+        }
         if (message == WM_DWMCOLORIZATIONCOLORCHANGED)
             DesktopTheme.Apply(_currentValues["explorer-app-mode"] == 0);
         if (message == WM_APP_ACTIVATE_SETTINGS)
@@ -853,6 +869,65 @@ public partial class MainWindow : Window
             Thread.Sleep(50);
         }
         return false;
+    }
+
+    public static bool TryOpenFolderInExistingInstance(string folderPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
+        var payload = Marshal.StringToHGlobalUni(folderPath);
+        try
+        {
+            var copyData = new CopyDataStruct
+            {
+                Data = new IntPtr(WM_COPYDATA_OPEN_FOLDER),
+                ByteCount = checked((folderPath.Length + 1) * sizeof(char)),
+                DataPointer = payload
+            };
+            for (var attempt = 0; attempt < 20; attempt++)
+            {
+                var window = FindWindow(null, "Desktop Tuner");
+                if (window == IntPtr.Zero)
+                {
+                    Thread.Sleep(50);
+                    continue;
+                }
+
+                if (SendCopyData(window, WM_COPYDATA, IntPtr.Zero, ref copyData, SMTO_ABORTIFHUNG, 500, out var result) != IntPtr.Zero)
+                {
+                    if (result != IntPtr.Zero) return true;
+                    Thread.Sleep(50);
+                    continue;
+                }
+
+                return false;
+            }
+            return false;
+        }
+        finally { Marshal.FreeHGlobal(payload); }
+    }
+
+    private static bool TryReadOpenFolderCopyData(IntPtr dataPointer, out string folderPath)
+    {
+        folderPath = string.Empty;
+        if (dataPointer == IntPtr.Zero) return false;
+        var data = Marshal.PtrToStructure<CopyDataStruct>(dataPointer);
+        if (data.Data.ToInt64() != WM_COPYDATA_OPEN_FOLDER || data.DataPointer == IntPtr.Zero || data.ByteCount is <= 0 or > 65536)
+            return false;
+        var value = Marshal.PtrToStringUni(data.DataPointer, data.ByteCount / sizeof(char));
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        var terminator = value.IndexOf('\0');
+        folderPath = terminator >= 0 ? value[..terminator] : value;
+        return Path.IsPathFullyQualified(folderPath) && Directory.Exists(folderPath);
+    }
+
+    public void OpenFolderFromShell(string folderPath)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+        {
+            MessageBox.Show(this, "That folder is no longer available.", "Could not open folder", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        OpenExplorer(Path.GetFullPath(folderPath));
     }
 
     private void ShowStartMenu() => ShowStartMenu(null);
@@ -1061,7 +1136,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled);
 
     private void SetStartMenuCentered(bool centered)
     {
@@ -1209,6 +1284,27 @@ public partial class MainWindow : Window
         }
     }
 
+    private void SetFolderShellIntegration(CheckBox checkBox, bool enabled)
+    {
+        if (_folderShellIntegrationEnabled == enabled) return;
+        try
+        {
+            FolderShellIntegrationService.SetEnabled(enabled);
+            _preferences.Save(CreateDesktopPreferences() with { FolderShellIntegrationEnabled = enabled });
+            _folderShellIntegrationEnabled = enabled;
+            SetStatus(enabled
+                ? "Folder context menus can now open locations in Desktop Tuner Explorer."
+                : "Desktop Tuner folder context menu commands were removed.");
+        }
+        catch (Exception ex)
+        {
+            try { FolderShellIntegrationService.SetEnabled(_folderShellIntegrationEnabled); }
+            catch (Exception rollbackError) { ex = new AggregateException("The folder context menu could not be restored after saving failed.", ex, rollbackError); }
+            checkBox.IsChecked = _folderShellIntegrationEnabled;
+            MessageBox.Show(this, ex.Message, "Could not change folder context menus", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void ShowSettingsWindow()
     {
         if (!IsVisible) Show();
@@ -1217,15 +1313,17 @@ public partial class MainWindow : Window
         Activate();
     }
 
-    private void OpenExplorer()
+    private void OpenExplorer(string? initialPath = null)
     {
         if (_explorerWindow is { IsVisible: true })
         {
+            if (!string.IsNullOrWhiteSpace(initialPath)) _explorerWindow.OpenFolderFromShell(initialPath);
             _explorerWindow.Activate();
             return;
         }
 
         _explorerWindow = new ExplorerWindow(
+            initialPath: initialPath,
             showHiddenItems: _currentValues["explorer-hidden"] == 1,
             hideFileExtensions: _currentValues["explorer-extensions"] == 1,
             startInThisPc: _currentValues["explorer-launch"] == 1,
@@ -1272,6 +1370,14 @@ public partial class MainWindow : Window
         return true;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CopyDataStruct
+    {
+        public IntPtr Data;
+        public int ByteCount;
+        public IntPtr DataPointer;
+    }
+
     private bool CanActivateTaskbarPinShortcut(int oneBasedIndex) =>
         oneBasedIndex >= 1 && oneBasedIndex <= _pinnedApps.Count && _taskbarWindows.Any(window => window.IsVisible);
 
@@ -1306,4 +1412,7 @@ public partial class MainWindow : Window
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool PostMessage(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", EntryPoint = "SendMessageTimeoutW", SetLastError = true)]
+    private static extern IntPtr SendCopyData(IntPtr window, uint message, IntPtr wParam, ref CopyDataStruct data, uint flags, uint timeout, out IntPtr result);
 }

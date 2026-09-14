@@ -17,6 +17,13 @@ public partial class App : Application
         var touchMetrics = TouchTargetPolicy.Resolve(TouchTargetPolicy.HasTouchInput);
         Resources["TouchMenuItemPadding"] = touchMetrics.Padding;
         Resources["TouchMenuItemMinimumHeight"] = touchMetrics.MinimumHeight;
+        if (e.Args.Contains("--remove-folder-shell-integration", StringComparer.OrdinalIgnoreCase))
+        {
+            try { FolderShellIntegrationService.SetEnabled(false); }
+            catch (Exception ex) { System.Diagnostics.Trace.TraceError($"Could not remove folder context menu commands during uninstall: {ex}"); }
+            Shutdown();
+            return;
+        }
         if (NativeTaskbarWatchdog.IsWatchdogInvocation(e.Args))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -29,13 +36,18 @@ public partial class App : Application
             return;
         }
 
+        var hasFolderShellInvocation = FolderShellIntegrationService.TryReadInvocation(e.Args, out var folderShellPath);
+
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         var startInBackground = e.Args.Contains("--startup", StringComparer.OrdinalIgnoreCase);
         _instanceMutex = new Mutex(initiallyOwned: true, name: @"Local\DesktopTuner.Singleton", out var createdNew);
         if (!createdNew)
         {
-            if (!startInBackground && !DesktopTuner.MainWindow.TryActivateExistingInstance(showSettings: true))
-                MessageBox.Show("Desktop Tuner is already running, but its settings window could not be reached.", "Desktop Tuner", MessageBoxButton.OK, MessageBoxImage.Information);
+            var activated = hasFolderShellInvocation
+                ? DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(folderShellPath)
+                : !startInBackground && DesktopTuner.MainWindow.TryActivateExistingInstance(showSettings: true);
+            if (!activated && !startInBackground)
+                MessageBox.Show("Desktop Tuner is already running, but the requested window could not be reached.", "Desktop Tuner", MessageBoxButton.OK, MessageBoxImage.Information);
             _instanceMutex.Dispose();
             _instanceMutex = null;
             Shutdown();
@@ -45,6 +57,7 @@ public partial class App : Application
         var window = new MainWindow(startInBackground);
         MainWindow = window;
         window.Show();
+        if (hasFolderShellInvocation) window.OpenFolderFromShell(folderShellPath);
     }
 
     private async void WatchTaskbarOwnerAsync(int ownerProcessId, string snapshotPath)
