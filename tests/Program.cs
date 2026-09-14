@@ -48,6 +48,7 @@ Check(shellNamespaceDesktopEntries.Where(entry => entry.IsShellNamespace).Count(
     .Select(entry => entry.Name).Distinct(StringComparer.CurrentCultureIgnoreCase).Count(), "show each Windows desktop namespace label once");
 var desktopLibraries = shellNamespaceDesktopEntries.Single(entry => entry.Name == "Libraries");
 CheckTrue(await NativeShellContextMenuService.ProbeShellItemContextMenuAsync(desktopLibraries.FullPath), "build a native context menu for a dynamically enumerated Shell namespace item");
+CheckTrue(await NativeShellContextMenuService.ProbeShellItemDataObjectAsync(desktopLibraries.FullPath), "create a native Shell drag object for a virtual desktop item");
 var desktopLayoutStore = new DesktopHostLayoutStore(Path.Combine(desktopHostTestRoot, "desktop-layout.json"));
 var laidOutDesktopEntries = desktopLayoutStore.ApplyLayout(desktopHostEntries, 600, 400).ToArray();
 laidOutDesktopEntries.Single(entry => entry.Name == "user.txt").SetPosition(new DesktopHostPosition(0, 112));

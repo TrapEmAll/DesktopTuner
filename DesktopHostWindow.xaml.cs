@@ -36,6 +36,7 @@ public partial class DesktopHostWindow : Window
     private bool _isMarqueeSelecting;
     private bool _marqueeTogglesSelection;
     private DesktopHostItem? _dragCandidate;
+    private IReadOnlyList<string>? _activeNativeShellDragPaths;
     private string? _selectionAnchorPath;
     private Point _dragStart;
     private Point _marqueeStart;
@@ -728,7 +729,7 @@ public partial class DesktopHostWindow : Window
         }
     }
 
-    private void OnItemMouseMove(object sender, MouseEventArgs e)
+    private async void OnItemMouseMove(object sender, MouseEventArgs e)
     {
         if (e.LeftButton != MouseButtonState.Pressed || _dragCandidate is not { } item ||
             (!item.IsShellNamespace && !File.Exists(item.FullPath) && !Directory.Exists(item.FullPath))) return;
@@ -739,6 +740,24 @@ public partial class DesktopHostWindow : Window
         _dragCandidate = null;
         var dragSelection = DesktopHostDragPolicy.Resolve(_desktopItems, item);
         if (dragSelection.ItemPaths.Count == 0) return;
+        var selectedItems = dragSelection.ItemPaths.Select(path => _desktopItems.FirstOrDefault(candidate =>
+            string.Equals(candidate.FullPath, path, StringComparison.OrdinalIgnoreCase))).ToArray();
+        if (selectedItems.All(candidate => candidate is { IsShellNamespace: true }))
+        {
+            _activeNativeShellDragPaths = dragSelection.ItemPaths;
+            try
+            {
+                var owner = new WindowInteropHelper(this).Handle;
+                await NativeShellContextMenuService.DragShellItemsAsync(owner, dragSelection.ItemPaths);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Could not drag Shell items", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally { _activeNativeShellDragPaths = null; }
+            return;
+        }
+
         var data = new DataObject();
         if (dragSelection.FileDropPaths.Count > 0)
             data.SetData(DataFormats.FileDrop, dragSelection.FileDropPaths.ToArray());
@@ -753,6 +772,13 @@ public partial class DesktopHostWindow : Window
 
     private void OnItemDragOver(object sender, DragEventArgs e)
     {
+        if (_activeNativeShellDragPaths is { Count: 1 } nativePaths &&
+            _desktopItems.Any(item => string.Equals(item.FullPath, nativePaths[0], StringComparison.OrdinalIgnoreCase)))
+        {
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+            return;
+        }
         var internalPaths = ReadInternalItemPaths(e.Data);
         if (internalPaths.Count == 1 && _desktopItems.Any(item => string.Equals(item.FullPath, internalPaths[0], StringComparison.OrdinalIgnoreCase)))
             e.Effects = DragDropEffects.Move;
@@ -767,6 +793,13 @@ public partial class DesktopHostWindow : Window
     private void OnItemDrop(object sender, DragEventArgs e)
     {
         if (sender is not Button { DataContext: DesktopHostItem target }) return;
+        if (_activeNativeShellDragPaths is { Count: 1 } nativePaths)
+        {
+            ReorderDesktopItem(nativePaths[0], target.FullPath);
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+            return;
+        }
         if (e.Data.GetDataPresent(ItemIdentityFormat))
         {
             var internalPaths = ReadInternalItemPaths(e.Data);
@@ -785,6 +818,13 @@ public partial class DesktopHostWindow : Window
 
     private void OnDesktopDragOver(object sender, DragEventArgs e)
     {
+        if (_activeNativeShellDragPaths is { Count: > 0 } nativePaths && nativePaths.All(path =>
+                _desktopItems.Any(item => string.Equals(item.FullPath, path, StringComparison.OrdinalIgnoreCase))))
+        {
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+            return;
+        }
         var internalPaths = ReadInternalItemPaths(e.Data);
         if (internalPaths.Count > 0 && internalPaths.All(path => _desktopItems.Any(item => string.Equals(item.FullPath, path, StringComparison.OrdinalIgnoreCase))))
             e.Effects = DragDropEffects.Move;
@@ -798,32 +838,43 @@ public partial class DesktopHostWindow : Window
 
     private void OnDesktopDrop(object sender, DragEventArgs e)
     {
+        if (_activeNativeShellDragPaths is { Count: > 0 } nativePaths)
+        {
+            MoveDesktopItems(nativePaths, e.GetPosition(DesktopItems));
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+            return;
+        }
         if (e.Data.GetDataPresent(ItemIdentityFormat))
         {
             var internalPaths = ReadInternalItemPaths(e.Data);
-            var selectedItems = internalPaths.Select(path => _desktopItems.FirstOrDefault(item =>
-                string.Equals(item.FullPath, path, StringComparison.OrdinalIgnoreCase))).ToArray();
-            if (selectedItems.Length > 0 && selectedItems.All(item => item is not null))
-            {
-                var point = e.GetPosition(DesktopItems);
-                var anchor = selectedItems[0]!;
-                var positions = DesktopHostLayoutStore.TranslateSelection(selectedItems.Select(item => item!), anchor.FullPath,
-                    new DesktopHostPosition(point.X - DesktopIconWidth / 2, point.Y - DesktopIconHeight / 2),
-                    DesktopItems.ActualWidth, DesktopItems.ActualHeight);
-                foreach (var item in selectedItems)
-                {
-                    if (item is null || !positions.TryGetValue(item.FullPath, out var position)) continue;
-                    if (_desktopMonitors.Count > 0) PlaceItemOnMonitor(item, position);
-                    else item.SetPosition(position);
-                }
-                SaveDesktopLayout("Icon moved for this session, but its position could not be saved.");
-                e.Effects = DragDropEffects.Move;
-            }
-            else e.Effects = DragDropEffects.None;
+            e.Effects = MoveDesktopItems(internalPaths, e.GetPosition(DesktopItems))
+                ? DragDropEffects.Move
+                : DragDropEffects.None;
             e.Handled = true;
             return;
         }
         TransferDroppedItems(e);
+    }
+
+    private bool MoveDesktopItems(IReadOnlyList<string> itemPaths, Point point)
+    {
+        var selectedItems = itemPaths.Select(path => _desktopItems.FirstOrDefault(item =>
+            string.Equals(item.FullPath, path, StringComparison.OrdinalIgnoreCase))).ToArray();
+        if (selectedItems.Length == 0 || selectedItems.Any(item => item is null)) return false;
+
+        var anchor = selectedItems[0]!;
+        var positions = DesktopHostLayoutStore.TranslateSelection(selectedItems.Select(item => item!), anchor.FullPath,
+            new DesktopHostPosition(point.X - DesktopIconWidth / 2, point.Y - DesktopIconHeight / 2),
+            DesktopItems.ActualWidth, DesktopItems.ActualHeight);
+        foreach (var item in selectedItems)
+        {
+            if (item is null || !positions.TryGetValue(item.FullPath, out var position)) continue;
+            if (_desktopMonitors.Count > 0) PlaceItemOnMonitor(item, position);
+            else item.SetPosition(position);
+        }
+        SaveDesktopLayout("Icon moved for this session, but its position could not be saved.");
+        return true;
     }
 
     private static IReadOnlyList<string> ReadInternalItemPaths(IDataObject data)

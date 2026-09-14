@@ -17,8 +17,14 @@ public static class NativeShellContextMenuService
     private const int MessageMenuCharacter = 0x0120;
     private const uint ShellAttributeCanRename = 0x00000010;
     private const uint DesktopAbsoluteParsing = 0x80028000;
+    private const uint DragDropAllowedEffects = 0x00000007;
+    private const uint MouseButtonMask = 0x00000013;
+    private const int DragDropCancel = 0x00040101;
+    private const int DragDropComplete = 0x00040100;
+    private const int DragDropDefaultCursors = 0x00040102;
     private static readonly Guid ShellFolderId = new("000214E6-0000-0000-C000-000000000046");
     private static readonly Guid ContextMenuId = new("000214E4-0000-0000-C000-000000000046");
+    private static readonly Guid DataObjectId = new("0000010E-0000-0000-C000-000000000046");
 
     public static async Task<bool> ShowForItemsAsync(nint owner, IEnumerable<string> paths)
     {
@@ -35,6 +41,20 @@ public static class NativeShellContextMenuService
         var selection = NativeShellContextMenuPolicy.NormalizeShellSelection(parsingNames);
         var absolutePidls = await Task.Run(() => ParseDisplayNames(selection));
         return ShowForShellItems(owner, absolutePidls);
+    }
+
+    public static async Task<bool> DragShellItemsAsync(nint owner, IEnumerable<string> parsingNames)
+    {
+        var selection = NativeShellContextMenuPolicy.NormalizeShellSelection(parsingNames);
+        var absolutePidls = await Task.Run(() => ParseDisplayNames(selection));
+        return TransferShellItems(owner, absolutePidls, startDrag: true);
+    }
+
+    internal static async Task<bool> ProbeShellItemDataObjectAsync(string parsingName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(parsingName);
+        var absolutePidl = await Task.Run(() => ParseDisplayName(parsingName));
+        return TransferShellItems(nint.Zero, [absolutePidl], startDrag: false);
     }
 
     internal static async Task<bool> ProbeItemsContextMenuAsync(IEnumerable<string> paths)
@@ -284,6 +304,47 @@ public static class NativeShellContextMenuService
         }
     }
 
+    private static bool TransferShellItems(nint owner, nint[] absolutePidls, bool startDrag)
+    {
+        if (absolutePidls.Length == 0) throw new ArgumentException("Select at least one Windows Shell item.", nameof(absolutePidls));
+        var initializeResult = CoInitializeEx(nint.Zero, 0);
+        var uninitialize = initializeResult >= 0;
+        if (initializeResult < 0 && initializeResult != unchecked((int)0x80010106))
+            ThrowForFailure(initializeResult, "Could not initialize the Windows Shell drag operation.");
+
+        IShellFolder? parent = null;
+        System.Runtime.InteropServices.ComTypes.IDataObject? dataObject = null;
+        nint childArray = nint.Zero;
+        try
+        {
+            var parentLength = GetParentPidlLength(absolutePidls[0]);
+            if (absolutePidls.Skip(1).Any(pidl => !ParentPidlsEqual(absolutePidls[0], parentLength, pidl)))
+                throw new ArgumentException("Windows can drag a combined Shell selection only when its items share a Shell folder.", nameof(absolutePidls));
+
+            var folderId = ShellFolderId;
+            ThrowForFailure(SHBindToParent(absolutePidls[0], ref folderId, out parent, out _), "Could not bind to the selected items' parent folder.");
+            var childPidls = absolutePidls.Select(pidl => pidl + GetParentPidlLength(pidl) - sizeof(ushort)).ToArray();
+            if (childPidls.Any(child => child == nint.Zero)) throw new COMException("Could not resolve the selected Shell items.");
+            childArray = AllocatePointerArray(childPidls);
+            var dataObjectId = DataObjectId;
+            var shellFolder = (IShellFolderDataObject)parent;
+            ThrowForFailure(shellFolder.GetUIObjectOf(owner, (uint)childPidls.Length, childArray, ref dataObjectId, nint.Zero, out dataObject),
+                "Windows could not create a native drag object for the Shell selection.");
+
+            if (!startDrag) return true;
+            ThrowForFailure(DoDragDrop(dataObject, new NativeShellDropSource(), DragDropAllowedEffects, out var effect), "Windows could not start the Shell drag operation.");
+            return effect != 0;
+        }
+        finally
+        {
+            if (dataObject is not null && Marshal.IsComObject(dataObject)) Marshal.ReleaseComObject(dataObject);
+            if (parent is not null) ReleaseComObject(parent);
+            if (childArray != nint.Zero) Marshal.FreeHGlobal(childArray);
+            foreach (var absolutePidl in absolutePidls) Marshal.FreeCoTaskMem(absolutePidl);
+            if (uninitialize) CoUninitialize();
+        }
+    }
+
     public static async Task<bool> ShowForFolderBackgroundAsync(nint owner, string folderPath)
     {
         return await ProcessFolderBackgroundAsync(owner, folderPath, showPopup: true);
@@ -524,6 +585,41 @@ public static class NativeShellContextMenuService
     }
 
     [ComImport]
+    [Guid("000214E6-0000-0000-C000-000000000046")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IShellFolderDataObject
+    {
+        [PreserveSig] int ParseDisplayName(nint hwnd, nint bindContext, [MarshalAs(UnmanagedType.LPWStr)] string displayName, out uint eaten, out nint pidl, ref uint attributes);
+        [PreserveSig] int EnumObjects(nint hwnd, uint flags, out nint enumerator);
+        [PreserveSig] int BindToObject(nint pidl, nint bindContext, ref Guid interfaceId, [MarshalAs(UnmanagedType.Interface)] out IShellFolder folder);
+        [PreserveSig] int BindToStorage(nint pidl, nint bindContext, ref Guid interfaceId, out nint storage);
+        [PreserveSig] int CompareIDs(nint parameter, nint first, nint second);
+        [PreserveSig] int CreateViewObject(nint hwnd, ref Guid interfaceId, [MarshalAs(UnmanagedType.Interface)] out IContextMenu contextMenu);
+        [PreserveSig] int GetAttributesOf(uint count, nint pidls, ref uint attributes);
+        [PreserveSig] int GetUIObjectOf(nint hwnd, uint count, nint pidls, ref Guid interfaceId, nint reserved,
+            [MarshalAs(UnmanagedType.Interface)] out System.Runtime.InteropServices.ComTypes.IDataObject dataObject);
+    }
+
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.None)]
+    private sealed class NativeShellDropSource : IDropSource
+    {
+        public int QueryContinueDrag([MarshalAs(UnmanagedType.Bool)] bool escapePressed, uint keyState) =>
+            escapePressed ? DragDropCancel : (keyState & MouseButtonMask) == 0 ? DragDropComplete : 0;
+
+        public int GiveFeedback(uint effect) => DragDropDefaultCursors;
+    }
+
+    [ComVisible(true)]
+    [Guid("00000121-0000-0000-C000-000000000046")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IDropSource
+    {
+        [PreserveSig] int QueryContinueDrag([MarshalAs(UnmanagedType.Bool)] bool escapePressed, uint keyState);
+        [PreserveSig] int GiveFeedback(uint effect);
+    }
+
+    [ComImport]
     [Guid("000214E4-0000-0000-C000-000000000046")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     private interface IContextMenu
@@ -570,6 +666,10 @@ public static class NativeShellContextMenuService
 
     [DllImport("ole32.dll")]
     private static extern void CoUninitialize();
+
+    [DllImport("ole32.dll", PreserveSig = true)]
+    private static extern int DoDragDrop([MarshalAs(UnmanagedType.Interface)] System.Runtime.InteropServices.ComTypes.IDataObject dataObject,
+        [MarshalAs(UnmanagedType.Interface)] IDropSource dropSource, uint allowedEffects, out uint effect);
 
     [DllImport("shell32.dll", PreserveSig = true)]
     private static extern int SHBindToParent(nint pidl, ref Guid interfaceId, [MarshalAs(UnmanagedType.Interface)] out IShellFolder parent, out nint childPidl);
