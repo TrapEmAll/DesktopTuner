@@ -118,6 +118,12 @@ Check("a,c", string.Join(',', selectableDesktopItems.Where(item => desktopSelect
 desktopSelection = DesktopHostSelectionPolicy.Select(selectableDesktopItems, selectableDesktopItems[3].FullPath, false, true, desktopSelection.AnchorPath);
 Check("c,d", string.Join(',', selectableDesktopItems.Where(item => desktopSelection.Paths.Contains(item.FullPath)).Select(item => item.Name)), "select an inclusive desktop range with Shift-click");
 Check(4, DesktopHostSelectionPolicy.SelectAll(selectableDesktopItems).Count, "select every desktop item with Ctrl+A");
+selectableDesktopItems[0].IsSelected = true;
+selectableDesktopItems[2].IsSelected = true;
+desktopSelection = DesktopHostSelectionPolicy.PreserveSelectionForContextMenu(selectableDesktopItems, selectableDesktopItems[2].FullPath);
+Check("a,c", string.Join(',', selectableDesktopItems.Where(item => desktopSelection.Paths.Contains(item.FullPath)).Select(item => item.Name)), "preserve a multi-item selection when opening a selected desktop icon's context menu");
+desktopSelection = DesktopHostSelectionPolicy.PreserveSelectionForContextMenu(selectableDesktopItems, selectableDesktopItems[1].FullPath);
+Check("b", string.Join(',', selectableDesktopItems.Where(item => desktopSelection.Paths.Contains(item.FullPath)).Select(item => item.Name)), "select only an unselected desktop icon for its context menu");
 selectableDesktopItems[0].SetPosition(new DesktopHostPosition(10, 20));
 selectableDesktopItems[1].SetPosition(new DesktopHostPosition(110, 20));
 var translatedDesktopSelection = DesktopHostLayoutStore.TranslateSelection(selectableDesktopItems.Take(2), selectableDesktopItems[0].FullPath,

@@ -45,6 +45,19 @@ public static class DesktopHostSelectionPolicy
         return items.Select(item => item.FullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
+    public static DesktopHostSelection PreserveSelectionForContextMenu(IReadOnlyList<DesktopHostItem> items, string path)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (!items.Any(item => string.Equals(item.FullPath, path, StringComparison.OrdinalIgnoreCase)))
+            return new(new HashSet<string>(StringComparer.OrdinalIgnoreCase), null);
+
+        var selected = items.Where(item => item.IsSelected).Select(item => item.FullPath)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!selected.Contains(path)) selected = new HashSet<string>([path], StringComparer.OrdinalIgnoreCase);
+        return new(selected, path);
+    }
+
     private static int IndexOf(IReadOnlyList<DesktopHostItem> items, string path)
     {
         for (var index = 0; index < items.Count; index++)

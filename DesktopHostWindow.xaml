@@ -19,7 +19,8 @@
                 <DataTemplate>
                     <Button Width="92" Height="104" Margin="4" Padding="6" AllowDrop="True"
                             Foreground="White" ToolTip="Click to select · Double-click to open"
-                            PreviewMouseLeftButtonDown="OnItemMouseDown" PreviewMouseMove="OnItemMouseMove"
+                            PreviewMouseLeftButtonDown="OnItemMouseDown" PreviewMouseRightButtonDown="OnItemRightButtonDown"
+                            PreviewMouseMove="OnItemMouseMove"
                             DragOver="OnItemDragOver" Drop="OnItemDrop" MouseDoubleClick="OnItemDoubleClick">
                         <Button.Style>
                             <Style TargetType="Button">
@@ -35,8 +36,9 @@
                             </Style>
                         </Button.Style>
                         <Button.ContextMenu>
-                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                <MenuItem Header="Open" Click="OnOpenItemClick"/>
+                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                                         Opened="OnItemContextMenuOpened">
+                                <MenuItem x:Name="OpenDesktopItemMenuItem" Header="Open" Click="OnOpenItemClick"/>
                                 <MenuItem Header="Show more options" IsEnabled="{Binding CanShowNativeContextMenu}"
                                           Click="OnShowNativeContextMenuClick"/>
                             </ContextMenu>

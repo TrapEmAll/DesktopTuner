@@ -260,18 +260,35 @@ public partial class DesktopHostWindow : Window
     private async void OnShowNativeContextMenuClick(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { DataContext: DesktopHostItem { CanShowNativeContextMenu: true } entry }) return;
+        var selectedItems = _desktopItems.Where(item => item.IsSelected && item.CanShowNativeContextMenu).ToArray();
+        if (selectedItems.Length == 0) selectedItems = [entry];
         try
         {
             var owner = new WindowInteropHelper(this).Handle;
-            if (entry.IsShellNamespace)
-                await NativeShellContextMenuService.ShowForShellItemAsync(owner, entry.FullPath);
-            else
-                await NativeShellContextMenuService.ShowForItemsAsync(owner, [entry.FullPath]);
+            await NativeShellContextMenuService.ShowForShellItemsAsync(owner, selectedItems.Select(item => item.FullPath));
         }
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Could not open Windows' context menu", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void OnItemContextMenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu { PlacementTarget: Button { DataContext: DesktopHostItem item } } contextMenu) return;
+        var selection = DesktopHostSelectionPolicy.PreserveSelectionForContextMenu(_desktopItems, item.FullPath);
+        ApplySelection(selection.Paths, selection.AnchorPath);
+        if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "OpenDesktopItemMenuItem") is { } openItem)
+            openItem.IsEnabled = _desktopItems.Count(candidate => candidate.IsSelected) == 1;
+    }
+
+    private void OnItemRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not Button { DataContext: DesktopHostItem item }) return;
+        _dragCandidate = null;
+        var selection = DesktopHostSelectionPolicy.PreserveSelectionForContextMenu(_desktopItems, item.FullPath);
+        ApplySelection(selection.Paths, selection.AnchorPath);
+        ((Button)sender).Focus();
     }
 
     private void OnItemMouseDown(object sender, MouseButtonEventArgs e)
