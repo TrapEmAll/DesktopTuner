@@ -2,6 +2,17 @@ namespace DesktopTuner;
 
 public static class TaskbarKeyboardNavigationPolicy
 {
+    public static IReadOnlyList<TaskbarDisplay> OrderDisplays(IEnumerable<TaskbarDisplay> displays)
+    {
+        ArgumentNullException.ThrowIfNull(displays);
+        return displays
+            .OrderByDescending(display => display.IsPrimary)
+            .ThenBy(display => display.Top)
+            .ThenBy(display => display.Left)
+            .ThenBy(display => display.DeviceName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
     public static int? GetAdjacentIndex(int currentIndex, int itemCount, bool forward)
     {
         if (itemCount < 0) throw new ArgumentOutOfRangeException(nameof(itemCount));

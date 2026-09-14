@@ -46,6 +46,7 @@ public partial class MainWindow : Window
     private ShellNamespaceBrowserWindow? _shellNamespaceBrowserWindow;
     private TaskbarDisplay? _startMenuDisplay;
     private readonly List<TaskbarWindow> _taskbarWindows = [];
+    private nint _taskbarFocusReturnWindow;
     private readonly TaskbarWindowOrder _taskbarWindowOrder = new();
     private readonly NativeTaskbarVisibilityService _nativeTaskbarVisibility = new();
     private readonly DispatcherTimer _nativeTaskbarWatchTimer = new() { Interval = TimeSpan.FromSeconds(2) };
@@ -2041,15 +2042,35 @@ public partial class MainWindow : Window
     private void FocusTaskbar(bool forward = true)
     {
         if (_startMenuWindow?.IsVisible == true) _startMenuWindow.Close();
-        var taskbar = _taskbarWindows.FirstOrDefault(window => window.IsKeyboardFocusWithin && window.IsVisible)
-            ?? _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
-            ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
-        taskbar?.FocusTaskbar(forward);
+        var visibleTaskbars = TaskbarKeyboardNavigationPolicy.OrderDisplays(
+                _taskbarWindows.Where(window => window.IsVisible).Select(window => window.Display))
+            .Select(display => _taskbarWindows.First(window => window.IsVisible &&
+                string.Equals(window.Display.DeviceName, display.DeviceName, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+        if (visibleTaskbars.Length == 0) return;
+
+        var focusedIndex = Array.FindIndex(visibleTaskbars, window => window.HasKeyboardTaskbarFocus);
+        if (focusedIndex < 0) _taskbarFocusReturnWindow = GetForegroundWindow();
+
+        var nextIndex = focusedIndex < 0
+            ? forward ? 0 : visibleTaskbars.Length - 1
+            : focusedIndex;
+        var startAtEdge = false;
+        if (focusedIndex >= 0 && visibleTaskbars[focusedIndex].IsAtKeyboardFocusBoundary(forward) && visibleTaskbars.Length > 1)
+        {
+            nextIndex = TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(focusedIndex, visibleTaskbars.Length, forward)!.Value;
+            startAtEdge = true;
+        }
+
+        visibleTaskbars[nextIndex].FocusTaskbar(forward, startAtEdge, _taskbarFocusReturnWindow);
     }
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint modifiers, uint key);
+
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

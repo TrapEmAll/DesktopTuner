@@ -984,6 +984,14 @@ Check<int?>(3, TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(-1, 4, forward: 
 Check<int?>(0, TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(3, 4, forward: true), "wrap forward taskbar keyboard navigation");
 Check<int?>(3, TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(0, 4, forward: false), "wrap reverse taskbar keyboard navigation");
 Check<int?>(null, TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(-1, 0, forward: true), "ignore keyboard navigation when the taskbar has no buttons");
+var taskbarNavigationDisplays = TaskbarKeyboardNavigationPolicy.OrderDisplays([
+    new TaskbarDisplay("DISPLAY-LEFT", -1600, 0, 1600, 900, false),
+    new TaskbarDisplay("DISPLAY-PRIMARY", 0, 0, 1920, 1080, true),
+    new TaskbarDisplay("DISPLAY-TOP", 320, -1200, 1600, 1200, false)]);
+Check("DISPLAY-PRIMARY,DISPLAY-TOP,DISPLAY-LEFT", string.Join(',', taskbarNavigationDisplays.Select(display => display.DeviceName)),
+    "cycle taskbars with primary display first, then by physical position");
+Check<int?>(1, TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(0, 3, forward: true), "advance Win+T to the next display's taskbar");
+Check<int?>(2, TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(0, 3, forward: false), "advance Win+Shift+T to the previous display's taskbar");
 var shortcutGesture = new WindowsKeyGesture();
 Check(WindowsKeyAction.Suppress, shortcutGesture.KeyDown(0x5c), "capture a right Windows key press");
 Check(WindowsKeyAction.ForwardWindowsDownThenPass, shortcutGesture.KeyDown('R'), "forward the modifier for Win+R");

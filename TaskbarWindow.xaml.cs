@@ -1089,11 +1089,23 @@ public partial class TaskbarWindow : Window
         return true;
     }
 
-    public void FocusTaskbar(bool forward = true)
+    public bool HasKeyboardTaskbarFocus => _keyboardFocusActive && IsKeyboardFocusWithin;
+
+    public bool IsAtKeyboardFocusBoundary(bool forward)
+    {
+        if (!HasKeyboardTaskbarFocus) return false;
+        var buttons = GetFocusableTaskbarButtons();
+        var currentIndex = buttons.FindIndex(button => button.IsKeyboardFocused);
+        return currentIndex >= 0 && (forward ? currentIndex == buttons.Count - 1 : currentIndex == 0);
+    }
+
+    public void FocusTaskbar(bool forward = true, bool startAtEdge = false, nint restoreForegroundWindow = 0)
     {
         if (!_nativeReady) return;
         _autoHideTimer.Stop();
-        if (!_keyboardFocusActive) _previousForegroundWindow = GetForegroundWindow();
+        if (startAtEdge) _keyboardFocusActive = false;
+        if (!_keyboardFocusActive)
+            _previousForegroundWindow = restoreForegroundWindow != 0 ? restoreForegroundWindow : GetForegroundWindow();
         if (_collapsed)
         {
             _collapsed = false;
@@ -1102,7 +1114,7 @@ public partial class TaskbarWindow : Window
         Activate();
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            var buttons = FindVisualChildren<Button>(LayoutGrid).Where(button => button.IsVisible && button.IsEnabled && button.Focusable).ToList();
+            var buttons = GetFocusableTaskbarButtons();
             var currentIndex = buttons.FindIndex(button => button.IsKeyboardFocused);
             var target = _keyboardFocusActive && currentIndex >= 0
                 ? buttons[TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(currentIndex, buttons.Count, forward)!.Value]
@@ -1132,7 +1144,7 @@ public partial class TaskbarWindow : Window
         var isVertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         var forwardKey = isVertical ? Key.Down : Key.Right;
         var backwardKey = isVertical ? Key.Up : Key.Left;
-        var buttons = FindVisualChildren<Button>(LayoutGrid).Where(button => button.IsVisible && button.IsEnabled && button.Focusable).ToList();
+        var buttons = GetFocusableTaskbarButtons();
         if (buttons.Count == 0) return;
         var currentIndex = buttons.FindIndex(button => button.IsKeyboardFocused);
         int targetIndex;
@@ -1144,6 +1156,9 @@ public partial class TaskbarWindow : Window
         buttons[targetIndex].Focus();
         e.Handled = true;
     }
+
+    private List<Button> GetFocusableTaskbarButtons() =>
+        FindVisualChildren<Button>(LayoutGrid).Where(button => button.IsVisible && button.IsEnabled && button.Focusable).ToList();
 
     private void Taskbar_Deactivated(object? sender, EventArgs e)
     {
