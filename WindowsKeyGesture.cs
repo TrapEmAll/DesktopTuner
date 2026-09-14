@@ -9,6 +9,7 @@ public enum WindowsKeyAction
     OpenStartMenu,
     ActivateTaskbarPin,
     FocusTaskbar,
+    FocusTaskbarPrevious,
     OpenExplorer,
     ForwardWindowsTapThenSuppress
 }
@@ -17,6 +18,9 @@ public sealed class WindowsKeyGesture
 {
     private const uint VK_LWIN = 0x5b;
     private const uint VK_RWIN = 0x5c;
+    private const uint VK_SHIFT = 0x10;
+    private const uint VK_LSHIFT = 0xa0;
+    private const uint VK_RSHIFT = 0xa1;
     private const uint VK_ESCAPE = 0x1b;
     private uint? _heldWindowsKey;
     private bool _forwarded;
@@ -64,6 +68,10 @@ public sealed class WindowsKeyGesture
 
         if (_heldWindowsKey is not null && !_forwarded)
         {
+            // Let Shift reach the keyboard state while keeping the Windows key pending.
+            // That lets Win+Shift+T use the custom reverse taskbar cycle regardless of
+            // whether Shift or the Windows key was pressed first.
+            if (key is VK_SHIFT or VK_LSHIFT or VK_RSHIFT) return WindowsKeyAction.PassThrough;
             if (_suppressedShortcutKeys.Contains(key)) return WindowsKeyAction.Suppress;
             if (key == (uint)'E' && canOpenExplorer?.Invoke() == true)
             {
@@ -75,7 +83,7 @@ public sealed class WindowsKeyGesture
             {
                 _taskbarShortcutConsumed = true;
                 _suppressedShortcutKeys.Add(key);
-                return WindowsKeyAction.FocusTaskbar;
+                return shiftPressed ? WindowsKeyAction.FocusTaskbarPrevious : WindowsKeyAction.FocusTaskbar;
             }
             if (TaskbarShortcutCatalog.GetOneBasedPinIndex(key) is { } pinIndex && canActivateTaskbarPin?.Invoke(pinIndex) == true)
             {

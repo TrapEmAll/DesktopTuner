@@ -1089,7 +1089,7 @@ public partial class TaskbarWindow : Window
         return true;
     }
 
-    public void FocusTaskbar()
+    public void FocusTaskbar(bool forward = true)
     {
         if (!_nativeReady) return;
         _autoHideTimer.Stop();
@@ -1105,10 +1105,12 @@ public partial class TaskbarWindow : Window
             var buttons = FindVisualChildren<Button>(LayoutGrid).Where(button => button.IsVisible && button.IsEnabled && button.Focusable).ToList();
             var currentIndex = buttons.FindIndex(button => button.IsKeyboardFocused);
             var target = _keyboardFocusActive && currentIndex >= 0
-                ? buttons[TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(currentIndex, buttons.Count, forward: true)!.Value]
-                : FindVisualChildren<Button>(PinnedItems).FirstOrDefault(button => button.IsVisible && button.IsEnabled)
-                    ?? FindVisualChildren<Button>(WindowItems).FirstOrDefault(button => button.IsVisible && button.IsEnabled)
-                    ?? StartButton;
+                ? buttons[TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(currentIndex, buttons.Count, forward)!.Value]
+                : forward
+                    ? FindVisualChildren<Button>(PinnedItems).FirstOrDefault(button => button.IsVisible && button.IsEnabled)
+                        ?? FindVisualChildren<Button>(WindowItems).FirstOrDefault(button => button.IsVisible && button.IsEnabled)
+                        ?? StartButton
+                    : buttons.LastOrDefault() ?? StartButton;
             _keyboardFocusActive = true;
             target.Focus();
             Keyboard.Focus(target);

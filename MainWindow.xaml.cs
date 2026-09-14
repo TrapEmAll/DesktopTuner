@@ -2038,12 +2038,13 @@ public partial class MainWindow : Window
 
     private bool CanFocusTaskbar() => _taskbarWindows.Any(window => window.IsVisible);
 
-    private void FocusTaskbar()
+    private void FocusTaskbar(bool forward = true)
     {
         if (_startMenuWindow?.IsVisible == true) _startMenuWindow.Close();
-        var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
+        var taskbar = _taskbarWindows.FirstOrDefault(window => window.IsKeyboardFocusWithin && window.IsVisible)
+            ?? _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
             ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
-        taskbar?.FocusTaskbar();
+        taskbar?.FocusTaskbar(forward);
     }
 
     [DllImport("user32.dll", SetLastError = true)]
