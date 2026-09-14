@@ -126,6 +126,14 @@ RunningWindow[] windowsAcrossDisplays =
     new RunningWindow((nint)203, "Spanning", "Mail", @"C:\Apps\mail.exe", false) { Bounds = new(-200, 200, 700, 500) }
 ];
 Check("201,202,203", string.Join(',', TaskbarWindowDisplayPolicy.Filter(windowsAcrossDisplays, primaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.AllTaskbars).Select(window => window.Handle)), "show all app windows on every taskbar in the default mode");
+RunningWindow[] windowsAcrossVirtualDesktops =
+[
+    windowsAcrossDisplays[0] with { IsOnCurrentVirtualDesktop = true },
+    windowsAcrossDisplays[1] with { IsOnCurrentVirtualDesktop = false },
+    windowsAcrossDisplays[2]
+];
+Check("201,203", string.Join(',', TaskbarVirtualDesktopPolicy.Filter(windowsAcrossVirtualDesktops, showAllVirtualDesktops: false).Select(window => window.Handle)), "show current-desktop windows and keep unknown desktop assignments visible");
+Check("201,202,203", string.Join(',', TaskbarVirtualDesktopPolicy.Filter(windowsAcrossVirtualDesktops, showAllVirtualDesktops: true).Select(window => window.Handle)), "show windows from every virtual desktop when requested");
 Check("201,203", string.Join(',', TaskbarWindowDisplayPolicy.Filter(windowsAcrossDisplays, primaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.TaskbarOnWhichWindowIsOpen).Select(window => window.Handle)), "show app windows on the display with the largest window overlap");
 Check("202", string.Join(',', TaskbarWindowDisplayPolicy.Filter(windowsAcrossDisplays, secondaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.TaskbarOnWhichWindowIsOpen).Select(window => window.Handle)), "show a secondary app only on its own taskbar");
 Check("201,202,203", string.Join(',', TaskbarWindowDisplayPolicy.Filter(windowsAcrossDisplays, primaryDisplay, [secondaryDisplay, primaryDisplay], TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen).Select(window => window.Handle)), "also show all app windows on the primary taskbar");
@@ -1162,6 +1170,7 @@ try
     var freshPreferencesStore = new DesktopPreferencesStore(Path.Combine(temporaryPreferencesDirectory, "new-install.json"));
     Check(true, freshPreferencesStore.Load().TaskbarOnAllDisplays, "enable all displays by default for a new installation");
     Check(TaskbarWindowDisplayMode.AllTaskbars, freshPreferencesStore.Load().TaskbarWindowDisplayMode, "show app windows on every taskbar by default");
+    Check(false, freshPreferencesStore.Load().TaskbarShowWindowsFromAllVirtualDesktops, "show only current virtual desktop windows by default");
     Check(TaskbarStyle.EdgeToEdge, freshPreferencesStore.Load().TaskbarLayout, "default a new install to the full-edge taskbar layout");
     Check(false, freshPreferencesStore.Load().CenterStartMenu, "default new installs to taskbar-aligned Start menus");
     Check(false, freshPreferencesStore.Load().FolderShellIntegrationEnabled, "keep folder context menu integration opt-in on new installs");
@@ -1178,7 +1187,7 @@ try
         .WithVisibility(TaskbarSystemButton.Widgets, false);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons, CenterStartMenu: true, TaskbarWindowDisplayMode: TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons, CenterStartMenu: true, TaskbarWindowDisplayMode: TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, TaskbarShowWindowsFromAllVirtualDesktops: true);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
@@ -1186,6 +1195,7 @@ try
     Check(expectedPreferences.StartMenuStyle, loadedPreferences.StartMenuStyle, "persist Start menu style");
     Check(true, loadedPreferences.CenterStartMenu, "persist centered Start menu preference");
     Check(TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, loadedPreferences.TaskbarWindowDisplayMode, "persist the taskbar app display mode");
+    Check(true, loadedPreferences.TaskbarShowWindowsFromAllVirtualDesktops, "persist showing app windows from all virtual desktops");
     preferencesStore.Save(expectedPreferences with { FolderShellIntegrationEnabled = true });
     Check(true, preferencesStore.Load().FolderShellIntegrationEnabled, "persist folder context menu integration");
     preferencesStore.Save(expectedPreferences);
@@ -1255,6 +1265,7 @@ try
     Check(StartMenuStyle.Modern, preferencesStore.Load().StartMenuStyle, "default legacy preferences to the Modern Start menu");
     Check(false, preferencesStore.Load().TaskbarOnAllDisplays, "keep legacy taskbar preferences on the primary display");
     Check(false, preferencesStore.Load().ReplaceNativeTaskbar, "keep native taskbar replacement disabled for legacy preferences");
+    Check(false, preferencesStore.Load().TaskbarShowWindowsFromAllVirtualDesktops, "default older preferences to the current virtual desktop");
     Check(false, preferencesStore.Load().StartWithWindows, "disable sign-in startup for older preference files");
     Check(4, preferencesStore.Load().StartRecentAppCount, "default older preferences to four recent Start apps");
     Check(5, preferencesStore.Load().TaskbarTransparency, "default taskbar transparency for older preference files");

@@ -330,8 +330,9 @@ public partial class TaskbarWindow : Window
     private void RefreshWindows()
     {
         var allWindows = _windowOrder.Synchronize(_windows.Enumerate());
+        var virtualDesktopWindows = TaskbarVirtualDesktopPolicy.Filter(allWindows, _preferences.TaskbarShowWindowsFromAllVirtualDesktops);
         var wasMaximizedWindowOnDisplay = _maximizedWindowOnDisplay;
-        _maximizedWindowOnDisplay = TaskbarAutoHidePolicy.HasMaximizedWindowOnDisplay(allWindows, Display);
+        _maximizedWindowOnDisplay = TaskbarAutoHidePolicy.HasMaximizedWindowOnDisplay(virtualDesktopWindows, Display);
         var layoutChanged = _preferences.TaskbarDynamicTransparency && wasMaximizedWindowOnDisplay != _maximizedWindowOnDisplay;
         if (wasMaximizedWindowOnDisplay && !_maximizedWindowOnDisplay && !_autoHide && _collapsed)
         {
@@ -340,8 +341,8 @@ public partial class TaskbarWindow : Window
         }
         if (layoutChanged) ApplyLayout();
         var windows = _preferences.TaskbarWindowDisplayMode == TaskbarWindowDisplayMode.AllTaskbars
-            ? allWindows
-            : TaskbarWindowDisplayPolicy.Filter(allWindows, Display, TaskbarDisplayService.Enumerate(), _preferences.TaskbarWindowDisplayMode);
+            ? virtualDesktopWindows
+            : TaskbarWindowDisplayPolicy.Filter(virtualDesktopWindows, Display, TaskbarDisplayService.Enumerate(), _preferences.TaskbarWindowDisplayMode);
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         var pinnedApps = _preferences.PinnedApps!;
         PinnedItems.ItemsSource = pinnedApps.Select(app =>
@@ -1018,6 +1019,7 @@ public partial class TaskbarWindow : Window
     private void ActivatePinnedApp(PinnedTaskbarApp app, Button? sourceButton = null, bool showPreview = true, bool toggleMinimizeOnActive = true)
     {
         var openWindows = _windows.Enumerate()
+            .Where(window => _preferences.TaskbarShowWindowsFromAllVirtualDesktops || window.IsOnCurrentVirtualDesktop is not false)
             .Where(window => TaskbarWindowGrouping.MatchesPinnedApp(app, window))
             .ToList();
         if (_preferences.TaskbarGrouping == TaskbarGroupingMode.Never && openWindows.Count > 1 &&

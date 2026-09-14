@@ -9,6 +9,7 @@ public sealed record RunningWindow(nint Handle, string Title, string Application
 {
     public bool IsMaximized { get; init; }
     public bool IsForeground { get; init; }
+    public bool? IsOnCurrentVirtualDesktop { get; init; }
     public TaskbarBounds Bounds { get; init; } = new(0, 0, 0, 0);
     public string? DisplayDeviceName { get; init; }
 }
@@ -27,6 +28,7 @@ public sealed class RunningWindowService
     private IReadOnlyList<RunningWindow> EnumerateWindows()
     {
         var windows = new List<RunningWindow>();
+        using var virtualDesktop = VirtualDesktopWindowService.TryCreate();
         var shell = GetShellWindow();
         var foregroundWindow = GetForegroundWindow();
         EnumWindows((handle, _) =>
@@ -63,6 +65,7 @@ public sealed class RunningWindowService
             {
                 IsMaximized = IsZoomed(handle),
                 IsForeground = handle == foregroundWindow,
+                IsOnCurrentVirtualDesktop = virtualDesktop?.IsWindowOnCurrentDesktop(handle),
                 Bounds = new TaskbarBounds(windowBounds.Left, windowBounds.Top, Math.Max(0, windowBounds.Right - windowBounds.Left), Math.Max(0, windowBounds.Bottom - windowBounds.Top)),
                 DisplayDeviceName = TaskbarDisplayService.GetDeviceNameForWindow(handle)
             });

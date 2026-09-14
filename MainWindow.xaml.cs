@@ -68,6 +68,7 @@ public partial class MainWindow : Window
     private bool _centerStartMenu;
     private bool _taskbarOnAllDisplays = true;
     private TaskbarWindowDisplayMode _taskbarWindowDisplayMode = TaskbarWindowDisplayMode.AllTaskbars;
+    private bool _taskbarShowWindowsFromAllVirtualDesktops;
     private bool _replaceNativeTaskbar;
     private bool _startWithWindows;
     private bool _folderShellIntegrationEnabled;
@@ -106,6 +107,7 @@ public partial class MainWindow : Window
         _centerStartMenu = desktopPreferences.CenterStartMenu;
         _taskbarOnAllDisplays = desktopPreferences.TaskbarOnAllDisplays;
         _taskbarWindowDisplayMode = desktopPreferences.TaskbarWindowDisplayMode;
+        _taskbarShowWindowsFromAllVirtualDesktops = desktopPreferences.TaskbarShowWindowsFromAllVirtualDesktops;
         _replaceNativeTaskbar = desktopPreferences.ReplaceNativeTaskbar;
         _folderShellIntegrationEnabled = desktopPreferences.FolderShellIntegrationEnabled;
         _nativeTaskbarWatchTimer.Tick += (_, _) => MaintainNativeTaskbars();
@@ -497,6 +499,16 @@ public partial class MainWindow : Window
             };
             appDisplayRow.Children.Add(appDisplaySelector);
             PageContent.Children.Add(appDisplayRow);
+            var allVirtualDesktops = new CheckBox
+            {
+                Content = "Show open windows from all virtual desktops",
+                IsChecked = _taskbarShowWindowsFromAllVirtualDesktops,
+                Margin = new Thickness(0, 0, 0, 16),
+                FontSize = 13
+            };
+            allVirtualDesktops.Checked += (_, _) => { _taskbarShowWindowsFromAllVirtualDesktops = true; SaveDesktopPreferences(); };
+            allVirtualDesktops.Unchecked += (_, _) => { _taskbarShowWindowsFromAllVirtualDesktops = false; SaveDesktopPreferences(); };
+            PageContent.Children.Add(allVirtualDesktops);
             var replaceNativeTaskbar = new CheckBox
             {
                 Content = "Replace the Windows taskbar while Desktop Tuner is running (experimental)",
@@ -1136,7 +1148,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops);
 
     private void SetStartMenuCentered(bool centered)
     {
@@ -1238,6 +1250,7 @@ public partial class MainWindow : Window
             _centerStartMenu = preferences.CenterStartMenu;
             _taskbarOnAllDisplays = preferences.TaskbarOnAllDisplays;
             _taskbarWindowDisplayMode = preferences.TaskbarWindowDisplayMode;
+            _taskbarShowWindowsFromAllVirtualDesktops = preferences.TaskbarShowWindowsFromAllVirtualDesktops;
             _taskbarLayout = preferences.TaskbarLayout;
             _taskbarGrouping = preferences.TaskbarGrouping;
             _taskbarButtonAlignment = preferences.TaskbarButtonAlignment;
