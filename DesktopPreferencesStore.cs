@@ -23,7 +23,8 @@ public sealed record PinnedTaskbarApp(string Name, string ExecutablePath, bool I
     [JsonIgnore]
     public bool CanRunElevated => TaskbarPinCatalog.CanRunAsAdministrator(Name, ExecutablePath, IsDirectory);
 }
-public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern, bool TaskbarOnAllDisplays = false, TaskbarStyle TaskbarLayout = TaskbarStyle.EdgeToEdge, TaskbarGroupingMode TaskbarGrouping = TaskbarGroupingMode.Always, TaskbarButtonAlignment TaskbarButtonAlignment = TaskbarButtonAlignment.Center, bool TaskbarShowLabels = true, TaskbarIconSize TaskbarIconSize = TaskbarIconSize.Standard, TaskbarButtonSpacing TaskbarButtonSpacing = TaskbarButtonSpacing.Standard, bool StartWithWindows = false, bool AutoHideWhenMaximized = false, int TaskbarTransparency = 5, List<AppEntry>? PinnedStartApps = null, bool ReplaceNativeTaskbar = false, bool TaskbarDynamicTransparency = false, TaskbarButtonEffect TaskbarButtonEffect = TaskbarButtonEffect.Accent, StartMenuPlacePreferences? StartMenuPlaces = null, int StartRecentAppCount = 4, TaskbarSystemButtonVisibility? TaskbarSystemButtons = null, bool CenterStartMenu = false, TaskbarWindowDisplayMode TaskbarWindowDisplayMode = TaskbarWindowDisplayMode.AllTaskbars, bool FolderShellIntegrationEnabled = false, bool TaskbarShowWindowsFromAllVirtualDesktops = false, bool ReplaceExplorerShortcut = false, TaskbarVisualStyle TaskbarVisualStyle = TaskbarVisualStyle.Windows11, ControlPanelAppletPreferences? ControlPanelApplets = null);
+public sealed record TaskbarWeatherSettings(bool Enabled = false, string LocationQuery = "", string LocationName = "", double? Latitude = null, double? Longitude = null);
+public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern, bool TaskbarOnAllDisplays = false, TaskbarStyle TaskbarLayout = TaskbarStyle.EdgeToEdge, TaskbarGroupingMode TaskbarGrouping = TaskbarGroupingMode.Always, TaskbarButtonAlignment TaskbarButtonAlignment = TaskbarButtonAlignment.Center, bool TaskbarShowLabels = true, TaskbarIconSize TaskbarIconSize = TaskbarIconSize.Standard, TaskbarButtonSpacing TaskbarButtonSpacing = TaskbarButtonSpacing.Standard, bool StartWithWindows = false, bool AutoHideWhenMaximized = false, int TaskbarTransparency = 5, List<AppEntry>? PinnedStartApps = null, bool ReplaceNativeTaskbar = false, bool TaskbarDynamicTransparency = false, TaskbarButtonEffect TaskbarButtonEffect = TaskbarButtonEffect.Accent, StartMenuPlacePreferences? StartMenuPlaces = null, int StartRecentAppCount = 4, TaskbarSystemButtonVisibility? TaskbarSystemButtons = null, bool CenterStartMenu = false, TaskbarWindowDisplayMode TaskbarWindowDisplayMode = TaskbarWindowDisplayMode.AllTaskbars, bool FolderShellIntegrationEnabled = false, bool TaskbarShowWindowsFromAllVirtualDesktops = false, bool ReplaceExplorerShortcut = false, TaskbarVisualStyle TaskbarVisualStyle = TaskbarVisualStyle.Windows11, ControlPanelAppletPreferences? ControlPanelApplets = null, TaskbarWeatherSettings? TaskbarWeather = null);
 
 public sealed class DesktopPreferencesStore
 {
@@ -36,7 +37,7 @@ public sealed class DesktopPreferencesStore
 
     public DesktopPreferences Load()
     {
-        if (!File.Exists(_path)) return new DesktopPreferences(TaskbarEdge.Bottom, TaskbarOnAllDisplays: true);
+        if (!File.Exists(_path)) return new DesktopPreferences(TaskbarEdge.Bottom, TaskbarOnAllDisplays: true, TaskbarWeather: new TaskbarWeatherSettings());
         try
         {
             var value = JsonSerializer.Deserialize<DesktopPreferences>(File.ReadAllText(_path));
@@ -51,7 +52,7 @@ public sealed class DesktopPreferencesStore
             var startPins = StartPinCatalog.Normalize(value.PinnedStartApps).ToList();
             var startPlaces = StartMenuPlaceCatalog.Normalize(value.StartMenuPlaces);
             var controlPanelApplets = ControlPanelAppletCatalog.Normalize(value.ControlPanelApplets);
-            return value with { PinnedApps = pins, PinnedStartApps = startPins, StartMenuPlaces = startPlaces, ControlPanelApplets = controlPanelApplets, TaskbarTransparency = TaskbarTransparencyPolicy.Clamp(value.TaskbarTransparency), StartRecentAppCount = Math.Clamp(value.StartRecentAppCount, 0, StartRecentAppsStore.MaximumEntries), TaskbarSystemButtons = TaskbarSystemButtonVisibility.Normalize(value.TaskbarSystemButtons) };
+            return value with { PinnedApps = pins, PinnedStartApps = startPins, StartMenuPlaces = startPlaces, ControlPanelApplets = controlPanelApplets, TaskbarWeather = TaskbarWeatherPolicy.Normalize(value.TaskbarWeather), TaskbarTransparency = TaskbarTransparencyPolicy.Clamp(value.TaskbarTransparency), StartRecentAppCount = Math.Clamp(value.StartRecentAppCount, 0, StartRecentAppsStore.MaximumEntries), TaskbarSystemButtons = TaskbarSystemButtonVisibility.Normalize(value.TaskbarSystemButtons) };
         }
         catch (JsonException) { return new DesktopPreferences(TaskbarEdge.Bottom); }
         catch (IOException) { return new DesktopPreferences(TaskbarEdge.Bottom); }

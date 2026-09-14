@@ -1513,7 +1513,16 @@ try
     Check(TaskbarStyle.EdgeToEdge, freshPreferencesStore.Load().TaskbarLayout, "default a new install to the full-edge taskbar layout");
     Check(false, freshPreferencesStore.Load().CenterStartMenu, "default new installs to taskbar-aligned Start menus");
     Check(false, freshPreferencesStore.Load().FolderShellIntegrationEnabled, "keep folder context menu integration opt-in on new installs");
-    Check(false, freshPreferencesStore.Load().ReplaceExplorerShortcut, "keep Win+E Explorer routing opt-in on new installs");
+Check(false, freshPreferencesStore.Load().ReplaceExplorerShortcut, "keep Win+E Explorer routing opt-in on new installs");
+Check(false, freshPreferencesStore.Load().TaskbarWeather!.Enabled, "keep taskbar weather opt-in on new installs");
+Check(false, TaskbarWeatherPolicy.Normalize(new TaskbarWeatherSettings(Enabled: true)).Enabled, "require a valid chosen location before enabling taskbar weather");
+Check(false, TaskbarWeatherPolicy.Normalize(new TaskbarWeatherSettings(Enabled: true, Latitude: 95, Longitude: 10)).Enabled, "disable weather settings with out-of-range coordinates");
+Check("°F", TaskbarWeatherPolicy.GetTemperatureUnit("US"), "use Fahrenheit for US taskbar weather");
+Check("°C", TaskbarWeatherPolicy.GetTemperatureUnit("GB"), "use Celsius for UK taskbar weather");
+Check("Thunderstorm with hail", TaskbarWeatherPolicy.GetCondition(99, true), "describe severe thunderstorm taskbar weather codes");
+Check("☾", TaskbarWeatherPolicy.GetGlyph(0, false), "show a night glyph for clear night conditions");
+Check(new TaskbarCurrentWeather(21.5, "°F", 2, true), TaskbarWeatherPolicy.ParseCurrentResponse("""{"current":{"temperature_2m":21.5,"weather_code":2,"is_day":1}}""", "fahrenheit"), "parse current weather API conditions and unit");
+Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentResponse("{}", "celsius"), "reject weather responses without current conditions");
     var staleTaskbarSnapshot = Path.Combine(temporaryPreferencesDirectory, "taskbar-restore.json");
     File.WriteAllText(staleTaskbarSnapshot, """[{"Handle":-1,"WasVisible":true}]""");
     NativeTaskbarVisibilityService.RestoreSnapshot(staleTaskbarSnapshot);
@@ -1540,15 +1549,17 @@ try
         .WithVisibility(TaskbarSystemButton.InputMethod, false)
         .WithVisibility(TaskbarSystemButton.OnScreenKeyboard, false)
         .WithVisibility(TaskbarSystemButton.Widgets, false);
+    var savedWeather = new TaskbarWeatherSettings(true, "Seattle, Washington", "Seattle, Washington, United States", 47.6062, -122.3321);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons, CenterStartMenu: true, TaskbarWindowDisplayMode: TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, TaskbarShowWindowsFromAllVirtualDesktops: true, ControlPanelApplets: savedControlPanelApplets);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons, CenterStartMenu: true, TaskbarWindowDisplayMode: TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, TaskbarShowWindowsFromAllVirtualDesktops: true, ControlPanelApplets: savedControlPanelApplets, TaskbarWeather: savedWeather);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
     Check(expectedPreferences.TaskbarSize, loadedPreferences.TaskbarSize, "persist taskbar size");
     Check(expectedPreferences.StartMenuStyle, loadedPreferences.StartMenuStyle, "persist Start menu style");
     Check(true, loadedPreferences.CenterStartMenu, "persist centered Start menu preference");
+    Check(savedWeather, loadedPreferences.TaskbarWeather, "persist opt-in weather location and coordinates");
     Check(TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, loadedPreferences.TaskbarWindowDisplayMode, "persist the taskbar app display mode");
     Check(true, loadedPreferences.TaskbarShowWindowsFromAllVirtualDesktops, "persist showing app windows from all virtual desktops");
     preferencesStore.Save(expectedPreferences with { FolderShellIntegrationEnabled = true });

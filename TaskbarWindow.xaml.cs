@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -23,6 +24,8 @@ public partial class TaskbarWindow : Window
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
     private readonly DispatcherTimer _batteryRefreshTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly DispatcherTimer _microphoneRefreshTimer = new() { Interval = TimeSpan.FromSeconds(15) };
+    private readonly DispatcherTimer _weatherRefreshTimer = new() { Interval = TimeSpan.FromMinutes(20) };
+    private readonly CancellationTokenSource _weatherCancellation = new();
     private readonly DispatcherTimer _autoHideTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
     private readonly DispatcherTimer _previewOpenTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
     private readonly DispatcherTimer _previewCloseTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
@@ -79,6 +82,7 @@ public partial class TaskbarWindow : Window
         _refreshTimer.Tick += (_, _) => RefreshWindows();
         _batteryRefreshTimer.Tick += (_, _) => UpdateBatteryStatus();
         _microphoneRefreshTimer.Tick += (_, _) => UpdateMicrophoneStatus();
+        _weatherRefreshTimer.Tick += async (_, _) => await UpdateWeatherAsync();
         _autoHideTimer.Tick += (_, _) => AutoHideTimer_Tick();
         _previewOpenTimer.Tick += (_, _) => OpenPendingPreview();
         _previewCloseTimer.Tick += (_, _) => ClosePreviewIfPointerOutside();
@@ -96,7 +100,7 @@ public partial class TaskbarWindow : Window
 
     public void SetPreferences(DesktopPreferences preferences)
     {
-        _preferences = preferences with { PinnedApps = preferences.PinnedApps ?? [], TaskbarSystemButtons = TaskbarSystemButtonVisibility.Normalize(preferences.TaskbarSystemButtons) };
+        _preferences = preferences with { PinnedApps = preferences.PinnedApps ?? [], TaskbarSystemButtons = TaskbarSystemButtonVisibility.Normalize(preferences.TaskbarSystemButtons), TaskbarWeather = TaskbarWeatherPolicy.Normalize(preferences.TaskbarWeather) };
         TaskbarTheme.Apply(_isDark, _preferences.TaskbarVisualStyle);
         _edge = _preferences.TaskbarEdge;
         _size = _preferences.TaskbarSize;
@@ -104,9 +108,11 @@ public partial class TaskbarWindow : Window
         _autoHideWhenMaximized = _preferences.AutoHideWhenMaximized;
         _collapsed = (_autoHide || _autoHideWhenMaximized && _maximizedWindowOnDisplay) && !_isStartMenuVisible() && !IsMouseOver;
         ApplyLayout();
+        UpdateWeatherVisibility();
         if (IsLoaded) RefreshWindows();
         if (IsLoaded) UpdateBatteryStatus();
         if (IsLoaded) UpdateMicrophoneStatus();
+        if (IsLoaded && _preferences.TaskbarWeather!.Enabled) _ = UpdateWeatherAsync();
         if (IsLoaded) Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
         if (!_autoHide && !_autoHideWhenMaximized) _autoHideTimer.Stop();
         else if (IsLoaded) _autoHideTimer.Start();
@@ -339,6 +345,8 @@ public partial class TaskbarWindow : Window
         UpdateBatteryStatus();
         UpdateVolumeStatus();
         UpdateMicrophoneStatus();
+        UpdateWeatherVisibility();
+        if (_preferences.TaskbarWeather!.Enabled) _ = UpdateWeatherAsync();
         _refreshTimer.Start();
         _batteryRefreshTimer.Start();
         if (_autoHide || _autoHideWhenMaximized) _autoHideTimer.Start();
@@ -351,6 +359,9 @@ public partial class TaskbarWindow : Window
         _refreshTimer.Stop();
         _batteryRefreshTimer.Stop();
         _microphoneRefreshTimer.Stop();
+        _weatherRefreshTimer.Stop();
+        _weatherCancellation.Cancel();
+        _weatherCancellation.Dispose();
         _autoHideTimer.Stop();
         _previewOpenTimer.Stop();
         _previewCloseTimer.Stop();
@@ -485,9 +496,11 @@ public partial class TaskbarWindow : Window
         var buttonSpan = vertical
             ? Math.Max(44, iconPixels + 18) + gap * 2
             : (_preferences.TaskbarShowLabels ? 140 : iconPixels + 24) + (gap - 2) * 2;
+        StartControls.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         RightControls.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var startControlsLength = vertical ? StartControls.DesiredSize.Height : StartControls.DesiredSize.Width;
         var reservedControlsLength = vertical ? RightControls.DesiredSize.Height : RightControls.DesiredSize.Width;
-        var reservedLength = reservedControlsLength + 84 + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
+        var reservedLength = reservedControlsLength + startControlsLength + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
         return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / buttonSpan));
     }
 
@@ -1463,6 +1476,8 @@ public partial class TaskbarWindow : Window
 
     private void Clock_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenNotificationCenter();
 
+    private void Weather_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWidgets();
+
     private void Search_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWindowsSearch();
 
     private void TaskView_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenTaskView();
@@ -1476,6 +1491,51 @@ public partial class TaskbarWindow : Window
     private void Emoji_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenEmojiPanel();
 
     private void Widgets_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWidgets();
+
+    private void UpdateWeatherVisibility()
+    {
+        var weather = _preferences.TaskbarWeather!;
+        WeatherButton.Visibility = weather.Enabled ? Visibility.Visible : Visibility.Collapsed;
+        if (!weather.Enabled)
+        {
+            _weatherRefreshTimer.Stop();
+            WeatherButton.ToolTip = "Enable taskbar weather in Desktop Tuner settings";
+            return;
+        }
+
+        WeatherButton.ToolTip = $"{weather.LocationName} · Weather data by Open-Meteo";
+        if (IsLoaded) _weatherRefreshTimer.Start();
+    }
+
+    private async Task UpdateWeatherAsync()
+    {
+        var weatherSettings = _preferences.TaskbarWeather!;
+        if (!weatherSettings.Enabled || weatherSettings.Latitude is not { } latitude || weatherSettings.Longitude is not { } longitude)
+            return;
+        try
+        {
+            var current = await TaskbarWeatherService.GetCurrentAsync(latitude, longitude, GetWeatherRegionCode(), _weatherCancellation.Token);
+            if (_weatherCancellation.IsCancellationRequested || _preferences.TaskbarWeather != weatherSettings) return;
+            WeatherGlyph.Text = TaskbarWeatherPolicy.GetGlyph(current.WeatherCode, current.IsDay);
+            WeatherTemperature.Text = $"{Math.Round(current.Temperature, MidpointRounding.AwayFromZero):0}{current.Unit}";
+            WeatherButton.ToolTip = $"{weatherSettings.LocationName} · {TaskbarWeatherPolicy.GetCondition(current.WeatherCode, current.IsDay)} · Weather data by Open-Meteo";
+        }
+        catch (OperationCanceledException) when (_weatherCancellation.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            if (!_weatherCancellation.IsCancellationRequested)
+            {
+                WeatherButton.ToolTip = $"Weather unavailable for {weatherSettings.LocationName}. Check your connection. Weather data by Open-Meteo.";
+                Trace.TraceWarning($"Could not refresh taskbar weather: {ex.Message}");
+            }
+        }
+    }
+
+    private static string GetWeatherRegionCode()
+    {
+        try { return RegionInfo.CurrentRegion.TwoLetterISORegionName; }
+        catch (ArgumentException) { return string.Empty; }
+    }
 
     private void TaskbarContextMenu_Opened(object sender, RoutedEventArgs e)
     {

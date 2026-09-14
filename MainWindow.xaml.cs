@@ -1,6 +1,7 @@
 using Microsoft.Win32;
 using System.ComponentModel;
 using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -56,6 +57,7 @@ public partial class MainWindow : Window
     private TaskbarButtonSpacing _taskbarButtonSpacing = TaskbarButtonSpacing.Standard;
     private TaskbarButtonEffect _taskbarButtonEffect = TaskbarButtonEffect.Accent;
     private TaskbarSystemButtonVisibility _taskbarSystemButtons = TaskbarSystemButtonVisibility.Default;
+    private TaskbarWeatherSettings _taskbarWeather = new();
     private bool _taskbarShowLabels = true;
     private bool _taskbarAutoHide;
     private bool _taskbarAutoHideWhenMaximized;
@@ -104,6 +106,7 @@ public partial class MainWindow : Window
         _taskbarButtonSpacing = desktopPreferences.TaskbarButtonSpacing;
         _taskbarButtonEffect = desktopPreferences.TaskbarButtonEffect;
         _taskbarSystemButtons = TaskbarSystemButtonVisibility.Normalize(desktopPreferences.TaskbarSystemButtons);
+        _taskbarWeather = TaskbarWeatherPolicy.Normalize(desktopPreferences.TaskbarWeather);
         _taskbarShowLabels = desktopPreferences.TaskbarShowLabels;
         _taskbarAutoHide = desktopPreferences.AutoHide;
         _taskbarAutoHideWhenMaximized = desktopPreferences.AutoHideWhenMaximized;
@@ -461,6 +464,96 @@ public partial class MainWindow : Window
             showLabels.Checked += (_, _) => { _taskbarShowLabels = true; SaveDesktopPreferences(); };
             showLabels.Unchecked += (_, _) => { _taskbarShowLabels = false; SaveDesktopPreferences(); };
             PageContent.Children.Add(showLabels);
+
+            AddPageHeading("Taskbar weather", "Show current conditions for a city or postal code you choose. Your location is sent to Open-Meteo only when you search or enable weather.");
+            var weatherLocationRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
+            var weatherQuery = new TextBox
+            {
+                Text = _taskbarWeather.LocationQuery,
+                Width = 250,
+                Height = 36,
+                MaxLength = 120,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                ToolTip = "City or postal code, optionally followed by a region or country"
+            };
+            weatherLocationRow.Children.Add(weatherQuery);
+            var weatherSearch = new Button { Content = "Find location", Style = (Style)FindResource("SecondaryButton"), Margin = new Thickness(8, 0, 0, 0) };
+            weatherLocationRow.Children.Add(weatherSearch);
+            PageContent.Children.Add(weatherLocationRow);
+
+            var weatherLocations = new List<TaskbarWeatherLocation>();
+            var weatherLocationSelector = new ComboBox
+            {
+                Width = 360,
+                Height = 36,
+                DisplayMemberPath = nameof(TaskbarWeatherLocation.Name),
+                ItemsSource = weatherLocations,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 12),
+                ToolTip = "Choose the matching city and region"
+            };
+            if (_taskbarWeather.Latitude is { } savedLatitude && _taskbarWeather.Longitude is { } savedLongitude)
+            {
+                var savedLocation = new TaskbarWeatherLocation(_taskbarWeather.LocationName, savedLatitude, savedLongitude);
+                weatherLocations.Add(savedLocation);
+                weatherLocationSelector.ItemsSource = null;
+                weatherLocationSelector.ItemsSource = weatherLocations;
+                weatherLocationSelector.SelectedIndex = 0;
+            }
+            PageContent.Children.Add(weatherLocationSelector);
+
+            weatherSearch.Click += async (_, _) =>
+            {
+                try
+                {
+                    if (string.IsNullOrWhiteSpace(weatherQuery.Text))
+                    {
+                        MessageBox.Show(this, "Enter a city or postal code to search.", "Choose a weather location", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+                    var locations = await TaskbarWeatherService.SearchLocationsAsync(weatherQuery.Text);
+                    if (locations.Count == 0)
+                    {
+                        MessageBox.Show(this, "No matching locations were found. Add a region or country and search again.", "Weather location not found", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+                    weatherLocationSelector.ItemsSource = locations;
+                    weatherLocationSelector.SelectedIndex = locations.Count == 1 ? 0 : -1;
+                    if (locations.Count > 1) weatherLocationSelector.IsDropDownOpen = true;
+                }
+                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or IOException or InvalidOperationException)
+                {
+                    MessageBox.Show(this, $"Could not search for that location. Check your connection and try again.{Environment.NewLine}{ex.Message}", "Weather location search failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            };
+
+            var weatherEnabled = new CheckBox
+            {
+                Content = "Show weather on the taskbar",
+                IsChecked = _taskbarWeather.Enabled,
+                Margin = new Thickness(0, 0, 0, 10),
+                FontSize = 13
+            };
+            PageContent.Children.Add(weatherEnabled);
+            var saveWeather = new Button { Content = "Save weather settings", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 10) };
+            saveWeather.Click += (_, _) =>
+            {
+                var location = weatherLocationSelector.SelectedItem as TaskbarWeatherLocation;
+                if (weatherEnabled.IsChecked == true && location is null)
+                {
+                    MessageBox.Show(this, "Search for and select a city before enabling taskbar weather.", "Choose a weather location", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                _taskbarWeather = TaskbarWeatherPolicy.Normalize(new TaskbarWeatherSettings(
+                    weatherEnabled.IsChecked == true,
+                    weatherQuery.Text,
+                    location?.Name ?? _taskbarWeather.LocationName,
+                    location?.Latitude ?? _taskbarWeather.Latitude,
+                    location?.Longitude ?? _taskbarWeather.Longitude));
+                SaveDesktopPreferences();
+            };
+            PageContent.Children.Add(saveWeather);
+            PageContent.Children.Add(InfoCard("Weather data and privacy", "Open-Meteo weather and GeoNames location data are used for this optional feature. Searching sends your search text to Open-Meteo; enabled weather sends the selected coordinates for a forecast. Weather stays off until you turn it on. Data attribution: Open-Meteo and GeoNames. The public endpoint is for non-commercial use; commercial deployments need an appropriately licensed endpoint."));
 
             AddPageHeading("System buttons", "Choose which controls appear when Desktop Tuner draws the system area. If the native Windows notification area stays exposed, its tray and clock remain in place. Battery appears only in replacement mode when Windows reports a battery.");
             var systemButtonsPanel = new StackPanel();
@@ -1281,7 +1374,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather);
 
     private DesktopPreferences CreateTaskbarRuntimePreferences()
     {
@@ -1436,6 +1529,7 @@ public partial class MainWindow : Window
             _taskbarButtonSpacing = preferences.TaskbarButtonSpacing;
             _taskbarButtonEffect = preferences.TaskbarButtonEffect;
             _taskbarSystemButtons = TaskbarSystemButtonVisibility.Normalize(preferences.TaskbarSystemButtons);
+            _taskbarWeather = TaskbarWeatherPolicy.Normalize(preferences.TaskbarWeather);
             _startWithWindows = preferences.StartWithWindows;
             _replaceNativeTaskbar = preferences.ReplaceNativeTaskbar;
             if ((displayModeChanged || replacementModeChanged) && _taskbarWindows.Any(window => window.IsVisible))

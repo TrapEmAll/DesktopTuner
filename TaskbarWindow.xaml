@@ -91,6 +91,12 @@
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <Border x:Name="StartSegment" Grid.Column="0">
                 <StackPanel x:Name="StartControls" Orientation="Horizontal">
+                    <Button x:Name="WeatherButton" Visibility="Collapsed" Style="{StaticResource TaskButton}" Click="Weather_Click" Padding="7,4" ToolTip="Current weather">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock x:Name="WeatherGlyph" Text="☀" FontSize="17" Margin="0,0,5,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="WeatherTemperature" Text="--" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                     <Button x:Name="StartButton" Width="38" Height="38" Style="{StaticResource TaskButton}" Background="{DynamicResource TaskbarAccentBrush}" Click="Start_Click" ToolTip="Open Desktop Tuner Start menu" AutomationProperties.Name="Start menu">
                         <Grid Width="18" Height="18" IsHitTestVisible="False">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="8" /><ColumnDefinition Width="2" /><ColumnDefinition Width="8" /></Grid.ColumnDefinitions>
