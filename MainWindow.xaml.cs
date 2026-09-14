@@ -2147,7 +2147,9 @@ public partial class MainWindow : Window
         {
             case (uint)'A': SystemFlyoutService.OpenQuickSettings(); break;
             case (uint)'N': SystemFlyoutService.OpenNotificationCenter(); break;
+            case (uint)'S': SystemFlyoutService.OpenWindowsSearch(); break;
             case (uint)'W': SystemFlyoutService.OpenWidgets(); break;
+            case 0x20: SystemFlyoutService.OpenInputMethodSwitcher(); break;
             case 0x09: SystemFlyoutService.OpenTaskView(); break;
         }
     }
