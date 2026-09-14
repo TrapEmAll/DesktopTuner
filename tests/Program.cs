@@ -334,6 +334,9 @@ Check("Editor Pro", rankedSearchResults[1].Name, "rank app-name prefixes before 
 Check("Text Editor", rankedSearchResults[2].Name, "rank word-boundary matches above mid-word matches");
 Check("TextEditor", rankedSearchResults[3].Name, "match camel-case word boundaries");
 Check("Documents", AppCatalogService.Search([new AppEntry("Documents", "documents.lnk", CategoryPath: "Creative Tools")], "creative tool").Single().Name, "search nested Start menu folder names");
+Check("SJ", StartMenuIdentityService.GetInitials("Sam Jones"), "build an account avatar from the user's first and last names");
+Check("SJ", StartMenuIdentityService.GetInitials("sam.jones"), "split account names on common username separators for initials");
+Check("?", StartMenuIdentityService.GetInitials("  "), "provide a safe avatar fallback for a missing account name");
 var startPins = StartPinCatalog.Pin([], new AppEntry("Editor", @"C:\Apps\Editor.lnk", CategoryPath: "Tools"));
 Check("Editor", startPins.Single().Name, "pin a Start menu shortcut to the Start favorites list");
 Check(1, StartPinCatalog.Pin(startPins, new AppEntry("Editor", @"c:\apps\editor.LNK")).Count, "avoid duplicate Start pins regardless of path casing");

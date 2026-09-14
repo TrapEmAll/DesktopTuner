@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.ComponentModel;
 using System.Windows;
@@ -6,6 +7,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Microsoft.VisualBasic;
 
 namespace DesktopTuner;
@@ -15,6 +17,7 @@ public partial class StartMenuWindow : Window
     private const string PinnedStartDragFormat = "DesktopTuner.StartPinnedApp";
     private readonly AppCatalogService _catalog = new();
     private readonly StartRecentAppsStore _recentAppsStore;
+    private readonly StartMenuIdentity _identity;
     private readonly Func<IReadOnlyList<AppEntry>, bool>? _savePinnedApps;
     private StartMenuPlacePreferences _startPlaces;
     private IReadOnlyList<AppEntry> _apps = [];
@@ -32,6 +35,27 @@ public partial class StartMenuWindow : Window
     public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4)
     {
         InitializeComponent();
+        _identity = StartMenuIdentityService.ReadCurrentUser();
+        ProfileInitials.Text = _identity.Initials;
+        if (_identity.PicturePath is { } picturePath)
+        {
+            try
+            {
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.UriSource = new Uri(picturePath, UriKind.Absolute);
+                image.EndInit();
+                image.Freeze();
+                ProfileAvatar.Fill = new ImageBrush(image) { Stretch = Stretch.UniformToFill };
+                ProfileInitials.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception ex) when (ex is IOException or UriFormatException or ArgumentException or NotSupportedException or InvalidOperationException or System.Security.SecurityException)
+            {
+                // Keep the initials avatar when the saved account picture is missing or unreadable.
+                Trace.TraceWarning($"Could not display the local Windows account picture: {ex.Message}");
+            }
+        }
         _pinnedApps = StartPinCatalog.Normalize(pinnedApps);
         _savePinnedApps = savePinnedApps;
         _recentAppsStore = recentAppsStore ?? new StartRecentAppsStore();
@@ -127,7 +151,7 @@ public partial class StartMenuWindow : Window
                 OuterBorder.Background = Brush("#F0F2F7");
                 OuterBorder.Padding = new Thickness(20);
             }
-            HeaderTitle.Text = "Start";
+            HeaderTitle.Text = _identity.DisplayName;
             HeaderSubtitle.Text = windows7 ? "Desktop Tuner" : "Search and launch apps";
             HeaderSubtitle.Visibility = Visibility.Visible;
             HeaderPanel.Margin = windows7 ? new Thickness(10, 6, 12, 4) : new Thickness(2, 0, 12, 12);
