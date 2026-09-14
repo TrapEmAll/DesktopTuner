@@ -5,6 +5,7 @@ using System.Text.Json;
 namespace DesktopTuner;
 
 public readonly record struct DesktopHostPosition(double Left, double Top);
+public sealed record DesktopHostMonitorViewport(string DeviceName, double Left, double Top, double Width, double Height, bool IsPrimary);
 
 public sealed class DesktopHostLayoutStore
 {
@@ -56,6 +57,55 @@ public sealed class DesktopHostLayoutStore
 
     public IReadOnlyList<DesktopHostItem> ApplyOrder(IEnumerable<DesktopHostItem> items) => ApplyLayout(items, 1920, 1080);
 
+    public IReadOnlyList<DesktopHostItem> ApplyMonitorLayout(IEnumerable<DesktopHostItem> items, IReadOnlyList<DesktopHostMonitorViewport> monitors)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ValidateMonitors(monitors);
+        var layout = ReadLayout();
+        var remaining = items.DistinctBy(item => item.FullPath, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(item => item.FullPath, StringComparer.OrdinalIgnoreCase);
+        var ordered = new List<DesktopHostItem>(remaining.Count);
+        foreach (var key in layout.Order)
+            if (remaining.Remove(key, out var item)) ordered.Add(item);
+        ordered.AddRange(remaining.Values.OrderBy(item => item.Name, StringComparer.CurrentCultureIgnoreCase));
+
+        var placed = new List<DesktopHostItem>();
+        foreach (var item in ordered)
+        {
+            if (!layout.Positions.TryGetValue(item.FullPath, out var saved)) continue;
+            var monitor = FindMonitor(monitors, saved.DeviceName) ?? (saved.DeviceName is null
+                ? FindNearestMonitor(monitors, new DesktopHostPosition(saved.Left + ItemWidth / 2, saved.Top + ItemHeight / 2))
+                : monitors.OrderByDescending(candidate => candidate.IsPrimary).First());
+            var local = saved.DeviceName is null
+                ? Clamp(new DesktopHostPosition(saved.Left - monitor.Left, saved.Top - monitor.Top), monitor.Width, monitor.Height)
+                : Clamp(new DesktopHostPosition(saved.Left, saved.Top), monitor.Width, monitor.Height);
+            item.SetPosition(new DesktopHostPosition(monitor.Left + local.Left, monitor.Top + local.Top));
+            item.MonitorDeviceName = monitor.DeviceName;
+            placed.Add(item);
+        }
+
+        var orderedMonitors = monitors.OrderByDescending(monitor => monitor.IsPrimary).ThenBy(monitor => monitor.DeviceName, StringComparer.OrdinalIgnoreCase).ToArray();
+        foreach (var item in ordered.Where(item => !layout.Positions.ContainsKey(item.FullPath)))
+        {
+            DesktopHostMonitorViewport? selectedMonitor = null;
+            DesktopHostPosition? selectedPosition = null;
+            foreach (var monitor in orderedMonitors)
+            {
+                selectedPosition = FindAvailablePosition(placed, monitor);
+                if (selectedPosition is null) continue;
+                selectedMonitor = monitor;
+                break;
+            }
+
+            selectedMonitor ??= orderedMonitors[0];
+            var local = selectedPosition ?? new DesktopHostPosition(0, 0);
+            item.SetPosition(new DesktopHostPosition(selectedMonitor.Left + local.Left, selectedMonitor.Top + local.Top));
+            item.MonitorDeviceName = selectedMonitor.DeviceName;
+            placed.Add(item);
+        }
+        return ordered;
+    }
+
     public static IReadOnlyDictionary<string, DesktopHostPosition> TranslateSelection(
         IEnumerable<DesktopHostItem> items,
         string anchorPath,
@@ -83,16 +133,42 @@ public sealed class DesktopHostLayoutStore
     public bool SaveLayout(IEnumerable<DesktopHostItem> items)
     {
         ArgumentNullException.ThrowIfNull(items);
+        var layout = CreateLayout(items, item => new PersistedPosition(item.Left, item.Top));
+        return WriteLayout(layout);
+    }
+
+    public bool SaveMonitorLayout(IEnumerable<DesktopHostItem> items, IReadOnlyList<DesktopHostMonitorViewport> monitors)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ValidateMonitors(monitors);
+        var layout = CreateLayout(items, item =>
+        {
+            var monitor = FindNearestMonitor(monitors,
+                new DesktopHostPosition(item.Left + ItemWidth / 2, item.Top + ItemHeight / 2));
+            var local = Clamp(new DesktopHostPosition(item.Left - monitor.Left, item.Top - monitor.Top), monitor.Width, monitor.Height);
+            item.SetPosition(new DesktopHostPosition(monitor.Left + local.Left, monitor.Top + local.Top));
+            item.MonitorDeviceName = monitor.DeviceName;
+            return new PersistedPosition(local.Left, local.Top, monitor.DeviceName);
+        });
+        return WriteLayout(layout);
+    }
+
+    private PersistedLayout CreateLayout(IEnumerable<DesktopHostItem> items, Func<DesktopHostItem, PersistedPosition> positionSelector)
+    {
         var entries = items.Take(MaximumItems).ToArray();
-        var layout = new PersistedLayout
+        return new PersistedLayout
         {
             Order = entries.Select(item => item.FullPath)
                 .Where(path => !string.IsNullOrWhiteSpace(path))
                 .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             Positions = entries.Where(item => !string.IsNullOrWhiteSpace(item.FullPath))
                 .GroupBy(item => item.FullPath, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(group => group.Key, group => new PersistedPosition(group.First().Left, group.First().Top), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => positionSelector(group.First()), StringComparer.OrdinalIgnoreCase)
         };
+    }
+
+    private bool WriteLayout(PersistedLayout layout)
+    {
         var temporaryPath = _path + $".{Guid.NewGuid():N}.tmp";
         try
         {
@@ -157,6 +233,38 @@ public sealed class DesktopHostLayoutStore
     private static DesktopHostPosition Clamp(DesktopHostPosition position, double width, double height) =>
         new(Math.Clamp(position.Left, 0, Math.Max(0, width - ItemWidth)), Math.Clamp(position.Top, 0, Math.Max(0, height - ItemHeight)));
 
+    private static DesktopHostMonitorViewport? FindMonitor(IReadOnlyList<DesktopHostMonitorViewport> monitors, string? deviceName) =>
+        string.IsNullOrWhiteSpace(deviceName) ? null : monitors.FirstOrDefault(monitor =>
+            string.Equals(monitor.DeviceName, deviceName, StringComparison.OrdinalIgnoreCase));
+
+    private static DesktopHostMonitorViewport FindNearestMonitor(IReadOnlyList<DesktopHostMonitorViewport> monitors, DesktopHostPosition point) =>
+        DesktopHostDisplayLayoutPolicy.FindNearestMonitor(monitors, point);
+
+    private static DesktopHostPosition? FindAvailablePosition(IReadOnlyList<DesktopHostItem> occupied, DesktopHostMonitorViewport monitor)
+    {
+        var width = Math.Max(1, (int)Math.Floor(monitor.Width / ItemWidth));
+        var height = Math.Max(1, (int)Math.Floor(monitor.Height / ItemHeight));
+        for (var column = 0; column < width; column++)
+        for (var row = 0; row < height; row++)
+        {
+            var local = new DesktopHostPosition(column * ItemWidth, row * ItemHeight);
+            var global = new DesktopHostPosition(monitor.Left + local.Left, monitor.Top + local.Top);
+            if (occupied.All(item => !Overlaps(global, new DesktopHostPosition(item.Left, item.Top)))) return local;
+        }
+        return null;
+    }
+
+    private static void ValidateMonitors(IReadOnlyList<DesktopHostMonitorViewport> monitors)
+    {
+        ArgumentNullException.ThrowIfNull(monitors);
+        if (monitors.Count == 0) throw new ArgumentException("At least one desktop monitor is required.", nameof(monitors));
+        if (monitors.Any(monitor => string.IsNullOrWhiteSpace(monitor.DeviceName) || !double.IsFinite(monitor.Left) || !double.IsFinite(monitor.Top)
+            || !double.IsFinite(monitor.Width) || !double.IsFinite(monitor.Height) || monitor.Width <= 0 || monitor.Height <= 0))
+            throw new ArgumentException("Desktop monitor bounds must have a device name and positive finite dimensions.", nameof(monitors));
+        if (monitors.Select(monitor => monitor.DeviceName).Distinct(StringComparer.OrdinalIgnoreCase).Count() != monitors.Count)
+            throw new ArgumentException("Desktop monitor device names must be unique.", nameof(monitors));
+    }
+
     private static DesktopHostPosition? FindAvailablePosition(IReadOnlyList<DesktopHostItem> occupied, int columns, int rows)
     {
         for (var column = 0; column < columns; column++)
@@ -178,5 +286,5 @@ public sealed class DesktopHostLayoutStore
         public Dictionary<string, PersistedPosition> Positions { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
-    private sealed record PersistedPosition(double Left, double Top);
+    private sealed record PersistedPosition(double Left, double Top, string? DeviceName = null);
 }

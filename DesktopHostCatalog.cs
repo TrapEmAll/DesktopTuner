@@ -16,6 +16,7 @@ public sealed class DesktopHostItem(string name, string fullPath, bool isDirecto
     public string FullPath { get; } = fullPath;
     public bool IsDirectory { get; } = isDirectory;
     public bool IsShellNamespace { get; } = isShellNamespace;
+    public string? MonitorDeviceName { get; internal set; }
     public double Left
     {
         get => _left;

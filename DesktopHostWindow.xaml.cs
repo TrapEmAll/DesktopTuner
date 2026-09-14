@@ -24,6 +24,7 @@ public partial class DesktopHostWindow : Window
     private readonly DesktopHostLayoutStore _layoutStore = new();
     private readonly ObservableCollection<DesktopHostItem> _desktopItems = [];
     private readonly List<FileSystemWatcher> _desktopWatchers = [];
+    private IReadOnlyList<DesktopHostMonitorViewport> _desktopMonitors = [];
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private bool _isClosed;
     private DesktopHostItem? _dragCandidate;
@@ -83,6 +84,10 @@ public partial class DesktopHostWindow : Window
             Width = bounds.Width / scale.ScaleX;
             Height = bounds.Height / scale.ScaleY;
             TaskbarDisplayService.PositionWindow(this, bounds);
+            var canvasWidth = Math.Max(1, Width - DesktopItems.Margin.Left - DesktopItems.Margin.Right);
+            var canvasHeight = Math.Max(1, Height - DesktopItems.Margin.Top - DesktopItems.Margin.Bottom);
+            _desktopMonitors = DesktopHostDisplayLayoutPolicy.CreateMonitorViewports(displays, bounds, canvasWidth, canvasHeight,
+                scale.ScaleX, scale.ScaleY);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception)
         {
@@ -95,8 +100,10 @@ public partial class DesktopHostWindow : Window
         var selectedPaths = _desktopItems.Where(item => item.IsSelected)
             .Select(item => item.FullPath)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var ordered = _layoutStore.ApplyLayout(DesktopHostCatalog.ReadItems([_userDesktop, _publicDesktop]),
-            DesktopItems.ActualWidth, DesktopItems.ActualHeight);
+        var entries = DesktopHostCatalog.ReadItems([_userDesktop, _publicDesktop]);
+        var ordered = _desktopMonitors.Count > 0
+            ? _layoutStore.ApplyMonitorLayout(entries, _desktopMonitors)
+            : _layoutStore.ApplyLayout(entries, DesktopItems.ActualWidth, DesktopItems.ActualHeight);
         _desktopItems.Clear();
         foreach (var item in ordered)
         {
@@ -333,7 +340,11 @@ public partial class DesktopHostWindow : Window
                     new DesktopHostPosition(point.X - DesktopIconWidth / 2, point.Y - DesktopIconHeight / 2),
                     DesktopItems.ActualWidth, DesktopItems.ActualHeight);
                 foreach (var item in selectedItems)
-                    if (item is not null && positions.TryGetValue(item.FullPath, out var position)) item.SetPosition(position);
+                {
+                    if (item is null || !positions.TryGetValue(item.FullPath, out var position)) continue;
+                    if (_desktopMonitors.Count > 0) PlaceItemOnMonitor(item, position);
+                    else item.SetPosition(position);
+                }
                 SaveDesktopLayout("Icon moved for this session, but its position could not be saved.");
                 e.Effects = DragDropEffects.Move;
             }
@@ -418,13 +429,23 @@ public partial class DesktopHostWindow : Window
         SaveDesktopLayout("Icon layout changed for this session, but could not be saved.");
     }
 
-    private DesktopHostPosition ClampPosition(DesktopHostPosition position) => new(
-        Math.Clamp(position.Left, 0, Math.Max(0, DesktopItems.ActualWidth - DesktopIconWidth)),
-        Math.Clamp(position.Top, 0, Math.Max(0, DesktopItems.ActualHeight - DesktopIconHeight)));
+    private void PlaceItemOnMonitor(DesktopHostItem item, DesktopHostPosition position)
+    {
+        var target = DesktopHostDisplayLayoutPolicy.FindNearestMonitor(_desktopMonitors,
+            new DesktopHostPosition(position.Left + DesktopIconWidth / 2, position.Top + DesktopIconHeight / 2));
+        var local = new DesktopHostPosition(
+            Math.Clamp(position.Left - target.Left, 0, Math.Max(0, target.Width - DesktopIconWidth)),
+            Math.Clamp(position.Top - target.Top, 0, Math.Max(0, target.Height - DesktopIconHeight)));
+        item.SetPosition(new DesktopHostPosition(target.Left + local.Left, target.Top + local.Top));
+        item.MonitorDeviceName = target.DeviceName;
+    }
 
     private void SaveDesktopLayout(string failureMessage)
     {
-        if (!_layoutStore.SaveLayout(_desktopItems))
+        var saved = _desktopMonitors.Count > 0
+            ? _layoutStore.SaveMonitorLayout(_desktopItems, _desktopMonitors)
+            : _layoutStore.SaveLayout(_desktopItems);
+        if (!saved)
             MessageBox.Show(this, failureMessage, "Desktop layout", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 

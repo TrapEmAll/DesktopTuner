@@ -33,6 +33,26 @@ var restoredDesktopEntries = desktopLayoutStore.ApplyLayout(desktopHostEntries, 
 Check("user.txt,Folder,Recycle Bin,shared.txt,This PC", string.Join(',', restoredDesktopEntries.Select(entry => entry.Name)), "restore the saved icon order while appending unrecorded items");
 Check(new DesktopHostPosition(0, 112), new DesktopHostPosition(restoredDesktopEntries.Single(entry => entry.Name == "user.txt").Left, restoredDesktopEntries.Single(entry => entry.Name == "user.txt").Top), "restore a desktop icon's free-form position");
 Check(new DesktopHostPosition(0, 0), new DesktopHostPosition(restoredDesktopEntries.Single(entry => entry.Name == "Folder").Left, restoredDesktopEntries.Single(entry => entry.Name == "Folder").Top), "place newly added desktop items in an unoccupied icon slot");
+var desktopMonitorViewports = new DesktopHostMonitorViewport[]
+{
+    new("DISPLAY1", 0, 0, 600, 400, true),
+    new("DISPLAY2", 600, 0, 800, 600, false)
+};
+var monitorLayoutStore = new DesktopHostLayoutStore(Path.Combine(desktopHostTestRoot, "monitor-layout.json"));
+var monitorLayoutItems = monitorLayoutStore.ApplyMonitorLayout(desktopHostEntries, desktopMonitorViewports).ToArray();
+Check("DISPLAY1", monitorLayoutItems[0].MonitorDeviceName, "place new desktop items on the primary monitor by default");
+var monitorItem = monitorLayoutItems.Single(item => item.Name == "user.txt");
+monitorItem.SetPosition(new DesktopHostPosition(620, 112));
+monitorItem.MonitorDeviceName = "DISPLAY2";
+Check(true, monitorLayoutStore.SaveMonitorLayout(monitorLayoutItems, desktopMonitorViewports), "save desktop positions in monitor-local layouts");
+var restoredMonitorItems = monitorLayoutStore.ApplyMonitorLayout(desktopHostEntries, desktopMonitorViewports);
+Check(new DesktopHostPosition(620, 112), new DesktopHostPosition(restoredMonitorItems.Single(item => item.Name == "user.txt").Left,
+    restoredMonitorItems.Single(item => item.Name == "user.txt").Top), "restore an icon at its independent secondary-monitor position");
+Check("DISPLAY2", restoredMonitorItems.Single(item => item.Name == "user.txt").MonitorDeviceName, "restore the monitor identity with its desktop icon position");
+var restoredAfterDisconnect = monitorLayoutStore.ApplyMonitorLayout(desktopHostEntries, [desktopMonitorViewports[0]]);
+Check(new DesktopHostPosition(20, 112), new DesktopHostPosition(restoredAfterDisconnect.Single(item => item.Name == "user.txt").Left,
+    restoredAfterDisconnect.Single(item => item.Name == "user.txt").Top), "move saved icon coordinates to the primary display when their monitor disconnects");
+Check("DISPLAY1", restoredAfterDisconnect.Single(item => item.Name == "user.txt").MonitorDeviceName, "reassign disconnected-monitor icons to the primary display");
 restoredDesktopEntries.Single(entry => entry.Name == "user.txt").SetPosition(new DesktopHostPosition(900, 900));
 Check(true, desktopLayoutStore.SaveLayout(restoredDesktopEntries), "save an icon position outside the current screen bounds");
 var clampedDesktopEntry = desktopLayoutStore.ApplyLayout(desktopHostEntries, 600, 400).Single(entry => entry.Name == "user.txt");
@@ -67,6 +87,15 @@ Check(new TaskbarBounds(-1920, 0, 3840, 1080), DesktopHostDisplayLayoutPolicy.Ca
     new TaskbarDisplay("DISPLAY1", 0, 0, 1920, 1080, true),
     new TaskbarDisplay("DISPLAY2", -1920, 0, 1920, 1080, false)
 ]), "span horizontally arranged monitors for desktop icon placement");
+var desktopViewports = DesktopHostDisplayLayoutPolicy.CreateMonitorViewports([
+    new TaskbarDisplay("DISPLAY1", 0, 0, 1920, 1080, true),
+    new TaskbarDisplay("DISPLAY2", -1920, -200, 1920, 1080, false)
+], new TaskbarBounds(-1920, -200, 3840, 1280), 3820, 1260, 1, 1);
+Check(2, desktopViewports.Count, "create independent desktop layout regions for every display");
+Check("DISPLAY2", DesktopHostDisplayLayoutPolicy.FindNearestMonitor(desktopViewports,
+    new DesktopHostPosition(desktopViewports.Single(viewport => viewport.DeviceName == "DISPLAY2").Left + 20,
+        desktopViewports.Single(viewport => viewport.DeviceName == "DISPLAY2").Top + 20)).DeviceName,
+    "assign an icon position to its monitor viewport");
 Throws<ArgumentException>(() => DesktopHostDisplayLayoutPolicy.CalculateVirtualBounds([]), "reject an empty connected-display set for the desktop host");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Created), "refresh the desktop when a new item is created");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Renamed), "refresh the desktop when an item is renamed");
