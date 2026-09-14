@@ -11,6 +11,12 @@ public static class ControlPanelAppletCatalog
     public static IReadOnlyList<ControlPanelApplet> Applets { get; } =
     [
         new("programs", "Programs and Features", ["appwiz.cpl"]),
+        new("bluetooth", "Bluetooth Devices", ["bthprops.cpl"]),
+        new("hardware", "Add Hardware", ["hdwwiz.cpl"]),
+        new("infrared", "Infrared", ["irprops.cpl"]),
+        new("game-controllers", "Game Controllers", ["joy.cpl"]),
+        new("tablet-pc", "Tablet PC Settings", ["TabletPC.cpl"]),
+        new("phone-modem", "Phone and Modem", ["telephon.cpl"]),
         new("power", "Power Options", ["powercfg.cpl"]),
         new("network", "Network Connections", ["ncpa.cpl"]),
         new("sound", "Sound", ["mmsys.cpl"]),

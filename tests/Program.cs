@@ -780,24 +780,35 @@ Check("main.cpl keyboard", string.Join(' ', keyboardApplet.ArgumentList), "pass 
 Check("/name Microsoft.Personalization", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("personalization").ArgumentList), "launch canonical Control Panel items with structured arguments");
 Check("/name Microsoft.CredentialManager", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("credential-manager").ArgumentList), "launch Credential Manager from the Control Panel applet flyout");
 Check("inetcpl.cpl", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("internet-options").ArgumentList), "launch Internet Options from the Control Panel applet flyout");
+Check("bthprops.cpl", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("bluetooth").ArgumentList), "launch Bluetooth Devices from the Control Panel applet flyout");
+Check("hdwwiz.cpl", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("hardware").ArgumentList), "launch Add Hardware from the Control Panel applet flyout");
+Check("irprops.cpl", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("infrared").ArgumentList), "launch Infrared settings from the Control Panel applet flyout");
+Check("joy.cpl", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("game-controllers").ArgumentList), "launch Game Controllers from the Control Panel applet flyout");
+Check("TabletPC.cpl", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("tablet-pc").ArgumentList), "launch Tablet PC Settings from the Control Panel applet flyout");
+Check("telephon.cpl", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("phone-modem").ArgumentList), "launch Phone and Modem from the Control Panel applet flyout");
 var availableControlPanelApplets = ControlPanelAppletCatalog.GetAvailableApplets(@"C:\Windows\System32",
     path => Path.GetFileName(path) is "appwiz.cpl" or "main.cpl");
 CheckTrue(availableControlPanelApplets.Any(applet => applet.Id == "programs"), "show a direct Control Panel applet when its module is installed");
 CheckTrue(availableControlPanelApplets.Any(applet => applet.Id == "keyboard"), "retain applet variants that share an installed Control Panel module");
 Check(false, availableControlPanelApplets.Any(applet => applet.Id == "power"), "hide a direct Control Panel applet when its module is absent");
+Check(false, availableControlPanelApplets.Any(applet => applet.Id == "bluetooth"), "hide newly cataloged applets when their module is absent");
 CheckTrue(availableControlPanelApplets.Any(applet => applet.Id == "personalization"), "retain canonical Control Panel entries without a direct cpl file");
-Check(21, ControlPanelAppletCatalog.Applets.Count, "offer the supported Control Panel applets in the Start flyout");
+var availableLegacyApplets = ControlPanelAppletCatalog.GetAvailableApplets(@"C:\Windows\System32",
+    path => Path.GetFileName(path) is "bthprops.cpl" or "joy.cpl");
+CheckTrue(availableLegacyApplets.Any(applet => applet.Id == "bluetooth"), "show a newly cataloged applet when its module is installed");
+CheckTrue(availableLegacyApplets.Any(applet => applet.Id == "game-controllers"), "show each applet that shares the installed-module availability path");
+Check(27, ControlPanelAppletCatalog.Applets.Count, "offer the supported Control Panel applets in the Start flyout");
 var normalizedPartialControlPanelApplets = ControlPanelAppletCatalog.Normalize(new ControlPanelAppletPreferences(
     ["credential-manager", "programs", "credential-manager", "unsupported"], ["programs", "unsupported"]));
 Check("credential-manager,programs", string.Join(',', normalizedPartialControlPanelApplets.Order!.Take(2)), "normalize and deduplicate a custom Control Panel applet order");
-Check(20, normalizedPartialControlPanelApplets.Visible!.Count, "default newly added Control Panel applets to visible for older saved preferences");
+Check(26, normalizedPartialControlPanelApplets.Visible!.Count, "default newly added Control Panel applets to visible for older saved preferences");
 var completeAppletOrder = ControlPanelAppletCatalog.Normalize(null).Order!;
 completeAppletOrder.Remove("credential-manager");
 completeAppletOrder.Insert(0, "credential-manager");
 var customControlPanelApplets = ControlPanelAppletCatalog.Normalize(new ControlPanelAppletPreferences(completeAppletOrder, ["programs"]));
 Check("programs", string.Join(',', customControlPanelApplets.Visible!), "keep only selected Control Panel applets visible");
 Check("programs,credential-manager", string.Join(',', ControlPanelAppletCatalog.Move(customControlPanelApplets, "credential-manager", 1).Order!.Take(2)), "move Control Panel applets within the configured order");
-Check(21, ControlPanelAppletCatalog.Normalize(null).Visible!.Count, "show all Control Panel applets for older preference files");
+Check(27, ControlPanelAppletCatalog.Normalize(null).Visible!.Count, "show all Control Panel applets for older preference files");
 Throws<ArgumentOutOfRangeException>(() => ControlPanelAppletCatalog.CreateStartInfo("unknown"), "reject unknown Control Panel applets");
 Check(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), StartMenuPlaceCatalog.ResolveTarget("music"), "open the user's Music folder from the Start places menu");
 Check(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), StartMenuPlaceCatalog.ResolveTarget("documents"), "resolve Documents from the Start dropdown places");
@@ -1731,7 +1742,7 @@ Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentRe
     Check(TaskbarIconSize.Standard, preferencesStore.Load().TaskbarIconSize, "default legacy preferences to standard taskbar icons");
     Check(TaskbarButtonSpacing.Standard, preferencesStore.Load().TaskbarButtonSpacing, "default legacy preferences to standard button spacing");
     Check(11, preferencesStore.Load().StartMenuPlaces!.Visible!.Count, "show all Start places for older preference files");
-    Check(21, preferencesStore.Load().ControlPanelApplets!.Visible!.Count, "show all Control Panel applets for older preference files");
+    Check(27, preferencesStore.Load().ControlPanelApplets!.Visible!.Count, "show all Control Panel applets for older preference files");
     Check(false, preferencesStore.Load().PinnedApps!.Single().IsDirectory, "default old pin records to app launch behavior");
     Check(StartPinCatalog.DefaultGroupName, preferencesStore.Load().PinnedStartApps!.Single().GroupName, "default older Start pin records to the Pinned group");
     File.WriteAllText(preferencesPath, """{"TaskbarEdge":0,"TaskbarButtonEffect":99}""");
