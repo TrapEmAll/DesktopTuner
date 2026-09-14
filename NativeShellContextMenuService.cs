@@ -43,6 +43,25 @@ public static class NativeShellContextMenuService
         return ShowForShellItems(owner, absolutePidls);
     }
 
+    public static async Task<bool> ShowPropertiesForShellItemsAsync(nint owner, IEnumerable<string> parsingNames)
+    {
+        var selection = NativeShellContextMenuPolicy.NormalizeShellSelection(parsingNames);
+        var absolutePidls = await Task.Run(() => ParseDisplayNames(selection));
+        try
+        {
+            if (absolutePidls.Length == 1 || absolutePidls.Skip(1).All(pidl =>
+                    ParentPidlsEqual(absolutePidls[0], GetParentPidlLength(absolutePidls[0]), pidl)))
+                InvokeShellItemVerb(owner, absolutePidls, "properties");
+            else
+                foreach (var absolutePidl in absolutePidls) InvokeShellItemVerb(owner, [absolutePidl], "properties");
+            return true;
+        }
+        finally
+        {
+            foreach (var absolutePidl in absolutePidls) Marshal.FreeCoTaskMem(absolutePidl);
+        }
+    }
+
     public static async Task<bool> DragShellItemsAsync(nint owner, IEnumerable<string> parsingNames)
     {
         var selection = NativeShellContextMenuPolicy.NormalizeShellSelection(parsingNames);
@@ -308,6 +327,50 @@ public static class NativeShellContextMenuService
             if (parent is not null) ReleaseComObject(parent);
             if (childArray != nint.Zero) Marshal.FreeHGlobal(childArray);
             foreach (var absolutePidl in absolutePidls) Marshal.FreeCoTaskMem(absolutePidl);
+        }
+    }
+
+    private static void InvokeShellItemVerb(nint owner, nint[] absolutePidls, string verb)
+    {
+        if (absolutePidls.Length == 0) throw new ArgumentException("Select at least one Windows Shell item.", nameof(absolutePidls));
+        var parentLength = GetParentPidlLength(absolutePidls[0]);
+        if (absolutePidls.Skip(1).Any(pidl => !ParentPidlsEqual(absolutePidls[0], parentLength, pidl)))
+            throw new ArgumentException("Windows can invoke one shared Shell command only for items in the same folder.", nameof(absolutePidls));
+
+        IShellFolder? parent = null;
+        IContextMenu? contextMenu = null;
+        nint menu = nint.Zero;
+        nint childArray = nint.Zero;
+        nint verbPointer = nint.Zero;
+        try
+        {
+            var folderId = ShellFolderId;
+            ThrowForFailure(SHBindToParent(absolutePidls[0], ref folderId, out parent, out _), "Could not bind to the selected items' parent folder.");
+            var childPidls = absolutePidls.Select(pidl => pidl + GetParentPidlLength(pidl) - sizeof(ushort)).ToArray();
+            childArray = AllocatePointerArray(childPidls);
+            var contextMenuId = ContextMenuId;
+            ThrowForFailure(parent.GetUIObjectOf(owner, (uint)childPidls.Length, childArray, ref contextMenuId, nint.Zero, out contextMenu),
+                "Windows could not create a context menu for the selected items.");
+            menu = CreatePopupMenu();
+            if (menu == nint.Zero) throw new COMException("Windows could not create a context menu.", Marshal.GetLastWin32Error());
+            ThrowForFailure(contextMenu.QueryContextMenu(menu, 0, IdCommandFirst, IdCommandLast, 0), "Windows could not populate the selected items' context menu.");
+            verbPointer = Marshal.StringToCoTaskMemAnsi(verb);
+            var invoke = new CommandInfo
+            {
+                Size = (uint)Marshal.SizeOf<CommandInfo>(),
+                Window = owner,
+                Verb = verbPointer,
+                ShowCommand = 1
+            };
+            ThrowForFailure(contextMenu.InvokeCommand(ref invoke), $"The selected Shell items do not support the '{verb}' command.");
+        }
+        finally
+        {
+            if (verbPointer != nint.Zero) Marshal.FreeCoTaskMem(verbPointer);
+            if (menu != nint.Zero) DestroyMenu(menu);
+            if (contextMenu is not null) ReleaseComObject(contextMenu);
+            if (parent is not null) ReleaseComObject(parent);
+            if (childArray != nint.Zero) Marshal.FreeHGlobal(childArray);
         }
     }
 

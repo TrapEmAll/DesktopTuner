@@ -345,6 +345,23 @@ public partial class ShellNamespaceBrowserWindow : Window
 
     private void Open_Click(object sender, RoutedEventArgs e) => OpenSelectedItem();
 
+    private async void Properties_Click(object sender, RoutedEventArgs e) => await ShowSelectedPropertiesAsync();
+
+    private async Task ShowSelectedPropertiesAsync()
+    {
+        var selection = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().ToArray();
+        if (selection.Length == 0) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.ShowPropertiesForShellItemsAsync(owner, selection.Select(entry => entry.ParsingName));
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Could not open Properties: {ex.Message}";
+        }
+    }
+
     private void OpenSelectedItem()
     {
         var selection = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().ToArray();
@@ -390,6 +407,7 @@ public partial class ShellNamespaceBrowserWindow : Window
     {
         var hasSelection = ItemsList.SelectedItems.Count > 0;
         OpenMenuItem.IsEnabled = ItemsList.SelectedItems.Count > 0;
+        PropertiesMenuItem.IsEnabled = hasSelection;
         RenameMenuItem.IsEnabled = false;
         if (ItemsList.SelectedItems.Count == 1 && ItemsList.SelectedItem is DesktopShellNamespaceEntry entry)
             RenameMenuItem.IsEnabled = await CanRenameAsync(entry);
@@ -533,7 +551,7 @@ public partial class ShellNamespaceBrowserWindow : Window
 
         var keyboardAction = ShellNamespaceBrowserKeyboardPolicy.Resolve(
             e.Key, Keyboard.Modifiers, ItemsList.IsKeyboardFocusWithin, ItemsList.SelectedItems.Count > 0,
-            ItemsList.SelectedItem is DesktopShellNamespaceEntry { CanRename: true });
+            ItemsList.SelectedItem is DesktopShellNamespaceEntry { CanRename: true }, e.SystemKey);
         if (keyboardAction == ShellNamespaceBrowserKeyboardAction.SelectAll)
         {
             ItemsList.SelectAll();
@@ -547,6 +565,11 @@ public partial class ShellNamespaceBrowserWindow : Window
         else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.ShowContextMenu)
         {
             await ShowShellContextMenuAsync();
+            e.Handled = true;
+        }
+        else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.ShowProperties)
+        {
+            await ShowSelectedPropertiesAsync();
             e.Handled = true;
         }
         else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.Rename)

@@ -102,6 +102,7 @@
             <ListView.ContextMenu>
                 <ContextMenu Opened="ItemContextMenu_Opened">
                     <MenuItem x:Name="OpenMenuItem" Header="Open" Click="Open_Click" />
+                    <MenuItem x:Name="PropertiesMenuItem" Header="Properties" Click="Properties_Click" />
                     <MenuItem x:Name="RenameMenuItem" Header="Rename" IsEnabled="False" Click="Rename_Click" />
                     <MenuItem x:Name="ShowMoreOptionsMenuItem" Header="Show more options" Click="ShowMoreOptions_Click" />
                 </ContextMenu>
