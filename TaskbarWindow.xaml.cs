@@ -19,6 +19,7 @@ public partial class TaskbarWindow : Window
     private const string WindowGroupDragFormat = "DesktopTuner.RunningTaskbarGroup";
     private readonly RunningWindowService _windows = new();
     private readonly TaskbarWindowOrder _windowOrder;
+    private readonly NativeTaskbarAppBarService _nativeAppBar = new();
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
     private readonly DispatcherTimer _batteryRefreshTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly DispatcherTimer _microphoneRefreshTimer = new() { Interval = TimeSpan.FromSeconds(15) };
@@ -39,6 +40,7 @@ public partial class TaskbarWindow : Window
     private bool _maximizedWindowOnDisplay;
     private bool _collapsed;
     private bool _nativeReady;
+    private bool _replacementWorkAreaEnabled;
     private bool? _systemBackdropForCurrentStyle;
     private bool _nativeTrayExposed;
     private bool _isDark;
@@ -117,6 +119,17 @@ public partial class TaskbarWindow : Window
         if (IsLoaded) RefreshWindows();
     }
 
+    public void EnableReplacementWorkArea(bool enabled)
+    {
+        if (_replacementWorkAreaEnabled == enabled
+            && (!enabled || !_preferences.ReplaceNativeTaskbar
+                || !TaskbarAppBarPolicy.ShouldRegister(_preferences.TaskbarLayout)
+                || _nativeAppBar.IsRegistered))
+            return;
+        _replacementWorkAreaEnabled = enabled;
+        ApplyLayout();
+    }
+
     private void ApplyLayout()
     {
         UpdateSystemBackdrop();
@@ -124,6 +137,20 @@ public partial class TaskbarWindow : Window
         RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, GetEffectiveTransparency());
         RootBorder.BorderBrush = TaskbarTheme.GetBrush("TaskbarBorderBrush");
         var bounds = TaskbarLayoutCalculator.Calculate(Display, layoutPreferences, _collapsed);
+        var registerAppBar = _replacementWorkAreaEnabled && _preferences.ReplaceNativeTaskbar
+            && TaskbarAppBarPolicy.ShouldRegister(_preferences.TaskbarLayout);
+        if (registerAppBar && _nativeReady && !_nativeAppBar.IsRegistered)
+        {
+            var handle = new WindowInteropHelper(this).Handle;
+            if (!_nativeAppBar.Register(handle, Display, _edge))
+                Trace.TraceWarning($"Taskbar on {Display.DeviceName} is running without a reserved Windows work area.");
+        }
+        else if (!registerAppBar && _nativeAppBar.IsRegistered)
+        {
+            _nativeAppBar.Unregister();
+        }
+        if (_nativeAppBar.IsRegistered && _nativeAppBar.UpdatePosition(bounds) is { } appBarBounds)
+            bounds = appBarBounds;
         var trayBounds = _preferences.ReplaceNativeTaskbar ? null : NativeTaskbarTrayService.FindTrayBounds(Display);
         var integratedBounds = TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(Display, layoutPreferences, trayBounds, _collapsed);
         _nativeTrayExposed = integratedBounds is not null;
@@ -313,11 +340,20 @@ public partial class TaskbarWindow : Window
         _autoHideTimer.Stop();
         _previewOpenTimer.Stop();
         _previewCloseTimer.Stop();
+        _nativeAppBar.Dispose();
         _previewWindow?.Close();
     }
 
     private nint WindowProc(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
     {
+        if (message == NativeTaskbarAppBarService.CallbackMessage
+            && unchecked((int)wParam.ToInt64()) == NativeTaskbarAppBarService.PositionChangedNotification
+            && _nativeAppBar.IsRegistered)
+        {
+            ApplyLayout();
+            handled = true;
+            return 0;
+        }
         if (message == DwmColorizationColorChangedMessage)
         {
             TaskbarTheme.Apply(_isDark);

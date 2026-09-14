@@ -1035,6 +1035,7 @@ public partial class MainWindow : Window
                 {
                     throw new InvalidOperationException("Windows did not expose a taskbar on the selected displays, so replacement mode could not start.");
                 }
+                foreach (var taskbar in _taskbarWindows) taskbar.EnableReplacementWorkArea(true);
                 _nativeTaskbarWatchTimer.Start();
             }
             SetStatus(_taskbarOnAllDisplays
@@ -1149,6 +1150,7 @@ public partial class MainWindow : Window
         try
         {
             _nativeTaskbarVisibility.HideForDisplays(TaskbarDisplayService.Select(_taskbarOnAllDisplays));
+            foreach (var taskbar in _taskbarWindows) taskbar.EnableReplacementWorkArea(true);
         }
         catch (Exception ex)
         {

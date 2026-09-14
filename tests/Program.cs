@@ -76,6 +76,16 @@ Check(new TaskbarBounds(0, 0, 204, 1080), TaskbarLayoutCalculator.Calculate(1920
 Check(new TaskbarBounds(1744, 0, 176, 1080), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Right), false), "right, standard");
 Check(new TaskbarBounds(1916, 0, 4, 1080), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Right), true), "right, collapsed");
 Check(new TaskbarBounds(0, 1076, 1920, 4), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom), true), "bottom, collapsed");
+CheckTrue(TaskbarAppBarPolicy.ShouldRegister(TaskbarStyle.EdgeToEdge), "reserve Windows work area for an edge-docked replacement taskbar");
+CheckTrue(!TaskbarAppBarPolicy.ShouldRegister(TaskbarStyle.Floating), "keep floating replacement taskbars out of edge-docked appbar registration");
+var appBarDisplay = new TaskbarDisplay("APPBAR", 0, 0, 1920, 1080, true);
+Check(new TaskbarBounds(0, 1026, 1920, 54), TaskbarAppBarPolicy.ProposeBounds(appBarDisplay, TaskbarEdge.Bottom, new TaskbarBounds(0, 1026, 1920, 54)), "propose the full physical monitor edge for a bottom appbar");
+Check(new TaskbarBounds(0, 0, 176, 1080), TaskbarAppBarPolicy.ProposeBounds(appBarDisplay, TaskbarEdge.Left, new TaskbarBounds(0, 0, 176, 1080)), "propose the full physical monitor edge for a left appbar");
+Check(new TaskbarBounds(-1920, -200, 176, 1080), TaskbarAppBarPolicy.ProposeBounds(new TaskbarDisplay("DISPLAY2", -1920, -200, 1920, 1080, false), TaskbarEdge.Left, new(-1920, -200, 176, 1080)), "keep a left appbar on a secondary monitor with negative screen coordinates");
+Check(new TaskbarBounds(1500, 972, 420, 54), TaskbarAppBarPolicy.PreserveThickness(TaskbarEdge.Bottom, new(1500, 976, 420, 50), new(0, 1026, 1920, 54)), "preserve replacement taskbar thickness after Windows approves a bottom appbar slot");
+Check(new TaskbarBounds(1744, 200, 176, 600), TaskbarAppBarPolicy.PreserveThickness(TaskbarEdge.Right, new(1700, 200, 220, 600), new(1744, 0, 176, 1080)), "preserve replacement taskbar thickness after Windows approves a right appbar slot");
+Check(new TaskbarBounds(0, 120, 1920, 46), TaskbarAppBarPolicy.PreserveThickness(TaskbarEdge.Top, new(0, 120, 1920, 42), new(0, 0, 1920, 46)), "preserve replacement taskbar thickness after Windows approves a top appbar slot");
+Check(new TaskbarBounds(160, 0, 176, 1080), TaskbarAppBarPolicy.PreserveThickness(TaskbarEdge.Left, new(160, 0, 150, 1080), new(0, 0, 176, 1080)), "preserve replacement taskbar thickness after Windows approves a left appbar slot");
 Check(new TaskbarBounds(288, 1014, 1344, 54), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom, TaskbarSize.Standard, TaskbarLayout: TaskbarStyle.Floating), false), "center a floating bar with a bottom screen inset");
 Check(new TaskbarBounds(12, 162, 176, 756), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Left, TaskbarSize.Standard, TaskbarLayout: TaskbarStyle.Floating), false), "shorten and inset a floating vertical bar");
 Check(new TaskbarBounds(0, 1026, 1920, 54), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom, TaskbarSize.Standard, TaskbarLayout: TaskbarStyle.Segmented), false), "keep segmented taskbar regions across the selected screen edge");
