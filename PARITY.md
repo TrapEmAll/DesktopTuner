@@ -26,7 +26,7 @@ StartAllBack's public product description is the baseline: a classic-style Start
 
 ## Validation and shell-integration notes
 
-When selected Shell items come from different parent folders, Delete queues the full selection in one native `IFileOperation`; normal Delete requests undo/recycle behavior and Shift+Delete requests permanent deletion. Same-parent selections continue to use the provider's native Shell verb. This lets mixed desktop and namespace selections share one Shell operation instead of prompting separately for each item.
+When selected Shell items come from different parent folders, Delete queues the full selection in one native `IFileOperation`; normal Delete requests undo/recycle behavior and Shift+Delete requests permanent deletion. Same-parent selections continue to use the provider's native Shell verb. For multiple filesystem-backed items from different folders, Properties opens one merged Shell property sheet; selections containing virtual items retain provider-native per-item Properties because `SHMultiFileProperties` requires filesystem parsing paths. These paths let heterogeneous desktop selections share native Shell operations where Windows supports them.
 
 The companion Explorer maps mouse side buttons to Back and Forward in the active tab's folder history. Replacement-mode auto-hide registers edge-docked bars with the per-monitor AppBar API and releases the registration when disabled or closed; if an edge is already claimed, Desktop Tuner retains local auto-hide behavior. These code paths are covered by automated checks, but live reveal/collision behavior still needs Windows 11 desktop validation.
 

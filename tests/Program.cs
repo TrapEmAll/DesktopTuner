@@ -1563,6 +1563,10 @@ try
     Throws<ArgumentException>(() => NativeShellContextMenuPolicy.NormalizeSelection([nativeMenuFirst, Path.Combine(nativeMenuOtherFolder, "third.txt")]), "reject mixed-parent native context menus");
     Check(0x40u, ShellFileOperationPolicy.GetDeleteFlags(permanentDelete: false), "route native Shell deletes to the Recycle Bin by default");
     Check(0x4000u, ShellFileOperationPolicy.GetDeleteFlags(permanentDelete: true), "request the Shell's permanent-delete warning for Shift+Delete");
+    CheckTrue(ShellMultiPropertiesPolicy.ShouldUseMergedProperties(sameParent: false, allFileSystemItems: true, selectionCount: 2), "merge Properties for filesystem items from different folders");
+    CheckTrue(!ShellMultiPropertiesPolicy.ShouldUseMergedProperties(sameParent: false, allFileSystemItems: false, selectionCount: 2), "keep provider-native Properties for mixed filesystem and virtual selections");
+    CheckTrue(!ShellMultiPropertiesPolicy.ShouldUseMergedProperties(sameParent: true, allFileSystemItems: true, selectionCount: 2), "keep shared-folder Properties on the provider's native verb");
+    CheckTrue(!ShellMultiPropertiesPolicy.ShouldUseMergedProperties(sameParent: false, allFileSystemItems: true, selectionCount: 1), "use the single-item Properties verb for one item");
     Throws<ArgumentException>(() => NativeShellContextMenuPolicy.NormalizeSelection([Path.GetPathRoot(temporaryPreferencesDirectory)!]), "reject drive-root native context menus");
 
     var explorerTestDirectory = Path.Combine(temporaryPreferencesDirectory, "ExplorerOperations");

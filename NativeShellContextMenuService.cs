@@ -203,6 +203,13 @@ public static class NativeShellContextMenuService
                 InvokeShellItemVerb(owner, absolutePidls, verb, shiftPressed);
             else if (string.Equals(verb, "delete", StringComparison.OrdinalIgnoreCase))
                 return DeleteShellItemsAcrossParents(owner, absolutePidls, shiftPressed);
+            else if (string.Equals(verb, "properties", StringComparison.OrdinalIgnoreCase) &&
+                     ShellMultiPropertiesPolicy.ShouldUseMergedProperties(
+                         sameParent: false,
+                         allFileSystemItems: selection.All(IsExistingFileSystemItem),
+                         selectionCount: absolutePidls.Length) &&
+                     ShowMergedShellProperties(owner, absolutePidls))
+                return true;
             else
                 foreach (var absolutePidl in absolutePidls) InvokeShellItemVerb(owner, [absolutePidl], verb, shiftPressed);
             return true;
@@ -212,6 +219,45 @@ public static class NativeShellContextMenuService
             foreach (var absolutePidl in absolutePidls) Marshal.FreeCoTaskMem(absolutePidl);
         }
     }
+
+    private static bool ShowMergedShellProperties(nint owner, IReadOnlyList<nint> absolutePidls)
+    {
+        if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
+            return RunOnStaThread(() => ShowMergedShellProperties(owner, absolutePidls));
+
+        var initializeResult = OleInitialize(nint.Zero);
+        var uninitialize = initializeResult >= 0;
+        if (initializeResult < 0)
+            ThrowForFailure(initializeResult, "Could not initialize the merged Shell Properties sheet.");
+
+        System.Runtime.InteropServices.ComTypes.IDataObject? dataObject = null;
+        nint unknown = nint.Zero;
+        try
+        {
+            dataObject = CreateShellDataObject(owner, absolutePidls.ToArray());
+            unknown = Marshal.GetIUnknownForObject(dataObject);
+            var result = SHMultiFileProperties(unknown, 0);
+            if (result >= 0) return true;
+
+            Trace.TraceWarning($"Windows could not open the merged Shell Properties sheet (HRESULT 0x{result:X8}); falling back to individual item Properties.");
+            return false;
+        }
+        catch (Exception ex) when (ex is COMException or Win32Exception or ArgumentException or InvalidOperationException)
+        {
+            Trace.TraceWarning($"Could not open the merged Shell Properties sheet; falling back to individual item Properties: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            if (unknown != nint.Zero) Marshal.Release(unknown);
+            if (dataObject is not null && Marshal.IsComObject(dataObject)) Marshal.ReleaseComObject(dataObject);
+            if (uninitialize) OleUninitialize();
+        }
+    }
+
+    private static bool IsExistingFileSystemItem(string parsingName) =>
+        !DesktopShellNamespaceCatalog.IsShellNamespaceLocation(parsingName) &&
+        (File.Exists(parsingName) || Directory.Exists(parsingName));
 
     private static bool DeleteShellItemsAcrossParents(nint owner, IReadOnlyList<nint> absolutePidls, bool shiftPressed)
     {
@@ -1104,6 +1150,9 @@ public static class NativeShellContextMenuService
 
     [DllImport("shell32.dll", PreserveSig = true)]
     private static extern int SHCreateItemFromIDList(nint pidl, ref Guid interfaceId, [MarshalAs(UnmanagedType.Interface)] out IShellItem item);
+
+    [DllImport("shell32.dll", PreserveSig = true)]
+    private static extern int SHMultiFileProperties(nint dataObject, uint flags);
 
     [DllImport("shell32.dll", PreserveSig = true)]
     private static extern nint ILCombine(nint parentPidl, nint childPidl);
