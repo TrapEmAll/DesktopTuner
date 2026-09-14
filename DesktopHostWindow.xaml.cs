@@ -15,6 +15,7 @@ namespace DesktopTuner;
 public partial class DesktopHostWindow : Window
 {
     private const string ItemIdentityFormat = "DesktopTuner.DesktopItemIdentity";
+    private const int MessageClipboardUpdate = 0x031D;
     private const double DesktopIconWidth = 100;
     private const double DesktopIconHeight = 112;
     private static readonly IntPtr HwndBottom = new(1);
@@ -25,14 +26,19 @@ public partial class DesktopHostWindow : Window
     private readonly bool _routeFoldersToCompanionExplorer;
     private readonly ObservableCollection<DesktopHostItem> _desktopItems = [];
     private readonly List<FileSystemWatcher> _desktopWatchers = [];
+    private readonly HashSet<string> _cutParsingNames = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<DesktopHostMonitorViewport> _desktopMonitors = [];
     private IReadOnlyList<DesktopHostMonitorViewport> _wallpaperMonitors = [];
     private IReadOnlyList<TaskbarDisplay> _connectedDisplays = [];
     private DesktopShellChangeNotificationListener? _shellChangeNotifications;
+    private HwndSource? _windowSource;
+    private HwndSourceHook? _windowMessageHook;
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly DispatcherTimer _wallpaperRefreshTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private string? _wallpaperSignature;
     private bool _isClosed;
+    private bool _clipboardListenerRegistered;
+    private uint _cutClipboardSequence;
     private bool _isMarqueeSelecting;
     private bool _marqueeTogglesSelection;
     private DesktopHostItem? _dragCandidate;
@@ -70,8 +76,16 @@ public partial class DesktopHostWindow : Window
         SetWindowPos(handle, HwndNotTopmost, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
         try
         {
-            var source = HwndSource.FromHwnd(handle);
-            if (source is not null) _shellChangeNotifications = new DesktopShellChangeNotificationListener(source, QueueDesktopRefresh);
+            _windowSource = HwndSource.FromHwnd(handle);
+            if (_windowSource is not null)
+            {
+                _windowMessageHook = WindowMessageHook;
+                _windowSource.AddHook(_windowMessageHook);
+                _shellChangeNotifications = new DesktopShellChangeNotificationListener(_windowSource, QueueDesktopRefresh);
+                _clipboardListenerRegistered = AddClipboardFormatListener(handle);
+            }
+            if (!_clipboardListenerRegistered)
+                Trace.TraceWarning($"Could not monitor clipboard changes for desktop cut-state display: {System.Runtime.InteropServices.Marshal.GetLastWin32Error()}");
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or DllNotFoundException or EntryPointNotFoundException or System.Runtime.InteropServices.COMException)
         {
@@ -262,6 +276,7 @@ public partial class DesktopHostWindow : Window
         foreach (var item in ordered)
         {
             item.IsSelected = selectedPaths.Contains(item.FullPath);
+            item.IsCut = _cutParsingNames.Contains(item.FullPath);
             _desktopItems.Add(item);
         }
         if (_selectionAnchorPath is not null && !_desktopItems.Any(item => string.Equals(item.FullPath, _selectionAnchorPath, StringComparison.OrdinalIgnoreCase)))
@@ -331,6 +346,12 @@ public partial class DesktopHostWindow : Window
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
         _shellChangeNotifications?.Dispose();
         _shellChangeNotifications = null;
+        var handle = new WindowInteropHelper(this).Handle;
+        if (_clipboardListenerRegistered) RemoveClipboardFormatListener(handle);
+        if (_windowSource is not null && _windowMessageHook is not null) _windowSource.RemoveHook(_windowMessageHook);
+        _clipboardListenerRegistered = false;
+        _windowSource = null;
+        _windowMessageHook = null;
         foreach (var watcher in _desktopWatchers) watcher.Dispose();
         _desktopWatchers.Clear();
     }
@@ -338,7 +359,19 @@ public partial class DesktopHostWindow : Window
     private void OnKeyDown(object sender, KeyEventArgs e)
     {
         var selectedItems = _desktopItems.Where(item => item.IsSelected).ToArray();
-        if (DesktopHostKeyboardPolicy.ShouldDeleteSelection(e.Key, Keyboard.Modifiers, selectedItems.Length > 0,
+        var clipboardAction = DesktopHostKeyboardPolicy.ResolveClipboardAction(e.Key, Keyboard.Modifiers,
+            selectedItems.Length > 0, e.OriginalSource is TextBox);
+        if (clipboardAction != DesktopHostClipboardAction.None)
+        {
+            e.Handled = true;
+            if (clipboardAction == DesktopHostClipboardAction.Copy)
+                _ = CopySelectedDesktopItemsAsync(cut: false);
+            else if (clipboardAction == DesktopHostClipboardAction.Cut)
+                _ = CopySelectedDesktopItemsAsync(cut: true);
+            else
+                _ = PasteDesktopItemsAsync();
+        }
+        else if (DesktopHostKeyboardPolicy.ShouldDeleteSelection(e.Key, Keyboard.Modifiers, selectedItems.Length > 0,
                 e.OriginalSource is TextBox))
         {
             e.Handled = true;
@@ -597,6 +630,108 @@ public partial class DesktopHostWindow : Window
         }
     }
 
+    private async Task CopySelectedDesktopItemsAsync(bool cut)
+    {
+        var selection = _desktopItems.Where(item => item.IsSelected && item.CanShowNativeContextMenu).ToArray();
+        if (selection.Length == 0) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            var clipboardSequence = await NativeShellContextMenuService.CopyShellItemsToClipboardAsync(
+                owner, selection.Select(item => item.FullPath), cut);
+            if (cut) SetCutState(selection, clipboardSequence);
+            else ClearCutState();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, cut ? "Could not cut desktop items" : "Could not copy desktop items", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task PasteDesktopItemsAsync()
+    {
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.PasteIntoShellFolderAsync(owner, "shell:Desktop");
+            ClearCutState();
+            QueueDesktopRefresh();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not paste onto the desktop", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void SetCutState(IEnumerable<DesktopHostItem> selectedItems, uint clipboardSequence)
+    {
+        if (!_clipboardListenerRegistered || NativeShellContextMenuService.ReadClipboardSequenceNumber() != clipboardSequence)
+        {
+            ClearCutState();
+            return;
+        }
+
+        _cutParsingNames.Clear();
+        foreach (var item in selectedItems) _cutParsingNames.Add(item.FullPath);
+        _cutClipboardSequence = clipboardSequence;
+        ApplyCutState(_desktopItems);
+    }
+
+    private void ClearCutState()
+    {
+        _cutParsingNames.Clear();
+        _cutClipboardSequence = 0;
+        ApplyCutState(_desktopItems);
+    }
+
+    private void ApplyCutState(IEnumerable<DesktopHostItem> items)
+    {
+        if (_cutParsingNames.Count > 0 && NativeShellContextMenuService.ReadClipboardSequenceNumber() != _cutClipboardSequence)
+        {
+            _cutParsingNames.Clear();
+            _cutClipboardSequence = 0;
+        }
+        foreach (var item in items) item.IsCut = _cutParsingNames.Contains(item.FullPath);
+    }
+
+    private void RefreshCutStateFromClipboard()
+    {
+        var clipboardSequence = NativeShellContextMenuService.ReadClipboardSequenceNumber();
+        if (_cutParsingNames.Count > 0 && clipboardSequence == _cutClipboardSequence)
+        {
+            ApplyCutState(_desktopItems);
+            return;
+        }
+
+        var parsingNames = NativeShellContextMenuService.ReadCutItemParsingNamesFromClipboard();
+        if (parsingNames.Count == 0)
+        {
+            ClearCutState();
+            return;
+        }
+
+        _cutParsingNames.Clear();
+        foreach (var parsingName in parsingNames)
+        {
+            try
+            {
+                _cutParsingNames.Add(Path.IsPathFullyQualified(parsingName) ? Path.GetFullPath(parsingName) : parsingName);
+            }
+            catch (Exception ex) when (ex is ArgumentException or IOException or NotSupportedException)
+            {
+                _cutParsingNames.Add(parsingName);
+            }
+        }
+        _cutClipboardSequence = clipboardSequence;
+        ApplyCutState(_desktopItems);
+    }
+
+    private nint WindowMessageHook(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
+    {
+        if (message == MessageClipboardUpdate) RefreshCutStateFromClipboard();
+        return nint.Zero;
+    }
+
     private void OnItemContextMenuOpened(object sender, RoutedEventArgs e)
     {
         if (sender is not ContextMenu { PlacementTarget: Button { DataContext: DesktopHostItem item } } contextMenu) return;
@@ -605,6 +740,12 @@ public partial class DesktopHostWindow : Window
         if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "OpenDesktopItemMenuItem") is { } openItem)
             openItem.IsEnabled = _desktopItems.Count(candidate => candidate.IsSelected) == 1;
     }
+
+    private async void OnCutDesktopItemsClick(object sender, RoutedEventArgs e) => await CopySelectedDesktopItemsAsync(cut: true);
+
+    private async void OnCopyDesktopItemsClick(object sender, RoutedEventArgs e) => await CopySelectedDesktopItemsAsync(cut: false);
+
+    private async void OnPasteDesktopItemsClick(object sender, RoutedEventArgs e) => await PasteDesktopItemsAsync();
 
     private void OnItemRightButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -1106,4 +1247,12 @@ public partial class DesktopHostWindow : Window
     [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
     [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
     private static extern bool SetWindowPos(IntPtr window, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool AddClipboardFormatListener(nint window);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool RemoveClipboardFormatListener(nint window);
 }

@@ -27,6 +27,7 @@
                             DragOver="OnItemDragOver" Drop="OnItemDrop" MouseDoubleClick="OnItemDoubleClick">
                         <Button.Style>
                             <Style TargetType="Button">
+                                <Setter Property="Opacity" Value="1"/>
                                 <Setter Property="BorderBrush" Value="Transparent"/>
                                 <Setter Property="Background" Value="Transparent"/>
                                 <Setter Property="BorderThickness" Value="1"/>
@@ -35,6 +36,9 @@
                                         <Setter Property="Background" Value="#604078D4"/>
                                         <Setter Property="BorderBrush" Value="#FF80B5FF"/>
                                     </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsCut}" Value="True">
+                                        <Setter Property="Opacity" Value="0.5"/>
+                                    </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Button.Style>
@@ -42,6 +46,11 @@
                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
                                          Opened="OnItemContextMenuOpened">
                                 <MenuItem x:Name="OpenDesktopItemMenuItem" Header="Open" Click="OnOpenItemClick"/>
+                                <MenuItem Header="Cut" InputGestureText="Ctrl+X" IsEnabled="{Binding CanShowNativeContextMenu}"
+                                          Click="OnCutDesktopItemsClick"/>
+                                <MenuItem Header="Copy" InputGestureText="Ctrl+C" IsEnabled="{Binding CanShowNativeContextMenu}"
+                                          Click="OnCopyDesktopItemsClick"/>
+                                <Separator/>
                                 <MenuItem Header="Rename" IsEnabled="{Binding CanRename}" Click="OnRenameItemClick"/>
                                 <MenuItem Header="Show more options" IsEnabled="{Binding CanShowNativeContextMenu}"
                                           Click="OnShowNativeContextMenuClick"/>
@@ -75,6 +84,7 @@
         <Grid.ContextMenu>
             <ContextMenu Opened="OnBackgroundContextMenuOpened">
                 <MenuItem Header="Refresh" Click="OnRefreshClick"/>
+                <MenuItem Header="Paste" InputGestureText="Ctrl+V" Click="OnPasteDesktopItemsClick"/>
                 <MenuItem Header="New folder" Click="OnNewFolderClick"/>
                 <Separator/>
                 <MenuItem Header="View">

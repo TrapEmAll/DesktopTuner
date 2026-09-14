@@ -9,6 +9,7 @@ namespace DesktopTuner;
 public sealed class DesktopHostItem(string name, string fullPath, bool isDirectory, bool isShellNamespace = false, bool shellCanRename = false) : INotifyPropertyChanged
 {
     private bool _isSelected;
+    private bool _isCut;
     private double _left;
     private double _top;
     private bool _isRenaming;
@@ -40,6 +41,12 @@ public sealed class DesktopHostItem(string name, string fullPath, bool isDirecto
             _isSelected = value;
             OnPropertyChanged();
         }
+    }
+
+    public bool IsCut
+    {
+        get => _isCut;
+        set { if (_isCut == value) return; _isCut = value; OnPropertyChanged(); }
     }
 
     public bool IsRenaming

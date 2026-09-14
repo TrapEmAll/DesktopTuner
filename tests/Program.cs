@@ -176,6 +176,18 @@ Check(false, DesktopHostKeyboardPolicy.ShouldDeleteSelection(Key.Delete, Modifie
     "leave Delete unhandled when no replacement desktop items are selected");
 Check(false, DesktopHostKeyboardPolicy.ShouldDeleteSelection(Key.Delete, ModifierKeys.None, hasSelection: true, isEditingName: true),
     "preserve Delete while editing a replacement desktop item name");
+Check(DesktopHostClipboardAction.Copy, DesktopHostKeyboardPolicy.ResolveClipboardAction(Key.C, ModifierKeys.Control, hasSelection: true),
+    "copy selected replacement desktop items with Ctrl+C");
+Check(DesktopHostClipboardAction.Cut, DesktopHostKeyboardPolicy.ResolveClipboardAction(Key.X, ModifierKeys.Control, hasSelection: true),
+    "cut selected replacement desktop items with Ctrl+X");
+Check(DesktopHostClipboardAction.Paste, DesktopHostKeyboardPolicy.ResolveClipboardAction(Key.V, ModifierKeys.Control, hasSelection: false),
+    "paste Shell clipboard items onto the replacement desktop with Ctrl+V");
+Check(DesktopHostClipboardAction.None, DesktopHostKeyboardPolicy.ResolveClipboardAction(Key.C, ModifierKeys.Control, hasSelection: false),
+    "leave Ctrl+C unhandled when the replacement desktop selection is empty");
+Check(DesktopHostClipboardAction.None, DesktopHostKeyboardPolicy.ResolveClipboardAction(Key.X, ModifierKeys.Control, hasSelection: true, isEditingName: true),
+    "preserve Ctrl+X text editing while renaming a desktop item");
+var cutDesktopItem = new DesktopHostItem("cut.txt", Path.Combine(desktopHostTestRoot, "cut.txt"), false) { IsCut = true };
+Check(true, cutDesktopItem.IsCut, "dim a replacement desktop item while its Shell clipboard operation is a cut");
 var desktopSelection = DesktopHostSelectionPolicy.Select(selectableDesktopItems, selectableDesktopItems[0].FullPath, false, false, null);
 foreach (var item in selectableDesktopItems) item.IsSelected = desktopSelection.Paths.Contains(item.FullPath);
 desktopSelection = DesktopHostSelectionPolicy.Select(selectableDesktopItems, selectableDesktopItems[2].FullPath, true, false, desktopSelection.AnchorPath);
