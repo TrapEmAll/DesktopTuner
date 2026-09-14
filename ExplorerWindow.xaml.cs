@@ -2143,7 +2143,8 @@ public partial class ExplorerWindow : Window
     {
         if (EntriesList.SelectedItem is not ExplorerEntry { IsDrive: false } entry) return;
         var currentName = Path.GetFileName(entry.FullPath);
-        var newName = PromptForName("Rename", "New name:", currentName);
+        var selectionLength = ExplorerRenamePolicy.GetInitialSelectionLength(currentName, entry.IsDirectory);
+        var newName = PromptForName("Rename", "New name:", currentName, selectionLength);
         if (newName is null || string.Equals(currentName, newName, StringComparison.Ordinal)) return;
         try
         {
@@ -2196,7 +2197,7 @@ public partial class ExplorerWindow : Window
             MessageBox.Show(this, string.Join(Environment.NewLine, failures), "Some items could not be deleted", MessageBoxButton.OK, MessageBoxImage.Error);
     }
 
-    private string? PromptForName(string title, string prompt, string initialValue)
+    private string? PromptForName(string title, string prompt, string initialValue, int? initialSelectionLength = null)
     {
         var dialog = new Window
         {
@@ -2221,7 +2222,11 @@ public partial class ExplorerWindow : Window
         buttons.Children.Add(confirm);
         panel.Children.Add(buttons);
         dialog.Content = panel;
-        dialog.Loaded += (_, _) => { nameBox.Focus(); nameBox.SelectAll(); };
+        dialog.Loaded += (_, _) =>
+        {
+            nameBox.Focus();
+            nameBox.Select(0, initialSelectionLength ?? nameBox.Text.Length);
+        };
         return dialog.ShowDialog() == true ? nameBox.Text.Trim() : null;
     }
 

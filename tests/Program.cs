@@ -947,6 +947,10 @@ try
     CheckTrue(new ExplorerEntry("ExplorerOperations", explorerTestDirectory, true, false, null, Directory.GetLastWriteTime(explorerTestDirectory)).Icon is not null, "expose shell folder icons to Explorer rows");
     var renamedFile = ExplorerFileOperationService.Rename(sourceFile, "notes.txt");
     Check(true, File.Exists(renamedFile), "rename a file within its current folder");
+    Check(6, ExplorerRenamePolicy.GetInitialSelectionLength("report.pdf", isDirectory: false), "select a file name without its extension when renaming");
+    Check(11, ExplorerRenamePolicy.GetInitialSelectionLength("archive.tar.gz", isDirectory: false), "preserve only the final file extension during rename");
+    Check(10, ExplorerRenamePolicy.GetInitialSelectionLength(".gitignore", isDirectory: false), "select dotfile names without treating the leading dot as an extension");
+    Check(10, ExplorerRenamePolicy.GetInitialSelectionLength("New folder", isDirectory: true), "select the full folder name when renaming");
     Throws<IOException>(() => ExplorerFileOperationService.Rename(renamedFile, "New folder"), "reject a rename that would replace a folder");
     Throws<ArgumentException>(() => ExplorerFileOperationService.ValidateName("invalid/name"), "reject file names containing reserved characters");
     var transferSource = Path.Combine(explorerTestDirectory, "TransferSource");
