@@ -22,6 +22,7 @@ public static class StartMenuPlaceCatalog
     public static IReadOnlyList<StartMenuPlace> AdditionalPlaces { get; } =
     [
         new("computer", "This PC"),
+        new("recycle-bin", "Recycle Bin"),
         new("control-panel", "Control Panel"),
         new("network", "Network"),
         new("recent", "Recent items"),
@@ -41,6 +42,9 @@ public static class StartMenuPlaceCatalog
         var visibleSet = preferences?.Visible is null
             ? order.ToHashSet(StringComparer.OrdinalIgnoreCase)
             : preferences.Visible.Where(validIds.Contains).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (preferences?.Visible is not null
+            && !(preferences.Order ?? []).Contains("recycle-bin", StringComparer.OrdinalIgnoreCase))
+            visibleSet.Add("recycle-bin");
         return new StartMenuPlacePreferences(order, order.Where(visibleSet.Contains).ToList());
     }
 
@@ -60,6 +64,7 @@ public static class StartMenuPlaceCatalog
         "documents" => Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
         "downloads" => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
         "computer" => "shell:MyComputerFolder",
+        "recycle-bin" => "shell:RecycleBinFolder",
         "control-panel" => "control.exe",
         "network" => "shell:NetworkPlacesFolder",
         "music" => Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
