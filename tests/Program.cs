@@ -24,7 +24,7 @@ Check(true, desktopHostEntries.Single(entry => entry.Name == "This PC").IsShellN
 Check(true, desktopHostEntries.Single(entry => entry.Name == "user.txt").CanShowNativeContextMenu, "allow native filesystem context verbs for a desktop file");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "user.txt").CanRename, "allow inline rename for filesystem desktop items");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "This PC").CanShowNativeContextMenu, "offer native Shell context verbs for This PC");
-Check(false, desktopHostEntries.Single(entry => entry.Name == "This PC").CanRename, "leave namespace item rename to its native Shell context menu");
+Check(false, desktopHostEntries.Single(entry => entry.Name == "This PC").CanRename, "keep This PC inline rename disabled when the Shell does not advertise rename support");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "Recycle Bin").CanShowNativeContextMenu, "offer native Shell context verbs for Recycle Bin");
 CheckTrue(TaskbarIconService.LoadNamespaceIcon("shell:MyComputerFolder") is not null, "extract a shell icon for a namespace parsing name");
 var shellNamespaceDesktopEntries = DesktopHostCatalog.ReadItems([userDesktopRoot, sharedDesktopRoot], includeDesktopNamespace: true);
@@ -34,6 +34,8 @@ CheckTrue(shellNamespaceDesktopEntries.Any(entry => entry.Name == "Control Panel
 CheckTrue(shellNamespaceDesktopEntries.Any(entry => entry.FullPath == "shell:MyComputerFolder"), "keep This PC's existing persisted Shell identity during namespace enumeration");
 CheckTrue(shellNamespaceDesktopEntries.Any(entry => entry.FullPath == "shell:RecycleBinFolder"), "keep Recycle Bin's existing persisted Shell identity during namespace enumeration");
 CheckTrue(shellNamespaceDesktopEntries.Where(entry => entry.IsShellNamespace).All(entry => entry.CanShowNativeContextMenu), "enable native context menus for every discovered Shell namespace entry");
+CheckTrue(shellNamespaceDesktopEntries.Where(entry => entry.IsShellNamespace).All(entry =>
+    entry.CanRename == NativeShellContextMenuService.CanRenameShellItem(entry.FullPath)), "show inline rename only when the native Shell advertises SFGAO_CANRENAME");
 CheckTrue(shellNamespaceDesktopEntries.Any(entry => entry.FullPath == Path.Combine(userDesktopRoot, "user.txt")), "retain custom filesystem roots alongside Shell namespace entries");
 Check(shellNamespaceDesktopEntries.Where(entry => entry.IsShellNamespace).Count(), shellNamespaceDesktopEntries.Where(entry => entry.IsShellNamespace)
     .Select(entry => entry.Name).Distinct(StringComparer.CurrentCultureIgnoreCase).Count(), "show each Windows desktop namespace label once");

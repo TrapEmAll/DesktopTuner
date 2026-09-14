@@ -15,6 +15,8 @@ public static class NativeShellContextMenuService
     private const int MessageDrawItem = 0x002b;
     private const int MessageMeasureItem = 0x002c;
     private const int MessageMenuCharacter = 0x0120;
+    private const uint ShellAttributeCanRename = 0x00000010;
+    private const uint DesktopAbsoluteParsing = 0x80028000;
     private static readonly Guid ShellFolderId = new("000214E6-0000-0000-C000-000000000046");
     private static readonly Guid ContextMenuId = new("000214E4-0000-0000-C000-000000000046");
 
@@ -43,6 +45,113 @@ public static class NativeShellContextMenuService
     internal static async Task<bool> ProbeShellItemContextMenuAsync(string parsingName)
     {
         return await ProcessShellItemAsync(nint.Zero, parsingName, showPopup: false);
+    }
+
+    internal static bool CanRenameShellItem(string parsingName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(parsingName);
+        var initializeResult = CoInitializeEx(nint.Zero, 0);
+        var uninitialize = initializeResult >= 0;
+        if (initializeResult < 0 && initializeResult != unchecked((int)0x80010106))
+            ThrowForFailure(initializeResult, "Could not initialize the Windows Shell rename query.");
+
+        nint absolutePidl = nint.Zero;
+        nint childArray = nint.Zero;
+        IShellFolder? parent = null;
+        try
+        {
+            ThrowForFailure(SHParseDisplayName(parsingName, nint.Zero, out absolutePidl, 0, nint.Zero), $"Windows could not resolve '{parsingName}'.");
+            var folderId = ShellFolderId;
+            ThrowForFailure(SHBindToParent(absolutePidl, ref folderId, out parent, out var childPidl), "Could not bind to the Shell item's parent folder.");
+            childArray = AllocatePointerArray([childPidl]);
+            uint attributes = ShellAttributeCanRename;
+            var result = parent.GetAttributesOf(1, childArray, ref attributes);
+            return result >= 0 && (attributes & ShellAttributeCanRename) != 0;
+        }
+        catch (COMException ex)
+        {
+            System.Diagnostics.Trace.TraceWarning($"Could not query rename support for Shell item '{parsingName}': {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            if (parent is not null) ReleaseComObject(parent);
+            if (childArray != nint.Zero) Marshal.FreeHGlobal(childArray);
+            if (absolutePidl != nint.Zero) Marshal.FreeCoTaskMem(absolutePidl);
+            if (uninitialize) CoUninitialize();
+        }
+    }
+
+    internal static Task<string> RenameShellItemAsync(string parsingName, string newName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(parsingName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        return Task.Run(() => RenameShellItem(parsingName, newName));
+    }
+
+    private static string RenameShellItem(string parsingName, string newName)
+    {
+        var initializeResult = CoInitializeEx(nint.Zero, 0);
+        var uninitialize = initializeResult >= 0;
+        if (initializeResult < 0 && initializeResult != unchecked((int)0x80010106))
+            ThrowForFailure(initializeResult, "Could not initialize the Windows Shell rename thread.");
+
+        nint absolutePidl = nint.Zero;
+        nint childArray = nint.Zero;
+        nint renamedChildPidl = nint.Zero;
+        nint renamedAbsolutePidl = nint.Zero;
+        IShellFolder? parent = null;
+        try
+        {
+            ThrowForFailure(SHParseDisplayName(parsingName, nint.Zero, out absolutePidl, 0, nint.Zero), $"Windows could not resolve '{parsingName}'.");
+            var folderId = ShellFolderId;
+            ThrowForFailure(SHBindToParent(absolutePidl, ref folderId, out parent, out var childPidl), "Could not bind to the Shell item's parent folder.");
+            childArray = AllocatePointerArray([childPidl]);
+            uint attributes = ShellAttributeCanRename;
+            ThrowForFailure(parent.GetAttributesOf(1, childArray, ref attributes), "Windows could not check whether this Shell item can be renamed.");
+            if ((attributes & ShellAttributeCanRename) == 0)
+                throw new InvalidOperationException("Windows does not allow this Shell item to be renamed.");
+
+            ThrowForFailure(parent.SetNameOf(nint.Zero, childPidl, newName, 0, out renamedChildPidl), "Windows could not rename this Shell item.");
+            if (renamedChildPidl == nint.Zero) throw new COMException("Windows renamed the Shell item but did not return its new identity.");
+            renamedAbsolutePidl = CombinePidls(absolutePidl, renamedChildPidl);
+            ThrowForFailure(SHGetNameFromIDList(renamedAbsolutePidl, DesktopAbsoluteParsing, out var parsingNamePointer), "Windows could not resolve the renamed Shell item's identity.");
+            try
+            {
+                return Marshal.PtrToStringUni(parsingNamePointer) ?? throw new COMException("Windows returned an empty parsing name for the renamed Shell item.");
+            }
+            finally { Marshal.FreeCoTaskMem(parsingNamePointer); }
+        }
+        finally
+        {
+            if (parent is not null) ReleaseComObject(parent);
+            if (childArray != nint.Zero) Marshal.FreeHGlobal(childArray);
+            if (renamedChildPidl != nint.Zero) Marshal.FreeCoTaskMem(renamedChildPidl);
+            if (renamedAbsolutePidl != nint.Zero) Marshal.FreeCoTaskMem(renamedAbsolutePidl);
+            if (absolutePidl != nint.Zero) Marshal.FreeCoTaskMem(absolutePidl);
+            if (uninitialize) CoUninitialize();
+        }
+    }
+
+    private static nint CombinePidls(nint absolutePidl, nint childPidl)
+    {
+        var parentPidlLength = GetParentPidlLength(absolutePidl);
+        var childPidlLength = GetPidlLength(childPidl);
+        var parentComponentsLength = parentPidlLength - sizeof(ushort);
+        var combined = Marshal.AllocCoTaskMem(checked(parentComponentsLength + childPidlLength));
+        try
+        {
+            for (var index = 0; index < parentComponentsLength; index++)
+                Marshal.WriteByte(combined, index, Marshal.ReadByte(absolutePidl, index));
+            for (var index = 0; index < childPidlLength; index++)
+                Marshal.WriteByte(combined, parentComponentsLength + index, Marshal.ReadByte(childPidl, index));
+            return combined;
+        }
+        catch
+        {
+            Marshal.FreeCoTaskMem(combined);
+            throw;
+        }
     }
 
     internal static async Task<bool> ProbeShellItemsContextMenuAsync(IEnumerable<string> parsingNames)
@@ -321,6 +430,19 @@ public static class NativeShellContextMenuService
         }
     }
 
+    private static int GetPidlLength(nint pidl)
+    {
+        var offset = 0;
+        while (true)
+        {
+            var itemLength = (ushort)Marshal.ReadInt16(pidl, offset);
+            if (itemLength == 0) return offset + sizeof(ushort);
+            if (itemLength < sizeof(ushort)) throw new COMException("Windows returned an invalid Shell item identifier.");
+            offset = checked(offset + itemLength);
+            if (offset > 65536) throw new COMException("Windows returned an oversized Shell item identifier.");
+        }
+    }
+
     private static bool ParentPidlsEqual(nint first, int firstParentLength, nint second)
     {
         var secondParentLength = GetParentPidlLength(second);
@@ -408,6 +530,9 @@ public static class NativeShellContextMenuService
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = true)]
     private static extern int SHParseDisplayName(string name, nint bindContext, out nint pidl, uint attributesIn, nint attributesOut);
+
+    [DllImport("shell32.dll", PreserveSig = true)]
+    private static extern int SHGetNameFromIDList(nint pidl, uint nameType, out nint name);
 
     [DllImport("ole32.dll")]
     private static extern int CoInitializeEx(nint reserved, uint concurrencyModel);

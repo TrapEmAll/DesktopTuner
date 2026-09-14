@@ -276,7 +276,8 @@ public static class DesktopShellNamespaceCatalog
                     if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(parsingNameValue) || !names.Add(name)) continue;
                     var isFolder = Convert.ToBoolean(shellItem.IsFolder);
                     var parsingName = NormalizeParsingName(parsingNameValue);
-                    entries.Add(new DesktopHostItem(name, parsingName, isFolder, isShellNamespace: true));
+                    var canRename = NativeShellContextMenuService.CanRenameShellItem(parsingName);
+                    entries.Add(new DesktopHostItem(name, parsingName, isFolder, isShellNamespace: true, shellCanRename: canRename));
                 }
                 catch (Exception ex) when (ex is COMException or InvalidComObjectException or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException or InvalidCastException or FormatException)
                 {

@@ -6,7 +6,7 @@ using System.Windows.Media;
 
 namespace DesktopTuner;
 
-public sealed class DesktopHostItem(string name, string fullPath, bool isDirectory, bool isShellNamespace = false) : INotifyPropertyChanged
+public sealed class DesktopHostItem(string name, string fullPath, bool isDirectory, bool isShellNamespace = false, bool shellCanRename = false) : INotifyPropertyChanged
 {
     private bool _isSelected;
     private double _left;
@@ -18,7 +18,7 @@ public sealed class DesktopHostItem(string name, string fullPath, bool isDirecto
     public string FullPath { get; } = fullPath;
     public bool IsDirectory { get; } = isDirectory;
     public bool IsShellNamespace { get; } = isShellNamespace;
-    public bool CanRename => !IsShellNamespace;
+    public bool CanRename => !IsShellNamespace || shellCanRename;
     public string? MonitorDeviceName { get; internal set; }
     public double Left
     {

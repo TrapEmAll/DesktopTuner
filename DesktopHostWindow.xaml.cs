@@ -431,7 +431,7 @@ public partial class DesktopHostWindow : Window
 
     private void BeginRename(DesktopHostItem item)
     {
-        if (!item.CanRename || !File.Exists(item.FullPath) && !Directory.Exists(item.FullPath)) return;
+        if (!item.CanRename || !item.IsShellNamespace && !File.Exists(item.FullPath) && !Directory.Exists(item.FullPath)) return;
         item.RenameText = item.Name;
         item.IsRenaming = true;
         Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
@@ -450,12 +450,12 @@ public partial class DesktopHostWindow : Window
         }));
     }
 
-    private void RenameEditor_PreviewKeyDown(object sender, KeyEventArgs e)
+    private async void RenameEditor_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (sender is not TextBox { DataContext: DesktopHostItem item }) return;
         if (e.Key == Key.Enter)
         {
-            CommitRename(item);
+            await CommitRenameAsync(item);
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)
@@ -466,12 +466,12 @@ public partial class DesktopHostWindow : Window
         }
     }
 
-    private void RenameEditor_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    private async void RenameEditor_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
-        if (sender is TextBox { DataContext: DesktopHostItem item }) CommitRename(item);
+        if (sender is TextBox { DataContext: DesktopHostItem item }) await CommitRenameAsync(item);
     }
 
-    private void CommitRename(DesktopHostItem item)
+    private async Task CommitRenameAsync(DesktopHostItem item)
     {
         if (!item.IsRenaming) return;
         var originalPath = item.FullPath;
@@ -484,14 +484,16 @@ public partial class DesktopHostWindow : Window
 
         try
         {
-            var renamedPath = ExplorerFileOperationService.Rename(originalPath, newName);
             item.IsRenaming = false;
+            var renamedPath = item.IsShellNamespace
+                ? await NativeShellContextMenuService.RenameShellItemAsync(originalPath, newName)
+                : ExplorerFileOperationService.Rename(originalPath, newName);
             if (!_layoutStore.RenamePath(originalPath, renamedPath))
                 System.Diagnostics.Trace.TraceWarning($"The desktop item '{renamedPath}' was renamed, but its saved icon position could not be migrated.");
             RefreshDesktop();
             if (!_desktopItems.Any(candidate => string.Equals(candidate.FullPath, renamedPath, StringComparison.OrdinalIgnoreCase))) return;
             ApplySelection(new HashSet<string>([renamedPath], StringComparer.OrdinalIgnoreCase), renamedPath);
-            Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+            _ = Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
             {
                 var renamedButton = FindVisualChildren<Button>(DesktopItems)
                     .FirstOrDefault(candidate => candidate.DataContext is DesktopHostItem desktopItem &&
@@ -500,7 +502,7 @@ public partial class DesktopHostWindow : Window
                 if (renamedButton is not null) Keyboard.Focus(renamedButton);
             }));
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Runtime.InteropServices.COMException or InvalidOperationException)
         {
             item.IsRenaming = false;
             item.RenameText = item.Name;
