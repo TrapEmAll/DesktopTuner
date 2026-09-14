@@ -315,21 +315,25 @@ public partial class DesktopHostWindow : Window
 
     private void OnItemMouseMove(object sender, MouseEventArgs e)
     {
-        if (e.LeftButton != MouseButtonState.Pressed || _dragCandidate is not { } item || item.IsShellNamespace
-            || !File.Exists(item.FullPath) && !Directory.Exists(item.FullPath)) return;
+        if (e.LeftButton != MouseButtonState.Pressed || _dragCandidate is not { } item ||
+            (!item.IsShellNamespace && !File.Exists(item.FullPath) && !Directory.Exists(item.FullPath))) return;
         var current = e.GetPosition(this);
         if (Math.Abs(current.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance
             && Math.Abs(current.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
 
         _dragCandidate = null;
-        var draggedItems = (item.IsSelected ? _desktopItems.Where(candidate => candidate.IsSelected) : [item])
-            .Where(candidate => !candidate.IsShellNamespace && (File.Exists(candidate.FullPath) || Directory.Exists(candidate.FullPath)))
-            .ToArray();
-        if (draggedItems.Length == 0) return;
-        var paths = draggedItems.Select(candidate => candidate.FullPath).ToArray();
-        var data = new DataObject(DataFormats.FileDrop, paths);
-        data.SetData(ItemIdentityFormat, paths.Length == 1 ? paths[0] : paths);
-        DragDrop.DoDragDrop((DependencyObject)sender, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
+        var dragSelection = DesktopHostDragPolicy.Resolve(_desktopItems, item);
+        if (dragSelection.ItemPaths.Count == 0) return;
+        var data = new DataObject();
+        if (dragSelection.FileDropPaths.Count > 0)
+            data.SetData(DataFormats.FileDrop, dragSelection.FileDropPaths.ToArray());
+        data.SetData(ItemIdentityFormat, dragSelection.ItemPaths.Count == 1
+            ? dragSelection.ItemPaths[0]
+            : dragSelection.ItemPaths.ToArray());
+        var effects = dragSelection.FileDropPaths.Count > 0
+            ? DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link
+            : DragDropEffects.Move;
+        DragDrop.DoDragDrop((DependencyObject)sender, data, effects);
     }
 
     private void OnItemDragOver(object sender, DragEventArgs e)

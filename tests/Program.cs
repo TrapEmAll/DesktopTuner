@@ -124,6 +124,17 @@ desktopSelection = DesktopHostSelectionPolicy.PreserveSelectionForContextMenu(se
 Check("a,c", string.Join(',', selectableDesktopItems.Where(item => desktopSelection.Paths.Contains(item.FullPath)).Select(item => item.Name)), "preserve a multi-item selection when opening a selected desktop icon's context menu");
 desktopSelection = DesktopHostSelectionPolicy.PreserveSelectionForContextMenu(selectableDesktopItems, selectableDesktopItems[1].FullPath);
 Check("b", string.Join(',', selectableDesktopItems.Where(item => desktopSelection.Paths.Contains(item.FullPath)).Select(item => item.Name)), "select only an unselected desktop icon for its context menu");
+var draggedFilePath = Path.Combine(userDesktopRoot, "dragged.txt");
+File.WriteAllText(draggedFilePath, "drag me");
+var draggedFileItem = new DesktopHostItem("dragged.txt", draggedFilePath, false) { IsSelected = true };
+var draggedNamespaceItem = new DesktopHostItem("Libraries", "::{031E4825-7B94-4DC3-B131-E946B44C8DD5}", true, isShellNamespace: true) { IsSelected = true };
+var namespaceDrag = DesktopHostDragPolicy.Resolve([draggedNamespaceItem], draggedNamespaceItem);
+Check(draggedNamespaceItem.FullPath, string.Join(',', namespaceDrag.ItemPaths), "allow an individual virtual desktop item to start an internal position drag");
+Check(0, namespaceDrag.FileDropPaths.Count, "do not expose virtual namespace objects as filesystem drag-out paths");
+var mixedDesktopDrag = DesktopHostDragPolicy.Resolve([draggedFileItem, draggedNamespaceItem], draggedNamespaceItem);
+Check($"{draggedNamespaceItem.FullPath},{draggedFileItem.FullPath}", string.Join(',', mixedDesktopDrag.ItemPaths), "move mixed selected desktop items with the dragged item as the group anchor");
+Check(draggedFilePath, string.Join(',', mixedDesktopDrag.FileDropPaths), "include only real filesystem entries in a mixed desktop file-drop payload");
+Check(0, DesktopHostDragPolicy.Resolve(selectableDesktopItems, new DesktopHostItem("missing", "missing", false)).ItemPaths.Count, "ignore a stale desktop drag anchor");
 selectableDesktopItems[0].SetPosition(new DesktopHostPosition(10, 20));
 selectableDesktopItems[1].SetPosition(new DesktopHostPosition(110, 20));
 var translatedDesktopSelection = DesktopHostLayoutStore.TranslateSelection(selectableDesktopItems.Take(2), selectableDesktopItems[0].FullPath,
