@@ -26,11 +26,12 @@ Check(false, desktopHostEntries.Single(entry => entry.Name == "This PC").CanShow
 CheckTrue(TaskbarIconService.LoadNamespaceIcon("shell:MyComputerFolder") is not null, "extract a shell icon for a namespace parsing name");
 var desktopLayoutStore = new DesktopHostLayoutStore(Path.Combine(desktopHostTestRoot, "desktop-layout.json"));
 var laidOutDesktopEntries = desktopLayoutStore.ApplyLayout(desktopHostEntries, 600, 400).ToArray();
-laidOutDesktopEntries.Single(entry => entry.Name == "user.txt").SetPosition(new DesktopHostPosition(214, 137));
+laidOutDesktopEntries.Single(entry => entry.Name == "user.txt").SetPosition(new DesktopHostPosition(0, 112));
 Check(true, desktopLayoutStore.SaveOrder([laidOutDesktopEntries.Single(entry => entry.Name == "user.txt"), laidOutDesktopEntries.Single(entry => entry.Name == "Folder")]), "save desktop icon order and positions");
 var restoredDesktopEntries = desktopLayoutStore.ApplyLayout(desktopHostEntries, 600, 400);
 Check("user.txt,Folder,Recycle Bin,shared.txt,This PC", string.Join(',', restoredDesktopEntries.Select(entry => entry.Name)), "restore the saved icon order while appending unrecorded items");
-Check(new DesktopHostPosition(214, 137), new DesktopHostPosition(restoredDesktopEntries.Single(entry => entry.Name == "user.txt").Left, restoredDesktopEntries.Single(entry => entry.Name == "user.txt").Top), "restore a desktop icon's free-form position");
+Check(new DesktopHostPosition(0, 112), new DesktopHostPosition(restoredDesktopEntries.Single(entry => entry.Name == "user.txt").Left, restoredDesktopEntries.Single(entry => entry.Name == "user.txt").Top), "restore a desktop icon's free-form position");
+Check(new DesktopHostPosition(0, 0), new DesktopHostPosition(restoredDesktopEntries.Single(entry => entry.Name == "Folder").Left, restoredDesktopEntries.Single(entry => entry.Name == "Folder").Top), "place newly added desktop items in an unoccupied icon slot");
 restoredDesktopEntries.Single(entry => entry.Name == "user.txt").SetPosition(new DesktopHostPosition(900, 900));
 Check(true, desktopLayoutStore.SaveLayout(restoredDesktopEntries), "save an icon position outside the current screen bounds");
 var clampedDesktopEntry = desktopLayoutStore.ApplyLayout(desktopHostEntries, 600, 400).Single(entry => entry.Name == "user.txt");

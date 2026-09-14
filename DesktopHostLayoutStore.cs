@@ -32,20 +32,24 @@ public sealed class DesktopHostLayoutStore
 
         var width = double.IsFinite(viewportWidth) && viewportWidth > 0 ? viewportWidth : 1920;
         var height = double.IsFinite(viewportHeight) && viewportHeight > 0 ? viewportHeight : 1080;
-        var rows = Math.Max(1, (int)Math.Floor(Math.Max(ItemHeight, height - ItemHeight) / ItemHeight));
-        for (var index = 0; index < ordered.Count; index++)
+        var rows = Math.Max(1, (int)Math.Floor(Math.Max(0, height - ItemHeight) / ItemHeight) + 1);
+        var positioned = new List<DesktopHostItem>();
+        foreach (var item in ordered)
         {
-            var item = ordered[index];
             if (layout.Positions.TryGetValue(item.FullPath, out var saved))
-                item.SetPosition(Clamp(saved, width, height));
-            else
             {
-                var column = index / rows;
-                var row = index % rows;
-                item.SetPosition(new DesktopHostPosition(
-                    Math.Min(column * ItemWidth, Math.Max(0, width - ItemWidth)),
-                    Math.Min(row * ItemHeight, Math.Max(0, height - ItemHeight))));
+                item.SetPosition(Clamp(saved, width, height));
+                positioned.Add(item);
             }
+        }
+        var columns = Math.Max(1, (int)Math.Floor(Math.Max(0, width - ItemWidth) / ItemWidth) + 1);
+        foreach (var item in ordered.Where(item => !layout.Positions.ContainsKey(item.FullPath)))
+        {
+            var position = FindAvailablePosition(positioned, columns, rows)
+                ?? new DesktopHostPosition(Math.Min(positioned.Count / rows * ItemWidth, Math.Max(0, width - ItemWidth)),
+                    Math.Min(positioned.Count % rows * ItemHeight, Math.Max(0, height - ItemHeight)));
+            item.SetPosition(position);
+            positioned.Add(item);
         }
         return ordered;
     }
@@ -130,7 +134,8 @@ public sealed class DesktopHostLayoutStore
             var values = JsonSerializer.Deserialize<PersistedLayout>(document.RootElement.GetRawText()) ?? new PersistedLayout();
             values.Order = NormalizeOrder(values.Order);
             values.Positions = (values.Positions ?? new Dictionary<string, PersistedPosition>(StringComparer.OrdinalIgnoreCase))
-                .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && double.IsFinite(pair.Value.Left) && double.IsFinite(pair.Value.Top))
+                .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && pair.Value is not null &&
+                    double.IsFinite(pair.Value.Left) && double.IsFinite(pair.Value.Top))
                 .Take(MaximumItems)
                 .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
             return values;
@@ -151,6 +156,21 @@ public sealed class DesktopHostLayoutStore
 
     private static DesktopHostPosition Clamp(DesktopHostPosition position, double width, double height) =>
         new(Math.Clamp(position.Left, 0, Math.Max(0, width - ItemWidth)), Math.Clamp(position.Top, 0, Math.Max(0, height - ItemHeight)));
+
+    private static DesktopHostPosition? FindAvailablePosition(IReadOnlyList<DesktopHostItem> occupied, int columns, int rows)
+    {
+        for (var column = 0; column < columns; column++)
+        for (var row = 0; row < rows; row++)
+        {
+            var candidate = new DesktopHostPosition(column * ItemWidth, row * ItemHeight);
+            if (occupied.All(item => !Overlaps(candidate, new DesktopHostPosition(item.Left, item.Top)))) return candidate;
+        }
+        return null;
+    }
+
+    private static bool Overlaps(DesktopHostPosition first, DesktopHostPosition second) =>
+        first.Left < second.Left + ItemWidth && first.Left + ItemWidth > second.Left &&
+        first.Top < second.Top + ItemHeight && first.Top + ItemHeight > second.Top;
 
     private sealed class PersistedLayout
     {
