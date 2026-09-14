@@ -1072,8 +1072,8 @@ try
     var returnedShellFolderPaths = shellFolderEntries.Select(entry => Path.GetFullPath(entry.ParsingName)).ToHashSet(StringComparer.OrdinalIgnoreCase);
     if (expectedShellFolderPaths.IsSubsetOf(returnedShellFolderPaths))
     {
-        CheckTrue(shellFolderEntries.Any(entry => entry.Name == "first.txt" && !entry.IsFolder), "enumerate filesystem children through the asynchronous Shell namespace browser");
-        CheckTrue(shellFolderEntries.Any(entry => entry.Name == "second.txt" && !entry.IsFolder), "retain every Shell folder child in the namespace browser");
+        CheckTrue(shellFolderEntries.Any(entry => Path.GetFullPath(entry.ParsingName).Equals(nativeMenuFirst, StringComparison.OrdinalIgnoreCase) && !entry.IsFolder), "enumerate filesystem children through the asynchronous Shell namespace browser");
+        CheckTrue(shellFolderEntries.Any(entry => Path.GetFullPath(entry.ParsingName).Equals(nativeMenuSecond, StringComparison.OrdinalIgnoreCase) && !entry.IsFolder), "retain every Shell folder child in the namespace browser");
     }
     else
     {
