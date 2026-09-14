@@ -715,6 +715,15 @@ Check(WindowsKeyAction.Suppress, tapGesture.KeyDown(0x5b), "capture a bare left 
 Check(WindowsKeyAction.Suppress, tapGesture.KeyDown(0x5b), "suppress Windows-key repeat events");
 Check(WindowsKeyAction.OpenStartMenu, tapGesture.KeyUp(0x5b), "open Start after a bare Windows key press");
 Check<uint?>(null, tapGesture.HeldWindowsKey, "clear Windows-key state after opening Start");
+var shellControlEscapeGesture = new WindowsKeyGesture(replaceControlEscape: true);
+Check(WindowsKeyAction.Suppress, shellControlEscapeGesture.KeyDown(0x1b, controlPressed: true), "suppress Ctrl+Esc in replacement shell mode");
+Check(WindowsKeyAction.Suppress, shellControlEscapeGesture.KeyDown(0x1b, controlPressed: true), "suppress repeated Ctrl+Esc keydown events");
+Check(WindowsKeyAction.OpenStartMenu, shellControlEscapeGesture.KeyUp(0x1b), "route Ctrl+Esc to Desktop Tuner Start");
+var nativeControlEscapeGesture = new WindowsKeyGesture();
+Check(WindowsKeyAction.PassThrough, nativeControlEscapeGesture.KeyDown(0x1b, controlPressed: true), "preserve Ctrl+Esc outside replacement shell mode");
+Check(WindowsKeyAction.PassThrough, nativeControlEscapeGesture.KeyUp(0x1b), "preserve Ctrl+Esc release outside replacement shell mode");
+var modifiedControlEscapeGesture = new WindowsKeyGesture(replaceControlEscape: true);
+Check(WindowsKeyAction.PassThrough, modifiedControlEscapeGesture.KeyDown(0x1b, controlPressed: true, shiftPressed: true), "preserve Ctrl+Shift+Esc for Task Manager");
 var explorerShortcutGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
 Check(WindowsKeyAction.Suppress, explorerShortcutGesture.KeyDown(0x5b), "capture Windows while only Explorer shortcut replacement is enabled");
 Check(WindowsKeyAction.OpenExplorer, explorerShortcutGesture.KeyDown((uint)'E', canOpenExplorer: () => true), "route Win+E to the companion Explorer when enabled");

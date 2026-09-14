@@ -17,19 +17,34 @@ public sealed class WindowsKeyGesture
 {
     private const uint VK_LWIN = 0x5b;
     private const uint VK_RWIN = 0x5c;
+    private const uint VK_ESCAPE = 0x1b;
     private uint? _heldWindowsKey;
     private bool _forwarded;
     private bool _taskbarShortcutConsumed;
     private readonly bool _replaceBareWindowsKey;
+    private readonly bool _replaceControlEscape;
+    private bool _controlEscapeHeld;
     private readonly HashSet<uint> _suppressedShortcutKeys = [];
     public int? TaskbarPinIndex { get; private set; }
 
-    public WindowsKeyGesture(bool replaceBareWindowsKey = true) => _replaceBareWindowsKey = replaceBareWindowsKey;
+    public WindowsKeyGesture(bool replaceBareWindowsKey = true, bool replaceControlEscape = false)
+    {
+        _replaceBareWindowsKey = replaceBareWindowsKey;
+        _replaceControlEscape = replaceControlEscape;
+    }
 
     public uint? HeldWindowsKey => _heldWindowsKey;
 
-    public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Func<bool>? canOpenExplorer = null)
+    public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Func<bool>? canOpenExplorer = null,
+        bool controlPressed = false, bool altPressed = false, bool shiftPressed = false)
     {
+        if (_controlEscapeHeld && key == VK_ESCAPE) return WindowsKeyAction.Suppress;
+        if (_replaceControlEscape && key == VK_ESCAPE && controlPressed && !altPressed && !shiftPressed)
+        {
+            _controlEscapeHeld = true;
+            return WindowsKeyAction.Suppress;
+        }
+
         if (key is VK_LWIN or VK_RWIN)
         {
             if (_heldWindowsKey is null)
@@ -77,6 +92,11 @@ public sealed class WindowsKeyGesture
 
     public WindowsKeyAction KeyUp(uint key)
     {
+        if (key == VK_ESCAPE && _controlEscapeHeld)
+        {
+            _controlEscapeHeld = false;
+            return WindowsKeyAction.OpenStartMenu;
+        }
         if (_suppressedShortcutKeys.Remove(key)) return WindowsKeyAction.Suppress;
         if (_heldWindowsKey != key) return WindowsKeyAction.PassThrough;
         var action = _forwarded
@@ -98,6 +118,7 @@ public sealed class WindowsKeyGesture
         _forwarded = false;
         _taskbarShortcutConsumed = false;
         _suppressedShortcutKeys.Clear();
+        _controlEscapeHeld = false;
         TaskbarPinIndex = null;
         return forwardedKey;
     }

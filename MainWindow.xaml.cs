@@ -1587,7 +1587,8 @@ public partial class MainWindow : Window
             _windowsKeyHook = null;
         }
         var hook = new WindowsKeyStartHook(ShowStartMenu, CanActivateTaskbarPinShortcut, ActivateTaskbarPinShortcut, CanFocusTaskbar, FocusTaskbar,
-            replaceBareWindowsKey: _replaceWindowsKey, canOpenExplorer: () => _replaceExplorerShortcut, openExplorer: () => OpenExplorer());
+            replaceBareWindowsKey: _replaceWindowsKey, canOpenExplorer: () => _replaceExplorerShortcut, openExplorer: () => OpenExplorer(),
+            replaceControlEscape: _shellHostMode || _shellOverlayMode);
         if (!hook.TryInstall(out var error))
         {
             hook.Dispose();
