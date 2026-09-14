@@ -144,6 +144,14 @@ Check(new DesktopHostPosition(100, 112), new DesktopHostPosition(gridItems[1].Le
 var selectableDesktopItems = new[] { "a", "b", "c", "d" }
     .Select(name => new DesktopHostItem(name, Path.Combine(desktopHostTestRoot, name), false))
     .ToArray();
+Check(true, DesktopHostKeyboardPolicy.ShouldDeleteSelection(Key.Delete, ModifierKeys.None, hasSelection: true),
+    "delete selected replacement desktop items with the Delete key");
+Check(true, DesktopHostKeyboardPolicy.ShouldDeleteSelection(Key.Delete, ModifierKeys.Shift, hasSelection: true),
+    "request permanent deletion for selected replacement desktop items with Shift+Delete");
+Check(false, DesktopHostKeyboardPolicy.ShouldDeleteSelection(Key.Delete, ModifierKeys.None, hasSelection: false),
+    "leave Delete unhandled when no replacement desktop items are selected");
+Check(false, DesktopHostKeyboardPolicy.ShouldDeleteSelection(Key.Delete, ModifierKeys.None, hasSelection: true, isEditingName: true),
+    "preserve Delete while editing a replacement desktop item name");
 var desktopSelection = DesktopHostSelectionPolicy.Select(selectableDesktopItems, selectableDesktopItems[0].FullPath, false, false, null);
 foreach (var item in selectableDesktopItems) item.IsSelected = desktopSelection.Paths.Contains(item.FullPath);
 desktopSelection = DesktopHostSelectionPolicy.Select(selectableDesktopItems, selectableDesktopItems[2].FullPath, true, false, desktopSelection.AnchorPath);

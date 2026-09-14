@@ -337,7 +337,14 @@ public partial class DesktopHostWindow : Window
 
     private void OnKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.F5)
+        var selectedItems = _desktopItems.Where(item => item.IsSelected).ToArray();
+        if (DesktopHostKeyboardPolicy.ShouldDeleteSelection(e.Key, Keyboard.Modifiers, selectedItems.Length > 0,
+                e.OriginalSource is TextBox))
+        {
+            e.Handled = true;
+            _ = DeleteSelectedDesktopItemsAsync(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
+        }
+        else if (e.Key == Key.F5)
         {
             RefreshDesktop();
             e.Handled = true;
@@ -568,6 +575,25 @@ public partial class DesktopHostWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Could not open Windows' context menu", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task DeleteSelectedDesktopItemsAsync(bool shiftPressed)
+    {
+        var selection = _desktopItems.Where(item => item.IsSelected && item.CanShowNativeContextMenu).ToArray();
+        if (selection.Length == 0) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.DeleteShellItemsAsync(owner, selection.Select(item => item.FullPath), shiftPressed);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not delete desktop items", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            RefreshDesktop();
         }
     }
 
