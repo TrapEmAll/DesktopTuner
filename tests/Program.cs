@@ -1017,6 +1017,16 @@ var dotnetShellOverlayStartup = StartupShortcutService.BuildCommand(
     @"C:\Program Files\Desktop Tuner\DesktopTuner.dll",
     shellOverlayMode: true);
 Check("\"C:\\Program Files\\Desktop Tuner\\DesktopTuner.dll\" --shell-overlay", dotnetShellOverlayStartup.Arguments, "quote an assembly path for a development shell overlay Startup shortcut");
+var shellOverlayStart = StartupShortcutService.BuildProcessStartInfo(
+    @"C:\Program Files\dotnet\dotnet.exe",
+    @"C:\Program Files\Desktop Tuner\DesktopTuner.dll",
+    shellOverlayMode: true);
+Check(@"C:\Program Files\dotnet\dotnet.exe", shellOverlayStart.FileName, "launch the all-edition shell overlay through the active app host");
+Check("\"C:\\Program Files\\Desktop Tuner\\DesktopTuner.dll\" --shell-overlay", shellOverlayStart.Arguments, "preserve quoted development assembly arguments when transitioning into shell overlay mode");
+Check("--shell-overlay", StartupShortcutService.BuildProcessStartInfo(
+    @"C:\Program Files\Desktop Tuner\DesktopTuner.exe",
+    @"C:\Program Files\Desktop Tuner\DesktopTuner.dll",
+    shellOverlayMode: true).Arguments, "launch the installed executable directly into shell overlay mode");
 Throws<ArgumentOutOfRangeException>(() => TaskbarLayoutCalculator.Calculate(0, 1080, new(TaskbarEdge.Bottom), false), "rejects invalid screen bounds");
 var appModeSetting = SettingsCatalog.ById("explorer-app-mode");
 var systemModeSetting = SettingsCatalog.ById("explorer-system-mode");

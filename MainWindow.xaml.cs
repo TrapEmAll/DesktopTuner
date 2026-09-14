@@ -1,6 +1,8 @@
 using Microsoft.Win32;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
@@ -719,9 +721,33 @@ public partial class MainWindow : Window
             startWithWindows.Checked += (_, _) => SetStartWithWindows(startWithWindows, true);
             startWithWindows.Unchecked += (_, _) => SetStartWithWindows(startWithWindows, false);
             PageContent.Children.Add(startWithWindows);
-            var launchButton = new Button { Content = _shellOverlayMode ? "Restart shell overlay" : _replaceNativeTaskbar ? "Start replacement taskbar" : "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
+            var launchButton = new Button { Content = _shellOverlayMode ? "Show taskbar" : _replaceNativeTaskbar ? "Start replacement taskbar" : "Open Desktop Tuner taskbar overlay", Style = (Style)FindResource("PrimaryButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 16) };
             launchButton.Click += (_, _) => ShowTaskbar();
             PageContent.Children.Add(launchButton);
+            if (_shellOverlayMode)
+            {
+                var exitShellOverlay = new Button
+                {
+                    Content = "Exit shell overlay and return to Explorer",
+                    Style = (Style)FindResource("SecondaryButton"),
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Margin = new Thickness(0, 0, 0, 16)
+                };
+                exitShellOverlay.Click += (_, _) => Application.Current.Shutdown();
+                PageContent.Children.Add(exitShellOverlay);
+            }
+            else if (!_shellHostMode)
+            {
+                var startShellOverlay = new Button
+                {
+                    Content = "Start all-edition shell overlay",
+                    Style = (Style)FindResource("SecondaryButton"),
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Margin = new Thickness(0, 0, 0, 16)
+                };
+                startShellOverlay.Click += StartShellOverlay_Click;
+                PageContent.Children.Add(startShellOverlay);
+            }
             var overlayInfo = InfoCard(_shellOverlayMode ? "All-edition shell overlay" : _replaceNativeTaskbar ? "Experimental taskbar replacement" : "Live taskbar overlay", "Choose an edge, bar size and style, transparency or dynamic translucency, app button labels, icon size, spacing, and optional auto-hide. Aura highlights use each app icon's primary color; Dynamic Aura moves the highlight with the pointer. The custom taskbar lists open windows, activates or minimizes them, opens the companion Start menu on the same display, and opens the native Widgets board. Enable sign-in startup to keep the taskbar running in the background; right-click the bar to reopen Desktop Tuner settings or exit. In replacement mode, the built-in taskbar is hidden only on displays covered by Desktop Tuner and restored when its windows close; Quick Settings opens the native Wi-Fi, Bluetooth, brightness, and volume controls. Otherwise, the overlay can leave Windows' native notification area visible on supported bottom layouts. The shell overlay starts the custom desktop, Start, and taskbars at sign-in while Explorer remains available behind them.");
             PageContent.Children.Add(overlayInfo);
             RenderCustomShellControls();
@@ -1734,6 +1760,43 @@ public partial class MainWindow : Window
             restoreShellLauncher.Click += RestoreShellLauncher_Click;
             shellLauncherActions.Children.Add(restoreShellLauncher);
             PageContent.Children.Add(shellLauncherActions);
+        }
+    }
+
+    private void StartShellOverlay_Click(object sender, RoutedEventArgs e)
+    {
+        var answer = MessageBox.Show(this,
+            "Start Desktop Tuner's all-edition shell overlay? It replaces the visible desktop, Start menu, and taskbar for this session while Windows Explorer continues running behind it. Exit the overlay from Taskbar settings or the taskbar menu to return to Explorer.",
+            "Start shell overlay", MessageBoxButton.YesNo, MessageBoxImage.Information);
+        if (answer != MessageBoxResult.Yes) return;
+
+        try
+        {
+            var processPath = Environment.ProcessPath
+                ?? throw new InvalidOperationException("Windows could not determine the Desktop Tuner process path.");
+            var assemblyPath = Assembly.GetEntryAssembly()?.Location;
+            if (string.IsNullOrWhiteSpace(assemblyPath))
+                throw new InvalidOperationException("Windows could not determine the Desktop Tuner application path.");
+            var startInfo = StartupShortcutService.BuildProcessStartInfo(processPath, assemblyPath, shellOverlayMode: true);
+            if (_startWithWindows) StartupShortcutService.SetEnabled(true, shellOverlayMode: true);
+            Application.Current.Exit += (_, _) =>
+            {
+                try
+                {
+                    _ = Process.Start(startInfo)
+                        ?? throw new InvalidOperationException("Windows did not start the shell overlay process.");
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException or System.Security.SecurityException)
+                {
+                    MessageBox.Show($"Could not start the shell overlay. Windows Explorer remains available.{Environment.NewLine}{ex.Message}",
+                        "Could not start shell overlay", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            };
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            MessageBox.Show(this, ex.Message, "Could not start shell overlay", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

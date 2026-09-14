@@ -1,4 +1,5 @@
 using System.IO;
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -23,6 +24,18 @@ public static class StartupShortcutService
             return new StartupLaunchCommand(processPath, $"{QuoteArgument(entryAssemblyPath)} {arguments}", workingDirectory);
 
         return new StartupLaunchCommand(processPath, arguments, workingDirectory);
+    }
+
+    public static ProcessStartInfo BuildProcessStartInfo(string processPath, string entryAssemblyPath, bool shellOverlayMode = false)
+    {
+        var command = BuildCommand(processPath, entryAssemblyPath, shellOverlayMode);
+        return new ProcessStartInfo(command.TargetPath)
+        {
+            Arguments = command.Arguments,
+            WorkingDirectory = command.WorkingDirectory,
+            UseShellExecute = true,
+            WindowStyle = ProcessWindowStyle.Hidden
+        };
     }
 
     public static void SetEnabled(bool enabled, bool shellOverlayMode = false)
