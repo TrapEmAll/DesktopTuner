@@ -54,6 +54,10 @@ public partial class App : Application
             return;
         }
 
+        var restoredTaskbars = NativeTaskbarVisibilityService.RestoreOrphanedSnapshots();
+        if (restoredTaskbars > 0)
+            System.Diagnostics.Trace.TraceWarning($"Recovered {restoredTaskbars} orphaned Windows taskbar visibility snapshot(s) from an earlier Desktop Tuner session.");
+
         var window = new MainWindow(startInBackground);
         MainWindow = window;
         window.Show();

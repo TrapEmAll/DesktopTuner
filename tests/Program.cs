@@ -1205,6 +1205,18 @@ try
     File.WriteAllText(staleTaskbarSnapshot, """[{"Handle":-1,"WasVisible":true}]""");
     NativeTaskbarVisibilityService.RestoreSnapshot(staleTaskbarSnapshot);
     Check(false, File.Exists(staleTaskbarSnapshot), "clean up a valid taskbar recovery snapshot after skipping a stale window handle");
+    var orphanedTaskbarSnapshotDirectory = Path.Combine(temporaryPreferencesDirectory, "orphaned-taskbar-snapshots");
+    Directory.CreateDirectory(orphanedTaskbarSnapshotDirectory);
+    var missingOwnerSnapshot = Path.Combine(orphanedTaskbarSnapshotDirectory, "taskbar-restore-2147483647.json");
+    File.WriteAllText(missingOwnerSnapshot, """[{"Handle":-1,"WasVisible":true}]""");
+    var currentOwnerSnapshot = Path.Combine(orphanedTaskbarSnapshotDirectory, $"taskbar-restore-{Environment.ProcessId}.json");
+    File.WriteAllText(currentOwnerSnapshot, """[{"Handle":-1,"WasVisible":true}]""");
+    Check(1, NativeTaskbarVisibilityService.RestoreOrphanedSnapshots(orphanedTaskbarSnapshotDirectory), "restore only snapshots whose owning process is no longer running");
+    Check(false, File.Exists(missingOwnerSnapshot), "remove a recovered snapshot for an exited process");
+    Check(true, File.Exists(currentOwnerSnapshot), "preserve taskbar recovery snapshots owned by a live process");
+    File.SetLastWriteTimeUtc(currentOwnerSnapshot, DateTime.UtcNow.AddDays(-1));
+    Check(1, NativeTaskbarVisibilityService.RestoreOrphanedSnapshots(orphanedTaskbarSnapshotDirectory), "recognize a recycled process id when its snapshot predates the new process");
+    Check(false, File.Exists(currentOwnerSnapshot), "remove an orphaned snapshot whose process id has been reused");
     var preferencesStore = new DesktopPreferencesStore(preferencesPath);
     var savedStartPlaces = StartMenuPlaceCatalog.Normalize(new StartMenuPlacePreferences(["run", "documents"], ["documents", "run"]));
     var savedTaskbarButtons = TaskbarSystemButtonVisibility.Default

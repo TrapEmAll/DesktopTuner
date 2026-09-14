@@ -79,6 +79,55 @@ public sealed class NativeTaskbarVisibilityService
         }
     }
 
+    public static int RestoreOrphanedSnapshots(string? directoryPath = null)
+    {
+        directoryPath ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DesktopTuner");
+        if (!Directory.Exists(directoryPath)) return 0;
+
+        string[] snapshotPaths;
+        try { snapshotPaths = Directory.GetFiles(directoryPath, "taskbar-restore-*.json"); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Trace.TraceError($"Could not enumerate taskbar recovery snapshots: {ex}");
+            return 0;
+        }
+
+        var restoredCount = 0;
+        foreach (var snapshotPath in snapshotPaths)
+        {
+            var fileName = Path.GetFileNameWithoutExtension(snapshotPath);
+            const string prefix = "taskbar-restore-";
+            if (!fileName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                || !int.TryParse(fileName.AsSpan(prefix.Length), out var ownerProcessId)
+                || ownerProcessId <= 0)
+                continue;
+
+            if (IsSnapshotOwnerRunning(ownerProcessId, snapshotPath)) continue;
+
+            RestoreSnapshot(snapshotPath);
+            if (!File.Exists(snapshotPath)) restoredCount++;
+        }
+        return restoredCount;
+    }
+
+    private static bool IsSnapshotOwnerRunning(int ownerProcessId, string snapshotPath)
+    {
+        try
+        {
+            using var owner = Process.GetProcessById(ownerProcessId);
+            return owner.StartTime.ToUniversalTime() <= File.GetLastWriteTimeUtc(snapshotPath);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
+        {
+            Trace.TraceWarning($"Could not confirm whether process {ownerProcessId} still owns taskbar recovery snapshot '{snapshotPath}': {ex.Message}");
+            return true;
+        }
+    }
+
     private void PersistSnapshot()
     {
         var directory = Path.GetDirectoryName(SnapshotPath)!;
