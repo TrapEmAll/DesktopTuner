@@ -26,8 +26,68 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Build native Explorer context-menu bridge
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          if (-not (Test-Path $vswhere)) {
+            throw "Visual Studio locator was not found at $vswhere"
+          }
+          $vsPath = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or -not $vsPath) {
+            throw 'The C++ x64 build tools were not found on this runner.'
+          }
+          $toolsetPath = Join-Path $vsPath 'VC\Tools\MSVC'
+          $toolsetVersion = Get-ChildItem $toolsetPath -Directory | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1 -ExpandProperty Name
+          $platformToolset = if ($toolsetVersion -like '14.5*') { 'v145' } else { 'v143' }
+          $msbuild = Join-Path $vsPath 'MSBuild\Current\Bin\MSBuild.exe'
+          & $msbuild shell/ExplorerContextMenu/DesktopTuner.ExplorerCommand.vcxproj /m /p:Configuration=Release /p:Platform=x64 "/p:PlatformToolset=$platformToolset" /v:minimal
+          if ($LASTEXITCODE -ne 0) {
+            throw "Native Explorer command build failed with exit code $LASTEXITCODE"
+          }
+          $commandDll = Join-Path (Get-Location) 'shell/ExplorerContextMenu/bin/x64/Release/DesktopTuner.ExplorerCommand.dll'
+          if (-not (Test-Path $commandDll)) {
+            throw "Native Explorer command DLL was not produced at $commandDll"
+          }
+          $dumpbin = Join-Path $toolsetPath "$toolsetVersion/bin/Hostx64/x64/dumpbin.exe"
+          if (-not (Test-Path $dumpbin)) {
+            throw "The MSVC export inspection tool was not found at $dumpbin"
+          }
+          $exports = (& $dumpbin /exports $commandDll | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $exports -notmatch 'DllGetClassObject' -or $exports -notmatch 'DllCanUnloadNow') {
+            throw 'The native Explorer command DLL is missing a required COM server export.'
+          }
+
       - name: Build Desktop Tuner
         run: dotnet build DesktopTuner.csproj --configuration Release
+
+      - name: Validate sparse Explorer identity package
+        shell: pwsh
+        run: |
+          $windowsKits = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
+          $makeAppx = Get-ChildItem $windowsKits -Filter MakeAppx.exe -Recurse | Where-Object FullName -Match '\\x64\\MakeAppx\.exe$' | Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $makeAppx) {
+            throw 'The Windows SDK MakeAppx.exe tool was not found.'
+          }
+          $packageSource = Join-Path $env:RUNNER_TEMP 'DesktopTuner.ShellIdentity'
+          $externalContent = Join-Path $env:RUNNER_TEMP 'DesktopTuner.ExternalContent'
+          New-Item -ItemType Directory -Force -Path $packageSource, $externalContent, (Join-Path $externalContent 'Assets'), (Join-Path $externalContent 'ShellExtension') | Out-Null
+          Copy-Item shell/ExplorerContextMenu/AppxManifest.xml (Join-Path $packageSource 'AppxManifest.xml')
+          Copy-Item shell/ExplorerContextMenu/Assets/* (Join-Path $externalContent 'Assets') -Force
+          Copy-Item bin/Release/net10.0-windows/DesktopTuner.exe (Join-Path $externalContent 'DesktopTuner.exe')
+          Copy-Item shell/ExplorerContextMenu/bin/x64/Release/DesktopTuner.ExplorerCommand.dll (Join-Path $externalContent 'ShellExtension/DesktopTuner.ExplorerCommand.dll')
+          $referencedFiles = @('DesktopTuner.exe', 'Assets/StoreLogo.png', 'Assets/Square150x150Logo.png', 'Assets/Square44x44Logo.png', 'ShellExtension/DesktopTuner.ExplorerCommand.dll')
+          foreach ($relativePath in $referencedFiles) {
+            $externalFile = Join-Path $externalContent $relativePath
+            if (-not (Test-Path $externalFile -PathType Leaf)) {
+              throw "Sparse package external content is missing manifest-referenced file $relativePath"
+            }
+          }
+          $packagePath = Join-Path $env:RUNNER_TEMP 'DesktopTuner.identity.msix'
+          & $makeAppx pack /o /d $packageSource /nv /p $packagePath
+          if ($LASTEXITCODE -ne 0) {
+            throw "Sparse identity package validation failed with exit code $LASTEXITCODE"
+          }
 
       - name: Run regression checks
         run: dotnet run --project tests/DesktopTuner.Tests.csproj --configuration Release
