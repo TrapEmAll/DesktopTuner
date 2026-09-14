@@ -452,6 +452,19 @@ public partial class DesktopHostWindow : Window
         }
     }
 
+    private async void OnShowDesktopContextMenuClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.ShowForFolderBackgroundAsync(owner, _userDesktop);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not open Windows' desktop context menu", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void OnExitClick(object sender, RoutedEventArgs e) => Close();
 
     [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]

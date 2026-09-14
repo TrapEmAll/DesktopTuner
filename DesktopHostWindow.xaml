@@ -60,6 +60,8 @@
                 <MenuItem Header="Refresh" Click="OnRefreshClick"/>
                 <MenuItem Header="New folder" Click="OnNewFolderClick"/>
                 <Separator/>
+                <MenuItem Header="Show more options" Click="OnShowDesktopContextMenuClick"/>
+                <Separator/>
                 <MenuItem Header="Open Desktop folder" Click="OnOpenDesktopFolderClick"/>
                 <Separator/>
                 <MenuItem Header="Exit desktop host" Click="OnExitClick"/>
