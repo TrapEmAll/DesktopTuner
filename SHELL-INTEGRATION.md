@@ -16,6 +16,12 @@ CI verifies the edge geometry and auto-hide eligibility policies, but does not l
 
 This gives the replacement bar a supported taskbar-like work-area contract. It does not make it the Windows shell, replace native Start visuals, or provide all built-in taskbar and tray behavior.
 
+## Replacing Explorer as the logon shell
+
+Windows [Shell Launcher](https://learn.microsoft.com/en-us/windows/configuration/shell-launcher/) can start a Win32 or UWP application in place of `Explorer.exe`, but Microsoft supports it only on Enterprise, Education, and IoT Enterprise editions. It is an optional Windows feature and its shell assignment takes effect at sign-in. Shell Launcher v2 hosts the replacement as the shell, so this is a whole-shell transition rather than a taskbar customization API.
+
+Desktop Tuner currently owns taskbar, Start, and Explorer windows; it does not provide a desktop icon and wallpaper host. Assigning Desktop Tuner as the logon shell would therefore remove the normal Explorer desktop as well as the native taskbar, Start menu, and notification area without replacing all of them. Shell Launcher alone is not a general solution for consumer Windows editions or a usable replacement mode for the current app. Any future managed-edition shell mode needs a desktop host, sign-in/recovery handling, and a reversible configuration flow, while consumer editions remain on the current Explorer-hosted integration path.
+
 ## Distribution gate
 
 The repository has no production code-signing certificate. Windows requires the sparse identity package to be signed by a publisher certificate trusted on the target PC before it can be registered. The unsigned package produced for validation is not installable for normal users. Do not ship a self-signed development certificate or install one into a user's Trusted People store as a workaround.
