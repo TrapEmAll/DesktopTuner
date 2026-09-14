@@ -337,6 +337,7 @@ public partial class TaskbarWindow : Window
         ApplyLayout();
         UpdateClock();
         UpdateBatteryStatus();
+        UpdateVolumeStatus();
         UpdateMicrophoneStatus();
         _refreshTimer.Start();
         _batteryRefreshTimer.Start();
@@ -1267,7 +1268,7 @@ public partial class TaskbarWindow : Window
         {
             AudioEndpointVolumeService.SetDefaultOutput(output.Id);
             var state = AudioEndpointVolumeService.ReadDefaultOutput();
-            VolumeButton.Content = state.Muted ? "🔇" : state.Volume < 0.34f ? "🔈" : "🔊";
+            VolumeIcon.Text = TaskbarSystemIconCatalog.GetVolumeGlyph(state.Volume, state.Muted);
             VolumeButton.ToolTip = AudioVolumePolicy.GetLabel(state.Volume, state.Muted) + " · Click for Sound settings · Right-click to choose output";
         }
         catch (Exception ex)
@@ -1339,8 +1340,8 @@ public partial class TaskbarWindow : Window
         try
         {
             var muted = AudioEndpointVolumeService.ToggleDefaultOutputMute();
-            VolumeButton.Content = muted ? "🔇" : "🔊";
             var state = AudioEndpointVolumeService.ReadDefaultOutput();
+            VolumeIcon.Text = TaskbarSystemIconCatalog.GetVolumeGlyph(state.Volume, muted);
             VolumeButton.ToolTip = AudioVolumePolicy.GetLabel(state.Volume, muted) + " · Click for Sound settings · Right-click to choose output";
         }
         catch (Exception ex)
@@ -1358,7 +1359,7 @@ public partial class TaskbarWindow : Window
             var state = AudioEndpointVolumeService.ReadDefaultOutput();
             var level = AudioVolumePolicy.Adjust(state.Volume, e.Delta);
             AudioEndpointVolumeService.SetDefaultOutputVolume(level);
-            VolumeButton.Content = state.Muted ? "🔇" : level < 0.34f ? "🔈" : "🔊";
+            VolumeIcon.Text = TaskbarSystemIconCatalog.GetVolumeGlyph(level, state.Muted);
             VolumeButton.ToolTip = AudioVolumePolicy.GetLabel(level, state.Muted) + " · Middle-click to mute · Click for Sound settings · Right-click to choose output";
         }
         catch (Exception ex)
@@ -1411,7 +1412,7 @@ public partial class TaskbarWindow : Window
             _microphoneStatus = AudioEndpointVolumeService.ReadDefaultInput();
             _hasMicrophoneDevice = true;
             var status = _microphoneStatus.Value;
-            MicrophoneButton.Content = status.Muted ? "🔇" : "🎤";
+            MicrophoneIcon.Foreground = status.Muted ? Brushes.IndianRed : TaskbarTheme.GetBrush("TaskbarForegroundBrush");
             MicrophoneButton.ToolTip = AudioVolumePolicy.GetMicrophoneLabel(status.Volume, status.Muted) + " · Scroll to adjust · Middle-click to mute · Right-click to choose input · Click for Sound settings";
         }
         catch (Exception ex)
@@ -1430,7 +1431,7 @@ public partial class TaskbarWindow : Window
                 _reportedMicrophoneEnumerationFailure = true;
             }
 
-            MicrophoneButton.Content = "🎤";
+            MicrophoneIcon.Foreground = TaskbarTheme.GetBrush("TaskbarForegroundBrush");
             MicrophoneButton.ToolTip = _hasMicrophoneDevice
                 ? "Microphone level control unavailable · Right-click to choose input · Click for Sound settings"
                 : "No active microphone endpoint · Click for Sound settings";
@@ -1442,6 +1443,22 @@ public partial class TaskbarWindow : Window
             ? Visibility.Visible
             : Visibility.Collapsed;
         if (IsLoaded && wasVisible != (MicrophoneButton.Visibility == Visibility.Visible)) RefreshWindows();
+    }
+
+    private void UpdateVolumeStatus()
+    {
+        try
+        {
+            var state = AudioEndpointVolumeService.ReadDefaultOutput();
+            VolumeIcon.Text = TaskbarSystemIconCatalog.GetVolumeGlyph(state.Volume, state.Muted);
+            VolumeButton.ToolTip = AudioVolumePolicy.GetLabel(state.Volume, state.Muted) + " · Scroll to adjust · Middle-click to mute · Right-click to choose output · Click for Sound settings";
+        }
+        catch (Exception ex)
+        {
+            VolumeIcon.Text = TaskbarSystemIconCatalog.GetVolumeGlyph(1, muted: false);
+            VolumeButton.ToolTip = "Volume control unavailable · Open Sound settings";
+            Trace.TraceWarning($"Could not read the default audio output: {ex.Message}");
+        }
     }
 
     private void Clock_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenNotificationCenter();

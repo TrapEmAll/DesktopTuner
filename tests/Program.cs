@@ -871,6 +871,13 @@ Check("#20384C", TaskbarTheme.Resolve(dark: false, TaskbarVisualStyle.Windows7).
 Check("#FFFFFF", TaskbarTheme.Resolve(dark: true, TaskbarVisualStyle.Windows7).Foreground, "keep readable text on the Windows 7 Aero taskbar");
 Check(false, TaskbarTheme.UsesBackdrop(TaskbarVisualStyle.Windows7), "leave the Windows 7 Aero taskbar free of the Windows 11 DWM material");
 Check(true, TaskbarTheme.UsesBackdrop(TaskbarVisualStyle.Windows11), "keep the DWM material for the Windows 11 taskbar");
+Check(TaskbarSystemIconCatalog.FluentFontFamily, TaskbarSystemIconCatalog.GetFontFamily(TaskbarVisualStyle.Windows11), "use Windows 11's Fluent symbol font for the Windows 11 taskbar style");
+Check(TaskbarSystemIconCatalog.LegacyFontFamily, TaskbarSystemIconCatalog.GetFontFamily(TaskbarVisualStyle.Windows10), "use the legacy Windows symbol font for the Windows 10 taskbar style");
+Check("\uE74F", TaskbarSystemIconCatalog.GetVolumeGlyph(0.8f, muted: true), "show the muted speaker glyph when the default output is muted");
+Check("\uE992", TaskbarSystemIconCatalog.GetVolumeGlyph(0, muted: false), "show the silent speaker glyph at zero output volume");
+Check("\uE993", TaskbarSystemIconCatalog.GetVolumeGlyph(0.2f, muted: false), "show the low speaker glyph at low output volume");
+Check("\uE994", TaskbarSystemIconCatalog.GetVolumeGlyph(0.5f, muted: false), "show the medium speaker glyph at medium output volume");
+Check("\uE995", TaskbarSystemIconCatalog.GetVolumeGlyph(0.8f, muted: false), "show the high speaker glyph at high output volume");
 var windows7TaskbarBackground = (LinearGradientBrush)TaskbarTheme.CreateBackground(dark: false, 70, TaskbarVisualStyle.Windows7);
 Check(3, windows7TaskbarBackground.GradientStops.Count, "draw the Windows 7 Aero surface as a three-stop glass gradient");
 Check((byte)77, windows7TaskbarBackground.GradientStops[0].Color.A, "apply taskbar transparency consistently to the Windows 7 Aero gradient");

@@ -164,6 +164,7 @@ public static class TaskbarTheme
         }
         resources["TaskbarButtonCornerRadius"] = new CornerRadius(style == TaskbarVisualStyle.Windows11 ? 8 : 1);
         resources["TaskbarSegmentCornerRadius"] = new CornerRadius(style == TaskbarVisualStyle.Windows11 ? 11 : 0);
+        resources["TaskbarSystemIconFontFamily"] = new FontFamily(TaskbarSystemIconCatalog.GetFontFamily(style));
         resources["TaskbarButtonBorderBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(
             style == TaskbarVisualStyle.Windows11 ? "#00000000" : palette.Border));
         resources["TaskbarButtonBorderThickness"] = new Thickness(style == TaskbarVisualStyle.Windows11 ? 0 : 1);
