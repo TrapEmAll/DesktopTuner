@@ -52,6 +52,10 @@ Check(shellNamespaceDesktopEntries.Where(entry => entry.IsShellNamespace).Count(
 var desktopLibraries = shellNamespaceDesktopEntries.Single(entry => entry.Name == "Libraries");
 CheckTrue(await NativeShellContextMenuService.ProbeShellItemContextMenuAsync(desktopLibraries.FullPath), "build a native context menu for a dynamically enumerated Shell namespace item");
 CheckTrue(await NativeShellContextMenuService.ProbeShellItemDataObjectAsync(desktopLibraries.FullPath), "create a native Shell drag object for a virtual desktop item");
+CheckTrue(await NativeShellContextMenuService.ProbeShellItemsDataObjectAsync([
+    shellNamespaceDesktopEntries.Single(entry => entry.Name == "user.txt").FullPath,
+    desktopLibraries.FullPath
+]), "create a combined Shell drag object for filesystem and virtual desktop items");
 var desktopLayoutStore = new DesktopHostLayoutStore(Path.Combine(desktopHostTestRoot, "desktop-layout.json"));
 var laidOutDesktopEntries = desktopLayoutStore.ApplyLayout(desktopHostEntries, 600, 400).ToArray();
 laidOutDesktopEntries.Single(entry => entry.Name == "user.txt").SetPosition(new DesktopHostPosition(0, 112));

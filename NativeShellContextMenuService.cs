@@ -57,6 +57,13 @@ public static class NativeShellContextMenuService
         return TransferShellItems(nint.Zero, [absolutePidl], startDrag: false);
     }
 
+    internal static async Task<bool> ProbeShellItemsDataObjectAsync(IEnumerable<string> parsingNames)
+    {
+        var selection = NativeShellContextMenuPolicy.NormalizeShellSelection(parsingNames);
+        var absolutePidls = await Task.Run(() => ParseDisplayNames(selection));
+        return TransferShellItems(nint.Zero, absolutePidls, startDrag: false);
+    }
+
     internal static async Task<bool> ProbeItemsContextMenuAsync(IEnumerable<string> paths)
     {
         return await ProcessItemsAsync(nint.Zero, paths, showPopup: false);
@@ -318,18 +325,28 @@ public static class NativeShellContextMenuService
         try
         {
             var parentLength = GetParentPidlLength(absolutePidls[0]);
-            if (absolutePidls.Skip(1).Any(pidl => !ParentPidlsEqual(absolutePidls[0], parentLength, pidl)))
-                throw new ArgumentException("Windows can drag a combined Shell selection only when its items share a Shell folder.", nameof(absolutePidls));
-
-            var folderId = ShellFolderId;
-            ThrowForFailure(SHBindToParent(absolutePidls[0], ref folderId, out parent, out _), "Could not bind to the selected items' parent folder.");
-            var childPidls = absolutePidls.Select(pidl => pidl + GetParentPidlLength(pidl) - sizeof(ushort)).ToArray();
-            if (childPidls.Any(child => child == nint.Zero)) throw new COMException("Could not resolve the selected Shell items.");
-            childArray = AllocatePointerArray(childPidls);
-            var dataObjectId = DataObjectId;
-            var shellFolder = (IShellFolderDataObject)parent;
-            ThrowForFailure(shellFolder.GetUIObjectOf(owner, (uint)childPidls.Length, childArray, ref dataObjectId, nint.Zero, out dataObject),
-                "Windows could not create a native drag object for the Shell selection.");
+            var sharedParent = absolutePidls.Skip(1).All(pidl => ParentPidlsEqual(absolutePidls[0], parentLength, pidl));
+            if (sharedParent)
+            {
+                var folderId = ShellFolderId;
+                ThrowForFailure(SHBindToParent(absolutePidls[0], ref folderId, out parent, out _), "Could not bind to the selected items' parent folder.");
+                var childPidls = absolutePidls.Select(pidl => pidl + GetParentPidlLength(pidl) - sizeof(ushort)).ToArray();
+                if (childPidls.Any(child => child == nint.Zero)) throw new COMException("Could not resolve the selected Shell items.");
+                childArray = AllocatePointerArray(childPidls);
+                // Use the Shell's native parent-folder implementation when it can represent the whole selection.
+                var shellFolder = (IShellFolderDataObject)parent;
+                var dataObjectId = DataObjectId;
+                ThrowForFailure(shellFolder.GetUIObjectOf(owner, (uint)childPidls.Length, childArray, ref dataObjectId, nint.Zero, out dataObject),
+                    "Windows could not create a native drag object for the Shell selection.");
+            }
+            else
+            {
+                // Root the transfer in the desktop Shell namespace so heterogeneous selections
+                // (including filesystem and virtual items) keep their full PIDLs together.
+                var dataObjectId = DataObjectId;
+                ThrowForFailure(SHCreateDataObject(nint.Zero, (uint)absolutePidls.Length, absolutePidls, nint.Zero,
+                    ref dataObjectId, out dataObject), "Windows could not create a combined Shell drag object for the selection.");
+            }
 
             if (!startDrag) return true;
             ThrowForFailure(DoDragDrop(dataObject, new NativeShellDropSource(), DragDropAllowedEffects, out var effect), "Windows could not start the Shell drag operation.");
@@ -673,6 +690,11 @@ public static class NativeShellContextMenuService
 
     [DllImport("shell32.dll", PreserveSig = true)]
     private static extern int SHBindToParent(nint pidl, ref Guid interfaceId, [MarshalAs(UnmanagedType.Interface)] out IShellFolder parent, out nint childPidl);
+
+    [DllImport("shell32.dll", PreserveSig = true)]
+    private static extern int SHCreateDataObject(nint parentFolderPidl, uint itemCount,
+        [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] nint[] childPidls, nint innerDataObject,
+        ref Guid interfaceId, [MarshalAs(UnmanagedType.Interface)] out System.Runtime.InteropServices.ComTypes.IDataObject dataObject);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern nint CreatePopupMenu();

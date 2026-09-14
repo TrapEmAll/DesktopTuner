@@ -742,7 +742,7 @@ public partial class DesktopHostWindow : Window
         if (dragSelection.ItemPaths.Count == 0) return;
         var selectedItems = dragSelection.ItemPaths.Select(path => _desktopItems.FirstOrDefault(candidate =>
             string.Equals(candidate.FullPath, path, StringComparison.OrdinalIgnoreCase))).ToArray();
-        if (selectedItems.All(candidate => candidate is { IsShellNamespace: true }))
+        if (selectedItems.All(candidate => candidate is not null) && selectedItems.Any(candidate => candidate is { IsShellNamespace: true }))
         {
             _activeNativeShellDragPaths = dragSelection.ItemPaths;
             try
