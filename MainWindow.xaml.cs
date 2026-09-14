@@ -1089,13 +1089,15 @@ public partial class MainWindow : Window
                     }
             }
             if (hideNativeTaskbar) _nativeTaskbarWatchTimer.Start();
-            SetStatus(showAllDisplays
-                ? hideNativeTaskbar
-                    ? "Desktop Tuner taskbar replacement is running on all displays. Close it to restore Windows taskbars."
-                    : "Desktop Tuner taskbar overlays are running on all displays. Close one to reveal the Windows taskbar everywhere."
-                : hideNativeTaskbar
-                    ? "Desktop Tuner taskbar replacement is running on the primary display. Close it to restore the Windows taskbar."
-                    : "Desktop Tuner taskbar overlay is running on the primary display. Close it to reveal the Windows taskbar.");
+            SetStatus(_shellHostMode
+                ? "Desktop Tuner shell host is running. Its taskbars and Start menu are active on every display."
+                : showAllDisplays
+                    ? hideNativeTaskbar
+                        ? "Desktop Tuner taskbar replacement is running on all displays. Close it to restore Windows taskbars."
+                        : "Desktop Tuner taskbar overlays are running on all displays. Close one to reveal the Windows taskbar everywhere."
+                    : hideNativeTaskbar
+                        ? "Desktop Tuner taskbar replacement is running on the primary display. Close it to restore the Windows taskbar."
+                        : "Desktop Tuner taskbar overlay is running on the primary display. Close it to reveal the Windows taskbar.");
         }
         catch (Exception ex)
         {
