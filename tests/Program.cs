@@ -24,6 +24,9 @@ Check(true, desktopHostEntries.Single(entry => entry.Name == "This PC").IsShellN
 Check(true, desktopHostEntries.Single(entry => entry.Name == "user.txt").CanShowNativeContextMenu, "allow native filesystem context verbs for a desktop file");
 Check(false, desktopHostEntries.Single(entry => entry.Name == "This PC").CanShowNativeContextMenu, "keep filesystem context verbs off a namespace shortcut without a filesystem context");
 CheckTrue(TaskbarIconService.LoadNamespaceIcon("shell:MyComputerFolder") is not null, "extract a shell icon for a namespace parsing name");
+var desktopLayoutStore = new DesktopHostLayoutStore(Path.Combine(desktopHostTestRoot, "desktop-layout.json"));
+Check(true, desktopLayoutStore.SaveOrder([desktopHostEntries.Single(entry => entry.Name == "user.txt"), desktopHostEntries.Single(entry => entry.Name == "Folder")]), "save the user's desktop icon order");
+Check("user.txt,Folder,Recycle Bin,shared.txt,This PC", string.Join(',', desktopLayoutStore.ApplyOrder(desktopHostEntries).Select(entry => entry.Name)), "restore the saved icon order while appending unrecorded items");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Created), "refresh the desktop when a new item is created");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Renamed), "refresh the desktop when an item is renamed");
 Check(false, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.All), "ignore unknown desktop watcher event types");

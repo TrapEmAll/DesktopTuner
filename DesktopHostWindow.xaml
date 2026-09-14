@@ -11,10 +11,10 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Button Width="92" Height="104" Margin="4" Padding="6" BorderThickness="0"
+                    <Button Width="92" Height="104" Margin="4" Padding="6" BorderThickness="0" AllowDrop="True"
                             Background="Transparent" Foreground="White" ToolTip="Double-click to open"
                             PreviewMouseLeftButtonDown="OnItemMouseDown" PreviewMouseMove="OnItemMouseMove"
-                            MouseDoubleClick="OnItemDoubleClick">
+                            DragOver="OnItemDragOver" Drop="OnItemDrop" MouseDoubleClick="OnItemDoubleClick">
                         <Button.ContextMenu>
                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                 <MenuItem Header="Open" Click="OnOpenItemClick"/>

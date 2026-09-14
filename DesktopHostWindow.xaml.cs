@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -12,10 +13,13 @@ namespace DesktopTuner;
 
 public partial class DesktopHostWindow : Window
 {
+    private const string ItemIdentityFormat = "DesktopTuner.DesktopItemIdentity";
     private static readonly IntPtr HwndBottom = new(1);
     private static readonly IntPtr HwndNotTopmost = new(-2);
     private readonly string _userDesktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
     private readonly string _publicDesktop = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
+    private readonly DesktopHostLayoutStore _layoutStore = new();
+    private readonly ObservableCollection<DesktopHostItem> _desktopItems = [];
     private readonly List<FileSystemWatcher> _desktopWatchers = [];
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private bool _isClosed;
@@ -28,6 +32,7 @@ public partial class DesktopHostWindow : Window
         Resources["DesktopHostTextShadow"] = new DropShadowEffect { Color = System.Windows.Media.Colors.Black, BlurRadius = 3, ShadowDepth = 1, Opacity = 0.9 };
         _refreshTimer.Tick += OnRefreshTimerTick;
         Closed += OnClosed;
+        DesktopItems.ItemsSource = _desktopItems;
         RefreshDesktop();
         StartDesktopWatchers();
     }
@@ -41,7 +46,12 @@ public partial class DesktopHostWindow : Window
         SetWindowPos(handle, HwndNotTopmost, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
     }
 
-    private void RefreshDesktop() => DesktopItems.ItemsSource = DesktopHostCatalog.ReadItems([_userDesktop, _publicDesktop]);
+    private void RefreshDesktop()
+    {
+        var ordered = _layoutStore.ApplyOrder(DesktopHostCatalog.ReadItems([_userDesktop, _publicDesktop]));
+        _desktopItems.Clear();
+        foreach (var item in ordered) _desktopItems.Add(item);
+    }
 
     private void StartDesktopWatchers()
     {
@@ -166,18 +176,54 @@ public partial class DesktopHostWindow : Window
 
         _dragCandidate = null;
         var data = new DataObject(DataFormats.FileDrop, new[] { item.FullPath });
+        data.SetData(ItemIdentityFormat, item.FullPath);
         DragDrop.DoDragDrop((DependencyObject)sender, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
+    }
+
+    private void OnItemDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(ItemIdentityFormat)
+            ? DragDropEffects.Move
+            : e.Data.GetDataPresent(DataFormats.FileDrop) && Directory.Exists(_userDesktop) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void OnItemDrop(object sender, DragEventArgs e)
+    {
+        if (sender is not Button { DataContext: DesktopHostItem target }) return;
+        if (e.Data.GetDataPresent(ItemIdentityFormat)
+            && e.Data.GetData(ItemIdentityFormat) is string sourcePath)
+        {
+            ReorderDesktopItem(sourcePath, target.FullPath);
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+            return;
+        }
+
+        CopyDroppedItems(e);
     }
 
     private void OnDesktopDragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) && Directory.Exists(_userDesktop)
+        e.Effects = !e.Data.GetDataPresent(ItemIdentityFormat)
+            && e.Data.GetDataPresent(DataFormats.FileDrop) && Directory.Exists(_userDesktop)
             ? DragDropEffects.Copy
             : DragDropEffects.None;
         e.Handled = true;
     }
 
     private void OnDesktopDrop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(ItemIdentityFormat))
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+        CopyDroppedItems(e);
+    }
+
+    private void CopyDroppedItems(DragEventArgs e)
     {
         if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
         e.Handled = true;
@@ -197,6 +243,25 @@ public partial class DesktopHostWindow : Window
             MessageBox.Show(this, ex.Message, "Could not copy items to Desktop", MessageBoxButton.OK, MessageBoxImage.Error);
             e.Effects = DragDropEffects.None;
         }
+    }
+
+    private void ReorderDesktopItem(string sourcePath, string targetPath)
+    {
+        var sourceIndex = -1;
+        var targetIndex = -1;
+        for (var index = 0; index < _desktopItems.Count; index++)
+        {
+            if (string.Equals(_desktopItems[index].FullPath, sourcePath, StringComparison.OrdinalIgnoreCase)) sourceIndex = index;
+            if (string.Equals(_desktopItems[index].FullPath, targetPath, StringComparison.OrdinalIgnoreCase)) targetIndex = index;
+        }
+        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex == targetIndex) return;
+
+        var source = _desktopItems[sourceIndex];
+        var target = _desktopItems[targetIndex];
+        _desktopItems.RemoveAt(sourceIndex);
+        _desktopItems.Insert(_desktopItems.IndexOf(target), source);
+        if (!_layoutStore.SaveOrder(_desktopItems))
+            MessageBox.Show(this, "Icon order changed for this session, but could not be saved.", "Desktop layout", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     private void OnRefreshClick(object sender, RoutedEventArgs e) => RefreshDesktop();
