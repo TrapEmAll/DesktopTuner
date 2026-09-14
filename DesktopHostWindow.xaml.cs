@@ -22,6 +22,7 @@ public partial class DesktopHostWindow : Window
     private readonly string _userDesktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
     private readonly string _publicDesktop = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
     private readonly DesktopHostLayoutStore _layoutStore = new();
+    private readonly bool _routeFoldersToCompanionExplorer;
     private readonly ObservableCollection<DesktopHostItem> _desktopItems = [];
     private readonly List<FileSystemWatcher> _desktopWatchers = [];
     private IReadOnlyList<DesktopHostMonitorViewport> _desktopMonitors = [];
@@ -31,8 +32,9 @@ public partial class DesktopHostWindow : Window
     private string? _selectionAnchorPath;
     private Point _dragStart;
 
-    public DesktopHostWindow()
+    public DesktopHostWindow(bool routeFoldersToCompanionExplorer = false)
     {
+        _routeFoldersToCompanionExplorer = routeFoldersToCompanionExplorer;
         InitializeComponent();
         Resources["DesktopHostTextShadow"] = new DropShadowEffect { Color = System.Windows.Media.Colors.Black, BlurRadius = 3, ShadowDepth = 1, Opacity = 0.9 };
         _refreshTimer.Tick += OnRefreshTimerTick;
@@ -220,6 +222,12 @@ public partial class DesktopHostWindow : Window
     {
         try
         {
+            if (_routeFoldersToCompanionExplorer && !entry.IsShellNamespace && Directory.Exists(entry.FullPath))
+            {
+                OpenFolderInCompanionExplorer(entry.FullPath);
+                return;
+            }
+
             var start = new ProcessStartInfo(entry.IsShellNamespace ? "explorer.exe" : entry.FullPath) { UseShellExecute = true };
             if (entry.IsShellNamespace) start.ArgumentList.Add(entry.FullPath);
             Process.Start(start);
@@ -531,11 +539,21 @@ public partial class DesktopHostWindow : Window
 
     private void OnOpenDesktopFolderClick(object sender, RoutedEventArgs e)
     {
-        try { Process.Start(new ProcessStartInfo(_userDesktop) { UseShellExecute = true }); }
+        try
+        {
+            if (_routeFoldersToCompanionExplorer) OpenFolderInCompanionExplorer(_userDesktop);
+            else Process.Start(new ProcessStartInfo(_userDesktop) { UseShellExecute = true });
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
             MessageBox.Show(this, ex.Message, "Could not open Desktop folder", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private static void OpenFolderInCompanionExplorer(string folderPath)
+    {
+        if (!MainWindow.TryOpenFolderInExistingInstance(folderPath))
+            throw new InvalidOperationException("Desktop Tuner Explorer could not receive the folder request. The folder was not opened in Windows Explorer.");
     }
 
     private async void OnShowDesktopContextMenuClick(object sender, RoutedEventArgs e)

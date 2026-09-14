@@ -50,6 +50,8 @@ public static class ShellHostLaunchPolicy
     public static bool ShouldUseNativeTrayIntegration(bool shellOverlayMode, bool replaceNativeTaskbarPreference) =>
         shellOverlayMode || !replaceNativeTaskbarPreference;
 
+    public static bool ShouldRouteDesktopFoldersToCompanionExplorer(bool shellHostMode) => shellHostMode;
+
     public static bool ShouldLaunchExplorerOnShellHostExit(bool shellHostMode, bool customShellSupervisorActive) =>
         shellHostMode && !customShellSupervisorActive;
 

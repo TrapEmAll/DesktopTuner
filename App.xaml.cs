@@ -92,7 +92,8 @@ public partial class App : Application
                     System.Diagnostics.Trace.TraceWarning($"Recovered {recoveredOverlayTaskbars} orphaned Windows taskbar visibility snapshot(s) before starting shell overlay mode.");
             }
 
-            var desktopHost = new DesktopHostWindow();
+            var desktopHost = new DesktopHostWindow(
+                routeFoldersToCompanionExplorer: ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(shellHostMode));
             MainWindow = desktopHost;
             desktopHost.Show();
             if (shellHostMode || shellOverlayMode)

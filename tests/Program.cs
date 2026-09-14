@@ -250,6 +250,8 @@ Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true, true), "
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, true), "integrate the native notification area in shell overlay mode without changing the saved replacement preference");
 Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, true), "leave native tray integration disabled in normal replacement mode");
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, false), "integrate the native notification area in normal overlay mode");
+Check(true, ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(true), "keep desktop folder navigation inside the replacement shell");
+Check(false, ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(false), "preserve normal desktop-host folder activation outside replacement shell mode");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, false, true), "avoid hiding taskbars when Explorer is not the logon shell");
 Check(true, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true), "preserve the user's native taskbar replacement setting in normal mode");
 Check(true, ShellHostLaunchPolicy.ShouldLaunchExplorerOnShellHostExit(true, false), "start Explorer when a Shell Launcher host exits normally");
