@@ -18,6 +18,7 @@ public static class NativeShellContextMenuService
     private const uint ShellAttributeCanRename = 0x00000010;
     private const uint DesktopAbsoluteParsing = 0x80028000;
     private const uint DragDropAllowedEffects = 0x00000007;
+    private const uint CommandShiftDown = 0x00000100;
     private const uint MouseButtonMask = 0x00000013;
     private const int DragDropCancel = 0x00040101;
     private const int DragDropComplete = 0x00040100;
@@ -43,7 +44,13 @@ public static class NativeShellContextMenuService
         return ShowForShellItems(owner, absolutePidls);
     }
 
-    public static async Task<bool> ShowPropertiesForShellItemsAsync(nint owner, IEnumerable<string> parsingNames)
+    public static Task<bool> ShowPropertiesForShellItemsAsync(nint owner, IEnumerable<string> parsingNames) =>
+        InvokeShellItemsVerbAsync(owner, parsingNames, "properties");
+
+    public static Task<bool> DeleteShellItemsAsync(nint owner, IEnumerable<string> parsingNames, bool shiftPressed = false) =>
+        InvokeShellItemsVerbAsync(owner, parsingNames, "delete", shiftPressed);
+
+    private static async Task<bool> InvokeShellItemsVerbAsync(nint owner, IEnumerable<string> parsingNames, string verb, bool shiftPressed = false)
     {
         var selection = NativeShellContextMenuPolicy.NormalizeShellSelection(parsingNames);
         var absolutePidls = await Task.Run(() => ParseDisplayNames(selection));
@@ -51,9 +58,9 @@ public static class NativeShellContextMenuService
         {
             if (absolutePidls.Length == 1 || absolutePidls.Skip(1).All(pidl =>
                     ParentPidlsEqual(absolutePidls[0], GetParentPidlLength(absolutePidls[0]), pidl)))
-                InvokeShellItemVerb(owner, absolutePidls, "properties");
+                InvokeShellItemVerb(owner, absolutePidls, verb, shiftPressed);
             else
-                foreach (var absolutePidl in absolutePidls) InvokeShellItemVerb(owner, [absolutePidl], "properties");
+                foreach (var absolutePidl in absolutePidls) InvokeShellItemVerb(owner, [absolutePidl], verb, shiftPressed);
             return true;
         }
         finally
@@ -330,7 +337,7 @@ public static class NativeShellContextMenuService
         }
     }
 
-    private static void InvokeShellItemVerb(nint owner, nint[] absolutePidls, string verb)
+    private static void InvokeShellItemVerb(nint owner, nint[] absolutePidls, string verb, bool shiftPressed = false)
     {
         if (absolutePidls.Length == 0) throw new ArgumentException("Select at least one Windows Shell item.", nameof(absolutePidls));
         var parentLength = GetParentPidlLength(absolutePidls[0]);
@@ -358,6 +365,7 @@ public static class NativeShellContextMenuService
             var invoke = new CommandInfo
             {
                 Size = (uint)Marshal.SizeOf<CommandInfo>(),
+                Mask = shiftPressed ? CommandShiftDown : 0,
                 Window = owner,
                 Verb = verbPointer,
                 ShowCommand = 1

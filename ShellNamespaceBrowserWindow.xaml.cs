@@ -362,6 +362,25 @@ public partial class ShellNamespaceBrowserWindow : Window
         }
     }
 
+    private async Task DeleteSelectedItemsAsync(bool shiftPressed)
+    {
+        var selection = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().ToArray();
+        if (selection.Length == 0) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.DeleteShellItemsAsync(owner, selection.Select(entry => entry.ParsingName), shiftPressed);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Could not delete the selected Shell items: {ex.Message}";
+        }
+        finally
+        {
+            await RefreshCurrentViewAsync();
+        }
+    }
+
     private void OpenSelectedItem()
     {
         var selection = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().ToArray();
@@ -570,6 +589,11 @@ public partial class ShellNamespaceBrowserWindow : Window
         else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.ShowProperties)
         {
             await ShowSelectedPropertiesAsync();
+            e.Handled = true;
+        }
+        else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.Delete)
+        {
+            await DeleteSelectedItemsAsync(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
             e.Handled = true;
         }
         else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.Rename)
