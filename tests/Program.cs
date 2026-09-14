@@ -22,6 +22,9 @@ Check("Folder,Recycle Bin,shared.txt,This PC,user.txt", string.Join(',', desktop
 Check(true, desktopHostEntries.Single(entry => entry.Name == "Folder").IsDirectory, "identify desktop folders for shell item activation");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "This PC").IsShellNamespace, "mark This PC for Shell namespace activation");
 CheckTrue(TaskbarIconService.LoadNamespaceIcon("shell:MyComputerFolder") is not null, "extract a shell icon for a namespace parsing name");
+Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Created), "refresh the desktop when a new item is created");
+Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Renamed), "refresh the desktop when an item is renamed");
+Check(false, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.All), "ignore unknown desktop watcher event types");
 File.SetAttributes(Path.Combine(userDesktopRoot, "hidden.txt"), FileAttributes.Normal);
 Directory.Delete(desktopHostTestRoot, recursive: true);
 var navigationTestRoot = Path.Combine(Path.GetTempPath(), $"desktop-tuner-navigation-{Guid.NewGuid():N}");

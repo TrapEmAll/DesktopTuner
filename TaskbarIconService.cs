@@ -13,6 +13,7 @@ public static class TaskbarIconService
     private const uint SHGFI_LARGEICON = 0x000000000;
     private const uint SHGFI_PIDL = 0x000000008;
     private static readonly Dictionary<string, ImageSource?> Cache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, ImageSource?> NamespaceIconCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, Color?> PrimaryColorCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly object CacheLock = new();
 
@@ -33,9 +34,9 @@ public static class TaskbarIconService
         if (string.IsNullOrWhiteSpace(parsingName)) return null;
         lock (CacheLock)
         {
-            if (Cache.TryGetValue(parsingName, out var cached)) return cached;
+            if (NamespaceIconCache.TryGetValue(parsingName, out var cached)) return cached;
             var icon = LoadNamespaceIconCore(parsingName);
-            Cache.Add(parsingName, icon);
+            NamespaceIconCache.Add(parsingName, icon);
             return icon;
         }
     }

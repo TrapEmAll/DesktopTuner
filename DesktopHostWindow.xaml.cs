@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Threading;
 
 namespace DesktopTuner;
 
@@ -15,12 +16,18 @@ public partial class DesktopHostWindow : Window
     private static readonly IntPtr HwndNotTopmost = new(-2);
     private readonly string _userDesktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
     private readonly string _publicDesktop = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
+    private readonly List<FileSystemWatcher> _desktopWatchers = [];
+    private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+    private bool _isClosed;
 
     public DesktopHostWindow()
     {
         InitializeComponent();
         Resources["DesktopHostTextShadow"] = new DropShadowEffect { Color = System.Windows.Media.Colors.Black, BlurRadius = 3, ShadowDepth = 1, Opacity = 0.9 };
+        _refreshTimer.Tick += OnRefreshTimerTick;
+        Closed += OnClosed;
         RefreshDesktop();
+        StartDesktopWatchers();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -33,6 +40,67 @@ public partial class DesktopHostWindow : Window
     }
 
     private void RefreshDesktop() => DesktopItems.ItemsSource = DesktopHostCatalog.ReadItems([_userDesktop, _publicDesktop]);
+
+    private void StartDesktopWatchers()
+    {
+        foreach (var root in new[] { _userDesktop, _publicDesktop }.Where(Directory.Exists).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var watcher = new FileSystemWatcher(root)
+                {
+                    IncludeSubdirectories = false,
+                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Attributes
+                };
+                watcher.Created += OnDesktopChanged;
+                watcher.Deleted += OnDesktopChanged;
+                watcher.Changed += OnDesktopChanged;
+                watcher.Renamed += OnDesktopRenamed;
+                watcher.Error += OnDesktopWatcherError;
+                watcher.EnableRaisingEvents = true;
+                _desktopWatchers.Add(watcher);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                System.Diagnostics.Trace.TraceWarning($"Could not monitor desktop folder '{root}': {ex.Message}");
+            }
+        }
+    }
+
+    private void OnDesktopChanged(object sender, FileSystemEventArgs e)
+    {
+        if (DesktopHostRefreshPolicy.ShouldRefresh(e.ChangeType)) QueueDesktopRefresh();
+    }
+
+    private void OnDesktopRenamed(object sender, RenamedEventArgs e) => QueueDesktopRefresh();
+
+    private void OnDesktopWatcherError(object sender, ErrorEventArgs e) =>
+        System.Diagnostics.Trace.TraceWarning($"Desktop folder change monitoring reported an error: {e.GetException().Message}");
+
+    private void QueueDesktopRefresh()
+    {
+        if (_isClosed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+        _ = Dispatcher.BeginInvoke(() =>
+        {
+            if (_isClosed) return;
+            _refreshTimer.Stop();
+            _refreshTimer.Start();
+        });
+    }
+
+    private void OnRefreshTimerTick(object? sender, EventArgs e)
+    {
+        _refreshTimer.Stop();
+        RefreshDesktop();
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        _isClosed = true;
+        _refreshTimer.Stop();
+        foreach (var watcher in _desktopWatchers) watcher.Dispose();
+        _desktopWatchers.Clear();
+    }
 
     private void OnKeyDown(object sender, KeyEventArgs e)
     {

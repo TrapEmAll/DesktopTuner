@@ -50,6 +50,6 @@ dotnet run --no-restore
 dotnet run --project tests/DesktopTuner.Tests.csproj
 ```
 
-An experimental primary-display desktop host can be launched alongside Explorer with `DesktopTuner.exe --desktop-host`. It shows user/public Desktop items over the configured wallpaper, includes This PC and Recycle Bin shell items, opens entries on double-click, and offers refresh and new-folder actions from its context menu. Exit it from that menu; it does not configure Windows Shell Launcher.
+An experimental primary-display desktop host can be launched alongside Explorer with `DesktopTuner.exe --desktop-host`. It shows user/public Desktop items over the configured wallpaper, includes This PC and Recycle Bin shell items, opens entries on double-click, and refreshes when Desktop contents change. Its context menu also offers manual refresh and folder creation. Exit it from that menu; it does not configure Windows Shell Launcher.
 
 The app targets `net10.0-windows` and uses WPF with no third-party package dependencies. Each successful Windows workflow run publishes both a self-contained, single-file `win-x64` app and a per-user Windows installer as downloadable artifacts on that run's page. The installer does not require administrator privileges, adds a Start menu shortcut, and registers an uninstaller. The portable artifact can still be downloaded and extracted to run `DesktopTuner.exe` directly; neither option requires a separate .NET runtime install.
