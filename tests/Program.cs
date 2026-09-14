@@ -448,6 +448,7 @@ Throws<ArgumentException>(() => StartSearchTargetBuilder.WebSearch(string.Empty)
 Check(ExplorerKeyboardAction.FocusAddress, ExplorerKeyboardPolicy.Resolve(Key.L, ModifierKeys.Control), "focus the Explorer address field with Ctrl+L");
 Check(ExplorerKeyboardAction.FocusAddress, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.D), "focus the Explorer address field with Alt+D system-key events");
 Check(ExplorerKeyboardAction.FocusSearch, ExplorerKeyboardPolicy.Resolve(Key.F, ModifierKeys.Control), "focus Explorer search with Ctrl+F");
+Check(ExplorerKeyboardAction.ShowProperties, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.Enter), "open Properties for the current Explorer selection with Alt+Enter");
 Check(ExplorerKeyboardAction.ReopenClosedTab, ExplorerKeyboardPolicy.Resolve(Key.T, ModifierKeys.Control | ModifierKeys.Shift), "reopen the last closed Explorer tab with Ctrl+Shift+T");
 Check(ExplorerKeyboardAction.NextPane, ExplorerKeyboardPolicy.Resolve(Key.F6, ModifierKeys.None), "cycle Explorer navigation panes with F6");
 Check(ExplorerKeyboardAction.PreviousPane, ExplorerKeyboardPolicy.Resolve(Key.F6, ModifierKeys.Shift), "cycle Explorer navigation panes in reverse with Shift+F6");
@@ -628,6 +629,9 @@ try
     var propertiesDirectoryEntry = new ExplorerEntry("ExplorerOperations", explorerTestDirectory, true, false, null, DateTime.Now);
     CheckTrue(ExplorerPropertiesService.CanShowProperties(propertiesFileEntry), "offer the native Properties sheet for an existing file");
     CheckTrue(ExplorerPropertiesService.CanShowProperties(propertiesDirectoryEntry), "offer the native Properties sheet for an existing folder");
+    CheckTrue(ExplorerPropertiesService.CanShowProperties([propertiesFileEntry, propertiesDirectoryEntry]), "offer one merged Properties sheet for multiple existing items");
+    CheckTrue(ExplorerPropertiesService.CanCreateShellSelectionDataObject([propertiesFileEntry, propertiesDirectoryEntry]), "build the native Shell selection data object for mixed file and folder Properties");
+    CheckTrue(!ExplorerPropertiesService.CanShowProperties([propertiesFileEntry, new ExplorerEntry("C:\\", "C:\\", true, true, null, DateTime.Now)]), "disable merged Properties when selection contains a drive-list entry");
     CheckTrue(!ExplorerPropertiesService.CanShowProperties(new ExplorerEntry("C:\\", "C:\\", true, true, null, DateTime.Now)), "keep drive-list entries out of file Properties selection");
     CheckTrue(!ExplorerPropertiesService.CanShowProperties(new ExplorerEntry("Missing", Path.Combine(explorerTestDirectory, "missing.txt"), false, false, null, DateTime.Now)), "disable Properties for a removed item");
     var startShortcutDirectory = Path.Combine(temporaryPreferencesDirectory, "Start Shortcuts");

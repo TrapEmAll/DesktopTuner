@@ -9,7 +9,8 @@ public enum ExplorerKeyboardAction
     FocusAddress,
     FocusSearch,
     NextPane,
-    PreviousPane
+    PreviousPane,
+    ShowProperties
 }
 
 public static class ExplorerKeyboardPolicy
@@ -24,6 +25,7 @@ public static class ExplorerKeyboardPolicy
             (Key.F, ModifierKeys.Control) => ExplorerKeyboardAction.FocusSearch,
             (Key.F6, ModifierKeys.None) => ExplorerKeyboardAction.NextPane,
             (Key.F6, ModifierKeys.Shift) => ExplorerKeyboardAction.PreviousPane,
+            (Key.Enter, ModifierKeys.Alt) => ExplorerKeyboardAction.ShowProperties,
             _ => ExplorerKeyboardAction.None
         };
     }

@@ -574,6 +574,9 @@ public partial class ExplorerWindow : Window
                 case ExplorerKeyboardAction.PreviousPane:
                     CycleNavigationFocus(reverse: true);
                     break;
+                case ExplorerKeyboardAction.ShowProperties:
+                    Properties_Click(this, new RoutedEventArgs());
+                    break;
             }
             e.Handled = true;
             return;
@@ -1857,7 +1860,7 @@ public partial class ExplorerWindow : Window
         var selection = EntriesList.SelectedItems.OfType<ExplorerEntry>().ToList();
         var hasTransferableSelection = selection.Count > 0 && selection.All(entry => !entry.IsDrive);
         var hasSingleSelection = selection.Count == 1;
-        PropertiesMenuItem.IsEnabled = hasSingleSelection && ExplorerPropertiesService.CanShowProperties(selection[0]);
+        PropertiesMenuItem.IsEnabled = ExplorerPropertiesService.CanShowProperties(selection);
         CopyMenuItem.IsEnabled = CutMenuItem.IsEnabled = hasTransferableSelection;
         PasteMenuItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && ClipboardHasFileDrop();
         OpenInNewTabMenuItem.IsEnabled = hasSingleSelection && selection[0].IsDirectory;
@@ -1888,15 +1891,17 @@ public partial class ExplorerWindow : Window
 
     private void Properties_Click(object sender, RoutedEventArgs e)
     {
-        if (EntriesList.SelectedItems.Count != 1 || EntriesList.SelectedItem is not ExplorerEntry entry) return;
+        var selection = EntriesList.SelectedItems.OfType<ExplorerEntry>().ToList();
+        if (!ExplorerPropertiesService.CanShowProperties(selection)) return;
+        var targetName = selection.Count == 1 ? selection[0].DisplayName : $"{selection.Count} selected items";
         try
         {
-            if (!ExplorerPropertiesService.ShowProperties(entry, new System.Windows.Interop.WindowInteropHelper(this).Handle))
-                SetStatus($"Windows could not open Properties for {entry.DisplayName}.");
+            if (!ExplorerPropertiesService.ShowProperties(selection, new System.Windows.Interop.WindowInteropHelper(this).Handle))
+                SetStatus($"Windows could not open Properties for {targetName}.");
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Runtime.InteropServices.COMException or InvalidOperationException)
         {
-            SetStatus($"Could not open Properties for {entry.DisplayName}: {ex.Message}");
+            SetStatus($"Could not open Properties for {targetName}: {ex.Message}");
         }
     }
 
