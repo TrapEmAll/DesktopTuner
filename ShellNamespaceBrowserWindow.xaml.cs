@@ -357,6 +357,11 @@ public partial class ShellNamespaceBrowserWindow : Window
 
     private async void ShowMoreOptions_Click(object sender, RoutedEventArgs e)
     {
+        await ShowShellContextMenuAsync();
+    }
+
+    private async Task ShowShellContextMenuAsync()
+    {
         try
         {
             var owner = new WindowInteropHelper(this).Handle;
@@ -374,7 +379,24 @@ public partial class ShellNamespaceBrowserWindow : Window
 
     private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.F5 || e.Key == Key.R && Keyboard.Modifiers == ModifierKeys.Control)
+        var keyboardAction = ShellNamespaceBrowserKeyboardPolicy.Resolve(
+            e.Key, Keyboard.Modifiers, ItemsList.IsKeyboardFocusWithin, ItemsList.SelectedItems.Count > 0);
+        if (keyboardAction == ShellNamespaceBrowserKeyboardAction.SelectAll)
+        {
+            ItemsList.SelectAll();
+            e.Handled = true;
+        }
+        else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.ClearSelection)
+        {
+            ItemsList.SelectedItems.Clear();
+            e.Handled = true;
+        }
+        else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.ShowContextMenu)
+        {
+            await ShowShellContextMenuAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F5 || e.Key == Key.R && Keyboard.Modifiers == ModifierKeys.Control)
         {
             _ = RefreshCurrentViewAsync();
             e.Handled = true;
