@@ -8,6 +8,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Threading;
+using Microsoft.Win32;
 
 namespace DesktopTuner;
 
@@ -35,6 +36,8 @@ public partial class DesktopHostWindow : Window
         Resources["DesktopHostTextShadow"] = new DropShadowEffect { Color = System.Windows.Media.Colors.Black, BlurRadius = 3, ShadowDepth = 1, Opacity = 0.9 };
         _refreshTimer.Tick += OnRefreshTimerTick;
         Closed += OnClosed;
+        SizeChanged += OnSizeChanged;
+        SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         DesktopItems.ItemsSource = _desktopItems;
         RefreshDesktop();
         StartDesktopWatchers();
@@ -42,12 +45,49 @@ public partial class DesktopHostWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        RefreshDesktop();
+        PositionOnVirtualDesktop();
         if (DesktopWallpaperService.LoadPrimaryWallpaper() is { } wallpaper)
             Background = new ImageBrush(wallpaper) { Stretch = Stretch.UniformToFill };
         var handle = new WindowInteropHelper(this).Handle;
         SetWindowPos(handle, HwndBottom, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
         SetWindowPos(handle, HwndNotTopmost, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(RefreshDesktop));
+    }
+
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e) => QueueDesktopRefresh();
+
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    {
+        if (_isClosed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+        _ = Dispatcher.BeginInvoke(() =>
+        {
+            if (_isClosed) return;
+            PositionOnVirtualDesktop();
+            QueueDesktopRefresh();
+        });
+    }
+
+    private void PositionOnVirtualDesktop()
+    {
+        try
+        {
+            var displays = TaskbarDisplayService.Enumerate();
+            var bounds = DesktopHostDisplayLayoutPolicy.CalculateVirtualBounds(displays);
+            if (!TaskbarDisplayService.PositionWindow(this, bounds))
+            {
+                System.Diagnostics.Trace.TraceWarning("Windows could not position the desktop host across all connected displays.");
+                return;
+            }
+
+            var scale = TaskbarDisplayService.ReadWindowDpi(displays[0], this);
+            Width = bounds.Width / scale.ScaleX;
+            Height = bounds.Height / scale.ScaleY;
+            TaskbarDisplayService.PositionWindow(this, bounds);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception)
+        {
+            System.Diagnostics.Trace.TraceWarning($"Could not position desktop host across connected displays: {ex.Message}");
+        }
     }
 
     private void RefreshDesktop()
@@ -124,6 +164,8 @@ public partial class DesktopHostWindow : Window
     {
         _isClosed = true;
         _refreshTimer.Stop();
+        SizeChanged -= OnSizeChanged;
+        SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         foreach (var watcher in _desktopWatchers) watcher.Dispose();
         _desktopWatchers.Clear();
     }

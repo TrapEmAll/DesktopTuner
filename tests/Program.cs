@@ -58,6 +58,15 @@ Check(new DesktopHostPosition(210, 160), translatedDesktopSelection[selectableDe
 Check(new DesktopHostPosition(310, 160), translatedDesktopSelection[selectableDesktopItems[1].FullPath], "preserve spacing while moving selected desktop items together");
 Check(new DesktopHostPosition(500, 288), DesktopHostLayoutStore.TranslateSelection(selectableDesktopItems.Take(2), selectableDesktopItems[0].FullPath,
     new DesktopHostPosition(900, 900), 600, 400)[selectableDesktopItems[0].FullPath], "clamp a dragged selection anchor to the display bounds");
+Check(new TaskbarBounds(-1920, -200, 3840, 1280), DesktopHostDisplayLayoutPolicy.CalculateVirtualBounds([
+    new TaskbarDisplay("DISPLAY1", 0, 0, 1920, 1080, true),
+    new TaskbarDisplay("DISPLAY2", -1920, -200, 1920, 1080, false)
+]), "span the full Windows virtual desktop, including displays left and above the primary monitor");
+Check(new TaskbarBounds(-1920, 0, 3840, 1080), DesktopHostDisplayLayoutPolicy.CalculateVirtualBounds([
+    new TaskbarDisplay("DISPLAY1", 0, 0, 1920, 1080, true),
+    new TaskbarDisplay("DISPLAY2", -1920, 0, 1920, 1080, false)
+]), "span horizontally arranged monitors for desktop icon placement");
+Throws<ArgumentException>(() => DesktopHostDisplayLayoutPolicy.CalculateVirtualBounds([]), "reject an empty connected-display set for the desktop host");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Created), "refresh the desktop when a new item is created");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Renamed), "refresh the desktop when an item is renamed");
 Check(false, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.All), "ignore unknown desktop watcher event types");
