@@ -969,6 +969,32 @@ Check(WindowsKeyAction.PassThrough, shellRestoreShortcutGesture.KeyDown(0xa0), "
 Check(WindowsKeyAction.RestoreMinimizedWindows, shellRestoreShortcutGesture.KeyDown((uint)'M', shiftPressed: true, canRestoreMinimizedWindows: () => true), "route Win+Shift+M to restore windows minimized by Win+M");
 Check(WindowsKeyAction.Suppress, shellRestoreShortcutGesture.KeyUp((uint)'M'), "suppress Win+Shift+M release after restoring windows");
 Check(WindowsKeyAction.Suppress, shellRestoreShortcutGesture.KeyUp(0x5b), "avoid opening Start after routing Win+Shift+M");
+foreach (var (key, surfaceName) in new[]
+{
+    ((uint)'A', "Quick Settings"), ((uint)'N', "Notification Center"), ((uint)'W', "Widgets"), (0x09u, "Task View")
+})
+{
+    var surfaceGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
+    surfaceGesture.KeyDown(0x5b);
+    Check(WindowsKeyAction.OpenShellSystemSurface, surfaceGesture.KeyDown(key, canOpenShellSystemSurface: _ => true), $"route Win+{(key == 0x09 ? "Tab" : ((char)key).ToString())} to {surfaceName} in shell-host mode");
+    Check(key, surfaceGesture.ShellSystemSurfaceKey, $"retain the Win+{(key == 0x09 ? "Tab" : ((char)key).ToString())} target until the Windows key is released");
+    Check(WindowsKeyAction.Suppress, surfaceGesture.KeyUp(key), $"suppress Win+{(key == 0x09 ? "Tab" : ((char)key).ToString())} release after routing to {surfaceName}");
+    Check(WindowsKeyAction.Suppress, surfaceGesture.KeyUp(0x5b), $"consume Windows release after routing to {surfaceName}");
+    Check<uint?>(null, surfaceGesture.ShellSystemSurfaceKey, $"clear the {surfaceName} shortcut state after release");
+}
+var modifiedShellSurfaceGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
+modifiedShellSurfaceGesture.KeyDown(0x5b);
+Check(WindowsKeyAction.ForwardWindowsDownThenPass, modifiedShellSurfaceGesture.KeyDown((uint)'N', shiftPressed: true, canOpenShellSystemSurface: _ => true), "preserve modified Win+N instead of opening the unmodified shell surface");
+modifiedShellSurfaceGesture.KeyUp((uint)'N');
+modifiedShellSurfaceGesture.KeyUp(0x5b);
+foreach (var key in new[] { (uint)'A', (uint)'N', (uint)'W', 0x09u })
+{
+    var nativeSurfaceGesture = new WindowsKeyGesture();
+    nativeSurfaceGesture.KeyDown(0x5b);
+    Check(WindowsKeyAction.ForwardWindowsDownThenPass, nativeSurfaceGesture.KeyDown(key, canOpenShellSystemSurface: _ => false), $"preserve native Windows system surface shortcut {key}");
+    nativeSurfaceGesture.KeyUp(key);
+    Check(WindowsKeyAction.ForwardWindowsUpThenSuppress, nativeSurfaceGesture.KeyUp(0x5b), $"release Windows after native system surface shortcut {key}");
+}
 var shiftFirstShellRestoreShortcutGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
 Check(WindowsKeyAction.PassThrough, shiftFirstShellRestoreShortcutGesture.KeyDown(0xa0), "pass a prior Shift press before shell-host Win+Shift+M");
 shiftFirstShellRestoreShortcutGesture.KeyDown(0x5b);

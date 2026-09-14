@@ -2018,7 +2018,8 @@ public partial class MainWindow : Window
             canOpenPowerUserMenu: CanOpenPowerUserMenu, openPowerUserMenu: OpenPowerUserMenu,
             canOpenRunDialog: CanOpenRunDialog, openRunDialog: ShowRunDialog,
             canMinimizeAllWindows: CanManageShellHostWindows, minimizeAllWindows: MinimizeAllShellWindows,
-            canRestoreMinimizedWindows: CanManageShellHostWindows, restoreMinimizedWindows: RestoreShellWindowsMinimizedByShortcut);
+            canRestoreMinimizedWindows: CanManageShellHostWindows, restoreMinimizedWindows: RestoreShellWindowsMinimizedByShortcut,
+            canOpenShellSystemSurface: _ => CanManageShellHostWindows(), openShellSystemSurface: OpenShellSystemSurfaceShortcut);
         if (!hook.TryInstall(out var error))
         {
             hook.Dispose();
@@ -2097,6 +2098,18 @@ public partial class MainWindow : Window
     {
         if (!CanManageShellHostWindows()) return;
         _showDesktopWindows.RestoreMinimizedWindows();
+    }
+
+    private void OpenShellSystemSurfaceShortcut(uint key)
+    {
+        if (!CanManageShellHostWindows()) return;
+        switch (key)
+        {
+            case (uint)'A': SystemFlyoutService.OpenQuickSettings(); break;
+            case (uint)'N': SystemFlyoutService.OpenNotificationCenter(); break;
+            case (uint)'W': SystemFlyoutService.OpenWidgets(); break;
+            case 0x09: SystemFlyoutService.OpenTaskView(); break;
+        }
     }
 
     private void ShowRunDialog()

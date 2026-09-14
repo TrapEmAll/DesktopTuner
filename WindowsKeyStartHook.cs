@@ -41,11 +41,16 @@ public sealed class WindowsKeyStartHook : IDisposable
     private readonly Action _minimizeAllWindows;
     private readonly Func<bool> _canRestoreMinimizedWindows;
     private readonly Action _restoreMinimizedWindows;
+    private readonly Func<uint, bool> _canOpenShellSystemSurface;
+    private readonly Action<uint> _openShellSystemSurface;
     private readonly HookProc _callback;
     private readonly WindowsKeyGesture _gesture;
+    private uint? _pendingShellSystemSurfaceKey;
+    private bool _shellSystemSurfaceShortcutKeyReleased;
+    private bool _shellSystemSurfaceWindowsKeyReleased;
     private nint _hook;
 
-    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Action<bool>? focusTaskbar = null, bool replaceBareWindowsKey = true, Func<bool>? canOpenExplorer = null, Action? openExplorer = null, bool replaceControlEscape = false, Func<bool>? canToggleDesktop = null, Action? toggleDesktop = null, Func<bool>? canFocusTaskbarSystem = null, Action? focusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Action? openPowerUserMenu = null, Func<bool>? canOpenRunDialog = null, Action? openRunDialog = null, Func<bool>? canMinimizeAllWindows = null, Action? minimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null, Action? restoreMinimizedWindows = null)
+    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Action<bool>? focusTaskbar = null, bool replaceBareWindowsKey = true, Func<bool>? canOpenExplorer = null, Action? openExplorer = null, bool replaceControlEscape = false, Func<bool>? canToggleDesktop = null, Action? toggleDesktop = null, Func<bool>? canFocusTaskbarSystem = null, Action? focusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Action? openPowerUserMenu = null, Func<bool>? canOpenRunDialog = null, Action? openRunDialog = null, Func<bool>? canMinimizeAllWindows = null, Action? minimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null, Action? restoreMinimizedWindows = null, Func<uint, bool>? canOpenShellSystemSurface = null, Action<uint>? openShellSystemSurface = null)
     {
         _showStartMenu = showStartMenu;
         _canActivateTaskbarPin = replaceBareWindowsKey ? canActivateTaskbarPin ?? (_ => false) : _ => false;
@@ -66,6 +71,8 @@ public sealed class WindowsKeyStartHook : IDisposable
         _minimizeAllWindows = minimizeAllWindows ?? (() => { });
         _canRestoreMinimizedWindows = canRestoreMinimizedWindows ?? (() => false);
         _restoreMinimizedWindows = restoreMinimizedWindows ?? (() => { });
+        _canOpenShellSystemSurface = canOpenShellSystemSurface ?? (_ => false);
+        _openShellSystemSurface = openShellSystemSurface ?? (_ => { });
         _gesture = new WindowsKeyGesture(replaceBareWindowsKey, replaceControlEscape);
         _callback = KeyboardCallback;
     }
@@ -117,13 +124,34 @@ public sealed class WindowsKeyStartHook : IDisposable
             var canRestoreMinimizedWindows = IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_MENU)
                 ? _canRestoreMinimizedWindows
                 : static () => false;
+            var canOpenShellSystemSurface = !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_MENU)
+                ? _canOpenShellSystemSurface
+                : static _ => false;
             var action = message switch
             {
                 WM_KEYDOWN or WM_SYSKEYDOWN => _gesture.KeyDown(data.VirtualKey, canActivateTaskbarPin, canFocusTaskbar, canOpenExplorer,
-                    IsModifierPressed(VK_CONTROL), IsModifierPressed(VK_MENU), IsModifierPressed(VK_SHIFT), canToggleDesktop, canFocusTaskbarSystem, canOpenPowerUserMenu, canOpenRunDialog, canMinimizeAllWindows, canRestoreMinimizedWindows),
+                    IsModifierPressed(VK_CONTROL), IsModifierPressed(VK_MENU), IsModifierPressed(VK_SHIFT), canToggleDesktop, canFocusTaskbarSystem, canOpenPowerUserMenu, canOpenRunDialog, canMinimizeAllWindows, canRestoreMinimizedWindows, canOpenShellSystemSurface),
                 WM_KEYUP or WM_SYSKEYUP => _gesture.KeyUp(data.VirtualKey),
                 _ => WindowsKeyAction.PassThrough
             };
+            if (action == WindowsKeyAction.OpenShellSystemSurface)
+            {
+                _pendingShellSystemSurfaceKey = _gesture.ShellSystemSurfaceKey;
+                _shellSystemSurfaceShortcutKeyReleased = false;
+                _shellSystemSurfaceWindowsKeyReleased = false;
+            }
+            if ((message is WM_KEYUP or WM_SYSKEYUP) && _pendingShellSystemSurfaceKey is { } pendingKey)
+            {
+                if (data.VirtualKey == pendingKey) _shellSystemSurfaceShortcutKeyReleased = true;
+                if (data.VirtualKey is 0x5b or 0x5c) _shellSystemSurfaceWindowsKeyReleased = true;
+                if (_shellSystemSurfaceShortcutKeyReleased && _shellSystemSurfaceWindowsKeyReleased)
+                {
+                    _pendingShellSystemSurfaceKey = null;
+                    _shellSystemSurfaceShortcutKeyReleased = false;
+                    _shellSystemSurfaceWindowsKeyReleased = false;
+                    Application.Current?.Dispatcher.BeginInvoke(() => _openShellSystemSurface(pendingKey), DispatcherPriority.Background);
+                }
+            }
             switch (action)
             {
                 case WindowsKeyAction.Suppress:
@@ -171,6 +199,8 @@ public sealed class WindowsKeyStartHook : IDisposable
                 case WindowsKeyAction.RestoreMinimizedWindows:
                     Application.Current?.Dispatcher.BeginInvoke(_restoreMinimizedWindows, DispatcherPriority.Input);
                     return new nint(1);
+                case WindowsKeyAction.OpenShellSystemSurface:
+                    return new nint(1);
             }
         }
         catch (Exception ex)
@@ -203,6 +233,9 @@ public sealed class WindowsKeyStartHook : IDisposable
 
     public void Dispose()
     {
+        _pendingShellSystemSurfaceKey = null;
+        _shellSystemSurfaceShortcutKeyReleased = false;
+        _shellSystemSurfaceWindowsKeyReleased = false;
         var forwardedKey = _gesture.Cancel();
         if (forwardedKey is { } key) SendWindowsKey(key, keyUp: true);
         if (_hook == 0) return;

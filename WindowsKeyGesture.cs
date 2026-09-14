@@ -17,7 +17,8 @@ public enum WindowsKeyAction
     ForwardWindowsTapThenSuppress,
     ToggleDesktop,
     MinimizeAllWindows,
-    RestoreMinimizedWindows
+    RestoreMinimizedWindows,
+    OpenShellSystemSurface
 }
 
 public sealed class WindowsKeyGesture
@@ -36,6 +37,7 @@ public sealed class WindowsKeyGesture
     private bool _controlEscapeHeld;
     private readonly HashSet<uint> _suppressedShortcutKeys = [];
     public int? TaskbarPinIndex { get; private set; }
+    public uint? ShellSystemSurfaceKey { get; private set; }
 
     public WindowsKeyGesture(bool replaceBareWindowsKey = true, bool replaceControlEscape = false)
     {
@@ -48,7 +50,7 @@ public sealed class WindowsKeyGesture
     public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Func<bool>? canOpenExplorer = null,
         bool controlPressed = false, bool altPressed = false, bool shiftPressed = false, Func<bool>? canToggleDesktop = null,
         Func<bool>? canFocusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Func<bool>? canOpenRunDialog = null,
-        Func<bool>? canMinimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null)
+        Func<bool>? canMinimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null, Func<uint, bool>? canOpenShellSystemSurface = null)
     {
         if (_controlEscapeHeld && key == VK_ESCAPE) return WindowsKeyAction.Suppress;
         if (_replaceControlEscape && key == VK_ESCAPE && controlPressed && !altPressed && !shiftPressed)
@@ -116,6 +118,14 @@ public sealed class WindowsKeyGesture
                     return action;
                 }
             }
+            if (key is (uint)'A' or (uint)'N' or (uint)'W' or 0x09 && !controlPressed && !altPressed && !shiftPressed &&
+                canOpenShellSystemSurface?.Invoke(key) == true)
+            {
+                _taskbarShortcutConsumed = true;
+                _suppressedShortcutKeys.Add(key);
+                ShellSystemSurfaceKey = key;
+                return WindowsKeyAction.OpenShellSystemSurface;
+            }
             if (key == (uint)'E' && canOpenExplorer?.Invoke() == true)
             {
                 _taskbarShortcutConsumed = true;
@@ -158,6 +168,7 @@ public sealed class WindowsKeyGesture
         _heldWindowsKey = null;
         _forwarded = false;
         _taskbarShortcutConsumed = false;
+        ShellSystemSurfaceKey = null;
         TaskbarPinIndex = null;
         return action;
     }
@@ -168,6 +179,7 @@ public sealed class WindowsKeyGesture
         _heldWindowsKey = null;
         _forwarded = false;
         _taskbarShortcutConsumed = false;
+        ShellSystemSurfaceKey = null;
         _suppressedShortcutKeys.Clear();
         _controlEscapeHeld = false;
         TaskbarPinIndex = null;
