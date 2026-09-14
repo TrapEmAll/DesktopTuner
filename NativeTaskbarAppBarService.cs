@@ -16,6 +16,7 @@ public sealed class NativeTaskbarAppBarService : IDisposable
     private const uint AppBarSetPosition = 0x00000003;
     private const uint AppBarActivate = 0x00000006;
     private const uint AppBarWindowPositionChanged = 0x00000009;
+    private const uint AppBarSetAutoHideBarEx = 0x0000000C;
     private static readonly nint HwndBottom = (nint)1;
     private const uint SwpNoSize = 0x0001;
     private const uint SwpNoMove = 0x0002;
@@ -30,6 +31,9 @@ public sealed class NativeTaskbarAppBarService : IDisposable
     private TaskbarDisplay? _display;
     private TaskbarEdge _edge;
     private TaskbarBounds? _lastPosition;
+    private bool _autoHideRegistered;
+    private TaskbarEdge _autoHideRegisteredEdge;
+    private TaskbarBounds? _autoHideRegisteredDisplayBounds;
     private bool _positioning;
 
     public bool IsRegistered { get; private set; }
@@ -38,10 +42,11 @@ public sealed class NativeTaskbarAppBarService : IDisposable
     {
         if (window == nint.Zero) throw new ArgumentException("A taskbar window handle is required.", nameof(window));
         ArgumentNullException.ThrowIfNull(display);
-        if (IsRegistered && _window == window)
+        if (IsRegistered && _window == window
+            && string.Equals(_display?.DeviceName, display.DeviceName, StringComparison.OrdinalIgnoreCase)
+            && _edge == edge)
         {
             _display = display;
-            _edge = edge;
             return true;
         }
 
@@ -106,6 +111,39 @@ public sealed class NativeTaskbarAppBarService : IDisposable
 
     public void NotifyWindowPositionChanged() => NotifyWindowMessage(AppBarWindowPositionChanged);
 
+    public bool SetAutoHideRegistration(bool enabled)
+    {
+        if (!IsRegistered || _display is null) return false;
+        var displayBounds = new TaskbarBounds(_display.Left, _display.Top, _display.Width, _display.Height);
+        var registrationMatches = _autoHideRegistered
+            && _autoHideRegisteredEdge == _edge
+            && _autoHideRegisteredDisplayBounds is { } registeredBounds
+            && SameBounds(registeredBounds, displayBounds);
+        if (enabled && registrationMatches) return true;
+        if (!enabled && !_autoHideRegistered) return true;
+
+        if (_autoHideRegistered)
+        {
+            if (_autoHideRegisteredDisplayBounds is not { } oldBounds
+                || !SendAutoHideRegistration(false, _autoHideRegisteredEdge, oldBounds))
+                return false;
+            _autoHideRegistered = false;
+            _autoHideRegisteredDisplayBounds = null;
+        }
+
+        if (!enabled) return true;
+        if (!SendAutoHideRegistration(true, _edge, displayBounds))
+        {
+            Trace.TraceWarning($"Windows refused auto-hide registration for taskbar window {_window} on {_display.DeviceName}/{_edge}; the taskbar's local auto-hide behavior remains active.");
+            return false;
+        }
+
+        _autoHideRegistered = true;
+        _autoHideRegisteredEdge = _edge;
+        _autoHideRegisteredDisplayBounds = displayBounds;
+        return true;
+    }
+
     public void LowerBelowFullscreenWindows()
     {
         if (!IsRegistered) return;
@@ -118,6 +156,7 @@ public sealed class NativeTaskbarAppBarService : IDisposable
         if (!IsRegistered) return;
         try
         {
+            if (_autoHideRegistered) SetAutoHideRegistration(false);
             var data = NewData(_window);
             SHAppBarMessage(AppBarRemove, ref data);
         }
@@ -131,6 +170,8 @@ public sealed class NativeTaskbarAppBarService : IDisposable
             _window = nint.Zero;
             _display = null;
             _lastPosition = null;
+            _autoHideRegistered = false;
+            _autoHideRegisteredDisplayBounds = null;
             _positioning = false;
         }
     }
@@ -148,6 +189,26 @@ public sealed class NativeTaskbarAppBarService : IDisposable
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         {
             Trace.TraceWarning($"Could not notify Windows about replacement taskbar window state: {ex.Message}");
+        }
+    }
+
+    private bool SendAutoHideRegistration(bool enabled, TaskbarEdge edge, TaskbarBounds displayBounds)
+    {
+        try
+        {
+            var data = NewData(_window);
+            data.Edge = ToNativeEdge(edge);
+            data.Bounds = ToNativeRect(displayBounds);
+            data.Parameter = enabled ? 1 : 0;
+            var succeeded = SHAppBarMessage(AppBarSetAutoHideBarEx, ref data) != UIntPtr.Zero;
+            if (!succeeded && !enabled)
+                Trace.TraceWarning($"Windows refused to release auto-hide registration for taskbar window {_window} on {edge}.");
+            return succeeded;
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+        {
+            Trace.TraceWarning($"Could not update replacement taskbar auto-hide registration: {ex.Message}");
+            return false;
         }
     }
 

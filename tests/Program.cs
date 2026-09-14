@@ -78,6 +78,9 @@ Check(new TaskbarBounds(1916, 0, 4, 1080), TaskbarLayoutCalculator.Calculate(192
 Check(new TaskbarBounds(0, 1076, 1920, 4), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom), true), "bottom, collapsed");
 CheckTrue(TaskbarAppBarPolicy.ShouldRegister(TaskbarStyle.EdgeToEdge), "reserve Windows work area for an edge-docked replacement taskbar");
 CheckTrue(!TaskbarAppBarPolicy.ShouldRegister(TaskbarStyle.Floating), "keep floating replacement taskbars out of edge-docked appbar registration");
+CheckTrue(TaskbarAppBarPolicy.ShouldRegisterAutoHide(true, true), "register Windows auto-hide for an enabled replacement appbar");
+Check(false, TaskbarAppBarPolicy.ShouldRegisterAutoHide(false, true), "avoid registering Windows auto-hide for an unregistered overlay taskbar");
+Check(false, TaskbarAppBarPolicy.ShouldRegisterAutoHide(true, false), "release Windows auto-hide when the replacement preference is disabled");
 var appBarDisplay = new TaskbarDisplay("APPBAR", 0, 0, 1920, 1080, true);
 Check(new TaskbarBounds(0, 1026, 1920, 54), TaskbarAppBarPolicy.ProposeBounds(appBarDisplay, TaskbarEdge.Bottom, new TaskbarBounds(0, 1026, 1920, 54)), "propose the full physical monitor edge for a bottom appbar");
 Check(new TaskbarBounds(0, 0, 176, 1080), TaskbarAppBarPolicy.ProposeBounds(appBarDisplay, TaskbarEdge.Left, new TaskbarBounds(0, 0, 176, 1080)), "propose the full physical monitor edge for a left appbar");

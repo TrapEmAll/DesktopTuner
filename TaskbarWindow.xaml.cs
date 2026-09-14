@@ -151,6 +151,8 @@ public partial class TaskbarWindow : Window
         {
             _nativeAppBar.Unregister();
         }
+        if (_nativeAppBar.IsRegistered)
+            _nativeAppBar.SetAutoHideRegistration(TaskbarAppBarPolicy.ShouldRegisterAutoHide(_nativeAppBar.IsRegistered, _autoHide));
         if (_nativeAppBar.IsRegistered && _nativeAppBar.UpdatePosition(bounds) is { } appBarBounds)
             bounds = appBarBounds;
         var trayBounds = _preferences.ReplaceNativeTaskbar ? null : NativeTaskbarTrayService.FindTrayBounds(Display);

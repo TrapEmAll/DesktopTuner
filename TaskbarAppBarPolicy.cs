@@ -4,6 +4,8 @@ public static class TaskbarAppBarPolicy
 {
     public static bool ShouldRegister(TaskbarStyle layout) => layout != TaskbarStyle.Floating;
 
+    public static bool ShouldRegisterAutoHide(bool appBarRegistered, bool autoHideEnabled) => appBarRegistered && autoHideEnabled;
+
     public static TaskbarBounds ProposeBounds(TaskbarDisplay display, TaskbarEdge edge, TaskbarBounds desiredBounds)
     {
         ArgumentNullException.ThrowIfNull(display);
