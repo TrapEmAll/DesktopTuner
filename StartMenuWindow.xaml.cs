@@ -972,6 +972,7 @@ public partial class StartMenuWindow : Window
             var item = new MenuItem { Header = place.Label, Tag = place.Id };
             item.Click += SystemPlace_Click;
             if (dropdownIds.Contains(placeId)) item.SubmenuOpened += PlaceFlyout_Opened;
+            if (placeId == "control-panel") item.SubmenuOpened += ControlPanelFlyout_Opened;
             menu.Items.Add(item);
         }
         if (menu.Items.Count == 0) menu.Items.Add(new MenuItem { Header = "No places selected", IsEnabled = false });
@@ -984,6 +985,38 @@ public partial class StartMenuWindow : Window
     {
         if (sender is not MenuItem { Tag: string placeId } menuItem) return;
         FillPlaceFlyout(menuItem, StartMenuPlaceCatalog.ResolveTarget(placeId), depth: 0);
+    }
+
+    private void ControlPanelFlyout_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menuItem) return;
+        menuItem.Items.Clear();
+        var openControlPanel = new MenuItem { Header = "Open Control Panel" };
+        openControlPanel.Click += SystemPlace_Click;
+        openControlPanel.Tag = "control-panel";
+        menuItem.Items.Add(openControlPanel);
+        menuItem.Items.Add(new Separator());
+
+        foreach (var applet in ControlPanelAppletCatalog.Applets)
+        {
+            var item = new MenuItem { Header = applet.Label, Tag = applet.Id };
+            item.Click += ControlPanelApplet_Click;
+            menuItem.Items.Add(item);
+        }
+    }
+
+    private void ControlPanelApplet_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string appletId }) return;
+        try
+        {
+            System.Diagnostics.Process.Start(ControlPanelAppletCatalog.CreateStartInfo(appletId));
+            Close();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Windows could not open this Control Panel applet.\n\n{ex.Message}", "Could not open Control Panel applet", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void NestedPlaceFlyout_Opened(object sender, RoutedEventArgs e)
@@ -1029,6 +1062,7 @@ public partial class StartMenuWindow : Window
     private void SystemPlace_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: string action }) return;
+        if (action == "control-panel" && sender is MenuItem { HasItems: true }) return;
         try
         {
             if (action == "run")

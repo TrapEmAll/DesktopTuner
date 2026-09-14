@@ -544,6 +544,15 @@ Throws<ArgumentException>(() => StartPinCatalog.Pin([], new AppEntry("Unsupporte
 Check("shell:MyComputerFolder", StartMenuPlaceCatalog.ResolveTarget("computer"), "open This PC from the Start places menu");
 Check("shell:RecycleBinFolder", StartMenuPlaceCatalog.ResolveTarget("recycle-bin"), "open the Windows Recycle Bin from Start");
 Check("control.exe", StartMenuPlaceCatalog.ResolveTarget("control-panel"), "open Control Panel from the Start places menu");
+var programsApplet = ControlPanelAppletCatalog.CreateStartInfo("programs");
+Check("control.exe", programsApplet.FileName, "launch Control Panel applets through control.exe");
+Check("appwiz.cpl", string.Join(' ', programsApplet.ArgumentList), "open Programs and Features from the Control Panel applet flyout");
+Check(true, programsApplet.UseShellExecute, "launch Control Panel applets through the Windows shell");
+var keyboardApplet = ControlPanelAppletCatalog.CreateStartInfo("keyboard");
+Check("main.cpl keyboard", string.Join(' ', keyboardApplet.ArgumentList), "pass the Keyboard applet selector as a separate argument");
+Check("/name Microsoft.Personalization", string.Join(' ', ControlPanelAppletCatalog.CreateStartInfo("personalization").ArgumentList), "launch canonical Control Panel items with structured arguments");
+Check(16, ControlPanelAppletCatalog.Applets.Count, "offer the supported Control Panel applets in the Start flyout");
+Throws<ArgumentOutOfRangeException>(() => ControlPanelAppletCatalog.CreateStartInfo("unknown"), "reject unknown Control Panel applets");
 Check(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), StartMenuPlaceCatalog.ResolveTarget("music"), "open the user's Music folder from the Start places menu");
 Check(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), StartMenuPlaceCatalog.ResolveTarget("documents"), "resolve Documents from the Start dropdown places");
 Check(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"), StartMenuPlaceCatalog.ResolveTarget("downloads"), "resolve Downloads from the Start dropdown places");
