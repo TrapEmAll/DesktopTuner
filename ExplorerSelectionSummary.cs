@@ -2,7 +2,7 @@ using System.IO;
 
 namespace DesktopTuner;
 
-public sealed record ExplorerSelectionSummary(string Name, string Type, string Location, string Size, string Modified);
+public sealed record ExplorerSelectionSummary(string Name, string Type, string Location, string Size, string Modified, string Created, string Accessed);
 
 public static class ExplorerSelectionSummaryService
 {
@@ -44,13 +44,17 @@ public static class ExplorerSelectionSummaryService
             1 => "Some dates unavailable",
             _ => "Multiple dates"
         };
+        var created = ResolveCommonDate(selection.Select(entry => entry.Created));
+        var accessed = ResolveCommonDate(selection.Select(entry => entry.Accessed));
 
         return new ExplorerSelectionSummary(
             $"{selection.Length:N0} items selected",
             string.Join(", ", types),
             location,
             size,
-            modified);
+            modified,
+            created,
+            accessed);
     }
 
     private static ExplorerSelectionSummary ResolveSingle(ExplorerEntry entry) => new(
@@ -58,7 +62,25 @@ public static class ExplorerSelectionSummaryService
         entry.Type,
         entry.FullPath,
         entry.SizeText.Length == 0 ? (entry.IsDirectory ? "Folder" : "—") : entry.SizeText,
-        entry.Modified == DateTime.MinValue ? "—" : entry.Modified.ToString("f"));
+        entry.Modified == DateTime.MinValue ? "—" : entry.Modified.ToString("f"),
+        FormatOptionalDate(entry.Created),
+        FormatOptionalDate(entry.Accessed));
+
+    private static string ResolveCommonDate(IEnumerable<DateTime?> values)
+    {
+        var dates = values.Select(value => value is DateTime date && date != DateTime.MinValue ? date.ToString("f") : null).ToArray();
+        var availableDates = dates.Where(date => date is not null).Distinct(StringComparer.CurrentCulture).ToArray();
+        return availableDates.Length switch
+        {
+            0 => "—",
+            1 when dates.All(date => date is not null) => availableDates[0]!,
+            1 => "Some dates unavailable",
+            _ => "Multiple dates"
+        };
+    }
+
+    private static string FormatOptionalDate(DateTime? value) =>
+        value is DateTime date && date != DateTime.MinValue ? date.ToString("f") : "—";
 
     private static string Pluralize(int count, string singular) => $"{count:N0} {singular}{(count == 1 ? string.Empty : "s")}";
 }

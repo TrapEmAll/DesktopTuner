@@ -879,8 +879,8 @@ try
     var sharedModifiedDate = new DateTime(2025, 2, 3, 16, 30, 0);
     var selectedFiles = new[]
     {
-        new ExplorerEntry("first.txt", @"C:\Docs\first.txt", false, false, 5, sharedModifiedDate),
-        new ExplorerEntry("second.txt", @"C:\Docs\second.txt", false, false, 7, sharedModifiedDate)
+        new ExplorerEntry("first.txt", @"C:\Docs\first.txt", false, false, 5, sharedModifiedDate) { Created = new DateTime(2025, 1, 1), Accessed = new DateTime(2025, 2, 2) },
+        new ExplorerEntry("second.txt", @"C:\Docs\second.txt", false, false, 7, sharedModifiedDate) { Created = new DateTime(2025, 1, 1), Accessed = new DateTime(2025, 2, 2) }
     };
     var fileSelectionSummary = ExplorerSelectionSummaryService.Resolve(selectedFiles);
     Check("2 items selected", fileSelectionSummary.Name, "summarize a multi-file Explorer selection");
@@ -888,12 +888,19 @@ try
     Check(@"C:\Docs", fileSelectionSummary.Location, "show the common parent for a multi-file Explorer selection");
     Check("12 B", fileSelectionSummary.Size, "sum known file sizes in Explorer details");
     Check(sharedModifiedDate.ToString("f"), fileSelectionSummary.Modified, "show a shared modified date for selected files");
+    Check(new DateTime(2025, 1, 1).ToString("f"), fileSelectionSummary.Created, "show a shared creation date for selected files");
+    Check(new DateTime(2025, 2, 2).ToString("f"), fileSelectionSummary.Accessed, "show a shared access date for selected files");
+    var singleFileSummary = ExplorerSelectionSummaryService.Resolve([selectedFiles[0]]);
+    Check(new DateTime(2025, 1, 1).ToString("f"), singleFileSummary.Created, "show the creation date for one selected file");
+    Check(new DateTime(2025, 2, 2).ToString("f"), singleFileSummary.Accessed, "show the access date for one selected file");
     var mixedSelectionSummary = ExplorerSelectionSummaryService.Resolve(
     [
         .. selectedFiles,
         new ExplorerEntry("folder", @"C:\Docs\folder", true, false, null, sharedModifiedDate)
     ]);
     Check("2 files, 1 folder", mixedSelectionSummary.Type, "summarize mixed file and folder selections");
+    Check("Some dates unavailable", mixedSelectionSummary.Created, "explain unavailable creation dates in a mixed selection");
+    Check("Some dates unavailable", mixedSelectionSummary.Accessed, "explain unavailable access dates in a mixed selection");
     Check("12 B · folder sizes not included", mixedSelectionSummary.Size, "state explicitly that selected folder sizes are not included");
     Check("Multiple locations", ExplorerSelectionSummaryService.Resolve(
     [

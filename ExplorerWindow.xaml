@@ -325,11 +325,13 @@
                     <TextBlock Text="DETAILS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DesktopSoftTextBrush}" />
                     <TextBlock x:Name="DetailsName" DockPanel.Dock="Right" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource DesktopPrimaryTextBrush}" TextTrimming="CharacterEllipsis" />
                 </DockPanel>
-                <UniformGrid Grid.Row="1" Columns="4" Margin="0,14,0,0">
+                <UniformGrid Grid.Row="1" Columns="3" Margin="0,14,0,0">
                     <StackPanel><TextBlock Text="Type" Foreground="{DynamicResource DesktopSoftTextBrush}" FontSize="11" /><TextBlock x:Name="DetailsType" Margin="0,5,14,0" TextWrapping="Wrap" /></StackPanel>
                     <StackPanel><TextBlock Text="Location" Foreground="{DynamicResource DesktopSoftTextBrush}" FontSize="11" /><TextBlock x:Name="DetailsLocation" Margin="0,5,14,0" TextTrimming="CharacterEllipsis" /></StackPanel>
                     <StackPanel><TextBlock Text="Size" Foreground="{DynamicResource DesktopSoftTextBrush}" FontSize="11" /><TextBlock x:Name="DetailsSize" Margin="0,5,14,0" /></StackPanel>
                     <StackPanel><TextBlock Text="Date modified" Foreground="{DynamicResource DesktopSoftTextBrush}" FontSize="11" /><TextBlock x:Name="DetailsModified" Margin="0,5,0,0" TextWrapping="Wrap" /></StackPanel>
+                    <StackPanel><TextBlock Text="Date created" Foreground="{DynamicResource DesktopSoftTextBrush}" FontSize="11" /><TextBlock x:Name="DetailsCreated" Margin="0,5,14,0" TextWrapping="Wrap" /></StackPanel>
+                    <StackPanel><TextBlock Text="Date accessed" Foreground="{DynamicResource DesktopSoftTextBrush}" FontSize="11" /><TextBlock x:Name="DetailsAccessed" Margin="0,5,14,0" TextWrapping="Wrap" /></StackPanel>
                 </UniformGrid>
             </Grid>
         </Border>

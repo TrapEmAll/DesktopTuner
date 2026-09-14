@@ -1631,6 +1631,8 @@ public partial class ExplorerWindow : Window
             DetailsLocation.Text = summary.Location;
             DetailsSize.Text = summary.Size;
             DetailsModified.Text = summary.Modified;
+            DetailsCreated.Text = summary.Created;
+            DetailsAccessed.Text = summary.Accessed;
             SetStatus(selection.Length == 1
                 ? selection[0].IsDirectory ? $"{selection[0].DisplayName} · folder" : $"{selection[0].DisplayName} · {selection[0].SizeText}"
                 : summary.Name);
@@ -2012,6 +2014,7 @@ public partial class ExplorerWindow : Window
             DetailsLocation.Text = _location.Path;
             DetailsSize.Text = FormatItemCount(itemCount);
             DetailsModified.Text = $"Name contains “{SearchBox.Text.Trim()}”.";
+            DetailsCreated.Text = DetailsAccessed.Text = "—";
             return;
         }
         if (_location.IsHome)
@@ -2021,6 +2024,7 @@ public partial class ExplorerWindow : Window
             DetailsLocation.Text = "Opened recently";
             DetailsSize.Text = FormatItemCount(itemCount);
             DetailsModified.Text = "Select an item to see its modified date.";
+            DetailsCreated.Text = DetailsAccessed.Text = "Select an item to see its creation and access dates.";
             return;
         }
         DetailsName.Text = _location.IsDriveList ? "This PC" : Path.GetFileName(_location.Path!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
@@ -2029,6 +2033,7 @@ public partial class ExplorerWindow : Window
         DetailsLocation.Text = _location.IsDriveList ? "Available local drives" : _location.Path;
         DetailsSize.Text = FormatItemCount(itemCount);
         DetailsModified.Text = "Select an item to see its modified date.";
+        DetailsCreated.Text = DetailsAccessed.Text = "Select an item to see its creation and access dates.";
     }
 
     private static string FormatItemCount(int count) => $"{count:N0} item{(count == 1 ? "" : "s")}";
