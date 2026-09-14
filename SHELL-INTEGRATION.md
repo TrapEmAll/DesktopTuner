@@ -18,11 +18,32 @@ This gives the replacement bar a supported taskbar-like work-area contract. It d
 
 ## Replacing Explorer as the logon shell
 
-Windows [Shell Launcher](https://learn.microsoft.com/en-us/windows/configuration/shell-launcher/) can start a Win32 or UWP application in place of `Explorer.exe`, but Microsoft supports it only on Enterprise, Education, and IoT Enterprise editions. It is an optional Windows feature and its shell assignment takes effect at sign-in. Shell Launcher v2 hosts the replacement as the shell, so this is a whole-shell transition rather than a taskbar customization API.
+Windows [Shell Launcher](https://learn.microsoft.com/en-us/windows/configuration/shell-launcher/) can start a Win32 or UWP application in place of `Explorer.exe`. Microsoft supports it on Enterprise, Education, and IoT Enterprise editions; it is an optional Windows feature, and a shell assignment takes effect at sign-in. Shell Launcher v2 is a whole-shell transition, not a taskbar customization API. Its return-action mapping can restart a shell when it exits.
 
-An experimental desktop host can be started manually with `DesktopTuner.exe --desktop-host`. It displays the configured wallpaper and visible items from the user and public Desktop folders on the primary display, adds This PC and Recycle Bin as shell namespace entries with native shell icons, opens items through the Windows shell, watches for Desktop content changes, copies files or folders dropped from other apps onto the user Desktop, supports dragging filesystem items out to other apps, reorders icons by dragging them onto one another and persists that order, and exposes Windows' native context verbs for filesystem items. Its background menu also offers refresh and folder creation. It is a prototype that runs alongside Explorer: native desktop icons may remain behind it, free-form positions are not retained, it has no multi-monitor layout or full shell namespace support, and it has no automatic sign-in or Shell Launcher configuration.
+Desktop Tuner now has an opt-in `--shell-host` runtime mode for use as a per-user Shell Launcher target. It starts the desktop host, brings up companion taskbars on every connected display, supplies the custom Start menu and settings window, routes the Windows key to the custom Start menu, and leaves Explorer-taskbar hiding disabled because Explorer is not the shell. The companion settings window stays available from the custom taskbar and hides instead of closing the shell process. Exiting the desktop host ends the process; Shell Launcher should be configured to restart the shell after process exit.
 
-Assigning Desktop Tuner as the logon shell today would remove the normal Explorer desktop as well as the native taskbar, Start menu, and notification area without replacing all of them. Shell Launcher alone is not a general solution for consumer Windows editions or a usable replacement mode for the current app. Moving from the prototype to a supported managed-edition shell mode still needs complete desktop behavior, sign-in/recovery handling, and a reversible configuration flow, while consumer editions remain on the current Explorer-hosted integration path.
+This runtime path is experimental and does not configure Windows. Shell Launcher configuration requires an administrator and a supported edition. A managed-edition test must use a separate, retained administrator account that remains on Explorer; target only a non-administrator test account. Keep Ctrl+Alt+Delete available for signing out, and test the rollback path before using it as a daily shell. Do not assign Desktop Tuner as the default shell or to a broad user group.
+
+For a manual test on a supported Windows edition, install Desktop Tuner in the non-administrator test account so its per-user installation is readable there. Then enable the optional **Shell Launcher** Windows feature and use an elevated PowerShell session to add a per-user mapping. Replace the SID and executable path with values for the test account; do not use the elevated administrator's `%LOCALAPPDATA%` path:
+
+```powershell
+$testSid = "S-1-5-21-REPLACE-WITH-TEST-ACCOUNT-SID"
+$executable = "C:\Users\TEST-ACCOUNT\AppData\Local\Programs\DesktopTuner\DesktopTuner.exe"
+$shell = "`"$executable`" --shell-host"
+$shellLauncher = [wmiclass]"\\localhost\root\standardcimv2\embedded:WESL_UserSetting"
+$shellLauncher.SetCustomShell($testSid, $shell, @(), @(), 0)
+$shellLauncher.SetEnabled($true)
+```
+
+Sign out and back into the test account for the mapping to take effect. `DefaultAction` value `0` restarts the shell after exit. To roll back the test account mapping from an elevated PowerShell session, remove it and sign out/in again:
+
+```powershell
+$testSid = "S-1-5-21-REPLACE-WITH-TEST-ACCOUNT-SID"
+$shellLauncher = [wmiclass]"\\localhost\root\standardcimv2\embedded:WESL_UserSetting"
+$shellLauncher.RemoveCustomShell($testSid)
+```
+
+The desktop host still lacks free-form icon placement, multi-monitor icon layout, full shell namespace behavior, and live testing when Explorer is absent. The custom taskbar does not yet reproduce arbitrary notification-area extensions, Windows' native Start/taskbar relationship, or every shell flyout. CI can build the mode but cannot validate sign-in, recovery, Shell Launcher edition behavior, or display integration on a real Windows 11 desktop.
 
 ## Distribution gate
 

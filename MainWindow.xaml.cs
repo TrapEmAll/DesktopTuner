@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -75,14 +76,17 @@ public partial class MainWindow : Window
     private bool _startWithWindows;
     private bool _folderShellIntegrationEnabled;
     private readonly bool _startInBackground;
+    private readonly bool _shellHostMode;
     private bool _closingTaskbars;
     private bool _reconcilingDisplayTopology;
 
-    public MainWindow(bool startInBackground = false)
+    public MainWindow(bool startInBackground = false, bool shellHostMode = false)
     {
         InitializeComponent();
         _startInBackground = startInBackground;
+        _shellHostMode = shellHostMode;
         SourceInitialized += MainWindow_SourceInitialized;
+        Closing += MainWindow_Closing;
         Closed += MainWindow_Closed;
         _settings = new RegistrySettingsService(_profileStore);
         SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
@@ -104,7 +108,7 @@ public partial class MainWindow : Window
         _pinnedApps = desktopPreferences.PinnedApps ?? [];
         _pinnedStartApps = StartPinCatalog.Normalize(desktopPreferences.PinnedStartApps).ToList();
         _startMenuPlaces = StartMenuPlaceCatalog.Normalize(desktopPreferences.StartMenuPlaces);
-        _replaceWindowsKey = desktopPreferences.ReplaceWindowsKey;
+        _replaceWindowsKey = shellHostMode || desktopPreferences.ReplaceWindowsKey;
         _replaceExplorerShortcut = desktopPreferences.ReplaceExplorerShortcut;
         _startMenuStyle = desktopPreferences.StartMenuStyle;
         _startRecentAppCount = desktopPreferences.StartRecentAppCount;
@@ -261,11 +265,22 @@ public partial class MainWindow : Window
             };
             recentAppsRow.Children.Add(recentAppsSelector);
             PageContent.Children.Add(recentAppsRow);
-            var replaceStart = new CheckBox { Content = "Use Desktop Tuner Start and taskbar shortcuts for the Windows key while this app is running", IsChecked = _replaceWindowsKey, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
+            var replaceStart = new CheckBox
+            {
+                Content = _shellHostMode
+                    ? "Use Desktop Tuner Start and taskbar shortcuts for the Windows key while this shell is active"
+                    : "Use Desktop Tuner Start and taskbar shortcuts for the Windows key while this app is running",
+                IsChecked = _replaceWindowsKey,
+                IsEnabled = !_shellHostMode,
+                Margin = new Thickness(0, 0, 0, 16),
+                FontSize = 13
+            };
             replaceStart.Checked += (_, _) => ToggleWindowsKeyReplacement(replaceStart, true);
             replaceStart.Unchecked += (_, _) => ToggleWindowsKeyReplacement(replaceStart, false);
             PageContent.Children.Add(replaceStart);
-            var info = InfoCard("Windows-key integration", "When enabled, tapping either Windows key opens Desktop Tuner Start. While a Desktop Tuner taskbar is running, Win+1 through Win+9 activate its corresponding pinned app; other Win+key shortcuts such as Win+R continue to Windows. Turn this off at any time to restore native Start and taskbar shortcuts.");
+            var info = InfoCard("Windows-key integration", _shellHostMode
+                ? "Desktop Tuner Start receives the Windows key while it is running as the shell. Other Win+key shortcuts such as Win+R continue to Windows."
+                : "When enabled, tapping either Windows key opens Desktop Tuner Start. While a Desktop Tuner taskbar is running, Win+1 through Win+9 activate its corresponding pinned app; other Win+key shortcuts such as Win+R continue to Windows. Turn this off at any time to restore native Start and taskbar shortcuts.");
             PageContent.Children.Add(info);
 
             AddPageHeading("System places", "Choose which shortcuts appear in More places and set their order.");
@@ -812,14 +827,21 @@ public partial class MainWindow : Window
         {
             _replaceWindowsKey = false;
             _replaceExplorerShortcut = false;
-            SaveDesktopPreferences();
+            if (!_shellHostMode) SaveDesktopPreferences();
             SetStatus("Shell shortcut integration could not start; the settings were turned off.");
         }
-        if (_startInBackground && _startWithWindows)
+        if (ShellHostLaunchPolicy.ShouldStartTaskbar(_shellHostMode, _startInBackground && _startWithWindows))
         {
             Hide();
             Dispatcher.BeginInvoke(new Action(ShowTaskbar));
         }
+    }
+
+    private void MainWindow_Closing(object? sender, CancelEventArgs e)
+    {
+        if (!_shellHostMode || Application.Current?.Dispatcher.HasShutdownStarted == true) return;
+        e.Cancel = true;
+        Hide();
     }
 
     private void MainWindow_Closed(object? sender, EventArgs e)
@@ -1043,26 +1065,35 @@ public partial class MainWindow : Window
         try
         {
             var preferences = CreateDesktopPreferences();
-            foreach (var display in TaskbarDisplayService.Select(_taskbarOnAllDisplays))
+            var showAllDisplays = ShellHostLaunchPolicy.ShouldCoverAllDisplays(_shellHostMode, _taskbarOnAllDisplays);
+            var hideNativeTaskbar = ShellHostLaunchPolicy.ShouldHideNativeTaskbar(_shellHostMode, _replaceNativeTaskbar);
+            foreach (var display in TaskbarDisplayService.Select(showAllDisplays))
                 AddTaskbarWindow(display, preferences);
-            if (_replaceNativeTaskbar)
+            if (hideNativeTaskbar)
             {
-                var displays = TaskbarDisplayService.Select(_taskbarOnAllDisplays);
+                var displays = TaskbarDisplayService.Select(showAllDisplays);
                 using var watchdog = NativeTaskbarWatchdog.Start(Environment.ProcessId, _nativeTaskbarVisibility.SnapshotPath);
                 if (!_nativeTaskbarVisibility.HideForDisplays(displays))
                 {
                     throw new InvalidOperationException("Windows did not expose a taskbar on the selected displays, so replacement mode could not start.");
                 }
+            }
+            if (hideNativeTaskbar || _shellHostMode)
+            {
                 foreach (var taskbar in _taskbarWindows)
                     if (!taskbar.EnableReplacementWorkArea(true))
-                        throw new InvalidOperationException($"Windows could not reserve a work area for the replacement taskbar on {taskbar.Display.DeviceName}. Desktop Tuner will restore the Windows taskbar.");
-                _nativeTaskbarWatchTimer.Start();
+                    {
+                        if (hideNativeTaskbar)
+                            throw new InvalidOperationException($"Windows could not reserve a work area for the replacement taskbar on {taskbar.Display.DeviceName}. Desktop Tuner will restore the Windows taskbar.");
+                        System.Diagnostics.Trace.TraceWarning($"Windows could not reserve a work area for the shell-host taskbar on {taskbar.Display.DeviceName}; it will remain an overlay.");
+                    }
             }
-            SetStatus(_taskbarOnAllDisplays
-                ? _replaceNativeTaskbar
+            if (hideNativeTaskbar) _nativeTaskbarWatchTimer.Start();
+            SetStatus(showAllDisplays
+                ? hideNativeTaskbar
                     ? "Desktop Tuner taskbar replacement is running on all displays. Close it to restore Windows taskbars."
                     : "Desktop Tuner taskbar overlays are running on all displays. Close one to reveal the Windows taskbar everywhere."
-                : _replaceNativeTaskbar
+                : hideNativeTaskbar
                     ? "Desktop Tuner taskbar replacement is running on the primary display. Close it to restore the Windows taskbar."
                     : "Desktop Tuner taskbar overlay is running on the primary display. Close it to reveal the Windows taskbar.");
         }
@@ -1079,7 +1110,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void AddTaskbarWindow(TaskbarDisplay display, DesktopPreferences preferences)
+    private TaskbarWindow AddTaskbarWindow(TaskbarDisplay display, DesktopPreferences preferences)
     {
         var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, _taskbarWindowOrder, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication);
         taskbar.Closed += (_, _) =>
@@ -1089,6 +1120,7 @@ public partial class MainWindow : Window
         };
         _taskbarWindows.Add(taskbar);
         taskbar.Show();
+        return taskbar;
     }
 
     private void DisplayRefreshTimer_Tick(object? sender, EventArgs e)
@@ -1098,7 +1130,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var desiredDisplays = TaskbarDisplayService.Select(_taskbarOnAllDisplays);
+            var desiredDisplays = TaskbarDisplayService.Select(ShellHostLaunchPolicy.ShouldCoverAllDisplays(_shellHostMode, _taskbarOnAllDisplays));
             var topology = TaskbarDisplayService.PlanTopologyChange(_taskbarWindows.Select(window => window.Display), desiredDisplays);
             var preferences = CreateDesktopPreferences();
             _reconcilingDisplayTopology = true;
@@ -1119,7 +1151,12 @@ public partial class MainWindow : Window
                 var taskbar = _taskbarWindows.FirstOrDefault(window => string.Equals(window.Display.DeviceName, display.DeviceName, StringComparison.OrdinalIgnoreCase));
                 taskbar?.UpdateDisplay(display);
             }
-            foreach (var display in topology.Added) AddTaskbarWindow(display, preferences);
+            foreach (var display in topology.Added)
+            {
+                var taskbar = AddTaskbarWindow(display, preferences);
+                if (_shellHostMode && !taskbar.EnableReplacementWorkArea(true))
+                    System.Diagnostics.Trace.TraceWarning($"Windows could not reserve a work area for the shell-host taskbar on {display.DeviceName}; it will remain an overlay.");
+            }
 
             if (_replaceNativeTaskbar) MaintainNativeTaskbars();
             RepositionOpenStartMenu();
@@ -1160,7 +1197,7 @@ public partial class MainWindow : Window
 
     private void MaintainNativeTaskbars()
     {
-        if (!_replaceNativeTaskbar || !_taskbarWindows.Any(window => window.IsVisible))
+        if (!ShellHostLaunchPolicy.ShouldHideNativeTaskbar(_shellHostMode, _replaceNativeTaskbar) || !_taskbarWindows.Any(window => window.IsVisible))
         {
             _nativeTaskbarWatchTimer.Stop();
             _nativeTaskbarVisibility.Restore();
@@ -1169,7 +1206,7 @@ public partial class MainWindow : Window
 
         try
         {
-            if (!_nativeTaskbarVisibility.HideForDisplays(TaskbarDisplayService.Select(_taskbarOnAllDisplays)))
+            if (!_nativeTaskbarVisibility.HideForDisplays(TaskbarDisplayService.Select(ShellHostLaunchPolicy.ShouldCoverAllDisplays(_shellHostMode, _taskbarOnAllDisplays))))
                 throw new InvalidOperationException("Windows did not expose a taskbar on the selected displays.");
             foreach (var taskbar in _taskbarWindows)
                 if (!taskbar.EnableReplacementWorkArea(true))
@@ -1386,7 +1423,11 @@ public partial class MainWindow : Window
         _explorerWindow.Show();
     }
 
-    private void QuitApplication() => Close();
+    private void QuitApplication()
+    {
+        if (_shellHostMode) Application.Current?.Shutdown();
+        else Close();
+    }
 
     private void ToggleWindowsKeyReplacement(CheckBox checkBox, bool enabled)
     {

@@ -36,10 +36,14 @@ public partial class App : Application
             return;
         }
 
-        if (e.Args.Contains("--desktop-host", StringComparer.OrdinalIgnoreCase))
+        var shellHostMode = ShellHostLaunchPolicy.IsShellHostInvocation(e.Args);
+        if (shellHostMode || e.Args.Contains("--desktop-host", StringComparer.OrdinalIgnoreCase))
         {
             ShutdownMode = ShutdownMode.OnMainWindowClose;
-            _instanceMutex = new Mutex(initiallyOwned: true, name: @"Local\DesktopTuner.DesktopHost.Singleton", out var desktopHostCreatedNew);
+            var mutexName = shellHostMode
+                ? @"Local\DesktopTuner.ShellHost.Singleton"
+                : @"Local\DesktopTuner.DesktopHost.Singleton";
+            _instanceMutex = new Mutex(initiallyOwned: true, name: mutexName, out var desktopHostCreatedNew);
             if (!desktopHostCreatedNew)
             {
                 _instanceMutex.Dispose();
@@ -51,6 +55,12 @@ public partial class App : Application
             var desktopHost = new DesktopHostWindow();
             MainWindow = desktopHost;
             desktopHost.Show();
+            if (shellHostMode)
+            {
+                var shellControls = new MainWindow(shellHostMode: true) { ShowInTaskbar = false };
+                shellControls.Show();
+                shellControls.Hide();
+            }
             return;
         }
 

@@ -102,6 +102,11 @@ CheckTrue(ExplorerViewModeCatalog.Get(ExplorerViewMode.LargeIcons).WrapItems, "w
 Check("ExplorerSmallIconTemplate", ExplorerViewModeCatalog.Get(ExplorerViewMode.SmallIcons).ItemTemplateKey, "map the small icon layout to its item template");
 CheckTrue(ExplorerViewModeCatalog.Get(ExplorerViewMode.Tiles).WrapItems, "wrap Explorer tiles to the available viewport");
 CheckTrue(NativeTaskbarWatchdog.IsWatchdogInvocation(["--taskbar-watchdog", "123", "snapshot.json"]), "recognize the taskbar recovery process entry point");
+CheckTrue(ShellHostLaunchPolicy.IsShellHostInvocation(["--SHELL-HOST"]), "recognize Shell Launcher mode without depending on argument casing");
+Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(true, false), "start the companion taskbar in shell-host mode regardless of sign-in preferences");
+Check(true, ShellHostLaunchPolicy.ShouldCoverAllDisplays(true, false), "cover every display in shell-host mode regardless of overlay preferences");
+Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, true), "avoid trying to hide an Explorer taskbar when running as the logon shell");
+Check(true, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true), "preserve the user's native taskbar replacement setting in normal mode");
 CheckTrue(NativeTaskbarWatchdog.TryReadInvocation(["--taskbar-watchdog", "123", "snapshot.json"], out var watchdogOwner, out var watchdogSnapshot), "parse taskbar recovery process arguments");
 Check((123, "snapshot.json"), (watchdogOwner, watchdogSnapshot), "recover the watchdog owner and snapshot path");
 CheckTrue(TaskbarSnapshotOwnerPolicy.IsSnapshotOwner(DateTime.UtcNow.AddMinutes(-5), DateTime.UtcNow), "match a live process start to its newer taskbar snapshot");
