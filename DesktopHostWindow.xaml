@@ -4,7 +4,7 @@
         Title="Desktop Tuner Desktop Host (prototype)" WindowStyle="None" ResizeMode="NoResize"
         WindowState="Maximized" ShowInTaskbar="False" ShowActivated="False" Background="#273044"
         KeyDown="OnKeyDown" Loaded="OnLoaded">
-    <Grid>
+    <Grid AllowDrop="True" DragOver="OnDesktopDragOver" Drop="OnDesktopDrop">
         <ItemsControl x:Name="DesktopItems" Margin="12" HorizontalAlignment="Left" VerticalAlignment="Top">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><WrapPanel Orientation="Vertical" MaxHeight="850"/></ItemsPanelTemplate>

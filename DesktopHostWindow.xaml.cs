@@ -169,6 +169,36 @@ public partial class DesktopHostWindow : Window
         DragDrop.DoDragDrop((DependencyObject)sender, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
     }
 
+    private void OnDesktopDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) && Directory.Exists(_userDesktop)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void OnDesktopDrop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        e.Handled = true;
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths)
+        {
+            e.Effects = DragDropEffects.None;
+            return;
+        }
+        try
+        {
+            ExplorerFileOperationService.Transfer(paths, _userDesktop, move: false);
+            RefreshDesktop();
+            e.Effects = DragDropEffects.Copy;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Security.SecurityException)
+        {
+            MessageBox.Show(this, ex.Message, "Could not copy items to Desktop", MessageBoxButton.OK, MessageBoxImage.Error);
+            e.Effects = DragDropEffects.None;
+        }
+    }
+
     private void OnRefreshClick(object sender, RoutedEventArgs e) => RefreshDesktop();
 
     private void OnNewFolderClick(object sender, RoutedEventArgs e)
