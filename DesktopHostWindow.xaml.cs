@@ -272,10 +272,13 @@ public partial class DesktopHostWindow : Window
     private void OnItemDragOver(object sender, DragEventArgs e)
     {
         var internalPaths = ReadInternalItemPaths(e.Data);
-        e.Effects = internalPaths.Count == 1 && _desktopItems.Any(item => string.Equals(item.FullPath, internalPaths[0], StringComparison.OrdinalIgnoreCase))
-            ? DragDropEffects.Move
-            : internalPaths.Count > 1 ? DragDropEffects.None
-            : e.Data.GetDataPresent(DataFormats.FileDrop) && Directory.Exists(_userDesktop) ? DragDropEffects.Copy : DragDropEffects.None;
+        if (internalPaths.Count == 1 && _desktopItems.Any(item => string.Equals(item.FullPath, internalPaths[0], StringComparison.OrdinalIgnoreCase)))
+            e.Effects = DragDropEffects.Move;
+        else if (internalPaths.Count > 0 || !e.Data.GetDataPresent(DataFormats.FileDrop) || !Directory.Exists(_userDesktop) ||
+                 e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0 ||
+                 !TryResolveDesktopDropMove(paths, e, out var move))
+            e.Effects = DragDropEffects.None;
+        else e.Effects = move ? DragDropEffects.Move : DragDropEffects.Copy;
         e.Handled = true;
     }
 
@@ -295,7 +298,7 @@ public partial class DesktopHostWindow : Window
             return;
         }
 
-        TransferDroppedItems(e, forcedMove: false);
+        TransferDroppedItems(e);
     }
 
     private void OnDesktopDragOver(object sender, DragEventArgs e)
@@ -363,7 +366,7 @@ public partial class DesktopHostWindow : Window
         }
     }
 
-    private void TransferDroppedItems(DragEventArgs e, bool? forcedMove = null)
+    private void TransferDroppedItems(DragEventArgs e)
     {
         if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
         e.Handled = true;
@@ -374,9 +377,7 @@ public partial class DesktopHostWindow : Window
         }
         try
         {
-            bool move;
-            if (forcedMove is { } requestedMove) move = requestedMove;
-            else if (!TryResolveDesktopDropMove(paths, e, out move))
+            if (!TryResolveDesktopDropMove(paths, e, out var move))
             {
                 e.Effects = DragDropEffects.None;
                 return;
