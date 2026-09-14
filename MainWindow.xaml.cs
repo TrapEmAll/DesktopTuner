@@ -556,7 +556,7 @@ public partial class MainWindow : Window
             var replaceNativeTaskbar = new CheckBox
             {
                 Content = _shellOverlayMode
-                    ? "Replace Explorer taskbars while the shell overlay is running"
+                    ? "Overlay Explorer taskbars while preserving its notification area on supported layouts"
                     : "Replace the Windows taskbar while Desktop Tuner is running (experimental)",
                 IsChecked = _shellOverlayMode || _replaceNativeTaskbar,
                 IsEnabled = !_shellOverlayMode,
@@ -577,7 +577,7 @@ public partial class MainWindow : Window
             PageContent.Children.Add(new TextBlock
             {
                 Text = _shellOverlayMode
-                    ? "The shell overlay hides Explorer taskbars on every display and reserves space for Desktop Tuner. Explorer stays running in the background. A companion recovery process restores its taskbars if Desktop Tuner exits unexpectedly; restart Windows Explorer or sign out if both processes are terminated."
+                    ? "Desktop Tuner covers the main taskbar controls on every display while Explorer stays running behind it. On supported edge-aligned layouts, Explorer's native notification area and third-party tray icons remain available."
                     : "Hides the built-in taskbar on displays covered by Desktop Tuner. A companion recovery process restores it if Desktop Tuner exits unexpectedly; restart Windows Explorer or sign out if both processes are terminated.",
                 TextWrapping = TextWrapping.Wrap,
                 Foreground = (Brush)FindResource("DesktopMutedTextBrush"),
@@ -1078,7 +1078,7 @@ public partial class MainWindow : Window
         }
         try
         {
-            var preferences = CreateDesktopPreferences();
+            var preferences = CreateTaskbarRuntimePreferences();
             var showAllDisplays = ShellHostLaunchPolicy.ShouldCoverAllDisplays(_shellHostMode, _taskbarOnAllDisplays, _shellOverlayMode);
             var hideNativeTaskbar = ShellHostLaunchPolicy.ShouldHideNativeTaskbar(_shellHostMode, _shellOverlayMode, _replaceNativeTaskbar);
             foreach (var display in TaskbarDisplayService.Select(showAllDisplays))
@@ -1104,7 +1104,7 @@ public partial class MainWindow : Window
             }
             if (hideNativeTaskbar) _nativeTaskbarWatchTimer.Start();
             SetStatus(_shellOverlayMode
-                ? "Desktop Tuner shell overlay is running on every display. Explorer remains available in the background; exit to restore its taskbars."
+                ? "Desktop Tuner shell overlay is running on every display. Explorer's notification area remains exposed where the selected layout supports it."
                 : _shellHostMode
                 ? "Desktop Tuner shell host is running. Its taskbars and Start menu are active on every display."
                 : showAllDisplays
@@ -1151,7 +1151,7 @@ public partial class MainWindow : Window
         {
             var desiredDisplays = TaskbarDisplayService.Select(ShellHostLaunchPolicy.ShouldCoverAllDisplays(_shellHostMode, _taskbarOnAllDisplays, _shellOverlayMode));
             var topology = TaskbarDisplayService.PlanTopologyChange(_taskbarWindows.Select(window => window.Display), desiredDisplays);
-            var preferences = CreateDesktopPreferences();
+            var preferences = CreateTaskbarRuntimePreferences();
             _reconcilingDisplayTopology = true;
             try
             {
@@ -1173,7 +1173,7 @@ public partial class MainWindow : Window
             foreach (var display in topology.Added)
             {
                 var taskbar = AddTaskbarWindow(display, preferences);
-                if ((_shellHostMode || _shellOverlayMode) && !taskbar.EnableReplacementWorkArea(true))
+                if (_shellHostMode && !taskbar.EnableReplacementWorkArea(true))
                     System.Diagnostics.Trace.TraceWarning($"Windows could not reserve a work area for the shell taskbar on {display.DeviceName}; it will remain an overlay.");
             }
 
@@ -1245,6 +1245,15 @@ public partial class MainWindow : Window
     }
 
     private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle);
+
+    private DesktopPreferences CreateTaskbarRuntimePreferences()
+    {
+        var preferences = CreateDesktopPreferences();
+        return preferences with
+        {
+            ReplaceNativeTaskbar = !ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(_shellOverlayMode, preferences.ReplaceNativeTaskbar)
+        };
+    }
 
     private void SetStartMenuCentered(bool centered)
     {

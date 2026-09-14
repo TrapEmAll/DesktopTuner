@@ -28,7 +28,10 @@ public static class ShellHostLaunchPolicy
         !shellHostMode && replaceNativeTaskbarPreference;
 
     public static bool ShouldHideNativeTaskbar(bool shellHostMode, bool shellOverlayMode, bool replaceNativeTaskbarPreference) =>
-        shellOverlayMode || (!shellHostMode && replaceNativeTaskbarPreference);
+        !shellHostMode && !shellOverlayMode && replaceNativeTaskbarPreference;
+
+    public static bool ShouldUseNativeTrayIntegration(bool shellOverlayMode, bool replaceNativeTaskbarPreference) =>
+        shellOverlayMode || !replaceNativeTaskbarPreference;
 
     public static bool ShouldLaunchExplorerOnShellHostExit(bool shellHostMode, bool customShellSupervisorActive) =>
         shellHostMode && !customShellSupervisorActive;
