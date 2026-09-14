@@ -242,14 +242,17 @@ public partial class DesktopHostWindow : Window
             return;
         }
 
-        CopyDroppedItems(e);
+        TransferDroppedItems(e, forcedMove: false);
     }
 
     private void OnDesktopDragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(ItemIdentityFormat)
-            ? DragDropEffects.Move
-            : e.Data.GetDataPresent(DataFormats.FileDrop) && Directory.Exists(_userDesktop) ? DragDropEffects.Copy : DragDropEffects.None;
+        if (e.Data.GetDataPresent(ItemIdentityFormat)) e.Effects = DragDropEffects.Move;
+        else if (e.Data.GetDataPresent(DataFormats.FileDrop) && Directory.Exists(_userDesktop) &&
+                 e.Data.GetData(DataFormats.FileDrop) is string[] paths && paths.Length > 0 &&
+                 TryResolveDesktopDropMove(paths, e, out var move))
+            e.Effects = move ? DragDropEffects.Move : DragDropEffects.Copy;
+        else e.Effects = DragDropEffects.None;
         e.Handled = true;
     }
 
@@ -269,10 +272,25 @@ public partial class DesktopHostWindow : Window
             e.Handled = true;
             return;
         }
-        CopyDroppedItems(e);
+        TransferDroppedItems(e);
     }
 
-    private void CopyDroppedItems(DragEventArgs e)
+    private bool TryResolveDesktopDropMove(IEnumerable<string> paths, DragEventArgs e, out bool move)
+    {
+        try
+        {
+            move = ExplorerDragDropPolicy.ResolveMove(paths, _userDesktop,
+                e.KeyStates.HasFlag(DragDropKeyStates.ControlKey), e.KeyStates.HasFlag(DragDropKeyStates.ShiftKey));
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or NotSupportedException or System.Security.SecurityException)
+        {
+            move = false;
+            return false;
+        }
+    }
+
+    private void TransferDroppedItems(DragEventArgs e, bool? forcedMove = null)
     {
         if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
         e.Handled = true;
@@ -283,13 +301,20 @@ public partial class DesktopHostWindow : Window
         }
         try
         {
-            ExplorerFileOperationService.Transfer(paths, _userDesktop, move: false);
+            bool move;
+            if (forcedMove is { } requestedMove) move = requestedMove;
+            else if (!TryResolveDesktopDropMove(paths, e, out move))
+            {
+                e.Effects = DragDropEffects.None;
+                return;
+            }
+            ExplorerFileOperationService.Transfer(paths, _userDesktop, move);
             RefreshDesktop();
-            e.Effects = DragDropEffects.Copy;
+            e.Effects = move ? DragDropEffects.Move : DragDropEffects.Copy;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Security.SecurityException)
         {
-            MessageBox.Show(this, ex.Message, "Could not copy items to Desktop", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "Could not transfer items to Desktop", MessageBoxButton.OK, MessageBoxImage.Error);
             e.Effects = DragDropEffects.None;
         }
     }
