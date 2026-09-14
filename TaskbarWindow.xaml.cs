@@ -75,7 +75,9 @@ public partial class TaskbarWindow : Window
         SourceInitialized += (_, _) =>
         {
             _nativeReady = true;
-            HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(WindowProc);
+            var handle = new WindowInteropHelper(this).Handle;
+            HwndSource.FromHwnd(handle)?.AddHook(WindowProc);
+            SystemBackdropService.TryApplyTransientBackdrop(handle);
             ApplyLayout();
             Display = TaskbarDisplayService.ReadWindowDpi(Display, this);
             ApplyLayout();
