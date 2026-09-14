@@ -19,6 +19,10 @@ public static class NativeShellContextMenuService
     private const uint DesktopAbsoluteParsing = 0x80028000;
     private const uint DragDropAllowedEffects = 0x00000007;
     private const uint CommandShiftDown = 0x00000100;
+    private const uint DropEffectCopy = 0x00000001;
+    private const uint DropEffectMove = 0x00000002;
+    private const uint GlobalMemoryMoveable = 0x0002;
+    private const uint GlobalMemoryZeroInit = 0x0040;
     private const uint MouseButtonMask = 0x00000013;
     private const int DragDropCancel = 0x00040101;
     private const int DragDropComplete = 0x00040100;
@@ -49,6 +53,33 @@ public static class NativeShellContextMenuService
 
     public static Task<bool> DeleteShellItemsAsync(nint owner, IEnumerable<string> parsingNames, bool shiftPressed = false) =>
         InvokeShellItemsVerbAsync(owner, parsingNames, "delete", shiftPressed);
+
+    public static async Task<bool> CopyShellItemsToClipboardAsync(nint owner, IEnumerable<string> parsingNames, bool cut)
+    {
+        var selection = NativeShellContextMenuPolicy.NormalizeShellSelection(parsingNames);
+        var absolutePidls = await Task.Run(() => ParseDisplayNames(selection));
+        try
+        {
+            SetShellItemsClipboard(owner, absolutePidls, cut);
+            return true;
+        }
+        finally
+        {
+            foreach (var absolutePidl in absolutePidls) Marshal.FreeCoTaskMem(absolutePidl);
+        }
+    }
+
+    public static async Task<bool> PasteIntoShellFolderAsync(nint owner, string parsingName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(parsingName);
+        var location = DesktopShellNamespaceCatalog.IsShellNamespaceLocation(parsingName)
+            ? parsingName.Trim()
+            : Path.GetFullPath(parsingName);
+        if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(location) && !Directory.Exists(location))
+            throw new DirectoryNotFoundException($"The folder no longer exists: {location}");
+        var absolutePidl = await Task.Run(() => ParseDisplayName(location));
+        return InvokeFolderBackgroundVerb(owner, absolutePidl, "paste");
+    }
 
     private static async Task<bool> InvokeShellItemsVerbAsync(nint owner, IEnumerable<string> parsingNames, string verb, bool shiftPressed = false)
     {
@@ -390,8 +421,27 @@ public static class NativeShellContextMenuService
         if (initializeResult < 0 && initializeResult != unchecked((int)0x80010106))
             ThrowForFailure(initializeResult, "Could not initialize the Windows Shell drag operation.");
 
-        IShellFolder? parent = null;
         System.Runtime.InteropServices.ComTypes.IDataObject? dataObject = null;
+        try
+        {
+            dataObject = CreateShellDataObject(owner, absolutePidls);
+
+            if (!startDrag) return true;
+            ThrowForFailure(DoDragDrop(dataObject, new NativeShellDropSource(), DragDropAllowedEffects, out var effect), "Windows could not start the Shell drag operation.");
+            return effect != 0;
+        }
+        finally
+        {
+            if (dataObject is not null && Marshal.IsComObject(dataObject)) Marshal.ReleaseComObject(dataObject);
+            foreach (var absolutePidl in absolutePidls) Marshal.FreeCoTaskMem(absolutePidl);
+            if (uninitialize) CoUninitialize();
+        }
+    }
+
+    private static System.Runtime.InteropServices.ComTypes.IDataObject CreateShellDataObject(nint owner, nint[] absolutePidls)
+    {
+        if (absolutePidls.Length == 0) throw new ArgumentException("Select at least one Windows Shell item.", nameof(absolutePidls));
+        IShellFolder? parent = null;
         nint childArray = nint.Zero;
         try
         {
@@ -407,29 +457,122 @@ public static class NativeShellContextMenuService
                 // Use the Shell's native parent-folder implementation when it can represent the whole selection.
                 var shellFolder = (IShellFolderDataObject)parent;
                 var dataObjectId = DataObjectId;
-                ThrowForFailure(shellFolder.GetUIObjectOf(owner, (uint)childPidls.Length, childArray, ref dataObjectId, nint.Zero, out dataObject),
-                    "Windows could not create a native drag object for the Shell selection.");
-            }
-            else
-            {
-                // Root the transfer in the desktop Shell namespace so heterogeneous selections
-                // (including filesystem and virtual items) keep their full PIDLs together.
-                var dataObjectId = DataObjectId;
-                ThrowForFailure(SHCreateDataObject(nint.Zero, (uint)absolutePidls.Length, absolutePidls, nint.Zero,
-                    ref dataObjectId, out dataObject), "Windows could not create a combined Shell drag object for the selection.");
+                ThrowForFailure(shellFolder.GetUIObjectOf(owner, (uint)childPidls.Length, childArray, ref dataObjectId, nint.Zero, out var dataObject),
+                    "Windows could not create a native Shell data object for the selection.");
+                return dataObject;
             }
 
-            if (!startDrag) return true;
-            ThrowForFailure(DoDragDrop(dataObject, new NativeShellDropSource(), DragDropAllowedEffects, out var effect), "Windows could not start the Shell drag operation.");
-            return effect != 0;
+            // Root heterogeneous selections in the desktop namespace so their full PIDLs stay together.
+            var combinedDataObjectId = DataObjectId;
+            ThrowForFailure(SHCreateDataObject(nint.Zero, (uint)absolutePidls.Length, absolutePidls, nint.Zero,
+                ref combinedDataObjectId, out var combinedDataObject), "Windows could not create a combined Shell data object for the selection.");
+            return combinedDataObject;
+        }
+        finally
+        {
+            if (parent is not null) ReleaseComObject(parent);
+            if (childArray != nint.Zero) Marshal.FreeHGlobal(childArray);
+        }
+    }
+
+    private static void SetShellItemsClipboard(nint owner, nint[] absolutePidls, bool cut)
+    {
+        var initializeResult = OleInitialize(nint.Zero);
+        var uninitialize = initializeResult >= 0;
+        if (initializeResult < 0)
+            ThrowForFailure(initializeResult, "Could not initialize the Windows Shell clipboard.");
+
+        System.Runtime.InteropServices.ComTypes.IDataObject? dataObject = null;
+        try
+        {
+            dataObject = CreateShellDataObject(owner, absolutePidls);
+            SetPreferredDropEffect(dataObject, cut ? DropEffectMove : DropEffectCopy);
+            ThrowForFailure(OleSetClipboard(dataObject), "Windows could not place the Shell selection on the clipboard.");
         }
         finally
         {
             if (dataObject is not null && Marshal.IsComObject(dataObject)) Marshal.ReleaseComObject(dataObject);
+            if (uninitialize) OleUninitialize();
+        }
+    }
+
+    private static void SetPreferredDropEffect(System.Runtime.InteropServices.ComTypes.IDataObject dataObject, uint effect)
+    {
+        var formatId = RegisterClipboardFormat("Preferred DropEffect");
+        if (formatId == 0) throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not register the Shell clipboard effect format.");
+        var memory = GlobalAlloc(GlobalMemoryMoveable | GlobalMemoryZeroInit, sizeof(uint));
+        if (memory == nint.Zero) throw new OutOfMemoryException("Could not allocate the Shell clipboard effect value.");
+        var lockedMemory = GlobalLock(memory);
+        if (lockedMemory == nint.Zero)
+        {
+            GlobalFree(memory);
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not lock the Shell clipboard effect value.");
+        }
+
+        Marshal.WriteInt32(lockedMemory, unchecked((int)effect));
+        GlobalUnlock(memory);
+        var format = new System.Runtime.InteropServices.ComTypes.FORMATETC
+        {
+            cfFormat = unchecked((short)formatId),
+            dwAspect = System.Runtime.InteropServices.ComTypes.DVASPECT.DVASPECT_CONTENT,
+            lindex = -1,
+            ptd = nint.Zero,
+            tymed = System.Runtime.InteropServices.ComTypes.TYMED.TYMED_HGLOBAL
+        };
+        var medium = new System.Runtime.InteropServices.ComTypes.STGMEDIUM
+        {
+            tymed = System.Runtime.InteropServices.ComTypes.TYMED.TYMED_HGLOBAL,
+            unionmember = memory,
+            pUnkForRelease = null
+        };
+        var transferred = false;
+        try
+        {
+            dataObject.SetData(ref format, ref medium, true);
+            transferred = true;
+        }
+        finally
+        {
+            if (!transferred) ReleaseStgMedium(ref medium);
+        }
+    }
+
+    private static bool InvokeFolderBackgroundVerb(nint owner, nint absolutePidl, string verb)
+    {
+        IShellFolder? parent = null;
+        IShellFolder? folder = null;
+        IContextMenu? contextMenu = null;
+        nint menu = nint.Zero;
+        nint verbPointer = nint.Zero;
+        try
+        {
+            var folderId = ShellFolderId;
+            ThrowForFailure(SHBindToParent(absolutePidl, ref folderId, out parent, out var childPidl), "Could not bind to the folder's parent.");
+            ThrowForFailure(parent.BindToObject(childPidl, nint.Zero, ref folderId, out folder), "Could not open the destination Shell folder.");
+            var contextMenuId = ContextMenuId;
+            ThrowForFailure(folder.CreateViewObject(owner, ref contextMenuId, out contextMenu), "Windows could not create the destination folder's background context menu.");
+            menu = CreatePopupMenu();
+            if (menu == nint.Zero) throw new COMException("Windows could not create the destination folder's context menu.", Marshal.GetLastWin32Error());
+            ThrowForFailure(contextMenu.QueryContextMenu(menu, 0, IdCommandFirst, IdCommandLast, 0), "Windows could not populate the destination folder's context menu.");
+            verbPointer = Marshal.StringToCoTaskMemAnsi(verb);
+            var invoke = new CommandInfo
+            {
+                Size = (uint)Marshal.SizeOf<CommandInfo>(),
+                Window = owner,
+                Verb = verbPointer,
+                ShowCommand = 1
+            };
+            ThrowForFailure(contextMenu.InvokeCommand(ref invoke), $"The destination Shell folder does not support the '{verb}' command.");
+            return true;
+        }
+        finally
+        {
+            if (verbPointer != nint.Zero) Marshal.FreeCoTaskMem(verbPointer);
+            if (menu != nint.Zero) DestroyMenu(menu);
+            if (contextMenu is not null) ReleaseComObject(contextMenu);
+            if (folder is not null) ReleaseComObject(folder);
             if (parent is not null) ReleaseComObject(parent);
-            if (childArray != nint.Zero) Marshal.FreeHGlobal(childArray);
-            foreach (var absolutePidl in absolutePidls) Marshal.FreeCoTaskMem(absolutePidl);
-            if (uninitialize) CoUninitialize();
+            Marshal.FreeCoTaskMem(absolutePidl);
         }
     }
 
@@ -754,6 +897,34 @@ public static class NativeShellContextMenuService
 
     [DllImport("ole32.dll")]
     private static extern void CoUninitialize();
+
+    [DllImport("ole32.dll")]
+    private static extern int OleInitialize(nint reserved);
+
+    [DllImport("ole32.dll")]
+    private static extern void OleUninitialize();
+
+    [DllImport("ole32.dll", PreserveSig = true)]
+    private static extern int OleSetClipboard([MarshalAs(UnmanagedType.Interface)] System.Runtime.InteropServices.ComTypes.IDataObject dataObject);
+
+    [DllImport("ole32.dll")]
+    private static extern void ReleaseStgMedium(ref System.Runtime.InteropServices.ComTypes.STGMEDIUM medium);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint RegisterClipboardFormat(string format);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern nint GlobalAlloc(uint flags, nuint bytes);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern nint GlobalLock(nint memory);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GlobalUnlock(nint memory);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern nint GlobalFree(nint memory);
 
     [DllImport("ole32.dll", PreserveSig = true)]
     private static extern int DoDragDrop([MarshalAs(UnmanagedType.Interface)] System.Runtime.InteropServices.ComTypes.IDataObject dataObject,

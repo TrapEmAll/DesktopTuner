@@ -10,7 +10,10 @@ public enum ShellNamespaceBrowserKeyboardAction
     ShowContextMenu,
     Rename,
     ShowProperties,
-    Delete
+    Delete,
+    Copy,
+    Cut,
+    Paste
 }
 
 public static class ShellNamespaceBrowserKeyboardPolicy
@@ -22,6 +25,9 @@ public static class ShellNamespaceBrowserKeyboardPolicy
         if (key == Key.System) key = systemKey;
         if (key == Key.A && modifiers == ModifierKeys.Control) return ShellNamespaceBrowserKeyboardAction.SelectAll;
         if (key == Key.Escape && modifiers == ModifierKeys.None && hasSelection) return ShellNamespaceBrowserKeyboardAction.ClearSelection;
+        if (key == Key.C && modifiers == ModifierKeys.Control && hasSelection) return ShellNamespaceBrowserKeyboardAction.Copy;
+        if (key == Key.X && modifiers == ModifierKeys.Control && hasSelection) return ShellNamespaceBrowserKeyboardAction.Cut;
+        if (key == Key.V && modifiers == ModifierKeys.Control) return ShellNamespaceBrowserKeyboardAction.Paste;
         if (key == Key.Enter && modifiers == ModifierKeys.Alt && hasSelection) return ShellNamespaceBrowserKeyboardAction.ShowProperties;
         if (key == Key.Delete && (modifiers is ModifierKeys.None or ModifierKeys.Shift) && hasSelection)
             return ShellNamespaceBrowserKeyboardAction.Delete;

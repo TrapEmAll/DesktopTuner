@@ -381,6 +381,39 @@ public partial class ShellNamespaceBrowserWindow : Window
         }
     }
 
+    private async Task CopySelectedItemsAsync(bool cut)
+    {
+        var selection = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().ToArray();
+        if (selection.Length == 0) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.CopyShellItemsToClipboardAsync(owner, selection.Select(entry => entry.ParsingName), cut);
+            StatusText.Text = cut ? $"Cut {selection.Length:N0} item(s)." : $"Copied {selection.Length:N0} item(s).";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Could not {(cut ? "cut" : "copy")} the selected Shell items: {ex.Message}";
+        }
+    }
+
+    private async Task PasteIntoCurrentLocationAsync()
+    {
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.PasteIntoShellFolderAsync(owner, _location);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Could not paste into this Shell location: {ex.Message}";
+        }
+        finally
+        {
+            await RefreshCurrentViewAsync();
+        }
+    }
+
     private void OpenSelectedItem()
     {
         var selection = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().ToArray();
@@ -426,6 +459,8 @@ public partial class ShellNamespaceBrowserWindow : Window
     {
         var hasSelection = ItemsList.SelectedItems.Count > 0;
         OpenMenuItem.IsEnabled = ItemsList.SelectedItems.Count > 0;
+        CopyMenuItem.IsEnabled = hasSelection;
+        CutMenuItem.IsEnabled = hasSelection;
         PropertiesMenuItem.IsEnabled = hasSelection;
         RenameMenuItem.IsEnabled = false;
         if (ItemsList.SelectedItems.Count == 1 && ItemsList.SelectedItem is DesktopShellNamespaceEntry entry)
@@ -445,6 +480,12 @@ public partial class ShellNamespaceBrowserWindow : Window
     }
 
     private void Rename_Click(object sender, RoutedEventArgs e) => BeginRenameSelected();
+
+    private async void Copy_Click(object sender, RoutedEventArgs e) => await CopySelectedItemsAsync(cut: false);
+
+    private async void Cut_Click(object sender, RoutedEventArgs e) => await CopySelectedItemsAsync(cut: true);
+
+    private async void Paste_Click(object sender, RoutedEventArgs e) => await PasteIntoCurrentLocationAsync();
 
     private void BeginRenameSelected()
     {
@@ -579,6 +620,21 @@ public partial class ShellNamespaceBrowserWindow : Window
         else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.ClearSelection)
         {
             ItemsList.SelectedItems.Clear();
+            e.Handled = true;
+        }
+        else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.Copy)
+        {
+            await CopySelectedItemsAsync(cut: false);
+            e.Handled = true;
+        }
+        else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.Cut)
+        {
+            await CopySelectedItemsAsync(cut: true);
+            e.Handled = true;
+        }
+        else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.Paste)
+        {
+            await PasteIntoCurrentLocationAsync();
             e.Handled = true;
         }
         else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.ShowContextMenu)
