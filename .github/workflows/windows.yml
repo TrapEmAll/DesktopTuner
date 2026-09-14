@@ -71,17 +71,24 @@ jobs:
           }
           $packageSource = Join-Path $env:RUNNER_TEMP 'DesktopTuner.ShellIdentity'
           $externalContent = Join-Path $env:RUNNER_TEMP 'DesktopTuner.ExternalContent'
-          New-Item -ItemType Directory -Force -Path $packageSource, $externalContent, (Join-Path $externalContent 'Assets'), (Join-Path $externalContent 'ShellExtension') | Out-Null
+          New-Item -ItemType Directory -Force -Path $packageSource, $externalContent, (Join-Path $externalContent 'Assets') | Out-Null
           Copy-Item shell/ExplorerContextMenu/AppxManifest.xml (Join-Path $packageSource 'AppxManifest.xml')
           Copy-Item shell/ExplorerContextMenu/Assets/* (Join-Path $externalContent 'Assets') -Force
           Copy-Item bin/Release/net10.0-windows/DesktopTuner.exe (Join-Path $externalContent 'DesktopTuner.exe')
-          Copy-Item shell/ExplorerContextMenu/bin/x64/Release/DesktopTuner.ExplorerCommand.dll (Join-Path $externalContent 'ShellExtension/DesktopTuner.ExplorerCommand.dll')
-          $referencedFiles = @('DesktopTuner.exe', 'Assets/StoreLogo.png', 'Assets/Square150x150Logo.png', 'Assets/Square44x44Logo.png', 'ShellExtension/DesktopTuner.ExplorerCommand.dll')
+          Copy-Item shell/ExplorerContextMenu/bin/x64/Release/DesktopTuner.ExplorerCommand.dll (Join-Path $externalContent 'DesktopTuner.ExplorerCommand.dll')
+          $referencedFiles = @('DesktopTuner.exe', 'Assets/StoreLogo.png', 'Assets/Square150x150Logo.png', 'Assets/Square44x44Logo.png', 'DesktopTuner.ExplorerCommand.dll')
           foreach ($relativePath in $referencedFiles) {
             $externalFile = Join-Path $externalContent $relativePath
             if (-not (Test-Path $externalFile -PathType Leaf)) {
               throw "Sparse package external content is missing manifest-referenced file $relativePath"
             }
+          }
+          $manifest = [xml](Get-Content shell/ExplorerContextMenu/AppxManifest.xml -Raw)
+          $namespace = [System.Xml.XmlNamespaceManager]::new($manifest.NameTable)
+          $namespace.AddNamespace('com', 'http://schemas.microsoft.com/appx/manifest/com/windows10')
+          $nativeClass = $manifest.SelectSingleNode('//com:Class', $namespace)
+          if (-not $nativeClass -or $nativeClass.GetAttribute('Path') -ne 'DesktopTuner.ExplorerCommand.dll') {
+            throw 'The sparse identity manifest must load the Explorer command DLL beside DesktopTuner.exe.'
           }
           $packagePath = Join-Path $env:RUNNER_TEMP 'DesktopTuner.identity.msix'
           & $makeAppx pack /o /d $packageSource /nv /p $packagePath

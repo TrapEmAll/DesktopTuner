@@ -32,7 +32,7 @@
         <com:Extension Category="windows.comServer">
           <com:ComServer>
             <com:SurrogateServer DisplayName="Desktop Tuner Explorer command">
-              <com:Class Id="8F2F0C1A-9E63-4D10-A2E5-6F1CC9756438" Path="ShellExtension\DesktopTuner.ExplorerCommand.dll" ThreadingModel="STA" />
+              <com:Class Id="8F2F0C1A-9E63-4D10-A2E5-6F1CC9756438" Path="DesktopTuner.ExplorerCommand.dll" ThreadingModel="STA" />
             </com:SurrogateServer>
           </com:ComServer>
         </com:Extension>
