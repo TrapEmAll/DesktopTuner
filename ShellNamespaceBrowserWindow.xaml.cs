@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Threading;
 
 namespace DesktopTuner;
 
@@ -11,12 +12,18 @@ public partial class ShellNamespaceBrowserWindow : Window
 {
     private readonly Stack<string> _back = new();
     private readonly Stack<string> _forward = new();
+    private readonly DispatcherTimer _changeRefreshTimer = new() { Interval = TimeSpan.FromMilliseconds(300) };
     private string _location;
     private long _navigationVersion;
     private CancellationTokenSource? _searchCancellation;
     private bool _isSearchView;
     private ExplorerViewMode _viewMode = ExplorerViewMode.Details;
     private bool _updatingViewModeControl;
+    private bool _isClosed;
+    private bool _sourceInitialized;
+    private bool _changeNotificationsAttempted;
+    private string? _registeredChangeLocation;
+    private DesktopShellChangeNotificationListener? _shellChangeNotifications;
 
     public ShellNamespaceBrowserWindow(string location)
     {
@@ -24,11 +31,16 @@ public partial class ShellNamespaceBrowserWindow : Window
             throw new ArgumentException("The location is not a Windows Shell namespace or an existing folder.", nameof(location));
         _location = location;
         InitializeComponent();
+        _changeRefreshTimer.Tick += ChangeRefreshTimer_Tick;
         ApplyViewMode(_viewMode);
         AddressBox.Text = location;
         Title = $"{GetDisplayName(location)} — Desktop Tuner Explorer";
         Closed += (_, _) =>
         {
+            _isClosed = true;
+            _changeRefreshTimer.Stop();
+            _shellChangeNotifications?.Dispose();
+            _shellChangeNotifications = null;
             CancelSearch();
             _navigationVersion++;
         };
@@ -58,6 +70,7 @@ public partial class ShellNamespaceBrowserWindow : Window
                 _forward.Clear();
             }
             _location = location;
+            RegisterShellChangeNotifications(location);
             var version = ++_navigationVersion;
             AddressBox.Text = location;
             ItemsList.ItemsSource = null;
@@ -105,6 +118,56 @@ public partial class ShellNamespaceBrowserWindow : Window
     }
 
     private void Go_Click(object sender, RoutedEventArgs e) => _ = NavigateFromAddressAsync();
+
+    private void Refresh_Click(object sender, RoutedEventArgs e) => _ = RefreshCurrentViewAsync();
+
+    private async Task RefreshCurrentViewAsync()
+    {
+        if (_isSearchView) await SearchCurrentLocationAsync();
+        else await NavigateAsync(_location, recordHistory: false);
+    }
+
+    private void RegisterShellChangeNotifications(string location)
+    {
+        var sameLocation = string.Equals(_registeredChangeLocation, location, StringComparison.OrdinalIgnoreCase);
+        if (sameLocation && (_shellChangeNotifications is not null || !_sourceInitialized || _changeNotificationsAttempted)) return;
+        if (!sameLocation)
+        {
+            _registeredChangeLocation = location;
+            _changeNotificationsAttempted = false;
+            _shellChangeNotifications?.Dispose();
+            _shellChangeNotifications = null;
+        }
+        if (!_sourceInitialized) return;
+        _changeNotificationsAttempted = true;
+        var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+        if (source is null) return;
+        try
+        {
+            _shellChangeNotifications = new DesktopShellChangeNotificationListener(source, location, QueueLocationRefresh);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception or DllNotFoundException or EntryPointNotFoundException or System.Runtime.InteropServices.COMException)
+        {
+            System.Diagnostics.Trace.TraceWarning($"Shell namespace change notifications are unavailable for '{location}'; use Refresh or F5 to update the view: {ex.Message}");
+        }
+    }
+
+    private void QueueLocationRefresh()
+    {
+        if (_isClosed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+        _ = Dispatcher.BeginInvoke(() =>
+        {
+            if (_isClosed) return;
+            _changeRefreshTimer.Stop();
+            _changeRefreshTimer.Start();
+        });
+    }
+
+    private async void ChangeRefreshTimer_Tick(object? sender, EventArgs e)
+    {
+        _changeRefreshTimer.Stop();
+        await RefreshCurrentViewAsync();
+    }
 
     private async void Search_Click(object sender, RoutedEventArgs e) => await SearchCurrentLocationAsync();
 
@@ -311,7 +374,12 @@ public partial class ShellNamespaceBrowserWindow : Window
 
     private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
+        if (e.Key == Key.F5 || e.Key == Key.R && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            _ = RefreshCurrentViewAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
         {
             SearchBox.Focus();
             SearchBox.SelectAll();
@@ -373,5 +441,10 @@ public partial class ShellNamespaceBrowserWindow : Window
         : location.Equals("shell:RecycleBinFolder", StringComparison.OrdinalIgnoreCase) ? "Recycle Bin"
         : location;
 
-    private void Window_SourceInitialized(object? sender, EventArgs e) => SystemBackdropService.TryApplyMica(this);
+    private void Window_SourceInitialized(object? sender, EventArgs e)
+    {
+        _sourceInitialized = true;
+        SystemBackdropService.TryApplyMica(this);
+        RegisterShellChangeNotifications(_location);
+    }
 }

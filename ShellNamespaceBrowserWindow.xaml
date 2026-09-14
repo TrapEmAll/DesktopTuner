@@ -54,7 +54,8 @@
             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="0,0,10,0">
                 <Button Content="Back" Padding="12,6" Margin="0,0,6,0" Click="Back_Click" />
                 <Button Content="Forward" Padding="12,6" Margin="0,0,6,0" Click="Forward_Click" />
-                <Button Content="Up" Padding="12,6" Click="Up_Click" />
+                <Button Content="Up" Padding="12,6" Margin="0,0,6,0" Click="Up_Click" />
+                <Button Content="Refresh" Padding="12,6" Click="Refresh_Click" />
             </StackPanel>
             <Button DockPanel.Dock="Right" Content="Go" Padding="14,6" Margin="8,0,0,0" Click="Go_Click" />
             <TextBox x:Name="AddressBox" Padding="10,7" VerticalContentAlignment="Center" KeyDown="AddressBox_KeyDown" />

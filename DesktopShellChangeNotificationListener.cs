@@ -16,16 +16,27 @@ public sealed class DesktopShellChangeNotificationListener : IDisposable
     private bool _disposed;
 
     public DesktopShellChangeNotificationListener(HwndSource windowSource, Action onChanged)
+        : this(windowSource, null, onChanged, useDesktopFolder: true)
+    {
+    }
+
+    public DesktopShellChangeNotificationListener(HwndSource windowSource, string rootLocation, Action onChanged)
+        : this(windowSource, rootLocation, onChanged, useDesktopFolder: false)
+    {
+    }
+
+    private DesktopShellChangeNotificationListener(HwndSource windowSource, string? rootLocation, Action onChanged, bool useDesktopFolder)
     {
         ArgumentNullException.ThrowIfNull(windowSource);
         ArgumentNullException.ThrowIfNull(onChanged);
+        if (!useDesktopFolder) ArgumentException.ThrowIfNullOrWhiteSpace(rootLocation);
         _windowSource = windowSource;
         _onChanged = onChanged;
 
         _windowSource.AddHook(WindowProcedure);
         try
         {
-            _registrationId = Register(_windowSource.Handle);
+            _registrationId = Register(_windowSource.Handle, useDesktopFolder ? null : rootLocation);
         }
         catch
         {
@@ -43,16 +54,27 @@ public sealed class DesktopShellChangeNotificationListener : IDisposable
         _windowSource.RemoveHook(WindowProcedure);
     }
 
-    private uint Register(IntPtr windowHandle)
+    private uint Register(IntPtr windowHandle, string? rootLocation)
     {
-        var result = SHGetFolderLocation(windowHandle, DesktopFolderId, IntPtr.Zero, 0, out var desktopPidl);
-        if (result < 0) Marshal.ThrowExceptionForHR(result);
-        if (desktopPidl == IntPtr.Zero)
-            throw new InvalidOperationException("Windows did not provide a desktop Shell namespace identifier.");
+        IntPtr rootPidl;
+        if (rootLocation is null)
+        {
+            var result = SHGetFolderLocation(windowHandle, DesktopFolderId, IntPtr.Zero, 0, out rootPidl);
+            if (result < 0) Marshal.ThrowExceptionForHR(result);
+            if (rootPidl == IntPtr.Zero)
+                throw new InvalidOperationException("Windows did not provide a desktop Shell namespace identifier.");
+        }
+        else
+        {
+            var result = SHParseDisplayName(rootLocation, IntPtr.Zero, out rootPidl, 0, IntPtr.Zero);
+            if (result < 0) Marshal.ThrowExceptionForHR(result);
+            if (rootPidl == IntPtr.Zero)
+                throw new InvalidOperationException($"Windows did not provide a Shell identifier for '{rootLocation}'.");
+        }
 
         try
         {
-            var entry = new ShellChangeNotifyEntry { Pidl = desktopPidl, Recursive = true };
+            var entry = new ShellChangeNotifyEntry { Pidl = rootPidl, Recursive = true };
             var registrationId = SHChangeNotifyRegister(windowHandle, Sources, ShellChangeEvents, WindowMessage, 1, ref entry);
             return registrationId != 0
                 ? registrationId
@@ -60,7 +82,7 @@ public sealed class DesktopShellChangeNotificationListener : IDisposable
         }
         finally
         {
-            Marshal.FreeCoTaskMem(desktopPidl);
+            Marshal.FreeCoTaskMem(rootPidl);
         }
     }
 
@@ -95,6 +117,9 @@ public sealed class DesktopShellChangeNotificationListener : IDisposable
 
     [DllImport("shell32.dll", PreserveSig = true)]
     private static extern int SHGetFolderLocation(IntPtr owner, int folder, IntPtr token, uint reserved, out IntPtr pidl);
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = true)]
+    private static extern int SHParseDisplayName(string name, IntPtr bindContext, out IntPtr pidl, uint attributesIn, IntPtr attributesOut);
 
     [DllImport("shell32.dll", SetLastError = true)]
     private static extern uint SHChangeNotifyRegister(IntPtr windowHandle, int sources, int events, int message, int entryCount, ref ShellChangeNotifyEntry entries);
