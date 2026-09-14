@@ -105,6 +105,8 @@ public partial class App : Application
                 shellControls.Show();
                 shellControls.Hide();
             }
+            if (shellHostWorkerArgument)
+                CustomShellPolicy.SignalHostReady();
             return;
         }
 
@@ -151,54 +153,102 @@ public partial class App : Application
             return;
         }
 
-        var restartsUsed = 0;
-        while (true)
+        EventWaitHandle readinessSignal;
+        try
         {
-            int exitCode;
-            try
+            readinessSignal = CustomShellPolicy.CreateHostReadinessSignal();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            Trace.TraceError($"Could not create the custom-shell readiness signal: {ex}");
+            DisableFailedCustomShell(executablePath);
+            StartExplorerFallback();
+            return;
+        }
+
+        using (readinessSignal)
+        {
+            var restartsUsed = 0;
+            while (true)
             {
-                var startInfo = new ProcessStartInfo(executablePath) { UseShellExecute = false };
-                startInfo.ArgumentList.Add(ShellHostLaunchPolicy.ShellHostWorkerArgument);
-                using var shellHost = Process.Start(startInfo);
-                if (shellHost is null) throw new InvalidOperationException("Windows did not start the Desktop Tuner shell host.");
-                await shellHost.WaitForExitAsync();
-                exitCode = shellHost.ExitCode;
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException or System.Security.SecurityException)
-            {
-                Trace.TraceError($"Could not start or monitor the Desktop Tuner custom shell: {ex}");
-                if (CustomShellPolicy.ShouldRestartHost(-1, restartsUsed))
+                int exitCode;
+                var startupTimedOut = false;
+                try
+                {
+                    readinessSignal.Reset();
+                    var startInfo = new ProcessStartInfo(executablePath) { UseShellExecute = false };
+                    startInfo.ArgumentList.Add(ShellHostLaunchPolicy.ShellHostWorkerArgument);
+                    using var shellHost = Process.Start(startInfo);
+                    if (shellHost is null) throw new InvalidOperationException("Windows did not start the Desktop Tuner shell host.");
+                    if (await WaitForShellHostReadyAsync(shellHost, readinessSignal))
+                    {
+                        await shellHost.WaitForExitAsync();
+                        exitCode = shellHost.ExitCode;
+                    }
+                    else if (shellHost.HasExited)
+                    {
+                        exitCode = shellHost.ExitCode;
+                    }
+                    else
+                    {
+                        startupTimedOut = true;
+                        Trace.TraceError($"Desktop Tuner shell host did not signal readiness within {CustomShellPolicy.HostStartupReadinessTimeout.TotalSeconds:0} seconds.");
+                        shellHost.Kill(entireProcessTree: true);
+                        await shellHost.WaitForExitAsync();
+                        exitCode = -1;
+                    }
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException or System.Security.SecurityException)
+                {
+                    Trace.TraceError($"Could not start or monitor the Desktop Tuner custom shell: {ex}");
+                    if (CustomShellPolicy.ShouldRestartHost(-1, restartsUsed))
+                    {
+                        restartsUsed++;
+                        await Task.Delay(750);
+                        continue;
+                    }
+                    DisableFailedCustomShell(executablePath);
+                    StartExplorerFallback();
+                    return;
+                }
+
+                if (_sessionEnding)
+                {
+                    Shutdown();
+                    return;
+                }
+                var shouldRestart = startupTimedOut
+                    ? CustomShellPolicy.ShouldRestartHostAfterStartupTimeout(restartsUsed)
+                    : CustomShellPolicy.ShouldRestartHost(exitCode, restartsUsed);
+                if (shouldRestart)
                 {
                     restartsUsed++;
                     await Task.Delay(750);
                     continue;
                 }
-                DisableFailedCustomShell(executablePath);
+
+                if (exitCode != 0)
+                {
+                    Trace.TraceError($"Desktop Tuner shell host exited with code {exitCode} after {restartsUsed} restart attempt(s); starting Explorer for recovery.");
+                    if (CustomShellPolicy.ShouldDisablePolicyAfterHostFailure(exitCode, restartsUsed))
+                        DisableFailedCustomShell(executablePath);
+                }
                 StartExplorerFallback();
                 return;
             }
-
-            if (_sessionEnding)
-            {
-                Shutdown();
-                return;
-            }
-            if (CustomShellPolicy.ShouldRestartHost(exitCode, restartsUsed))
-            {
-                restartsUsed++;
-                await Task.Delay(750);
-                continue;
-            }
-
-            if (exitCode != 0)
-            {
-                Trace.TraceError($"Desktop Tuner shell host exited with code {exitCode} after {restartsUsed} restart attempt(s); starting Explorer for recovery.");
-                if (CustomShellPolicy.ShouldDisablePolicyAfterHostFailure(exitCode, restartsUsed))
-                    DisableFailedCustomShell(executablePath);
-            }
-            StartExplorerFallback();
-            return;
         }
+    }
+
+    private static async Task<bool> WaitForShellHostReadyAsync(Process shellHost, EventWaitHandle readinessSignal)
+    {
+        var timeout = Stopwatch.StartNew();
+        var exitTask = shellHost.WaitForExitAsync();
+        while (timeout.Elapsed < CustomShellPolicy.HostStartupReadinessTimeout)
+        {
+            if (readinessSignal.WaitOne(0)) return true;
+            if (await Task.WhenAny(exitTask, Task.Delay(250)) == exitTask) return false;
+        }
+        return readinessSignal.WaitOne(0);
     }
 
     private static void DisableFailedCustomShell(string executablePath)

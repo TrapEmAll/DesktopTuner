@@ -10,6 +10,8 @@ public static class CustomShellPolicy
     private const string RegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Policies\System";
     private const string RegistryValue = "Shell";
     public const int MaximumHostRestarts = 1;
+    public static readonly TimeSpan HostStartupReadinessTimeout = TimeSpan.FromSeconds(60);
+    private const string HostReadinessEventName = @"Local\DesktopTuner.CustomShellSupervisor.Ready";
 
     public static bool IsSupportedEdition(string? editionId) =>
         !string.IsNullOrWhiteSpace(editionId) &&
@@ -72,6 +74,29 @@ public static class CustomShellPolicy
 
     public static bool ShouldDisablePolicyAfterHostFailure(int exitCode, int restartsUsed) =>
         exitCode != 0 && !ShouldRestartHost(exitCode, restartsUsed);
+
+    public static bool ShouldRestartHostAfterStartupTimeout(int restartsUsed) =>
+        restartsUsed < MaximumHostRestarts;
+
+    internal static EventWaitHandle CreateHostReadinessSignal() =>
+        new(false, EventResetMode.ManualReset, HostReadinessEventName, out _);
+
+    internal static void SignalHostReady()
+    {
+        try
+        {
+            using var readinessSignal = EventWaitHandle.OpenExisting(HostReadinessEventName);
+            readinessSignal.Set();
+        }
+        catch (WaitHandleCannotBeOpenedException)
+        {
+            Trace.TraceWarning("Could not signal custom-shell readiness because the supervisor event is unavailable.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            Trace.TraceError($"Could not signal custom-shell readiness: {ex}");
+        }
+    }
 
     public static string FormatExecutableCommand(string executablePath)
     {
