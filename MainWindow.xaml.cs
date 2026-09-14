@@ -49,6 +49,7 @@ public partial class MainWindow : Window
     private TaskbarIconSize _taskbarIconSize = TaskbarIconSize.Standard;
     private TaskbarButtonSpacing _taskbarButtonSpacing = TaskbarButtonSpacing.Standard;
     private TaskbarButtonEffect _taskbarButtonEffect = TaskbarButtonEffect.Accent;
+    private TaskbarSystemButtonVisibility _taskbarSystemButtons = TaskbarSystemButtonVisibility.Default;
     private bool _taskbarShowLabels = true;
     private bool _taskbarAutoHide;
     private bool _taskbarAutoHideWhenMaximized;
@@ -82,6 +83,7 @@ public partial class MainWindow : Window
         _taskbarIconSize = desktopPreferences.TaskbarIconSize;
         _taskbarButtonSpacing = desktopPreferences.TaskbarButtonSpacing;
         _taskbarButtonEffect = desktopPreferences.TaskbarButtonEffect;
+        _taskbarSystemButtons = TaskbarSystemButtonVisibility.Normalize(desktopPreferences.TaskbarSystemButtons);
         _taskbarShowLabels = desktopPreferences.TaskbarShowLabels;
         _taskbarAutoHide = desktopPreferences.AutoHide;
         _taskbarAutoHideWhenMaximized = desktopPreferences.AutoHideWhenMaximized;
@@ -372,6 +374,33 @@ public partial class MainWindow : Window
             showLabels.Checked += (_, _) => { _taskbarShowLabels = true; SaveDesktopPreferences(); };
             showLabels.Unchecked += (_, _) => { _taskbarShowLabels = false; SaveDesktopPreferences(); };
             PageContent.Children.Add(showLabels);
+
+            AddPageHeading("System buttons", "Choose which controls appear when Desktop Tuner draws the system area. If the native Windows notification area stays exposed, its tray and clock remain in place. Battery appears only in replacement mode when Windows reports a battery.");
+            var systemButtonsPanel = new StackPanel();
+            foreach (var option in TaskbarSystemButtonVisibility.Options)
+            {
+                var checkBox = new CheckBox
+                {
+                    Content = option.Label,
+                    IsChecked = _taskbarSystemButtons.IsVisible(option.Button),
+                    ToolTip = option.Description,
+                    Margin = new Thickness(0, 0, 0, 8),
+                    FontSize = 13
+                };
+                checkBox.Checked += (_, _) => SetTaskbarSystemButton(option.Button, true);
+                checkBox.Unchecked += (_, _) => SetTaskbarSystemButton(option.Button, false);
+                systemButtonsPanel.Children.Add(checkBox);
+            }
+            PageContent.Children.Add(new Border
+            {
+                Background = (Brush)FindResource("DesktopSurfaceBrush"),
+                BorderBrush = (Brush)FindResource("DesktopBorderBrush"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(14),
+                Margin = new Thickness(0, 0, 0, 16),
+                Child = systemButtonsPanel
+            });
 
             var styleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
             styleRow.Children.Add(new TextBlock { Text = "Taskbar style", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
@@ -948,7 +977,13 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKey, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons);
+
+    private void SetTaskbarSystemButton(TaskbarSystemButton button, bool isVisible)
+    {
+        _taskbarSystemButtons = _taskbarSystemButtons.WithVisibility(button, isVisible);
+        SaveDesktopPreferences();
+    }
 
     private void SavePlaceVisibility(string placeId, bool isVisible, Action refresh)
     {
@@ -1042,6 +1077,7 @@ public partial class MainWindow : Window
             _taskbarIconSize = preferences.TaskbarIconSize;
             _taskbarButtonSpacing = preferences.TaskbarButtonSpacing;
             _taskbarButtonEffect = preferences.TaskbarButtonEffect;
+            _taskbarSystemButtons = TaskbarSystemButtonVisibility.Normalize(preferences.TaskbarSystemButtons);
             _startWithWindows = preferences.StartWithWindows;
             _replaceNativeTaskbar = preferences.ReplaceNativeTaskbar;
             if ((displayModeChanged || replacementModeChanged) && _taskbarWindows.Any(window => window.IsVisible))

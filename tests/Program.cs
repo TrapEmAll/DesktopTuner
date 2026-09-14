@@ -987,9 +987,12 @@ try
     Check(false, File.Exists(staleTaskbarSnapshot), "clean up a valid taskbar recovery snapshot after skipping a stale window handle");
     var preferencesStore = new DesktopPreferencesStore(preferencesPath);
     var savedStartPlaces = StartMenuPlaceCatalog.Normalize(new StartMenuPlacePreferences(["run", "documents"], ["documents", "run"]));
+    var savedTaskbarButtons = TaskbarSystemButtonVisibility.Default
+        .WithVisibility(TaskbarSystemButton.Emoji, false)
+        .WithVisibility(TaskbarSystemButton.Widgets, false);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
@@ -1001,6 +1004,10 @@ try
     Check(string.Join(',', savedStartPlaces.Order!), string.Join(',', loadedPreferences.StartMenuPlaces!.Order!), "persist custom Start system-place order");
     Check(string.Join(',', savedStartPlaces.Visible!), string.Join(',', loadedPreferences.StartMenuPlaces.Visible!), "persist custom Start system-place visibility");
     Check(8, loadedPreferences.StartRecentAppCount, "persist the configured Start recent-app count");
+    Check(false, loadedPreferences.TaskbarSystemButtons!.IsVisible(TaskbarSystemButton.Emoji), "persist hidden taskbar emoji button");
+    Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.Widgets), "persist hidden taskbar Widgets button");
+    Check(true, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.Clock), "preserve enabled taskbar clock visibility");
+    Check(true, TaskbarSystemButtonVisibility.Normalize(null).IsVisible(TaskbarSystemButton.Emoji), "default older taskbar preferences to all system buttons visible");
     preferencesStore.Save(expectedPreferences with { StartRecentAppCount = 0 });
     Check(0, preferencesStore.Load().StartRecentAppCount, "allow disabling the Start recent-app section");
     preferencesStore.Save(expectedPreferences with { StartRecentAppCount = StartRecentAppsStore.MaximumEntries });

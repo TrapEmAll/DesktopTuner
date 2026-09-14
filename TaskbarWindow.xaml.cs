@@ -85,7 +85,7 @@ public partial class TaskbarWindow : Window
 
     public void SetPreferences(DesktopPreferences preferences)
     {
-        _preferences = preferences with { PinnedApps = preferences.PinnedApps ?? [] };
+        _preferences = preferences with { PinnedApps = preferences.PinnedApps ?? [], TaskbarSystemButtons = TaskbarSystemButtonVisibility.Normalize(preferences.TaskbarSystemButtons) };
         _edge = _preferences.TaskbarEdge;
         _size = _preferences.TaskbarSize;
         _autoHide = _preferences.AutoHide;
@@ -108,15 +108,19 @@ public partial class TaskbarWindow : Window
         var trayBounds = _preferences.ReplaceNativeTaskbar ? null : NativeTaskbarTrayService.FindTrayBounds(Display);
         var integratedBounds = TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(Display, layoutPreferences, trayBounds, _collapsed);
         _nativeTrayExposed = integratedBounds is not null;
-        BatteryButton.Visibility = _preferences.ReplaceNativeTaskbar && _batteryStatus is not null ? Visibility.Visible : Visibility.Collapsed;
-        QuickSettingsButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
+        var systemButtons = _preferences.TaskbarSystemButtons!;
+        BatteryButton.Visibility = _preferences.ReplaceNativeTaskbar && systemButtons.Battery && _batteryStatus is not null ? Visibility.Visible : Visibility.Collapsed;
+        QuickSettingsButton.Visibility = !_nativeTrayExposed && systemButtons.QuickSettings ? Visibility.Visible : Visibility.Collapsed;
         if (integratedBounds is { } trayIntegratedBounds) bounds = trayIntegratedBounds;
-        SettingsButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
-        NetworkButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
-        EmojiButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
-        TrayButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
-        VolumeButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
-        ClockButton.Visibility = _nativeTrayExposed ? Visibility.Collapsed : Visibility.Visible;
+        SettingsButton.Visibility = !_nativeTrayExposed && systemButtons.Settings ? Visibility.Visible : Visibility.Collapsed;
+        NetworkButton.Visibility = !_nativeTrayExposed && systemButtons.Network ? Visibility.Visible : Visibility.Collapsed;
+        EmojiButton.Visibility = !_nativeTrayExposed && systemButtons.Emoji ? Visibility.Visible : Visibility.Collapsed;
+        TrayButton.Visibility = !_nativeTrayExposed && systemButtons.Tray ? Visibility.Visible : Visibility.Collapsed;
+        VolumeButton.Visibility = !_nativeTrayExposed && systemButtons.Volume ? Visibility.Visible : Visibility.Collapsed;
+        WidgetsButton.Visibility = systemButtons.Widgets ? Visibility.Visible : Visibility.Collapsed;
+        TaskViewButton.Visibility = systemButtons.TaskView ? Visibility.Visible : Visibility.Collapsed;
+        ShowDesktopButton.Visibility = systemButtons.ShowDesktop ? Visibility.Visible : Visibility.Collapsed;
+        ClockButton.Visibility = !_nativeTrayExposed && systemButtons.Clock ? Visibility.Visible : Visibility.Collapsed;
         CloseBarButton.Width = _nativeTrayExposed ? 32 : double.NaN;
         CloseBarButton.Height = _nativeTrayExposed ? 32 : double.NaN;
         CloseBarButton.Padding = _nativeTrayExposed ? new Thickness(0) : new Thickness(12, 7, 12, 7);
@@ -336,11 +340,8 @@ public partial class TaskbarWindow : Window
         var buttonSpan = vertical
             ? Math.Max(44, iconPixels + 18) + gap * 2
             : (_preferences.TaskbarShowLabels ? 140 : iconPixels + 24) + (gap - 2) * 2;
-        var reservedControlsLength = vertical
-            ? (_nativeTrayExposed ? 170 : 210) + 60
-            : (_nativeTrayExposed ? 250 : 290) + 60;
-        if (!_nativeTrayExposed) reservedControlsLength += 56;
-        if (_preferences.ReplaceNativeTaskbar && _batteryStatus is not null) reservedControlsLength += 56;
+        RightControls.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var reservedControlsLength = vertical ? RightControls.DesiredSize.Height : RightControls.DesiredSize.Width;
         var reservedLength = reservedControlsLength + 84 + (_preferences.PinnedApps?.Count ?? 0) * buttonSpan;
         return Math.Max(1, (int)Math.Floor((availableLength - reservedLength) / buttonSpan));
     }
@@ -368,7 +369,7 @@ public partial class TaskbarWindow : Window
             Trace.TraceWarning($"Could not read battery status: {ex}");
         }
 
-        BatteryButton.Visibility = _preferences.ReplaceNativeTaskbar && _batteryStatus is not null
+        BatteryButton.Visibility = _preferences.ReplaceNativeTaskbar && _preferences.TaskbarSystemButtons!.Battery && _batteryStatus is not null
             ? Visibility.Visible
             : Visibility.Collapsed;
         if (_batteryStatus is not { } status)
