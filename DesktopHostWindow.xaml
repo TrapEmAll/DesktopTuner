@@ -5,6 +5,7 @@
         WindowStartupLocation="Manual" ShowInTaskbar="False" ShowActivated="False" Background="#273044"
         KeyDown="OnKeyDown" Loaded="OnLoaded">
     <Grid AllowDrop="True" DragOver="OnDesktopDragOver" Drop="OnDesktopDrop">
+        <Canvas x:Name="WallpaperLayer" IsHitTestVisible="False"/>
         <ItemsControl x:Name="DesktopItems" Margin="12" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>

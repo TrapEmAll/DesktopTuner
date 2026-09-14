@@ -161,6 +161,32 @@ Check("DISPLAY2", DesktopHostDisplayLayoutPolicy.FindNearestMonitor(desktopViewp
         desktopViewports.Single(viewport => viewport.DeviceName == "DISPLAY2").Top + 20)).DeviceName,
     "assign an icon position to its monitor viewport");
 Throws<ArgumentException>(() => DesktopHostDisplayLayoutPolicy.CalculateVirtualBounds([]), "reject an empty connected-display set for the desktop host");
+var primaryWallpaperDisplay = new TaskbarDisplay("DISPLAY1", 0, 0, 1920, 1080, true);
+var secondaryWallpaperDisplay = new TaskbarDisplay("DISPLAY2", -1920, -200, 1920, 1080, false);
+Check("DISPLAY2", DesktopWallpaperPresentationPolicy.FindDisplay([primaryWallpaperDisplay, secondaryWallpaperDisplay], -1920, -200, 0, 880)?.DeviceName,
+    "match Windows wallpaper monitor rectangles to secondary displays with negative origins");
+Check<TaskbarDisplay?>(null, DesktopWallpaperPresentationPolicy.FindDisplay([primaryWallpaperDisplay], 1920, 0, 3840, 1080),
+    "skip wallpaper monitors that are no longer connected");
+Check(new DesktopWallpaperPresentation(Stretch.None, false, false), DesktopWallpaperPresentationPolicy.Resolve(DesktopWallpaperPosition.Center),
+    "center desktop wallpaper without resizing it");
+Check(new DesktopWallpaperPresentation(Stretch.None, true, false), DesktopWallpaperPresentationPolicy.Resolve(DesktopWallpaperPosition.Tile),
+    "tile desktop wallpaper across each monitor");
+Check(new DesktopWallpaperPresentation(Stretch.Fill, false, false), DesktopWallpaperPresentationPolicy.Resolve(DesktopWallpaperPosition.Stretch),
+    "stretch desktop wallpaper to each monitor's bounds");
+Check(new DesktopWallpaperPresentation(Stretch.Uniform, false, false), DesktopWallpaperPresentationPolicy.Resolve(DesktopWallpaperPosition.Fit),
+    "fit desktop wallpaper without cropping its aspect ratio");
+Check(new DesktopWallpaperPresentation(Stretch.UniformToFill, false, false), DesktopWallpaperPresentationPolicy.Resolve(DesktopWallpaperPosition.Fill),
+    "fill each monitor with its assigned wallpaper while preserving aspect ratio");
+Check(new DesktopWallpaperPresentation(Stretch.Fill, false, true), DesktopWallpaperPresentationPolicy.Resolve(DesktopWallpaperPosition.Span),
+    "span a single wallpaper image across the virtual desktop");
+var wallpaperTestDisplays = TaskbarDisplayService.Enumerate();
+var wallpaperSnapshot = DesktopWallpaperService.LoadCurrent(wallpaperTestDisplays);
+if (wallpaperSnapshot is not null)
+{
+    CheckTrue(wallpaperSnapshot.Monitors.Count > 0, "read at least one current wallpaper assignment from Windows");
+    CheckTrue(wallpaperSnapshot.Monitors.All(wallpaper => wallpaperTestDisplays.Any(display => display.DeviceName == wallpaper.DeviceName)),
+        "map every Windows wallpaper assignment to a connected display");
+}
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Created), "refresh the desktop when a new item is created");
 Check(true, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.Renamed), "refresh the desktop when an item is renamed");
 Check(false, DesktopHostRefreshPolicy.ShouldRefresh(WatcherChangeTypes.All), "ignore unknown desktop watcher event types");

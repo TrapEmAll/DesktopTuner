@@ -26,8 +26,12 @@ public partial class DesktopHostWindow : Window
     private readonly ObservableCollection<DesktopHostItem> _desktopItems = [];
     private readonly List<FileSystemWatcher> _desktopWatchers = [];
     private IReadOnlyList<DesktopHostMonitorViewport> _desktopMonitors = [];
+    private IReadOnlyList<DesktopHostMonitorViewport> _wallpaperMonitors = [];
+    private IReadOnlyList<TaskbarDisplay> _connectedDisplays = [];
     private DesktopShellChangeNotificationListener? _shellChangeNotifications;
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+    private readonly DispatcherTimer _wallpaperRefreshTimer = new() { Interval = TimeSpan.FromSeconds(30) };
+    private string? _wallpaperSignature;
     private bool _isClosed;
     private DesktopHostItem? _dragCandidate;
     private string? _selectionAnchorPath;
@@ -39,9 +43,11 @@ public partial class DesktopHostWindow : Window
         InitializeComponent();
         Resources["DesktopHostTextShadow"] = new DropShadowEffect { Color = System.Windows.Media.Colors.Black, BlurRadius = 3, ShadowDepth = 1, Opacity = 0.9 };
         _refreshTimer.Tick += OnRefreshTimerTick;
+        _wallpaperRefreshTimer.Tick += OnWallpaperRefreshTimerTick;
         Closed += OnClosed;
         SizeChanged += OnSizeChanged;
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+        SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
         DesktopItems.ItemsSource = _desktopItems;
         RefreshDesktop();
         StartDesktopWatchers();
@@ -50,8 +56,8 @@ public partial class DesktopHostWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         PositionOnVirtualDesktop();
-        if (DesktopWallpaperService.LoadPrimaryWallpaper() is { } wallpaper)
-            Background = new ImageBrush(wallpaper) { Stretch = Stretch.UniformToFill };
+        ApplyDesktopWallpaper();
+        _wallpaperRefreshTimer.Start();
         var handle = new WindowInteropHelper(this).Handle;
         SetWindowPos(handle, HwndBottom, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
         SetWindowPos(handle, HwndNotTopmost, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
@@ -67,7 +73,124 @@ public partial class DesktopHostWindow : Window
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(RefreshDesktop));
     }
 
+    private void ApplyDesktopWallpaper()
+    {
+        if (_isClosed) return;
+        var snapshot = DesktopWallpaperService.LoadCurrent(_connectedDisplays);
+        if (snapshot is null)
+        {
+            var fallback = DesktopWallpaperService.LoadPrimaryWallpaper();
+            var fallbackSignature = fallback?.UriSource?.ToString() ?? "windows-solid-desktop";
+            if (string.Equals(_wallpaperSignature, fallbackSignature, StringComparison.OrdinalIgnoreCase)) return;
+            _wallpaperSignature = fallbackSignature;
+            WallpaperLayer.Children.Clear();
+            Background = fallback is null
+                ? new SolidColorBrush(Color.FromRgb(39, 48, 68))
+                : new ImageBrush(fallback) { Stretch = Stretch.UniformToFill };
+            return;
+        }
+
+        var signature = $"{snapshot.Position}|{snapshot.BackgroundColor}|" +
+            string.Join('|', snapshot.Monitors.OrderBy(monitor => monitor.DeviceName, StringComparer.OrdinalIgnoreCase)
+                .Select(monitor => $"{monitor.DeviceName}:{monitor.WallpaperPath}:{GetWallpaperTimestamp(monitor.WallpaperPath)}"));
+        if (string.Equals(_wallpaperSignature, signature, StringComparison.OrdinalIgnoreCase)) return;
+        _wallpaperSignature = signature;
+        WallpaperLayer.Children.Clear();
+        Background = new SolidColorBrush(snapshot.BackgroundColor);
+        var presentation = DesktopWallpaperPresentationPolicy.Resolve(snapshot.Position);
+
+        if (presentation.Span)
+        {
+            var primaryDevice = _connectedDisplays.FirstOrDefault(display => display.IsPrimary)?.DeviceName;
+            var wallpaperPath = snapshot.Monitors.FirstOrDefault(monitor =>
+                string.Equals(monitor.DeviceName, primaryDevice, StringComparison.OrdinalIgnoreCase))?.WallpaperPath
+                ?? snapshot.Monitors.FirstOrDefault(monitor => monitor.WallpaperPath is not null)?.WallpaperPath;
+            if (wallpaperPath is not null)
+            {
+                var virtualViewport = new DesktopHostMonitorViewport("virtual", 0, 0,
+                    Math.Max(1, WallpaperLayer.ActualWidth), Math.Max(1, WallpaperLayer.ActualHeight), true);
+                AddWallpaperLayer(wallpaperPath, virtualViewport, presentation, snapshot.BackgroundColor, 1, 1);
+            }
+            return;
+        }
+
+        foreach (var monitor in snapshot.Monitors)
+        {
+            if (monitor.WallpaperPath is null) continue;
+            var viewport = _wallpaperMonitors.FirstOrDefault(candidate =>
+                string.Equals(candidate.DeviceName, monitor.DeviceName, StringComparison.OrdinalIgnoreCase));
+            if (viewport is null) continue;
+            AddWallpaperLayer(monitor.WallpaperPath, viewport, presentation, snapshot.BackgroundColor, monitor.ScaleX, monitor.ScaleY);
+        }
+    }
+
+    private static long GetWallpaperTimestamp(string? wallpaperPath)
+    {
+        if (wallpaperPath is null) return 0;
+        try { return File.GetLastWriteTimeUtc(wallpaperPath).Ticks; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { return 0; }
+    }
+
+    private void AddWallpaperLayer(
+        string wallpaperPath,
+        DesktopHostMonitorViewport viewport,
+        DesktopWallpaperPresentation presentation,
+        Color backgroundColor,
+        double scaleX,
+        double scaleY)
+    {
+        var bitmap = DesktopWallpaperService.LoadImage(wallpaperPath);
+        if (bitmap is null) return;
+
+        var layer = new Border
+        {
+            Width = viewport.Width,
+            Height = viewport.Height,
+            Background = new SolidColorBrush(backgroundColor),
+            ClipToBounds = true
+        };
+        if (presentation.Tile)
+        {
+            layer.Background = new ImageBrush(bitmap)
+            {
+                TileMode = TileMode.Tile,
+                ViewportUnits = BrushMappingMode.Absolute,
+                Viewport = new Rect(0, 0,
+                    Math.Max(1, bitmap.PixelWidth / Math.Max(0.1, scaleX)),
+                    Math.Max(1, bitmap.PixelHeight / Math.Max(0.1, scaleY))),
+                Stretch = Stretch.None
+            };
+        }
+        else
+        {
+            var image = new Image { Source = bitmap, Stretch = presentation.Stretch };
+            if (presentation.Stretch == Stretch.None)
+            {
+                image.HorizontalAlignment = HorizontalAlignment.Center;
+                image.VerticalAlignment = VerticalAlignment.Center;
+            }
+            else
+            {
+                image.HorizontalAlignment = HorizontalAlignment.Stretch;
+                image.VerticalAlignment = VerticalAlignment.Stretch;
+            }
+            layer.Child = image;
+        }
+
+        Canvas.SetLeft(layer, viewport.Left);
+        Canvas.SetTop(layer, viewport.Top);
+        WallpaperLayer.Children.Add(layer);
+    }
+
     private void OnSizeChanged(object sender, SizeChangedEventArgs e) => QueueDesktopRefresh();
+
+    private void OnWallpaperRefreshTimerTick(object? sender, EventArgs e) => ApplyDesktopWallpaper();
+
+    private void OnUserPreferenceChanged(object? sender, UserPreferenceChangedEventArgs e)
+    {
+        if (e.Category != UserPreferenceCategory.Desktop || _isClosed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+        _ = Dispatcher.BeginInvoke(new Action(ApplyDesktopWallpaper));
+    }
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e)
     {
@@ -76,6 +199,7 @@ public partial class DesktopHostWindow : Window
         {
             if (_isClosed) return;
             PositionOnVirtualDesktop();
+            ApplyDesktopWallpaper();
             QueueDesktopRefresh();
         });
     }
@@ -85,6 +209,7 @@ public partial class DesktopHostWindow : Window
         try
         {
             var displays = TaskbarDisplayService.Enumerate();
+            _connectedDisplays = displays;
             var bounds = DesktopHostDisplayLayoutPolicy.CalculateVirtualBounds(displays);
             if (!TaskbarDisplayService.PositionWindow(this, bounds))
             {
@@ -100,6 +225,8 @@ public partial class DesktopHostWindow : Window
             var canvasHeight = Math.Max(1, Height - DesktopItems.Margin.Top - DesktopItems.Margin.Bottom);
             _desktopMonitors = DesktopHostDisplayLayoutPolicy.CreateMonitorViewports(displays, bounds, canvasWidth, canvasHeight,
                 scale.ScaleX, scale.ScaleY);
+            _wallpaperMonitors = DesktopHostDisplayLayoutPolicy.CreateMonitorViewports(displays, bounds, Width, Height,
+                scale.ScaleX, scale.ScaleY, contentInset: 0);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception)
         {
@@ -191,8 +318,10 @@ public partial class DesktopHostWindow : Window
     {
         _isClosed = true;
         _refreshTimer.Stop();
+        _wallpaperRefreshTimer.Stop();
         SizeChanged -= OnSizeChanged;
         SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
         _shellChangeNotifications?.Dispose();
         _shellChangeNotifications = null;
         foreach (var watcher in _desktopWatchers) watcher.Dispose();
