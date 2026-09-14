@@ -41,6 +41,7 @@ public partial class TaskbarWindow : Window
     private bool _collapsed;
     private bool _nativeReady;
     private bool _replacementWorkAreaEnabled;
+    private bool _replacementWorkAreaReady = true;
     private bool _fullscreenAppVisible;
     private Visibility? _visibilityBeforeWindowArrange;
     private bool? _systemBackdropForCurrentStyle;
@@ -121,15 +122,16 @@ public partial class TaskbarWindow : Window
         if (IsLoaded) RefreshWindows();
     }
 
-    public void EnableReplacementWorkArea(bool enabled)
+    public bool EnableReplacementWorkArea(bool enabled)
     {
         if (_replacementWorkAreaEnabled == enabled
             && (!enabled || !_preferences.ReplaceNativeTaskbar
                 || !TaskbarAppBarPolicy.ShouldRegister(_preferences.TaskbarLayout)
                 || _nativeAppBar.IsRegistered))
-            return;
+            return _replacementWorkAreaReady;
         _replacementWorkAreaEnabled = enabled;
         ApplyLayout();
+        return _replacementWorkAreaReady;
     }
 
     private void ApplyLayout()
@@ -141,6 +143,7 @@ public partial class TaskbarWindow : Window
         var bounds = TaskbarLayoutCalculator.Calculate(Display, layoutPreferences, _collapsed);
         var registerAppBar = _replacementWorkAreaEnabled && _preferences.ReplaceNativeTaskbar
             && TaskbarAppBarPolicy.ShouldRegister(_preferences.TaskbarLayout);
+        var appBarPositionApproved = false;
         if (registerAppBar && _nativeReady && !_nativeAppBar.IsRegistered)
         {
             var handle = new WindowInteropHelper(this).Handle;
@@ -154,7 +157,12 @@ public partial class TaskbarWindow : Window
         if (_nativeAppBar.IsRegistered)
             _nativeAppBar.SetAutoHideRegistration(TaskbarAppBarPolicy.ShouldRegisterAutoHide(_nativeAppBar.IsRegistered, _autoHide));
         if (_nativeAppBar.IsRegistered && _nativeAppBar.UpdatePosition(bounds) is { } appBarBounds)
+        {
             bounds = appBarBounds;
+            appBarPositionApproved = true;
+        }
+        _replacementWorkAreaReady = !registerAppBar || TaskbarAppBarPolicy.CanUseAsReplacement(
+            _preferences.TaskbarLayout, _nativeAppBar.IsRegistered, appBarPositionApproved);
         var trayBounds = _preferences.ReplaceNativeTaskbar ? null : NativeTaskbarTrayService.FindTrayBounds(Display);
         var integratedBounds = TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(Display, layoutPreferences, trayBounds, _collapsed);
         _nativeTrayExposed = integratedBounds is not null;

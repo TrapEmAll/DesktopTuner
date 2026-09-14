@@ -1053,7 +1053,9 @@ public partial class MainWindow : Window
                 {
                     throw new InvalidOperationException("Windows did not expose a taskbar on the selected displays, so replacement mode could not start.");
                 }
-                foreach (var taskbar in _taskbarWindows) taskbar.EnableReplacementWorkArea(true);
+                foreach (var taskbar in _taskbarWindows)
+                    if (!taskbar.EnableReplacementWorkArea(true))
+                        throw new InvalidOperationException($"Windows could not reserve a work area for the replacement taskbar on {taskbar.Display.DeviceName}. Desktop Tuner will restore the Windows taskbar.");
                 _nativeTaskbarWatchTimer.Start();
             }
             SetStatus(_taskbarOnAllDisplays
@@ -1167,12 +1169,20 @@ public partial class MainWindow : Window
 
         try
         {
-            _nativeTaskbarVisibility.HideForDisplays(TaskbarDisplayService.Select(_taskbarOnAllDisplays));
-            foreach (var taskbar in _taskbarWindows) taskbar.EnableReplacementWorkArea(true);
+            if (!_nativeTaskbarVisibility.HideForDisplays(TaskbarDisplayService.Select(_taskbarOnAllDisplays)))
+                throw new InvalidOperationException("Windows did not expose a taskbar on the selected displays.");
+            foreach (var taskbar in _taskbarWindows)
+                if (!taskbar.EnableReplacementWorkArea(true))
+                    throw new InvalidOperationException($"Windows could not reserve a work area for the replacement taskbar on {taskbar.Display.DeviceName}.");
         }
         catch (Exception ex)
         {
             System.Diagnostics.Trace.TraceError($"Could not keep native taskbars hidden during replacement mode: {ex}");
+            _replaceNativeTaskbar = false;
+            try { _preferences.Save(CreateDesktopPreferences()); }
+            catch (Exception saveException) { System.Diagnostics.Trace.TraceError($"Could not disable taskbar replacement after work-area registration failed: {saveException}"); }
+            CloseTaskbars();
+            SetStatus("Windows taskbar restored because Desktop Tuner could not reserve the replacement work area.");
         }
     }
 

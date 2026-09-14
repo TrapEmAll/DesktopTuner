@@ -78,6 +78,10 @@ Check(new TaskbarBounds(1916, 0, 4, 1080), TaskbarLayoutCalculator.Calculate(192
 Check(new TaskbarBounds(0, 1076, 1920, 4), TaskbarLayoutCalculator.Calculate(1920, 1080, new(TaskbarEdge.Bottom), true), "bottom, collapsed");
 CheckTrue(TaskbarAppBarPolicy.ShouldRegister(TaskbarStyle.EdgeToEdge), "reserve Windows work area for an edge-docked replacement taskbar");
 CheckTrue(!TaskbarAppBarPolicy.ShouldRegister(TaskbarStyle.Floating), "keep floating replacement taskbars out of edge-docked appbar registration");
+Check(true, TaskbarAppBarPolicy.CanUseAsReplacement(TaskbarStyle.Floating, false, false), "allow floating taskbar replacement without an edge work-area reservation");
+Check(true, TaskbarAppBarPolicy.CanUseAsReplacement(TaskbarStyle.EdgeToEdge, true, true), "allow edge taskbar replacement after Windows approves its work-area reservation");
+Check(false, TaskbarAppBarPolicy.CanUseAsReplacement(TaskbarStyle.EdgeToEdge, false, false), "reject edge taskbar replacement when Windows refuses AppBar registration");
+Check(false, TaskbarAppBarPolicy.CanUseAsReplacement(TaskbarStyle.EdgeToEdge, true, false), "reject edge taskbar replacement when Windows does not approve its work-area position");
 CheckTrue(TaskbarAppBarPolicy.ShouldRegisterAutoHide(true, true), "register Windows auto-hide for an enabled replacement appbar");
 Check(false, TaskbarAppBarPolicy.ShouldRegisterAutoHide(false, true), "avoid registering Windows auto-hide for an unregistered overlay taskbar");
 Check(false, TaskbarAppBarPolicy.ShouldRegisterAutoHide(true, false), "release Windows auto-hide when the replacement preference is disabled");
