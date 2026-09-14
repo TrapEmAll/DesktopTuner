@@ -36,7 +36,8 @@ public partial class App : Application
             return;
         }
 
-        var shellHostMode = ShellHostLaunchPolicy.IsShellHostInvocation(e.Args);
+        var shellHostMode = ShellHostLaunchPolicy.IsShellHostInvocation(e.Args) ||
+            CustomShellPolicy.TargetsExecutable(CustomShellPolicy.ReadCurrentUserShellCommand(), Environment.ProcessPath);
         var shellOverlayMode = !shellHostMode && ShellHostLaunchPolicy.IsShellOverlayInvocation(e.Args);
         if (shellHostMode || shellOverlayMode || e.Args.Contains("--desktop-host", StringComparer.OrdinalIgnoreCase))
         {
