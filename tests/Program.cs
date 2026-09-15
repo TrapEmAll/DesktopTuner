@@ -1227,7 +1227,8 @@ Check(WindowsKeyAction.Suppress, shellRestoreShortcutGesture.KeyUp(0x5b), "avoid
 foreach (var (key, surfaceName) in new[]
 {
     ((uint)'A', "Quick Settings"), ((uint)'K', "Connect"), ((uint)'N', "Notification Center"),
-    ((uint)'P', "Project"), ((uint)'Q', "Windows Search"), ((uint)'S', "Windows Search"), ((uint)'W', "Widgets"),
+    ((uint)'H', "Voice typing"), ((uint)'P', "Project"), ((uint)'Q', "Windows Search"), ((uint)'S', "Windows Search"),
+    ((uint)'V', "Clipboard history"), ((uint)'W', "Widgets"), ((uint)'Z', "Snap layouts"),
     (0x09u, "Task View"), (0x20u, "keyboard layout picker")
 })
 {
@@ -1244,7 +1245,7 @@ modifiedShellSurfaceGesture.KeyDown(0x5b);
 Check(WindowsKeyAction.ForwardWindowsDownThenPass, modifiedShellSurfaceGesture.KeyDown((uint)'N', shiftPressed: true, canOpenShellSystemSurface: _ => true), "preserve modified Win+N instead of opening the unmodified shell surface");
 modifiedShellSurfaceGesture.KeyUp((uint)'N');
 modifiedShellSurfaceGesture.KeyUp(0x5b);
-foreach (var key in new[] { (uint)'A', (uint)'N', (uint)'Q', (uint)'S', (uint)'W', 0x09u, 0x20u })
+foreach (var key in new[] { (uint)'A', (uint)'H', (uint)'N', (uint)'Q', (uint)'S', (uint)'V', (uint)'W', (uint)'Z', 0x09u, 0x20u })
 {
     var nativeSurfaceGesture = new WindowsKeyGesture();
     nativeSurfaceGesture.KeyDown(0x5b);
@@ -1568,6 +1569,27 @@ CheckTrue(SystemFlyoutService.GetWindowsSearchQuestionSequence().SequenceEqual(
     new KeyboardKeyEvent((ushort)'Q', true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+Q search shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetClipboardHistorySequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'V', false),
+    new KeyboardKeyEvent((ushort)'V', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+V clipboard history shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetVoiceTypingSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'H', false),
+    new KeyboardKeyEvent((ushort)'H', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+H voice typing shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetSnapLayoutsSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'Z', false),
+    new KeyboardKeyEvent((ushort)'Z', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+Z snap layouts shortcut in balanced key order");
 CheckTrue(SystemFlyoutService.GetTaskViewSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),

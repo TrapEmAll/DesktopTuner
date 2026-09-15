@@ -22,9 +22,12 @@ public static class SystemFlyoutService
     private const ushort VK_Q = 0x51;
     private const ushort VK_R = 0x52;
     private const ushort VK_S = 0x53;
+    private const ushort VK_V = 0x56;
+    private const ushort VK_H = 0x48;
     private const ushort VK_SPACE = 0x20;
     private const ushort VK_TAB = 0x09;
     private const ushort VK_W = 0x57;
+    private const ushort VK_Z = 0x5A;
     private const uint INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_KEYUP = 0x0002;
     private static readonly IReadOnlyList<KeyboardKeyEvent> NotificationCenterSequence = Array.AsReadOnly<KeyboardKeyEvent>(
@@ -99,6 +102,27 @@ public static class SystemFlyoutService
         new(VK_Q, true),
         new(VK_LWIN, true)
     ]);
+    private static readonly IReadOnlyList<KeyboardKeyEvent> ClipboardHistorySequence = Array.AsReadOnly<KeyboardKeyEvent>(
+    [
+        new(VK_LWIN, false),
+        new(VK_V, false),
+        new(VK_V, true),
+        new(VK_LWIN, true)
+    ]);
+    private static readonly IReadOnlyList<KeyboardKeyEvent> VoiceTypingSequence = Array.AsReadOnly<KeyboardKeyEvent>(
+    [
+        new(VK_LWIN, false),
+        new(VK_H, false),
+        new(VK_H, true),
+        new(VK_LWIN, true)
+    ]);
+    private static readonly IReadOnlyList<KeyboardKeyEvent> SnapLayoutsSequence = Array.AsReadOnly<KeyboardKeyEvent>(
+    [
+        new(VK_LWIN, false),
+        new(VK_Z, false),
+        new(VK_Z, true),
+        new(VK_LWIN, true)
+    ]);
     private static readonly IReadOnlyList<KeyboardKeyEvent> TaskViewSequence = Array.AsReadOnly<KeyboardKeyEvent>(
     [
         new(VK_LWIN, false),
@@ -138,6 +162,9 @@ public static class SystemFlyoutService
     public static IReadOnlyList<KeyboardKeyEvent> GetRunDialogSequence() => RunDialogSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetWindowsSearchSequence() => WindowsSearchSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetWindowsSearchQuestionSequence() => WindowsSearchQuestionSequence;
+    public static IReadOnlyList<KeyboardKeyEvent> GetClipboardHistorySequence() => ClipboardHistorySequence;
+    public static IReadOnlyList<KeyboardKeyEvent> GetVoiceTypingSequence() => VoiceTypingSequence;
+    public static IReadOnlyList<KeyboardKeyEvent> GetSnapLayoutsSequence() => SnapLayoutsSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetTaskViewSequence() => TaskViewSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetConnectSequence() => ConnectSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetProjectSequence() => ProjectSequence;
@@ -162,6 +189,12 @@ public static class SystemFlyoutService
     public static bool OpenWindowsSearch() => SendWindowsShortcut(VK_S, WindowsSearchSequence, "Windows Search");
 
     public static bool OpenWindowsSearchFromQuestionMark() => SendWindowsShortcut(VK_Q, WindowsSearchQuestionSequence, "Windows Search");
+
+    public static bool OpenClipboardHistory() => SendWindowsShortcut(VK_V, ClipboardHistorySequence, "Clipboard history");
+
+    public static bool OpenVoiceTyping() => SendWindowsShortcut(VK_H, VoiceTypingSequence, "Voice typing");
+
+    public static bool OpenSnapLayouts() => SendWindowsShortcut(VK_Z, SnapLayoutsSequence, "Snap layouts");
 
     public static bool OpenTaskView() => SendWindowsShortcut(VK_TAB, TaskViewSequence, "Task View");
 
