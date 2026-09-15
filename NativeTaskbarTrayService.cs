@@ -10,28 +10,15 @@ public static class NativeTaskbarTrayService
     private const string SecondaryTaskbarClass = "Shell_SecondaryTrayWnd";
     private const string NotificationAreaClass = "TrayNotifyWnd";
 
+    public readonly record struct TrayCandidate(TaskbarBounds Bounds, nint TaskbarWindow, nint TrayWindow);
+
     public static TaskbarBounds? FindTrayBounds(TaskbarDisplay display)
     {
         ArgumentNullException.ThrowIfNull(display);
-        var candidates = new List<TaskbarBounds>();
+        var candidates = new List<TrayCandidate>();
         try
         {
-            EnumWindows((taskbar, _) =>
-            {
-                var className = GetClassName(taskbar);
-                if (className is not (PrimaryTaskbarClass or SecondaryTaskbarClass)) return true;
-
-                EnumChildWindows(taskbar, (child, _) =>
-                {
-                    if (GetClassName(child) != NotificationAreaClass || !IsWindowVisible(child)) return true;
-                    if (!GetWindowRect(child, out var rect)) return true;
-
-                    var bounds = new TaskbarBounds(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
-                    if (TaskbarDisplayService.Overlaps(bounds, display)) candidates.Add(bounds);
-                    return true;
-                }, IntPtr.Zero);
-                return true;
-            }, IntPtr.Zero);
+            candidates.AddRange(FindTrayCandidates(display));
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         {
@@ -39,7 +26,7 @@ public static class NativeTaskbarTrayService
             return null;
         }
 
-        return SelectBestTrayBounds(candidates, display);
+        return SelectBestTrayCandidate(candidates, display)?.Bounds;
     }
 
     public static bool TryFocusTray(TaskbarDisplay display)
@@ -47,31 +34,10 @@ public static class NativeTaskbarTrayService
         ArgumentNullException.ThrowIfNull(display);
         try
         {
-            var targetBounds = FindTrayBounds(display);
-            if (targetBounds is null) return false;
-            nint taskbarWindow = 0;
-            nint trayWindow = 0;
-            EnumWindows((taskbar, _) =>
-            {
-                var className = GetClassName(taskbar);
-                if (className is not (PrimaryTaskbarClass or SecondaryTaskbarClass)) return true;
-
-                EnumChildWindows(taskbar, (child, _) =>
-                {
-                    if (GetClassName(child) != NotificationAreaClass || !IsWindowVisible(child)) return true;
-                    if (!GetWindowRect(child, out var rect)) return true;
-                    var bounds = new TaskbarBounds(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
-                    if (bounds != targetBounds) return true;
-                    taskbarWindow = taskbar;
-                    trayWindow = child;
-                    return false;
-                }, IntPtr.Zero);
-                return trayWindow == 0;
-            }, IntPtr.Zero);
-
-            if (taskbarWindow == 0 || trayWindow == 0) return false;
-            var foregrounded = SetForegroundWindow(taskbarWindow);
-            var focused = SetFocus(trayWindow) != 0;
+            var candidate = SelectBestTrayCandidate(FindTrayCandidates(display), display);
+            if (candidate is not { } selected) return false;
+            var foregrounded = SetForegroundWindow(selected.TaskbarWindow);
+            var focused = SetFocus(selected.TrayWindow) != 0;
             return foregrounded || focused;
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
@@ -90,6 +56,37 @@ public static class NativeTaskbarTrayService
             .OrderByDescending(candidate => GetIntersectionArea(candidate, display))
             .ThenByDescending(candidate => candidate.Width * candidate.Height)
             .FirstOrDefault();
+    }
+
+    public static TrayCandidate? SelectBestTrayCandidate(IEnumerable<TrayCandidate> candidates, TaskbarDisplay display)
+    {
+        ArgumentNullException.ThrowIfNull(candidates);
+        ArgumentNullException.ThrowIfNull(display);
+        var selectedBounds = SelectBestTrayBounds(candidates.Select(candidate => candidate.Bounds), display);
+        if (selectedBounds is null) return null;
+        return candidates.FirstOrDefault(candidate => candidate.Bounds == selectedBounds);
+    }
+
+    private static IReadOnlyList<TrayCandidate> FindTrayCandidates(TaskbarDisplay display)
+    {
+        var candidates = new List<TrayCandidate>();
+        EnumWindows((taskbar, _) =>
+        {
+            var className = GetClassName(taskbar);
+            if (className is not (PrimaryTaskbarClass or SecondaryTaskbarClass)) return true;
+
+            EnumChildWindows(taskbar, (child, _) =>
+            {
+                if (GetClassName(child) != NotificationAreaClass || !IsWindowVisible(child)) return true;
+                if (!GetWindowRect(child, out var rect)) return true;
+                var bounds = new TaskbarBounds(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+                if (TaskbarDisplayService.Overlaps(bounds, display))
+                    candidates.Add(new TrayCandidate(bounds, taskbar, child));
+                return true;
+            }, IntPtr.Zero);
+            return true;
+        }, IntPtr.Zero);
+        return candidates;
     }
 
     private static long GetIntersectionArea(TaskbarBounds bounds, TaskbarDisplay display)

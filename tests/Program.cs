@@ -537,6 +537,13 @@ var nativeTray = new TaskbarBounds(1500, 1030, 420, 50);
 var secondaryDisplay = new TaskbarDisplay("DISPLAY2", -1920, -200, 1920, 1080, false, 1.5, 1.5);
 Check(new TaskbarBounds(0, 1026, 1500, 54), TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Bottom), nativeTray), "leave the native notification area uncovered on an edge-to-edge bar");
 Check(new TaskbarBounds(0, 1030, 1920, 50), NativeTaskbarTrayService.SelectBestTrayBounds([new TaskbarBounds(0, 1030, 1920, 50), nativeTray], trayDisplay), "choose the native notification area with the greatest display overlap");
+var nativeTrayCandidates = new NativeTaskbarTrayService.TrayCandidate[]
+{
+    new(new TaskbarBounds(0, 1030, 100, 50), (nint)101, (nint)201),
+    new(nativeTray, (nint)102, (nint)202)
+};
+Check((nint)102, NativeTaskbarTrayService.SelectBestTrayCandidate(nativeTrayCandidates, trayDisplay)?.TaskbarWindow, "focus the taskbar window paired with the best-overlap native tray");
+Check((nint)202, NativeTaskbarTrayService.SelectBestTrayCandidate(nativeTrayCandidates, trayDisplay)?.TrayWindow, "focus the tray child paired with the best-overlap native tray");
 Check<TaskbarBounds?>(null, NativeTaskbarTrayService.SelectBestTrayBounds([new TaskbarBounds(0, 1030, 1920, 50)], secondaryDisplay), "ignore notification areas that belong to another display");
 Check(new TaskbarBounds(0, 1026, 1500, 54), TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Bottom, TaskbarLayout: TaskbarStyle.Segmented), nativeTray), "leave the native notification area uncovered on a segmented bar");
 Check(new TaskbarBounds(0, 1026, 1500, 54), TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Bottom, TaskbarLayout: TaskbarStyle.DockLike), nativeTray), "preserve the native notification area beside the dock-style bar");
