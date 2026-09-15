@@ -1379,7 +1379,8 @@ public partial class MainWindow : Window
             showDesktop: _shellHostMode ? ToggleShowDesktop : null,
             focusSystemArea: _shellHostMode ? FocusTaskbarSystemArea : null,
             executePowerUserCommand: _shellHostMode ? ExecuteShellHostPowerUserCommand : null,
-            openDirectoryInCompanionExplorer: _shellHostMode ? path => OpenExplorer(path) : null);
+            openDirectoryInCompanionExplorer: _shellHostMode ? path => OpenExplorer(path) : null,
+            openFileLocationInCompanionExplorer: _shellHostMode ? OpenPinnedFileLocationInCompanionExplorer : null);
         taskbar.ContentRendered += TaskbarWindow_ContentRendered;
         taskbar.Closed += (_, _) =>
         {
@@ -1390,6 +1391,13 @@ public partial class MainWindow : Window
         _taskbarWindows.Add(taskbar);
         taskbar.Show();
         return taskbar;
+    }
+
+    private void OpenPinnedFileLocationInCompanionExplorer(string path)
+    {
+        var folder = Directory.Exists(path) ? path : Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
+            OpenExplorer(folder);
     }
 
     private void TaskbarWindow_ContentRendered(object? sender, EventArgs e)
