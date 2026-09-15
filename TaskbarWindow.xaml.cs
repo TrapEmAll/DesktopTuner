@@ -1829,7 +1829,7 @@ public partial class TaskbarWindow : Window
 
     private void Tray_Click(object sender, RoutedEventArgs e)
     {
-        if (_focusSystemArea is not null) _focusSystemArea();
+        if (_focusSystemArea is not null) FocusTaskbarSystemArea();
         else SystemFlyoutService.FocusNotificationArea();
     }
 
