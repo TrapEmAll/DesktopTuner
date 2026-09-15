@@ -430,6 +430,9 @@ Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, false, f
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, false, false, nativeTrayAvailable: true), "reuse an already-running native notification area in shell-host mode");
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, false, true, nativeTrayAvailable: true), "reuse an existing native notification area in shell-host mode regardless of overlay preference");
 Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, false, false, nativeTrayAvailable: false), "keep custom system controls when Explorer provides no notification area");
+Check(true, ShellHostLaunchPolicy.ShouldReconcileNativeTrayIntegration(true, false, nativeTrayAvailable: true), "detect an Explorer notification area appearing during shell-host mode");
+Check(true, ShellHostLaunchPolicy.ShouldReconcileNativeTrayIntegration(true, true, nativeTrayAvailable: false), "detect an Explorer notification area disappearing during shell-host mode");
+Check(false, ShellHostLaunchPolicy.ShouldReconcileNativeTrayIntegration(false, false, nativeTrayAvailable: true), "limit live notification-area reconciliation to shell-host mode");
 Check(false, ShellHostLaunchPolicy.ShouldReserveShellHostWorkArea(true, nativeTrayIntegrated: true), "avoid reserving the work area twice when the native taskbar supplies it");
 Check(true, ShellHostLaunchPolicy.ShouldReserveShellHostWorkArea(true, nativeTrayIntegrated: false), "reserve the work area when shell-host mode has no native taskbar");
 Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, false, true), "keep native tray integration disabled in regular taskbar replacement mode");

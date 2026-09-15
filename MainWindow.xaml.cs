@@ -52,6 +52,7 @@ public partial class MainWindow : Window
     private readonly ForegroundWindowHistory _foregroundWindowHistory;
     private readonly NativeTaskbarVisibilityService _nativeTaskbarVisibility = new();
     private readonly DispatcherTimer _nativeTaskbarWatchTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private readonly DispatcherTimer _shellHostTrayRefreshTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly DispatcherTimer _displayRefreshTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
     private readonly DispatcherTimer _shellHostHeartbeatTimer = new() { Interval = CustomShellPolicy.HostHeartbeatInterval };
     private WindowsKeyStartHook? _windowsKeyHook;
@@ -92,6 +93,7 @@ public partial class MainWindow : Window
     private readonly bool _shellOverlayMode;
     private bool _shellHostReadySignaled;
     private bool _shellHostNativeTrayIntegrated;
+    private bool _shellHostTaskbarNativeTrayIntegrated;
     private bool _closingTaskbars;
     private bool _reconcilingDisplayTopology;
 
@@ -108,6 +110,7 @@ public partial class MainWindow : Window
         _settings = new RegistrySettingsService(_profileStore);
         SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
         _displayRefreshTimer.Tick += DisplayRefreshTimer_Tick;
+        _shellHostTrayRefreshTimer.Tick += ShellHostTrayRefreshTimer_Tick;
         var desktopPreferences = _preferences.Load();
         _taskbarEdge = desktopPreferences.TaskbarEdge;
         _taskbarSize = desktopPreferences.TaskbarSize;
@@ -1104,7 +1107,7 @@ public partial class MainWindow : Window
             var preferences = TaskbarAutoHideHotkeyPolicy.Toggle(CreateDesktopPreferences());
             _preferences.Save(preferences);
             _taskbarAutoHide = preferences.AutoHide;
-            foreach (var taskbar in _taskbarWindows.ToArray()) taskbar.SetPreferences(preferences);
+            ApplyTaskbarPreferences(preferences);
             SetStatus(_taskbarAutoHide ? "Taskbar auto-hide is on (Win+Alt+T)." : "Taskbar auto-hide is off (Win+Alt+T).");
         }
         catch (Exception ex)
@@ -1318,6 +1321,7 @@ public partial class MainWindow : Window
         try
         {
             var preferences = CreateTaskbarRuntimePreferences();
+            if (_shellHostMode) _shellHostTaskbarNativeTrayIntegrated = _shellHostNativeTrayIntegrated;
             var showAllDisplays = ShellHostLaunchPolicy.ShouldCoverAllDisplays(_shellHostMode, _taskbarOnAllDisplays, _shellOverlayMode);
             var hideNativeTaskbar = ShellHostLaunchPolicy.ShouldHideNativeTaskbar(_shellHostMode, _shellOverlayMode, _replaceNativeTaskbar);
             foreach (var display in TaskbarDisplayService.Select(showAllDisplays))
@@ -1341,6 +1345,7 @@ public partial class MainWindow : Window
                         System.Diagnostics.Trace.TraceWarning($"Windows could not reserve a work area for the shell taskbar on {taskbar.Display.DeviceName}; it will remain an overlay.");
                     }
             }
+            if (_shellHostMode) _shellHostTrayRefreshTimer.Start();
             if (hideNativeTaskbar) _nativeTaskbarWatchTimer.Start();
             SetStatus(_shellOverlayMode
                 ? "Desktop Tuner shell overlay is running on every display. Explorer's notification area remains exposed where the selected layout supports it."
@@ -1446,6 +1451,31 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ShellHostTrayRefreshTimer_Tick(object? sender, EventArgs e)
+    {
+        if (!_shellHostMode || !_taskbarWindows.Any(window => window.IsVisible))
+        {
+            _shellHostTrayRefreshTimer.Stop();
+            return;
+        }
+
+        try
+        {
+            var preferences = CreateTaskbarRuntimePreferences();
+            if (!ShellHostLaunchPolicy.ShouldReconcileNativeTrayIntegration(
+                    _shellHostMode, _shellHostTaskbarNativeTrayIntegrated, _shellHostNativeTrayIntegrated)) return;
+
+            ApplyTaskbarPreferences(preferences);
+            System.Diagnostics.Trace.TraceInformation(_shellHostTaskbarNativeTrayIntegrated
+                ? "An Explorer notification area appeared; shell-host taskbars now expose it and release their AppBar work-area reservations."
+                : "The Explorer notification area disappeared; shell-host taskbars restored custom system controls and AppBar work-area reservations.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.TraceError($"Could not reconcile shell-host notification-area integration: {ex}");
+        }
+    }
+
     private void RepositionOpenStartMenu()
     {
         if (_startMenuWindow?.IsVisible != true) return;
@@ -1464,6 +1494,7 @@ public partial class MainWindow : Window
         try
         {
             _displayRefreshTimer.Stop();
+            _shellHostTrayRefreshTimer.Stop();
             _nativeTaskbarWatchTimer.Stop();
             foreach (var taskbar in _taskbarWindows.ToArray())
                 if (taskbar.IsVisible) taskbar.Close();
@@ -1504,9 +1535,9 @@ public partial class MainWindow : Window
 
     private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather);
 
-    private DesktopPreferences CreateTaskbarRuntimePreferences()
+    private DesktopPreferences CreateTaskbarRuntimePreferences(DesktopPreferences? preferences = null)
     {
-        var preferences = CreateDesktopPreferences();
+        preferences ??= CreateDesktopPreferences();
         var nativeTrayAvailable = _shellHostMode && TaskbarDisplayService.Select(allDisplays: true)
             .Any(display => NativeTaskbarTrayService.FindTrayBounds(display) is not null);
         _shellHostNativeTrayIntegrated = ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(
@@ -1515,6 +1546,19 @@ public partial class MainWindow : Window
         {
             ReplaceNativeTaskbar = !_shellHostNativeTrayIntegrated
         };
+    }
+
+    private void ApplyTaskbarPreferences(DesktopPreferences preferences)
+    {
+        var runtimePreferences = _shellHostMode ? CreateTaskbarRuntimePreferences(preferences) : preferences;
+        foreach (var taskbar in _taskbarWindows.ToArray()) taskbar.SetPreferences(runtimePreferences);
+        if (!_shellHostMode) return;
+
+        _shellHostTaskbarNativeTrayIntegrated = _shellHostNativeTrayIntegrated;
+        var reserveWorkArea = ShellHostLaunchPolicy.ShouldReserveShellHostWorkArea(true, _shellHostNativeTrayIntegrated);
+        foreach (var taskbar in _taskbarWindows.ToArray())
+            if (!taskbar.EnableReplacementWorkArea(reserveWorkArea) && reserveWorkArea)
+                System.Diagnostics.Trace.TraceWarning($"Windows could not reserve a work area for the shell taskbar on {taskbar.Display.DeviceName}; it will remain an overlay.");
     }
 
     private void SetStartMenuCentered(bool centered)
@@ -1614,7 +1658,7 @@ public partial class MainWindow : Window
     private void UpdateTaskbarPreferences()
     {
         var preferences = CreateDesktopPreferences();
-        foreach (var taskbar in _taskbarWindows.ToArray()) taskbar.SetPreferences(preferences);
+        ApplyTaskbarPreferences(preferences);
     }
 
     private void SaveDesktopPreferences()
@@ -1671,7 +1715,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                foreach (var taskbar in _taskbarWindows.ToArray()) taskbar.SetPreferences(preferences);
+                ApplyTaskbarPreferences(preferences);
             }
             _startMenuWindow?.SetStyle(_startMenuStyle);
             _startMenuWindow?.SetRecentAppCount(_startRecentAppCount);

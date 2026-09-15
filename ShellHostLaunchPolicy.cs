@@ -56,6 +56,9 @@ public static class ShellHostLaunchPolicy
     public static bool ShouldUseNativeTrayIntegration(bool shellHostMode, bool shellOverlayMode, bool replaceNativeTaskbarPreference, bool nativeTrayAvailable) =>
         shellOverlayMode || (shellHostMode ? nativeTrayAvailable : !replaceNativeTaskbarPreference);
 
+    public static bool ShouldReconcileNativeTrayIntegration(bool shellHostMode, bool currentIntegration, bool nativeTrayAvailable) =>
+        shellHostMode && currentIntegration != nativeTrayAvailable;
+
     public static bool ShouldReserveShellHostWorkArea(bool shellHostMode, bool nativeTrayIntegrated) =>
         shellHostMode && !nativeTrayIntegrated;
 
