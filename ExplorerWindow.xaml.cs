@@ -1935,7 +1935,7 @@ public partial class ExplorerWindow : Window
         PasteButton.IsEnabled = !ActiveTab.Location.IsDriveList && !ActiveTab.Location.IsHome && !ActiveTab.Location.IsRecycleBin && ClipboardHasFileDrop();
     }
 
-    private void CopyPath_Click(object sender, RoutedEventArgs e)
+    private async void CopyPath_Click(object sender, RoutedEventArgs e)
     {
         if (_location.IsRecycleBin) return;
         var paths = EntriesList.SelectedItems.OfType<ExplorerEntry>()
@@ -1946,6 +1946,12 @@ public partial class ExplorerWindow : Window
 
         try
         {
+            var owner = new WindowInteropHelper(this).Handle;
+            if (await NativeShellContextMenuService.CopyShellItemsAsPathAsync(owner, paths))
+            {
+                SetStatus($"Copied {paths.Length:N0} path{(paths.Length == 1 ? "" : "s")}.");
+                return;
+            }
             Clipboard.SetText(string.Join(Environment.NewLine, paths), TextDataFormat.UnicodeText);
             SetStatus($"Copied {paths.Length:N0} path{(paths.Length == 1 ? "" : "s")}.");
         }
