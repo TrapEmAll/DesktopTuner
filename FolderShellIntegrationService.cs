@@ -13,18 +13,26 @@ public static class FolderShellIntegrationService
     private const string DirectoryVerbPath = @"Software\Classes\Directory\shell\DesktopTuner.OpenWith";
     private const string DirectoryBackgroundVerbPath = @"Software\Classes\Directory\Background\shell\DesktopTuner.OpenWith";
     private const string DirectoryShellPath = @"Software\Classes\Directory\shell";
+    private const string FolderShellPath = @"Software\Classes\Folder\shell";
+    private const string DriveShellPath = @"Software\Classes\Drive\shell";
     private const string FolderVerbPath = @"Software\Classes\Folder\shell\DesktopTuner.OpenWith";
     private const string FolderBackgroundVerbPath = @"Software\Classes\Folder\Background\shell\DesktopTuner.OpenWith";
     private const string DriveVerbPath = @"Software\Classes\Drive\shell\DesktopTuner.OpenWith";
     private const string AssociationStatePath = @"Software\DesktopTuner\FolderShellIntegration";
     private const string PreviousDefaultValue = "PreviousDefaultVerb";
     private const string HadPreviousDefaultValue = "HadPreviousDefaultVerb";
+    private const string HadPreviousFolderDefaultValue = "HadPreviousFolderDefaultVerb";
+    private const string PreviousFolderDefaultValue = "PreviousFolderDefaultVerb";
+    private const string HadPreviousDriveDefaultValue = "HadPreviousDriveDefaultVerb";
+    private const string PreviousDriveDefaultValue = "PreviousDriveDefaultVerb";
     public const string DefaultVerb = "DesktopTuner.OpenWith";
 
     public static IReadOnlyList<string> VerbPaths { get; } =
         [DirectoryVerbPath, DirectoryBackgroundVerbPath, FolderVerbPath, FolderBackgroundVerbPath, DriveVerbPath];
 
     public static string DefaultVerbPath => DirectoryVerbPath;
+
+    public static IReadOnlyList<string> DefaultHandlerPaths { get; } = [DirectoryShellPath, FolderShellPath, DriveShellPath];
 
     public static bool TryReadInvocation(IReadOnlyList<string> arguments, out string folderPath)
     {
@@ -96,18 +104,27 @@ public static class FolderShellIntegrationService
         SetEnabled(true, executablePath);
         using var state = Registry.CurrentUser.CreateSubKey(AssociationStatePath, writable: true)
             ?? throw new IOException("Could not open Desktop Tuner's saved folder-handler state.");
-        using var directoryShell = Registry.CurrentUser.CreateSubKey(DirectoryShellPath, writable: true)
-            ?? throw new IOException("Could not open Windows' per-user folder shell settings.");
-        if (state.GetValue(HadPreviousDefaultValue) is not null)
+        var targets = new[]
         {
-            if (string.Equals(directoryShell.GetValue(null) as string, DefaultVerb, StringComparison.OrdinalIgnoreCase)) return;
-            throw new InvalidOperationException("Windows' default folder handler was changed while Desktop Tuner was active.");
-        }
+            (Path: DirectoryShellPath, HadPrevious: HadPreviousDefaultValue, Previous: PreviousDefaultValue),
+            (Path: FolderShellPath, HadPrevious: HadPreviousFolderDefaultValue, Previous: PreviousFolderDefaultValue),
+            (Path: DriveShellPath, HadPrevious: HadPreviousDriveDefaultValue, Previous: PreviousDriveDefaultValue)
+        };
+        foreach (var target in targets)
+        {
+            using var shell = Registry.CurrentUser.CreateSubKey(target.Path, writable: true)
+                ?? throw new IOException($"Could not open Windows' per-user shell settings at {target.Path}.");
+            if (state.GetValue(target.HadPrevious) is not null)
+            {
+                if (string.Equals(shell.GetValue(null) as string, DefaultVerb, StringComparison.OrdinalIgnoreCase)) continue;
+                throw new InvalidOperationException($"Windows' default shell handler at {target.Path} was changed while Desktop Tuner was active.");
+            }
 
-        var previous = directoryShell.GetValue(null) as string;
-        state.SetValue(HadPreviousDefaultValue, true, RegistryValueKind.DWord);
-        state.SetValue(PreviousDefaultValue, previous ?? string.Empty, RegistryValueKind.String);
-        directoryShell.SetValue(null, DefaultVerb, RegistryValueKind.String);
+            var previous = shell.GetValue(null) as string;
+            state.SetValue(target.HadPrevious, true, RegistryValueKind.DWord);
+            state.SetValue(target.Previous, previous ?? string.Empty, RegistryValueKind.String);
+            shell.SetValue(null, DefaultVerb, RegistryValueKind.String);
+        }
         SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
     }
 
@@ -115,19 +132,28 @@ public static class FolderShellIntegrationService
     {
         using var state = Registry.CurrentUser.OpenSubKey(AssociationStatePath, writable: false);
         if (state is null) return false;
-        using var directoryShell = Registry.CurrentUser.OpenSubKey(DirectoryShellPath, writable: true);
-        if (directoryShell is null) return false;
-        var current = directoryShell.GetValue(null) as string;
-        if (!string.Equals(current, DefaultVerb, StringComparison.OrdinalIgnoreCase))
+        var targets = new[]
         {
-            Registry.CurrentUser.DeleteSubKeyTree(AssociationStatePath, throwOnMissingSubKey: false);
-            return false;
-        }
+            (Path: DirectoryShellPath, HadPrevious: HadPreviousDefaultValue, Previous: PreviousDefaultValue),
+            (Path: FolderShellPath, HadPrevious: HadPreviousFolderDefaultValue, Previous: PreviousFolderDefaultValue),
+            (Path: DriveShellPath, HadPrevious: HadPreviousDriveDefaultValue, Previous: PreviousDriveDefaultValue)
+        };
+        foreach (var target in targets)
+        {
+            if (state.GetValue(target.HadPrevious) is null) continue;
+            using var shell = Registry.CurrentUser.OpenSubKey(target.Path, writable: true);
+            if (shell is null) return false;
+            var current = shell.GetValue(null) as string;
+            if (!string.Equals(current, DefaultVerb, StringComparison.OrdinalIgnoreCase))
+            {
+                Registry.CurrentUser.DeleteSubKeyTree(AssociationStatePath, throwOnMissingSubKey: false);
+                return false;
+            }
 
-        var hadPrevious = state.GetValue(HadPreviousDefaultValue) is not null;
-        var previous = state.GetValue(PreviousDefaultValue) as string;
-        if (hadPrevious && !string.IsNullOrEmpty(previous)) directoryShell.SetValue(null, previous, RegistryValueKind.String);
-        else directoryShell.DeleteValue(string.Empty, throwOnMissingValue: false);
+            var previous = state.GetValue(target.Previous) as string;
+            if (!string.IsNullOrEmpty(previous)) shell.SetValue(null, previous, RegistryValueKind.String);
+            else shell.DeleteValue(string.Empty, throwOnMissingValue: false);
+        }
         Registry.CurrentUser.DeleteSubKeyTree(AssociationStatePath, throwOnMissingSubKey: false);
         SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
         return true;

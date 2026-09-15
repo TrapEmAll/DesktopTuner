@@ -797,6 +797,7 @@ Throws<ArgumentOutOfRangeException>(() => FolderShellIntegrationService.BuildCom
 Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe")}\" --open-shell-location \"%1\"", FolderShellIntegrationService.BuildShellLocationCommand(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe", "%1"), "quote executable and namespace arguments in the virtual-folder context command");
 Throws<ArgumentOutOfRangeException>(() => FolderShellIntegrationService.BuildShellLocationCommand(Environment.ProcessPath!, "%*"), "reject unrecognized namespace path substitutions");
 Check(5, FolderShellIntegrationService.VerbPaths.Count, "register directory, virtual-folder, and drive context menu commands");
+Check(3, FolderShellIntegrationService.DefaultHandlerPaths.Count, "temporarily own filesystem, virtual-folder, and drive default handlers in shell-host mode");
 Check("Software\\Classes\\Directory\\shell\\DesktopTuner.OpenWith", FolderShellIntegrationService.DefaultVerbPath, "use the registered Desktop Tuner folder verb as the shell-host default");
 Check("DesktopTuner.OpenWith", FolderShellIntegrationService.DefaultVerb, "identify the owned shell-host folder verb");
 var auraIcon = BitmapSource.Create(5, 1, 96, 96, PixelFormats.Bgra32, null,
