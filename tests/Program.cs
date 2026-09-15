@@ -1662,7 +1662,8 @@ try
     CheckTrue(fileLocationLaunchInfo.UseShellExecute, "open shortcut locations through the Windows shell");
     CheckTrue(!AppCatalogService.CanOpenFileLocation(new AppEntry("Missing", Path.Combine(startShortcutDirectory, "missing.lnk"))), "disable file location for a removed Start shortcut");
     CheckTrue(!AppCatalogService.CanOpenFileLocation(new AppEntry("Calculator", "CalculatorApp!App", IsPackagedApp: true)), "do not offer a file location for packaged Windows apps");
-    CheckTrue(!new AppEntry("Calculator", "CalculatorApp!App", IsPackagedApp: true).CanPinToTaskbar, "do not offer taskbar pinning for packaged Windows apps");
+    var packagedTaskbarApp = new AppEntry("Calculator", "CalculatorApp!App", IsPackagedApp: true);
+    CheckTrue(packagedTaskbarApp.CanPinToTaskbar, "offer taskbar pinning for packaged Windows apps");
     Throws<NotSupportedException>(() => AppCatalogService.BuildFileLocationLaunchInfo(new AppEntry("Missing", Path.Combine(startShortcutDirectory, "missing.lnk"))), "reject file location for a removed Start shortcut");
     var pinnedStartShortcut = new PinnedTaskbarApp("Editor", startShortcutPath);
     CheckTrue(pinnedStartShortcut.CanOpenLocation, "offer file location for an existing taskbar app pin");
@@ -1672,6 +1673,14 @@ try
     var elevatedPinLaunchInfo = TaskbarPinCatalog.BuildElevatedLaunchInfo(pinnedStartShortcut);
     Check("runas", elevatedPinLaunchInfo.Verb, "request the Windows elevation prompt for a taskbar shortcut pin");
     CheckTrue(elevatedPinLaunchInfo.UseShellExecute, "launch elevated taskbar pins through the Windows shell");
+    CheckTrue(TaskbarPinCatalog.IsSupportedPackagedTarget(packagedTaskbarApp.ShortcutPath), "recognize packaged app identifiers as taskbar targets");
+    var packagedPins = TaskbarPinCatalog.AddPackaged([], packagedTaskbarApp.Name, packagedTaskbarApp.ShortcutPath);
+    Check(true, packagedPins.Single().IsPackagedApp, "mark packaged taskbar pins for shell launching");
+    Check("explorer.exe", TaskbarPinCatalog.BuildLaunchInfo(packagedPins.Single()).FileName, "launch packaged taskbar pins through Explorer's AppsFolder namespace");
+    Check("shell:AppsFolder\\CalculatorApp!App", TaskbarPinCatalog.BuildLaunchInfo(packagedPins.Single()).ArgumentList.Single(), "pass the packaged app identity to the AppsFolder namespace");
+    CheckTrue(!packagedPins.Single().CanOpenLocation, "hide file location for packaged taskbar pins");
+    Check(false, packagedPins.Single().CanRunElevated, "hide elevation for packaged taskbar pins");
+    CheckTrue(!TaskbarPinIdentityService.Matches(packagedPins.Single(), new RunningWindow(nint.Zero, "Calculator", "Calculator", "", false)), "avoid matching a packaged pin when Windows exposes no app identity");
     var pinnedFolder = new PinnedTaskbarApp("ExplorerOperations", explorerTestDirectory, IsDirectory: true);
     CheckTrue(pinnedFolder.CanOpenLocation, "offer the folder itself for an existing taskbar folder pin");
     Check(explorerTestDirectory, TaskbarPinCatalog.BuildLocationLaunchInfo(pinnedFolder).FileName, "open a pinned folder directly in File Explorer");

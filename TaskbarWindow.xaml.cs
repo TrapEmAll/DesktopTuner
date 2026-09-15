@@ -1529,7 +1529,7 @@ public partial class TaskbarWindow : Window
             _openDirectoryInCompanionExplorer(app.ExecutablePath);
             return;
         }
-        if (isDirectory ? !Directory.Exists(app.ExecutablePath) : !File.Exists(app.ExecutablePath))
+        if (!app.IsPackagedApp && (isDirectory ? !Directory.Exists(app.ExecutablePath) : !File.Exists(app.ExecutablePath)))
         {
             MessageBox.Show(this, $"The pinned app could not be found:\n{app.ExecutablePath}", "Pinned app unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
@@ -1538,7 +1538,7 @@ public partial class TaskbarWindow : Window
         {
             var startInfo = isDirectory
                 ? new ProcessStartInfo("explorer.exe") { UseShellExecute = true }
-                : new ProcessStartInfo(app.ExecutablePath) { UseShellExecute = true };
+                : TaskbarPinCatalog.BuildLaunchInfo(app);
             if (isDirectory) startInfo.ArgumentList.Add(app.ExecutablePath);
             Process.Start(startInfo);
         }

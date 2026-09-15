@@ -19,7 +19,7 @@ public partial class StartMenuWindow : Window
     private readonly StartRecentAppsStore _recentAppsStore;
     private readonly StartMenuIdentity _identity;
     private readonly Func<IReadOnlyList<AppEntry>, bool>? _savePinnedApps;
-    private readonly Func<string, bool>? _pinTaskbarItem;
+    private readonly Func<AppEntry, bool>? _pinTaskbarItem;
     private readonly Func<string, bool>? _openShellLocation;
     private readonly Func<string, bool>? _openFileLocation;
     private StartMenuPlacePreferences _startPlaces;
@@ -36,7 +36,7 @@ public partial class StartMenuWindow : Window
     private Point _pinnedStartDrag;
     private bool _suppressPinnedStartClick;
 
-    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<string, bool>? pinTaskbarItem = null)
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<AppEntry, bool>? pinTaskbarItem = null)
     {
         InitializeComponent();
         _identity = StartMenuIdentityService.ReadCurrentUser();
@@ -586,7 +586,7 @@ public partial class StartMenuWindow : Window
     private void PinTaskbarItem_Click(object sender, RoutedEventArgs e)
     {
         if (_pinTaskbarItem is null || sender is not MenuItem { Tag: AppEntry app }) return;
-        if (!_pinTaskbarItem(app.ShortcutPath))
+        if (!_pinTaskbarItem(app))
             MessageBox.Show(this, $"Could not pin {app.Name} to the taskbar.", "Taskbar pin unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 

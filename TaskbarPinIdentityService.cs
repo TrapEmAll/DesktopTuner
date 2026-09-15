@@ -17,6 +17,8 @@ public static class TaskbarPinIdentityService
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(window);
         ArgumentNullException.ThrowIfNull(shortcutTargetResolver);
+        if (app.IsPackagedApp)
+            return string.Equals(TaskbarJumpListService.GetAppUserModelId(window), app.ExecutablePath, StringComparison.OrdinalIgnoreCase);
         if (app.IsDirectory || string.IsNullOrWhiteSpace(app.ExecutablePath) || string.IsNullOrWhiteSpace(window.ExecutablePath)) return false;
 
         var pinnedTarget = string.Equals(Path.GetExtension(app.ExecutablePath), ".lnk", StringComparison.OrdinalIgnoreCase)

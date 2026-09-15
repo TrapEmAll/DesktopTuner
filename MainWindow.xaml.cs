@@ -1302,7 +1302,7 @@ public partial class MainWindow : Window
             startPlaces: _startMenuPlaces, recentAppCount: _startRecentAppCount, controlPanelApplets: _controlPanelApplets,
             openShellLocation: _shellHostMode ? TryOpenLocationInCompanionExplorer : null,
             openFileLocation: _shellHostMode ? TryOpenFileLocationInCompanionExplorer : null,
-            pinTaskbarItem: TryPinTaskbarItem);
+            pinTaskbarItem: app => TryPinTaskbarItem(app));
         _startMenuDisplay = display;
         _startMenuWindow.Closed += (_, _) => { _startMenuWindow = null; _startMenuDisplay = null; };
         if (display is not null)
@@ -2109,6 +2109,18 @@ public partial class MainWindow : Window
         if (updatedPins.Count == currentPins.Count)
             return false;
 
+        _pinnedApps = updatedPins;
+        SaveDesktopPreferences();
+        return true;
+    }
+
+    private bool TryPinTaskbarItem(AppEntry app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        if (!app.IsPackagedApp) return TryPinTaskbarItem(app.ShortcutPath);
+        var currentPins = _pinnedApps;
+        var updatedPins = TaskbarPinCatalog.AddPackaged(currentPins, app.Name, app.ShortcutPath);
+        if (updatedPins.Count == currentPins.Count) return false;
         _pinnedApps = updatedPins;
         SaveDesktopPreferences();
         return true;

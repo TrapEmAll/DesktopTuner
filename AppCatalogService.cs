@@ -16,7 +16,9 @@ public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedA
     [JsonIgnore]
     public bool CanOpenFileLocation => AppCatalogService.CanOpenFileLocation(this);
     [JsonIgnore]
-    public bool CanPinToTaskbar => !IsPackagedApp && TaskbarPinCatalog.IsSupportedTarget(ShortcutPath, IsDirectory) && (IsDirectory ? Directory.Exists(ShortcutPath) : CanOpenFileLocation);
+    public bool CanPinToTaskbar => IsPackagedApp
+        ? TaskbarPinCatalog.IsSupportedPackagedTarget(ShortcutPath)
+        : TaskbarPinCatalog.IsSupportedTarget(ShortcutPath, IsDirectory) && (IsDirectory ? Directory.Exists(ShortcutPath) : CanOpenFileLocation);
 }
 
 public sealed class StartMenuNode(string name, AppEntry? application = null)

@@ -15,6 +15,7 @@ public static class TaskbarPinCatalog
     public static bool CanRunAsAdministrator(string name, string executablePath, bool isDirectory = false)
     {
         ArgumentNullException.ThrowIfNull(executablePath);
+        if (IsSupportedPackagedTarget(executablePath)) return false;
         return !isDirectory && !NonLaunchableShellHosts.Contains(Path.GetFileName(executablePath))
             && AppCatalogService.CanRunAsAdministrator(new AppEntry(name, executablePath));
     }
@@ -22,6 +23,7 @@ public static class TaskbarPinCatalog
     public static bool CanOpenLocation(PinnedTaskbarApp app)
     {
         ArgumentNullException.ThrowIfNull(app);
+        if (app.IsPackagedApp) return false;
         return app.IsDirectory
             ? Directory.Exists(app.ExecutablePath)
             : AppCatalogService.CanOpenFileLocation(new AppEntry(app.Name, app.ExecutablePath));
@@ -38,6 +40,20 @@ public static class TaskbarPinCatalog
             : AppCatalogService.BuildFileLocationLaunchInfo(new AppEntry(app.Name, app.ExecutablePath));
     }
 
+    public static ProcessStartInfo BuildLaunchInfo(PinnedTaskbarApp app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        if (app.IsPackagedApp)
+        {
+            if (!IsSupportedPackagedTarget(app.ExecutablePath))
+                throw new NotSupportedException("This taskbar pin does not identify a packaged Windows app.");
+            var startInfo = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+            startInfo.ArgumentList.Add($"shell:AppsFolder\\{app.ExecutablePath}");
+            return startInfo;
+        }
+        return new ProcessStartInfo(app.ExecutablePath) { UseShellExecute = true };
+    }
+
     public static ProcessStartInfo BuildElevatedLaunchInfo(PinnedTaskbarApp app)
     {
         ArgumentNullException.ThrowIfNull(app);
@@ -49,6 +65,20 @@ public static class TaskbarPinCatalog
 
     public static bool IsSupportedTarget(string itemPath, bool isDirectory = false) =>
         Path.IsPathFullyQualified(itemPath) && (isDirectory || IsLaunchableExtension(Path.GetExtension(itemPath)));
+
+    public static bool IsSupportedPackagedTarget(string applicationId) =>
+        !string.IsNullOrWhiteSpace(applicationId) && applicationId.Contains('!', StringComparison.Ordinal);
+
+    public static List<PinnedTaskbarApp> AddPackaged(IEnumerable<PinnedTaskbarApp> current, string name, string applicationId)
+    {
+        var pins = current.ToList();
+        if (string.IsNullOrWhiteSpace(name) || !IsSupportedPackagedTarget(applicationId) ||
+            pins.Any(app => string.Equals(app.ExecutablePath, applicationId, StringComparison.OrdinalIgnoreCase)) ||
+            pins.Count >= MaximumPins)
+            return pins;
+        pins.Add(new PinnedTaskbarApp(name, applicationId, IsPackagedApp: true));
+        return pins;
+    }
 
     public static List<PinnedTaskbarApp> Add(IEnumerable<PinnedTaskbarApp> current, string name, string itemPath, bool isDirectory = false)
     {
