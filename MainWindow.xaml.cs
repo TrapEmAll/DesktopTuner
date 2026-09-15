@@ -1981,7 +1981,9 @@ public partial class MainWindow : Window
             startInThisPc: _currentValues["explorer-launch"] == 1,
             showRecentItems: _currentValues["start-recent"] == 1,
             pinTaskbarItem: TryPinTaskbarItem,
-            isTaskbarItemPinned: path => _pinnedApps.Any(pin => string.Equals(pin.ExecutablePath, path, StringComparison.OrdinalIgnoreCase)))
+            isTaskbarItemPinned: path => _pinnedApps.Any(pin => string.Equals(pin.ExecutablePath, path, StringComparison.OrdinalIgnoreCase)),
+            pinStartItem: TryPinStartItem,
+            isStartItemPinned: path => _pinnedStartApps.Any(pin => string.Equals(pin.ShortcutPath, path, StringComparison.OrdinalIgnoreCase)))
         { Owner = this };
         _explorerWindow.Closed += (_, _) => _explorerWindow = null;
         _explorerWindow.Show();
@@ -1997,6 +1999,15 @@ public partial class MainWindow : Window
         _pinnedApps = updatedPins;
         SaveDesktopPreferences();
         return true;
+    }
+
+    private bool TryPinStartItem(string path)
+    {
+        var updatedPins = StartPinCatalog.AddDroppedFiles(_pinnedStartApps, [path]);
+        if (updatedPins.Count == _pinnedStartApps.Count)
+            return false;
+
+        return SavePinnedStartApps(updatedPins);
     }
 
     private bool TryOpenLocationInCompanionExplorer(string location)

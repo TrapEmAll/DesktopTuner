@@ -55,6 +55,8 @@ public partial class ExplorerWindow : Window
     private readonly ExplorerSessionStore _sessionStore;
     private readonly Func<string, bool>? _pinTaskbarItem;
     private readonly Func<string, bool>? _isTaskbarItemPinned;
+    private readonly Func<string, bool>? _pinStartItem;
+    private readonly Func<string, bool>? _isStartItemPinned;
     private ExplorerSortColumn _sortColumn
     {
         get => _tabs.Count == 0 ? ExplorerSortColumn.Name : _location.IsHome ? ActiveTab.HomeSortColumn : ActiveTab.SortColumn;
@@ -83,7 +85,7 @@ public partial class ExplorerWindow : Window
         SystemBackdropService.TryApplyMica(this);
     }
 
-    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null, ExplorerFolderViewStore? folderViewStore = null, ExplorerSessionStore? sessionStore = null, bool restoreSavedSession = true, bool saveSession = true, bool? openFoldersInNewTab = null, Func<string, bool>? pinTaskbarItem = null, Func<string, bool>? isTaskbarItemPinned = null)
+    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null, ExplorerFolderViewStore? folderViewStore = null, ExplorerSessionStore? sessionStore = null, bool restoreSavedSession = true, bool saveSession = true, bool? openFoldersInNewTab = null, Func<string, bool>? pinTaskbarItem = null, Func<string, bool>? isTaskbarItemPinned = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? isStartItemPinned = null)
     {
         InitializeComponent();
         Loaded += (_, _) => _hasCompletedInitialLayout = true;
@@ -97,6 +99,8 @@ public partial class ExplorerWindow : Window
         _sessionStore = sessionStore ?? new ExplorerSessionStore();
         _pinTaskbarItem = pinTaskbarItem;
         _isTaskbarItemPinned = isTaskbarItemPinned;
+        _pinStartItem = pinStartItem;
+        _isStartItemPinned = isStartItemPinned;
         RefreshQuickAccessPins();
         var savedSession = restoreSavedSession ? _sessionStore.Load() : null;
         _openFoldersInNewTab = openFoldersInNewTab ?? savedSession?.OpenFoldersInNewTab ?? false;
@@ -2122,6 +2126,9 @@ public partial class ExplorerWindow : Window
         var taskbarPinExists = taskbarPinTarget && _isTaskbarItemPinned?.Invoke(selection[0].FullPath) == true;
         PinTaskbarMenuItem.Visibility = taskbarPinTarget && _pinTaskbarItem is not null ? Visibility.Visible : Visibility.Collapsed;
         PinTaskbarMenuItem.IsEnabled = taskbarPinTarget && _pinTaskbarItem is not null && !taskbarPinExists;
+        var startPinExists = taskbarPinTarget && _isStartItemPinned?.Invoke(selection[0].FullPath) == true;
+        PinStartMenuItem.Visibility = taskbarPinTarget && _pinStartItem is not null ? Visibility.Visible : Visibility.Collapsed;
+        PinStartMenuItem.IsEnabled = taskbarPinTarget && _pinStartItem is not null && !startPinExists;
         var isPinned = selectedDirectory && _quickAccessStore.Load().Any(pin => string.Equals(pin.Path, selection[0].FullPath, StringComparison.OrdinalIgnoreCase));
         PinQuickAccessMenuItem.Visibility = selectedDirectory && !isPinned ? Visibility.Visible : Visibility.Collapsed;
         PinQuickAccessMenuItem.IsEnabled = selectedDirectory && !isPinned;
@@ -2184,6 +2191,14 @@ public partial class ExplorerWindow : Window
 
         if (_pinTaskbarItem(entry.FullPath))
             SetStatus($"Pinned {entry.Name} to the taskbar.");
+    }
+    private void PinStart_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pinStartItem is null || EntriesList.SelectedItems.Count != 1 || EntriesList.SelectedItem is not ExplorerEntry entry)
+            return;
+
+        if (_pinStartItem(entry.FullPath))
+            SetStatus($"Pinned {entry.Name} to Start.");
     }
     private void Rename_Click(object sender, RoutedEventArgs e) => RenameSelected();
     private void Delete_Click(object sender, RoutedEventArgs e) => DeleteSelected();

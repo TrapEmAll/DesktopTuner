@@ -300,6 +300,7 @@
                                 <Separator />
                                 <MenuItem x:Name="OpenInNewTabMenuItem" Header="Open in new tab" Click="OpenInNewTab_Click" />
                                 <MenuItem x:Name="OpenInNewWindowMenuItem" Header="Open in new window" Click="OpenInNewWindow_Click" />
+                                <MenuItem x:Name="PinStartMenuItem" Header="Pin to Start" Click="PinStart_Click" />
                                 <MenuItem x:Name="PinTaskbarMenuItem" Header="Pin to taskbar" Click="PinTaskbar_Click" />
                                 <MenuItem x:Name="PinQuickAccessMenuItem" Header="Pin to quick access" Click="PinQuickAccess_Click" />
                                 <MenuItem x:Name="UnpinQuickAccessMenuItem" Header="Remove from quick access" Click="UnpinQuickAccess_Click" />
