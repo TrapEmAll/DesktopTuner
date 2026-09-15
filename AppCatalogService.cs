@@ -7,10 +7,11 @@ using System.Windows.Media;
 
 namespace DesktopTuner;
 
-public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedApp = false, string CategoryPath = "", StartTileSize TileSize = StartTileSize.Medium, string GroupName = StartPinCatalog.DefaultGroupName, bool IsDirectory = false)
+public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedApp = false, string CategoryPath = "", StartTileSize TileSize = StartTileSize.Medium, string GroupName = StartPinCatalog.DefaultGroupName, bool IsDirectory = false, bool IsShellNamespace = false)
 {
-    public string SourceDescription => IsPackagedApp ? "Windows app" : IsDirectory ? ShortcutPath : Path.GetDirectoryName(ShortcutPath) ?? ShortcutPath;
-    public ImageSource? Icon => TaskbarIconService.LoadIcon(ShortcutPath);
+    public string SourceDescription => IsShellNamespace ? "Shell location" : IsPackagedApp ? "Windows app" : IsDirectory ? ShortcutPath : Path.GetDirectoryName(ShortcutPath) ?? ShortcutPath;
+    [JsonIgnore]
+    public ImageSource? Icon => IsShellNamespace ? TaskbarIconService.LoadNamespaceIcon(ShortcutPath) : TaskbarIconService.LoadIcon(ShortcutPath);
     [JsonIgnore]
     public bool CanRunElevated => AppCatalogService.CanRunAsAdministrator(this);
     [JsonIgnore]
@@ -18,6 +19,7 @@ public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedA
     [JsonIgnore]
     public bool CanPinToTaskbar => IsPackagedApp
         ? TaskbarPinCatalog.IsSupportedPackagedTarget(ShortcutPath)
+        : IsShellNamespace ? TaskbarPinCatalog.IsSupportedShellNamespaceTarget(ShortcutPath)
         : TaskbarPinCatalog.IsSupportedTarget(ShortcutPath, IsDirectory) && (IsDirectory ? Directory.Exists(ShortcutPath) : CanOpenFileLocation);
 }
 
@@ -185,6 +187,13 @@ public sealed class AppCatalogService
 
     public static void Launch(AppEntry entry)
     {
+        if (entry.IsShellNamespace)
+        {
+            var shellLaunch = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+            shellLaunch.ArgumentList.Add(entry.ShortcutPath);
+            Process.Start(shellLaunch);
+            return;
+        }
         if (entry.IsDirectory)
         {
             Process.Start(new ProcessStartInfo(entry.ShortcutPath) { UseShellExecute = true });
@@ -205,7 +214,7 @@ public sealed class AppCatalogService
     public static bool CanRunAsAdministrator(AppEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        if (entry.IsPackagedApp || entry.IsDirectory) return false;
+        if (entry.IsPackagedApp || entry.IsDirectory || entry.IsShellNamespace) return false;
         var extension = Path.GetExtension(entry.ShortcutPath);
         return string.Equals(extension, ".lnk", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".exe", StringComparison.OrdinalIgnoreCase);
@@ -214,7 +223,7 @@ public sealed class AppCatalogService
     public static bool CanOpenFileLocation(AppEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        return !entry.IsPackagedApp && !entry.IsDirectory
+        return !entry.IsPackagedApp && !entry.IsDirectory && !entry.IsShellNamespace
             && (string.Equals(Path.GetExtension(entry.ShortcutPath), ".lnk", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(Path.GetExtension(entry.ShortcutPath), ".exe", StringComparison.OrdinalIgnoreCase))
             && File.Exists(entry.ShortcutPath);

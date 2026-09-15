@@ -773,14 +773,15 @@ public partial class DesktopHostWindow : Window
         var singleFilesystemItem = selected is not null
             && !selected.IsShellNamespace
             && TaskbarPinCatalog.IsSupportedTarget(selected.FullPath, selected.IsDirectory);
+        var singleStartPinTarget = singleFilesystemItem || (selected is not null && TaskbarPinCatalog.IsSupportedShellNamespaceTarget(selected.FullPath));
         var singleTaskbarPinTarget = selected is not null &&
             (singleFilesystemItem || TaskbarPinCatalog.IsSupportedShellNamespaceTarget(selected.FullPath));
         var pinStartItem = contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "PinStartDesktopItemMenuItem");
         var pinTaskbarItem = contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "PinTaskbarDesktopItemMenuItem");
         if (pinStartItem is not null)
         {
-            pinStartItem.Visibility = singleFilesystemItem && _pinStartItem is not null ? Visibility.Visible : Visibility.Collapsed;
-            pinStartItem.IsEnabled = singleFilesystemItem && _pinStartItem is not null && _isStartItemPinned?.Invoke(selected!.FullPath) != true;
+            pinStartItem.Visibility = singleStartPinTarget && _pinStartItem is not null ? Visibility.Visible : Visibility.Collapsed;
+            pinStartItem.IsEnabled = singleStartPinTarget && _pinStartItem is not null && _isStartItemPinned?.Invoke(selected!.FullPath) != true;
         }
         if (pinTaskbarItem is not null)
         {

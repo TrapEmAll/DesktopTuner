@@ -34,11 +34,19 @@ public static class StartPinCatalog
     public static IReadOnlyList<AppEntry> Pin(IEnumerable<AppEntry>? current, AppEntry app)
     {
         ArgumentNullException.ThrowIfNull(app);
-        if (!IsSupported(app)) throw new ArgumentException("Only Start menu shortcuts and packaged Windows apps can be pinned.", nameof(app));
+        if (!IsSupported(app)) throw new ArgumentException("Only Start menu shortcuts, packaged Windows apps, and Shell locations can be pinned.", nameof(app));
         var pins = Normalize(current);
         if (pins.Any(pin => string.Equals(pin.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase)) || pins.Count >= MaximumPins)
             return pins;
         return [.. pins, app];
+    }
+
+    public static IReadOnlyList<AppEntry> AddShellNamespace(IEnumerable<AppEntry>? current, string name, string parsingName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(parsingName);
+        if (!TaskbarPinCatalog.IsSupportedShellNamespaceTarget(parsingName)) return Normalize(current);
+        return Pin(current, new AppEntry(name.Trim(), parsingName.Trim(), IsShellNamespace: true, IsDirectory: true));
     }
 
     public static IReadOnlyList<AppEntry> AddDroppedFiles(IEnumerable<AppEntry>? current, IEnumerable<string> paths)
@@ -154,7 +162,9 @@ public static class StartPinCatalog
     public static bool IsSupported(AppEntry? app) => app is not null &&
         !string.IsNullOrWhiteSpace(app.Name) &&
         !string.IsNullOrWhiteSpace(app.ShortcutPath) &&
-        (app.IsDirectory
+        (app.IsShellNamespace
+            ? TaskbarPinCatalog.IsSupportedShellNamespaceTarget(app.ShortcutPath)
+            : app.IsDirectory
             ? !app.IsPackagedApp && Path.IsPathFullyQualified(app.ShortcutPath)
             : app.IsPackagedApp
             ? app.ShortcutPath.Contains('!')

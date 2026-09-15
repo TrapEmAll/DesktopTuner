@@ -2144,6 +2144,12 @@ public partial class MainWindow : Window
 
     private bool TryPinStartItem(string path)
     {
+        if (DesktopShellNamespaceCatalog.IsShellNamespaceLocation(path))
+        {
+            var updatedShellPins = StartPinCatalog.AddShellNamespace(_pinnedStartApps, DesktopShellNamespaceCatalog.GetFriendlyName(path), path);
+            if (updatedShellPins.Count == _pinnedStartApps.Count) return false;
+            return SavePinnedStartApps(updatedShellPins);
+        }
         if (TaskbarPinCatalog.IsSupportedPackagedTarget(path))
         {
             var taskbarPin = _pinnedApps.FirstOrDefault(pin => string.Equals(pin.ExecutablePath, path, StringComparison.OrdinalIgnoreCase));

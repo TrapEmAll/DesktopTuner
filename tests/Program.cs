@@ -898,6 +898,11 @@ Check("?", StartMenuIdentityService.GetInitials("  "), "provide a safe avatar fa
 var startPins = StartPinCatalog.Pin([], new AppEntry("Editor", @"C:\Apps\Editor.lnk", CategoryPath: "Tools"));
 Check("Editor", startPins.Single().Name, "pin a Start menu shortcut to the Start favorites list");
 Check(1, StartPinCatalog.Pin(startPins, new AppEntry("Editor", @"c:\apps\editor.LNK")).Count, "avoid duplicate Start pins regardless of path casing");
+var shellStartPin = StartPinCatalog.AddShellNamespace(startPins, "This PC", "shell:MyComputerFolder");
+Check(true, shellStartPin.Single(pin => pin.IsShellNamespace).IsDirectory, "treat a Shell namespace Start pin as a navigable location");
+Check(true, StartPinCatalog.IsSupported(new AppEntry("Recycle Bin", "shell:RecycleBinFolder", IsDirectory: true, IsShellNamespace: true)), "accept supported Shell namespace locations as Start pins");
+Check(false, new AppEntry("Recycle Bin", "shell:RecycleBinFolder", IsDirectory: true, IsShellNamespace: true).CanRunElevated, "disable elevation for Shell namespace Start pins");
+Check(false, new AppEntry("Recycle Bin", "shell:RecycleBinFolder", IsDirectory: true, IsShellNamespace: true).CanOpenFileLocation, "disable file locations for Shell namespace Start pins");
 var recentHistoryPath = Path.Combine(Path.GetTempPath(), $"desktop-tuner-recent-start-{Guid.NewGuid():N}.json");
 try
 {
@@ -2178,11 +2183,15 @@ Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentRe
     Check(string.Join(',', savedStartPlaces.Visible!), string.Join(',', loadedPreferences.StartMenuPlaces.Visible!), "persist custom Start system-place visibility");
     Check(string.Join(',', savedControlPanelApplets.Order!), string.Join(',', loadedPreferences.ControlPanelApplets!.Order!), "persist custom Control Panel applet order");
     Check(string.Join(',', savedControlPanelApplets.Visible!), string.Join(',', loadedPreferences.ControlPanelApplets.Visible!), "persist custom Control Panel applet visibility");
-    preferencesStore.Save(expectedPreferences with { PinnedApps = [new PinnedTaskbarApp("This PC", "shell:MyComputerFolder", IsShellNamespace: true)] });
-    var loadedShellPin = preferencesStore.Load().PinnedApps!.Single();
-    Check(true, loadedShellPin.IsShellNamespace, "persist Shell namespace taskbar pin identity");
-    Check("shell:MyComputerFolder", loadedShellPin.ExecutablePath, "persist Shell namespace taskbar pin parsing name");
-    preferencesStore.Save(expectedPreferences);
+preferencesStore.Save(expectedPreferences with { PinnedApps = [new PinnedTaskbarApp("This PC", "shell:MyComputerFolder", IsShellNamespace: true)] });
+var loadedShellPin = preferencesStore.Load().PinnedApps!.Single();
+Check(true, loadedShellPin.IsShellNamespace, "persist Shell namespace taskbar pin identity");
+Check("shell:MyComputerFolder", loadedShellPin.ExecutablePath, "persist Shell namespace taskbar pin parsing name");
+preferencesStore.Save(expectedPreferences with { PinnedStartApps = [new AppEntry("This PC", "shell:MyComputerFolder", IsDirectory: true, IsShellNamespace: true)] });
+var loadedShellStartPin = preferencesStore.Load().PinnedStartApps!.Single();
+Check(true, loadedShellStartPin.IsShellNamespace, "persist Shell namespace Start pin identity");
+Check("shell:MyComputerFolder", loadedShellStartPin.ShortcutPath, "persist Shell namespace Start pin parsing name");
+preferencesStore.Save(expectedPreferences);
     Check(8, loadedPreferences.StartRecentAppCount, "persist the configured Start recent-app count");
     Check(false, loadedPreferences.TaskbarSystemButtons!.IsVisible(TaskbarSystemButton.Emoji), "persist hidden taskbar emoji button");
     Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.Microphone), "persist hidden taskbar microphone button");

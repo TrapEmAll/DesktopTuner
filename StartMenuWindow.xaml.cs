@@ -769,7 +769,7 @@ public partial class StartMenuWindow : Window
         var openFolderItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open folder"));
         var openFileLocationItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open file location"));
         if (openFolderItem is not null) openFolderItem.Visibility = app.IsDirectory ? Visibility.Visible : Visibility.Collapsed;
-        if (openFileLocationItem is not null) openFileLocationItem.Visibility = app.IsDirectory ? Visibility.Collapsed : Visibility.Visible;
+        if (openFileLocationItem is not null) openFileLocationItem.Visibility = app.IsDirectory || app.IsShellNamespace ? Visibility.Collapsed : Visibility.Visible;
         var tileSizeMenu = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Tile size"));
         var tileLayout = _style is StartMenuStyle.Windows8 or StartMenuStyle.Windows10;
         if (tileSizeMenu is not null)
