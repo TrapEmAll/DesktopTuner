@@ -723,6 +723,16 @@ CheckTrue(launchableGroup.CanOpenLocation, "enable file-location navigation for 
 CheckTrue(!new TaskbarWindowGroup("No PID", "No PID", [new RunningWindow((nint)8, "No PID", "No PID", string.Empty, false)]).CanEndTask, "disable End task when a window process is unavailable");
 CheckTrue(new TaskbarWindowGroup("With PID", "With PID", [new RunningWindow((nint)9, "With PID", "With PID", string.Empty, false) { ProcessId = 42 }]).CanEndTask, "enable End task when a window process is known");
 var editorPin = new PinnedTaskbarApp("Editor", @"C:\Apps\editor.exe");
+var shellPin = new PinnedTaskbarApp("This PC", "shell:MyComputerFolder", IsShellNamespace: true);
+CheckTrue(TaskbarPinCatalog.IsSupportedShellNamespaceTarget(shellPin.ExecutablePath), "accept supported Shell namespace locations as taskbar pin targets");
+Check(false, shellPin.CanRunElevated, "disable elevation for Shell namespace taskbar pins");
+Check(false, shellPin.CanOpenLocation, "disable file-location navigation for Shell namespace taskbar pins");
+Check("explorer.exe", TaskbarPinCatalog.BuildLaunchInfo(shellPin).FileName, "launch Shell namespace taskbar pins through Explorer");
+Check("shell:MyComputerFolder", TaskbarPinCatalog.BuildLaunchInfo(shellPin).ArgumentList.Single(), "preserve the Shell parsing name when launching a taskbar pin");
+var shellPins = TaskbarPinCatalog.AddShellNamespace([], "This PC", "shell:MyComputerFolder");
+Check(true, shellPins.Single().IsShellNamespace, "persist the Shell namespace identity on a taskbar pin");
+Check(1, TaskbarPinCatalog.AddShellNamespace(shellPins, "This PC", "shell:MyComputerFolder").Count, "avoid duplicate Shell namespace taskbar pins");
+Check("This PC", DesktopShellNamespaceCatalog.GetFriendlyName("shell:MyComputerFolder"), "label the This PC Shell namespace pin");
 CheckTrue(TaskbarWindowGrouping.MatchesPinnedApp(editorPin, runningWindows[1]), "match a running window to its pinned app without case-sensitive path differences");
 Check((nint)1, TaskbarWindowGrouping.SelectPinnedRepresentative(editorPin, [runningWindows[1], runningWindows[0]])!.Handle, "prefer the foreground matching window for a pinned taskbar button");
 Check((nint)2, TaskbarWindowGrouping.SelectLastActivePinnedWindow(editorPin, runningWindows, [(nint)3, (nint)2, (nint)1])!.Handle, "select the most recently active matching window for Win+Ctrl+number");
@@ -2168,6 +2178,11 @@ Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentRe
     Check(string.Join(',', savedStartPlaces.Visible!), string.Join(',', loadedPreferences.StartMenuPlaces.Visible!), "persist custom Start system-place visibility");
     Check(string.Join(',', savedControlPanelApplets.Order!), string.Join(',', loadedPreferences.ControlPanelApplets!.Order!), "persist custom Control Panel applet order");
     Check(string.Join(',', savedControlPanelApplets.Visible!), string.Join(',', loadedPreferences.ControlPanelApplets.Visible!), "persist custom Control Panel applet visibility");
+    preferencesStore.Save(expectedPreferences with { PinnedApps = [new PinnedTaskbarApp("This PC", "shell:MyComputerFolder", IsShellNamespace: true)] });
+    var loadedShellPin = preferencesStore.Load().PinnedApps!.Single();
+    Check(true, loadedShellPin.IsShellNamespace, "persist Shell namespace taskbar pin identity");
+    Check("shell:MyComputerFolder", loadedShellPin.ExecutablePath, "persist Shell namespace taskbar pin parsing name");
+    preferencesStore.Save(expectedPreferences);
     Check(8, loadedPreferences.StartRecentAppCount, "persist the configured Start recent-app count");
     Check(false, loadedPreferences.TaskbarSystemButtons!.IsVisible(TaskbarSystemButton.Emoji), "persist hidden taskbar emoji button");
     Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.Microphone), "persist hidden taskbar microphone button");

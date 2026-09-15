@@ -1165,7 +1165,8 @@ public partial class TaskbarWindow : Window
             TaskbarWindowGroup group => group.Windows.FirstOrDefault()?.ExecutablePath,
             _ => null
         };
-        if (!string.IsNullOrWhiteSpace(path)) _pinStartItem(path);
+        if (item.Tag is PinnedTaskbarApp { CanPinToStart: false } || string.IsNullOrWhiteSpace(path)) return;
+        _pinStartItem(path);
     }
 
     private void OpenPinnedLocation_Click(object sender, RoutedEventArgs e)
@@ -1327,7 +1328,10 @@ public partial class TaskbarWindow : Window
             FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal,
             ToolTip = isActive ? $"{header} (active)" : header
         };
-        if (TaskbarIconService.LoadIcon(iconPath ?? string.Empty) is { } icon)
+        var icon = tag is PinnedTaskbarApp { IsShellNamespace: true }
+            ? TaskbarIconService.LoadNamespaceIcon(iconPath ?? string.Empty)
+            : TaskbarIconService.LoadIcon(iconPath ?? string.Empty);
+        if (icon is not null)
             item.Icon = new Image { Source = icon, Width = 18, Height = 18 };
         item.Click += OverflowItem_Click;
         return item;
@@ -1622,6 +1626,17 @@ public partial class TaskbarWindow : Window
 
     private void LaunchPinnedApp(PinnedTaskbarApp app, bool runAsAdministrator = false)
     {
+        if (app.IsShellNamespace)
+        {
+            if (runAsAdministrator)
+            {
+                MessageBox.Show(this, "Windows Shell locations cannot be started with administrator privileges.", "Could not run pinned location as administrator", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            try { Process.Start(TaskbarPinCatalog.BuildLaunchInfo(app)); }
+            catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not launch pinned Shell location", MessageBoxButton.OK, MessageBoxImage.Error); }
+            return;
+        }
         var isDirectory = app.IsDirectory || Directory.Exists(app.ExecutablePath);
         if (runAsAdministrator)
         {

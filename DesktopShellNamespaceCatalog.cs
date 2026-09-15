@@ -62,6 +62,21 @@ public sealed record DesktopShellNamespaceSearchResult(
 
 public static class DesktopShellNamespaceCatalog
 {
+    public static string GetFriendlyName(string parsingName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(parsingName);
+        var value = parsingName.Trim();
+        return value.ToLowerInvariant() switch
+        {
+            "shell:mycomputerfolder" => "This PC",
+            "shell:recyclebinfolder" => "Recycle Bin",
+            "shell:networkplacesfolder" => "Network",
+            "shell:controlpanelfolder" => "Control Panel",
+            var normalized when normalized.StartsWith("shell:", StringComparison.Ordinal) => value[6..],
+            _ => value
+        };
+    }
+
     public static bool IsShellNamespaceLocation(string? parsingName)
     {
         if (string.IsNullOrWhiteSpace(parsingName)) return false;

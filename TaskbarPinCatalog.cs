@@ -12,10 +12,10 @@ public static class TaskbarPinCatalog
         "ShellExperienceHost.exe", "explorer.exe"
     };
 
-    public static bool CanRunAsAdministrator(string name, string executablePath, bool isDirectory = false)
+    public static bool CanRunAsAdministrator(string name, string executablePath, bool isDirectory = false, bool isShellNamespace = false)
     {
         ArgumentNullException.ThrowIfNull(executablePath);
-        if (IsSupportedPackagedTarget(executablePath)) return false;
+        if (isShellNamespace || IsSupportedPackagedTarget(executablePath)) return false;
         return !isDirectory && !NonLaunchableShellHosts.Contains(Path.GetFileName(executablePath))
             && AppCatalogService.CanRunAsAdministrator(new AppEntry(name, executablePath));
     }
@@ -23,7 +23,7 @@ public static class TaskbarPinCatalog
     public static bool CanOpenLocation(PinnedTaskbarApp app)
     {
         ArgumentNullException.ThrowIfNull(app);
-        if (app.IsPackagedApp) return false;
+        if (app.IsPackagedApp || app.IsShellNamespace) return false;
         return app.IsDirectory
             ? Directory.Exists(app.ExecutablePath)
             : AppCatalogService.CanOpenFileLocation(new AppEntry(app.Name, app.ExecutablePath));
@@ -43,6 +43,14 @@ public static class TaskbarPinCatalog
     public static ProcessStartInfo BuildLaunchInfo(PinnedTaskbarApp app)
     {
         ArgumentNullException.ThrowIfNull(app);
+        if (app.IsShellNamespace)
+        {
+            if (!IsSupportedShellNamespaceTarget(app.ExecutablePath))
+                throw new NotSupportedException("This taskbar pin does not identify a Windows Shell location.");
+            var startInfo = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+            startInfo.ArgumentList.Add(app.ExecutablePath);
+            return startInfo;
+        }
         if (app.IsPackagedApp)
         {
             if (!IsSupportedPackagedTarget(app.ExecutablePath))
@@ -66,6 +74,9 @@ public static class TaskbarPinCatalog
     public static bool IsSupportedTarget(string itemPath, bool isDirectory = false) =>
         Path.IsPathFullyQualified(itemPath) && (isDirectory || IsLaunchableExtension(Path.GetExtension(itemPath)));
 
+    public static bool IsSupportedShellNamespaceTarget(string parsingName) =>
+        DesktopShellNamespaceCatalog.IsShellNamespaceLocation(parsingName);
+
     public static bool IsSupportedPackagedTarget(string applicationId) =>
         !string.IsNullOrWhiteSpace(applicationId) && applicationId.Contains('!', StringComparison.Ordinal);
 
@@ -77,6 +88,17 @@ public static class TaskbarPinCatalog
             pins.Count >= MaximumPins)
             return pins;
         pins.Add(new PinnedTaskbarApp(name, applicationId, IsPackagedApp: true));
+        return pins;
+    }
+
+    public static List<PinnedTaskbarApp> AddShellNamespace(IEnumerable<PinnedTaskbarApp> current, string name, string parsingName)
+    {
+        var pins = current.ToList();
+        if (string.IsNullOrWhiteSpace(name) || !IsSupportedShellNamespaceTarget(parsingName) ||
+            pins.Any(app => string.Equals(app.ExecutablePath, parsingName, StringComparison.OrdinalIgnoreCase)) ||
+            pins.Count >= MaximumPins)
+            return pins;
+        pins.Add(new PinnedTaskbarApp(name.Trim(), parsingName.Trim(), IsShellNamespace: true));
         return pins;
     }
 

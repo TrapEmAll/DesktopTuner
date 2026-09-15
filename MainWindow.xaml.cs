@@ -2110,6 +2110,14 @@ public partial class MainWindow : Window
     private bool TryPinTaskbarItem(string path)
     {
         var currentPins = _pinnedApps;
+        if (DesktopShellNamespaceCatalog.IsShellNamespaceLocation(path))
+        {
+            var updatedShellPins = TaskbarPinCatalog.AddShellNamespace(currentPins, DesktopShellNamespaceCatalog.GetFriendlyName(path), path);
+            if (updatedShellPins.Count == currentPins.Count) return false;
+            _pinnedApps = updatedShellPins;
+            SaveDesktopPreferences();
+            return true;
+        }
         var updatedPins = TaskbarPinCatalog.AddDroppedFiles(currentPins, [path], Directory.Exists);
         if (updatedPins.Count == currentPins.Count)
             return false;

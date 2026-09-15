@@ -23,8 +23,11 @@ public sealed record TaskbarButtonViewModel(string Label, string ToolTip, ImageS
     private static TaskbarButtonViewModel Create(string label, string toolTip, object target, DesktopPreferences preferences, bool vertical, string? iconPath = null, bool isRunning = false, bool isActive = false, bool? showLabels = null)
     {
         var resolvedIconPath = iconPath ?? (target as PinnedTaskbarApp)?.ExecutablePath ?? string.Empty;
-        var icon = TaskbarIconService.LoadIcon(resolvedIconPath);
-        var auraColor = TaskbarIconService.GetPrimaryColor(resolvedIconPath) ?? TaskbarTheme.ReadAccentColor();
+        var isShellNamespace = target is PinnedTaskbarApp { IsShellNamespace: true };
+        var icon = isShellNamespace ? TaskbarIconService.LoadNamespaceIcon(resolvedIconPath) : TaskbarIconService.LoadIcon(resolvedIconPath);
+        var auraColor = isShellNamespace
+            ? TaskbarAuraColorPolicy.ResolvePrimaryColor(icon) ?? TaskbarTheme.ReadAccentColor()
+            : TaskbarIconService.GetPrimaryColor(resolvedIconPath) ?? TaskbarTheme.ReadAccentColor();
         var auraBrush = TaskbarAuraColorPolicy.CreateBrush(auraColor);
         var auraSolidBrush = new SolidColorBrush(auraColor);
         var auraEnabled = preferences.TaskbarButtonEffect != TaskbarButtonEffect.Accent;

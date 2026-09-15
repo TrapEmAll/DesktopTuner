@@ -773,6 +773,8 @@ public partial class DesktopHostWindow : Window
         var singleFilesystemItem = selected is not null
             && !selected.IsShellNamespace
             && TaskbarPinCatalog.IsSupportedTarget(selected.FullPath, selected.IsDirectory);
+        var singleTaskbarPinTarget = selected is not null &&
+            (singleFilesystemItem || TaskbarPinCatalog.IsSupportedShellNamespaceTarget(selected.FullPath));
         var pinStartItem = contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "PinStartDesktopItemMenuItem");
         var pinTaskbarItem = contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "PinTaskbarDesktopItemMenuItem");
         if (pinStartItem is not null)
@@ -782,8 +784,8 @@ public partial class DesktopHostWindow : Window
         }
         if (pinTaskbarItem is not null)
         {
-            pinTaskbarItem.Visibility = singleFilesystemItem && _pinTaskbarItem is not null ? Visibility.Visible : Visibility.Collapsed;
-            pinTaskbarItem.IsEnabled = singleFilesystemItem && _pinTaskbarItem is not null && _isTaskbarItemPinned?.Invoke(selected!.FullPath) != true;
+            pinTaskbarItem.Visibility = singleTaskbarPinTarget && _pinTaskbarItem is not null ? Visibility.Visible : Visibility.Collapsed;
+            pinTaskbarItem.IsEnabled = singleTaskbarPinTarget && _pinTaskbarItem is not null && _isTaskbarItemPinned?.Invoke(selected!.FullPath) != true;
         }
     }
 
