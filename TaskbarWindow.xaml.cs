@@ -1719,6 +1719,18 @@ public partial class TaskbarWindow : Window
 
     private void Clock_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenNotificationCenter();
 
+    private void DateTimeSettings_Click(object sender, RoutedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo("ms-settings:dateandtime") { UseShellExecute = true }); }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open date and time settings", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void NotificationSettings_Click(object sender, RoutedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo("ms-settings:notifications") { UseShellExecute = true }); }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open notification settings", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
     private void Weather_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWidgets();
 
     private void Search_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWindowsSearch();

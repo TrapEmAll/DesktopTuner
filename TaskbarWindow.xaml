@@ -300,6 +300,13 @@
                             <TextBlock x:Name="DateText" FontSize="9" Foreground="{DynamicResource TaskbarDateTextBrush}" HorizontalAlignment="Center" />
                         </StackPanel>
                     </Border>
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Open notifications and calendar" Click="Clock_Click" />
+                            <MenuItem Header="Date and time settings" Click="DateTimeSettings_Click" />
+                            <MenuItem Header="Notification settings" Click="NotificationSettings_Click" />
+                        </ContextMenu>
+                    </Button.ContextMenu>
                 </Button>
                 <Button x:Name="CloseBarButton" Content="×" Style="{StaticResource TaskButton}" Click="CloseBar_Click" FontSize="16" ToolTip="Close this taskbar" />
                 </StackPanel>
