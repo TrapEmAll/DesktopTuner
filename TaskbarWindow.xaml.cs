@@ -1805,6 +1805,8 @@ public partial class TaskbarWindow : Window
         }
     }
 
+    private void ShowDesktopMenuItem_Click(object sender, RoutedEventArgs e) => _showDesktop();
+
     private void LockTaskbarMenuItem_Click(object sender, RoutedEventArgs e)
     {
         _persistPreferences(_preferences with { TaskbarLocked = LockTaskbarMenuItem.IsChecked });
