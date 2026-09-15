@@ -99,19 +99,25 @@ public partial class App : Application
                     System.Diagnostics.Trace.TraceWarning($"Recovered {recoveredOverlayTaskbars} orphaned Windows taskbar visibility snapshot(s) before starting shell overlay mode.");
             }
 
-            var desktopHost = new DesktopHostWindow(
-                routeFoldersToCompanionExplorer: ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(shellHostMode));
-            MainWindow = desktopHost;
-            desktopHost.Show();
+            MainWindow? shellControls = null;
             if (shellHostMode || shellOverlayMode)
             {
-                var shellControls = new MainWindow(
+                shellControls = new MainWindow(
                     shellHostMode: shellHostMode,
                     shellOverlayMode: shellOverlayMode)
                 { ShowInTaskbar = false };
-                shellControls.Show();
                 shellControls.Hide();
             }
+            var desktopHost = new DesktopHostWindow(
+                routeFoldersToCompanionExplorer: ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(shellHostMode),
+                pinTaskbarItem: shellControls is null ? null : new Func<string, bool>(shellControls.TryPinTaskbarItemFromShell),
+                isTaskbarItemPinned: shellControls is null ? null : new Func<string, bool>(shellControls.IsTaskbarItemPinnedFromShell),
+                pinStartItem: shellControls is null ? null : new Func<string, bool>(shellControls.TryPinStartItemFromShell),
+                isStartItemPinned: shellControls is null ? null : new Func<string, bool>(shellControls.IsStartItemPinnedFromShell));
+            MainWindow = desktopHost;
+            desktopHost.Show();
+            shellControls?.Show();
+            shellControls?.Hide();
             return;
         }
 

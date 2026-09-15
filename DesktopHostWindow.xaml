@@ -46,6 +46,8 @@
                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
                                          Opened="OnItemContextMenuOpened">
                                 <MenuItem x:Name="OpenDesktopItemMenuItem" Header="Open" Click="OnOpenItemClick"/>
+                                <MenuItem x:Name="PinStartDesktopItemMenuItem" Header="Pin to Start" Click="OnPinStartItemClick"/>
+                                <MenuItem x:Name="PinTaskbarDesktopItemMenuItem" Header="Pin to taskbar" Click="OnPinTaskbarItemClick"/>
                                 <MenuItem Header="Cut" InputGestureText="Ctrl+X" IsEnabled="{Binding CanShowNativeContextMenu}"
                                           Click="OnCutDesktopItemsClick"/>
                                 <MenuItem Header="Copy" InputGestureText="Ctrl+C" IsEnabled="{Binding CanShowNativeContextMenu}"

@@ -24,6 +24,10 @@ public partial class DesktopHostWindow : Window
     private readonly string _publicDesktop = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
     private readonly DesktopHostLayoutStore _layoutStore = new();
     private readonly bool _routeFoldersToCompanionExplorer;
+    private readonly Func<string, bool>? _pinTaskbarItem;
+    private readonly Func<string, bool>? _isTaskbarItemPinned;
+    private readonly Func<string, bool>? _pinStartItem;
+    private readonly Func<string, bool>? _isStartItemPinned;
     private readonly ObservableCollection<DesktopHostItem> _desktopItems = [];
     private readonly List<FileSystemWatcher> _desktopWatchers = [];
     private readonly HashSet<string> _cutParsingNames = new(StringComparer.OrdinalIgnoreCase);
@@ -50,9 +54,13 @@ public partial class DesktopHostWindow : Window
     private HashSet<string> _marqueeSelectionBefore = new(StringComparer.OrdinalIgnoreCase);
     private string? _marqueeAnchorBefore;
 
-    public DesktopHostWindow(bool routeFoldersToCompanionExplorer = false)
+    public DesktopHostWindow(bool routeFoldersToCompanionExplorer = false, Func<string, bool>? pinTaskbarItem = null, Func<string, bool>? isTaskbarItemPinned = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? isStartItemPinned = null)
     {
         _routeFoldersToCompanionExplorer = routeFoldersToCompanionExplorer;
+        _pinTaskbarItem = pinTaskbarItem;
+        _isTaskbarItemPinned = isTaskbarItemPinned;
+        _pinStartItem = pinStartItem;
+        _isStartItemPinned = isStartItemPinned;
         InitializeComponent();
         Resources["DesktopHostTextShadow"] = new DropShadowEffect { Color = System.Windows.Media.Colors.Black, BlurRadius = 3, ShadowDepth = 1, Opacity = 0.9 };
         _refreshTimer.Tick += OnRefreshTimerTick;
@@ -760,6 +768,37 @@ public partial class DesktopHostWindow : Window
         ApplySelection(selection.Paths, selection.AnchorPath);
         if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "OpenDesktopItemMenuItem") is { } openItem)
             openItem.IsEnabled = _desktopItems.Count(candidate => candidate.IsSelected) == 1;
+        var selectedItems = _desktopItems.Where(candidate => candidate.IsSelected).ToArray();
+        var selected = selectedItems.Length == 1 ? selectedItems[0] : null;
+        var singleFilesystemItem = selected is not null
+            && !selected.IsShellNamespace
+            && TaskbarPinCatalog.IsSupportedTarget(selected.FullPath, selected.IsDirectory);
+        var pinStartItem = contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "PinStartDesktopItemMenuItem");
+        var pinTaskbarItem = contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "PinTaskbarDesktopItemMenuItem");
+        if (pinStartItem is not null)
+        {
+            pinStartItem.Visibility = singleFilesystemItem && _pinStartItem is not null ? Visibility.Visible : Visibility.Collapsed;
+            pinStartItem.IsEnabled = singleFilesystemItem && _pinStartItem is not null && _isStartItemPinned?.Invoke(selected!.FullPath) != true;
+        }
+        if (pinTaskbarItem is not null)
+        {
+            pinTaskbarItem.Visibility = singleFilesystemItem && _pinTaskbarItem is not null ? Visibility.Visible : Visibility.Collapsed;
+            pinTaskbarItem.IsEnabled = singleFilesystemItem && _pinTaskbarItem is not null && _isTaskbarItemPinned?.Invoke(selected!.FullPath) != true;
+        }
+    }
+
+    private void OnPinStartItemClick(object sender, RoutedEventArgs e)
+    {
+        var item = _desktopItems.SingleOrDefault(candidate => candidate.IsSelected);
+        if (item is not null && _pinStartItem?.Invoke(item.FullPath) == true)
+            item.IsSelected = true;
+    }
+
+    private void OnPinTaskbarItemClick(object sender, RoutedEventArgs e)
+    {
+        var item = _desktopItems.SingleOrDefault(candidate => candidate.IsSelected);
+        if (item is not null && _pinTaskbarItem?.Invoke(item.FullPath) == true)
+            item.IsSelected = true;
     }
 
     private async void OnCutDesktopItemsClick(object sender, RoutedEventArgs e) => await CopySelectedDesktopItemsAsync(cut: true);

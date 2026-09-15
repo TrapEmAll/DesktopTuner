@@ -2001,6 +2001,9 @@ public partial class MainWindow : Window
         return true;
     }
 
+    public bool TryPinTaskbarItemFromShell(string path) => TryPinTaskbarItem(path);
+    public bool IsTaskbarItemPinnedFromShell(string path) => _pinnedApps.Any(pin => string.Equals(pin.ExecutablePath, path, StringComparison.OrdinalIgnoreCase));
+
     private bool TryPinStartItem(string path)
     {
         var updatedPins = StartPinCatalog.AddDroppedFiles(_pinnedStartApps, [path]);
@@ -2009,6 +2012,9 @@ public partial class MainWindow : Window
 
         return SavePinnedStartApps(updatedPins);
     }
+
+    public bool TryPinStartItemFromShell(string path) => TryPinStartItem(path);
+    public bool IsStartItemPinnedFromShell(string path) => _pinnedStartApps.Any(pin => string.Equals(pin.ShortcutPath, path, StringComparison.OrdinalIgnoreCase));
 
     private bool TryOpenLocationInCompanionExplorer(string location)
     {
