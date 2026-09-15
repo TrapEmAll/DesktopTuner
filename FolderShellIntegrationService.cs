@@ -170,24 +170,40 @@ public static class FolderShellIntegrationService
             (Path: FolderShellPath, HadPrevious: HadPreviousFolderDefaultValue, Previous: PreviousFolderDefaultValue),
             (Path: DriveShellPath, HadPrevious: HadPreviousDriveDefaultValue, Previous: PreviousDriveDefaultValue)
         };
+        var restoredAny = false;
+        var ownershipMismatch = false;
         foreach (var target in targets)
         {
             if (state.GetValue(target.HadPrevious) is null) continue;
             using var shell = Registry.CurrentUser.OpenSubKey(target.Path, writable: true);
-            if (shell is null) return false;
+            if (shell is null)
+            {
+                ownershipMismatch = true;
+                continue;
+            }
             var current = shell.GetValue(null) as string;
             if (!string.Equals(current, DefaultVerb, StringComparison.OrdinalIgnoreCase))
             {
-                Registry.CurrentUser.DeleteSubKeyTree(AssociationStatePath, throwOnMissingSubKey: false);
-                return false;
+                var previousValue = state.GetValue(target.Previous) as string;
+                var alreadyRestored = string.IsNullOrEmpty(previousValue)
+                    ? string.IsNullOrEmpty(current)
+                    : string.Equals(current, previousValue, StringComparison.OrdinalIgnoreCase);
+                if (!alreadyRestored) ownershipMismatch = true;
+                continue;
             }
 
             var previous = state.GetValue(target.Previous) as string;
             if (!string.IsNullOrEmpty(previous)) shell.SetValue(null, previous, RegistryValueKind.String);
             else shell.DeleteValue(string.Empty, throwOnMissingValue: false);
+            restoredAny = true;
+        }
+        if (ownershipMismatch)
+        {
+            if (restoredAny) SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
+            return false;
         }
         Registry.CurrentUser.DeleteSubKeyTree(AssociationStatePath, throwOnMissingSubKey: false);
-        SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
+        if (restoredAny) SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
         return true;
     }
 
