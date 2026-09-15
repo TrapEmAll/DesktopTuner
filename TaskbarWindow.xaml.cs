@@ -42,6 +42,7 @@ public partial class TaskbarWindow : Window
     private readonly Action<string>? _openDirectoryInCompanionExplorer;
     private readonly Func<string, bool>? _openShellLocationInCompanionExplorer;
     private readonly Action<string>? _openFileLocationInCompanionExplorer;
+    private readonly Func<string, bool>? _pinStartItem;
     private DesktopPreferences _preferences = new(TaskbarEdge.Bottom);
     private TaskbarEdge _edge;
     private TaskbarSize _size;
@@ -73,7 +74,7 @@ public partial class TaskbarWindow : Window
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Action<string>? openDirectoryInCompanionExplorer = null, Action<string>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Action<string>? openDirectoryInCompanionExplorer = null, Action<string>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? pinStartItem = null)
     {
         InitializeComponent();
         _isDark = TaskbarTheme.ReadSystemDarkMode();
@@ -92,6 +93,7 @@ public partial class TaskbarWindow : Window
         _openDirectoryInCompanionExplorer = openDirectoryInCompanionExplorer;
         _openShellLocationInCompanionExplorer = openShellLocationInCompanionExplorer;
         _openFileLocationInCompanionExplorer = openFileLocationInCompanionExplorer;
+        _pinStartItem = pinStartItem;
         _refreshTimer.Tick += (_, _) => RefreshWindows();
         _batteryRefreshTimer.Tick += (_, _) => UpdateBatteryStatus();
         _microphoneRefreshTimer.Tick += (_, _) => UpdateMicrophoneStatus();
@@ -1041,6 +1043,18 @@ public partial class TaskbarWindow : Window
         _preferences = _preferences with { PinnedApps = pins };
         _persistPreferences(_preferences);
         RefreshWindows();
+    }
+
+    private void PinTaskbarAppToStart_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pinStartItem is null || sender is not MenuItem item) return;
+        var path = item.Tag switch
+        {
+            PinnedTaskbarApp app => app.ExecutablePath,
+            TaskbarWindowGroup group => group.Windows.FirstOrDefault()?.ExecutablePath,
+            _ => null
+        };
+        if (!string.IsNullOrWhiteSpace(path)) _pinStartItem(path);
     }
 
     private void OpenPinnedLocation_Click(object sender, RoutedEventArgs e)

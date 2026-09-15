@@ -164,6 +164,7 @@
                                         <Separator />
                                         <MenuItem Header="Start new instance" Tag="{Binding}" Click="LaunchPinnedInstance_Click" />
                                         <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenLocation}" Click="OpenPinnedLocation_Click" />
+                                        <MenuItem Header="Pin to Start" Tag="{Binding}" Click="PinTaskbarAppToStart_Click" />
                                         <MenuItem Header="Start new elevated instance" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunPinnedAsAdministrator_Click" />
                                         <Separator />
                                         <MenuItem Header="Unpin from taskbar" Tag="{Binding}" Click="Unpin_Click" />
@@ -219,6 +220,7 @@
                                             <MenuItem Header="Loading..." IsEnabled="False" />
                                         </MenuItem>
                                         <MenuItem Header="Pin app to taskbar" Tag="{Binding}" Click="Pin_Click" />
+                                        <MenuItem Header="Pin to Start" Tag="{Binding}" Click="PinTaskbarAppToStart_Click" />
                                         <MenuItem Header="Start new elevated instance" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunWindowAsAdministrator_Click" />
                                         <MenuItem Header="Close Desktop Tuner bar" Click="CloseBar_Click" />
                                     </ContextMenu>
