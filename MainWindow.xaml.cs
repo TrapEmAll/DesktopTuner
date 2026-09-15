@@ -1979,10 +1979,24 @@ public partial class MainWindow : Window
             showHiddenItems: _currentValues["explorer-hidden"] == 1,
             hideFileExtensions: _currentValues["explorer-extensions"] == 1,
             startInThisPc: _currentValues["explorer-launch"] == 1,
-            showRecentItems: _currentValues["start-recent"] == 1)
+            showRecentItems: _currentValues["start-recent"] == 1,
+            pinTaskbarItem: TryPinTaskbarItem,
+            isTaskbarItemPinned: path => _pinnedApps.Any(pin => string.Equals(pin.ExecutablePath, path, StringComparison.OrdinalIgnoreCase)))
         { Owner = this };
         _explorerWindow.Closed += (_, _) => _explorerWindow = null;
         _explorerWindow.Show();
+    }
+
+    private bool TryPinTaskbarItem(string path)
+    {
+        var currentPins = _pinnedApps;
+        var updatedPins = TaskbarPinCatalog.AddDroppedFiles(currentPins, [path], Directory.Exists);
+        if (updatedPins.Count == currentPins.Count)
+            return false;
+
+        _pinnedApps = updatedPins;
+        SaveDesktopPreferences();
+        return true;
     }
 
     private bool TryOpenLocationInCompanionExplorer(string location)

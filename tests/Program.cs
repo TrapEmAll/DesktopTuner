@@ -639,6 +639,8 @@ var darkDesktopAccent = SystemAccentColorService.ResolveDesktopAccent(dark: true
 Check("#FF273141", darkDesktopAccent.Tint, "blend the Windows accent into the dark Start and Explorer surface tint");
 Check("#FF86A4C3", darkDesktopAccent.Text, "keep the Windows accent readable on the dark surface tint");
 var firstPin = TaskbarPinCatalog.Add([], "Editor", @"C:\Program Files\Editor\editor.exe");
+CheckTrue(TaskbarPinCatalog.IsSupportedTarget(@"C:\Apps\Folder", isDirectory: true), "allow folders as taskbar pin targets from Explorer");
+Check(false, TaskbarPinCatalog.IsSupportedTarget(@"C:\Apps\readme.txt"), "reject non-launchable Explorer files as taskbar pin targets");
 Check(1, firstPin.Count, "pin a running app executable");
 Check(1, TaskbarPinCatalog.Add(firstPin, "Editor", @"C:\Program Files\Editor\editor.exe").Count, "avoid duplicate pins");
 Check(1, TaskbarPinCatalog.Add(firstPin, "Script", @"C:\Tools\script.cmd").Count, "reject non-executable pin paths");

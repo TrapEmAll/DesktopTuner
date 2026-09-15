@@ -53,6 +53,8 @@ public partial class ExplorerWindow : Window
     private readonly ExplorerQuickAccessStore _quickAccessStore;
     private readonly ExplorerFolderViewStore _folderViewStore;
     private readonly ExplorerSessionStore _sessionStore;
+    private readonly Func<string, bool>? _pinTaskbarItem;
+    private readonly Func<string, bool>? _isTaskbarItemPinned;
     private ExplorerSortColumn _sortColumn
     {
         get => _tabs.Count == 0 ? ExplorerSortColumn.Name : _location.IsHome ? ActiveTab.HomeSortColumn : ActiveTab.SortColumn;
@@ -81,7 +83,7 @@ public partial class ExplorerWindow : Window
         SystemBackdropService.TryApplyMica(this);
     }
 
-    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null, ExplorerFolderViewStore? folderViewStore = null, ExplorerSessionStore? sessionStore = null, bool restoreSavedSession = true, bool saveSession = true, bool? openFoldersInNewTab = null)
+    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null, ExplorerFolderViewStore? folderViewStore = null, ExplorerSessionStore? sessionStore = null, bool restoreSavedSession = true, bool saveSession = true, bool? openFoldersInNewTab = null, Func<string, bool>? pinTaskbarItem = null, Func<string, bool>? isTaskbarItemPinned = null)
     {
         InitializeComponent();
         Loaded += (_, _) => _hasCompletedInitialLayout = true;
@@ -93,6 +95,8 @@ public partial class ExplorerWindow : Window
         _quickAccessStore = quickAccessStore ?? new ExplorerQuickAccessStore();
         _folderViewStore = folderViewStore ?? new ExplorerFolderViewStore();
         _sessionStore = sessionStore ?? new ExplorerSessionStore();
+        _pinTaskbarItem = pinTaskbarItem;
+        _isTaskbarItemPinned = isTaskbarItemPinned;
         RefreshQuickAccessPins();
         var savedSession = restoreSavedSession ? _sessionStore.Load() : null;
         _openFoldersInNewTab = openFoldersInNewTab ?? savedSession?.OpenFoldersInNewTab ?? false;
@@ -2113,6 +2117,11 @@ public partial class ExplorerWindow : Window
         OpenInNewTabMenuItem.IsEnabled = !_location.IsRecycleBin && hasSingleSelection && selection[0].IsDirectory;
         OpenInNewWindowMenuItem.IsEnabled = !_location.IsRecycleBin && hasSingleSelection && selection[0].IsDirectory;
         var selectedDirectory = !_location.IsRecycleBin && hasSingleSelection && selection[0].IsDirectory && !selection[0].IsDrive;
+        var taskbarPinTarget = !_location.IsRecycleBin && hasSingleSelection && !selection[0].IsDrive &&
+            TaskbarPinCatalog.IsSupportedTarget(selection[0].FullPath, selection[0].IsDirectory);
+        var taskbarPinExists = taskbarPinTarget && _isTaskbarItemPinned?.Invoke(selection[0].FullPath) == true;
+        PinTaskbarMenuItem.Visibility = taskbarPinTarget && _pinTaskbarItem is not null ? Visibility.Visible : Visibility.Collapsed;
+        PinTaskbarMenuItem.IsEnabled = taskbarPinTarget && _pinTaskbarItem is not null && !taskbarPinExists;
         var isPinned = selectedDirectory && _quickAccessStore.Load().Any(pin => string.Equals(pin.Path, selection[0].FullPath, StringComparison.OrdinalIgnoreCase));
         PinQuickAccessMenuItem.Visibility = selectedDirectory && !isPinned ? Visibility.Visible : Visibility.Collapsed;
         PinQuickAccessMenuItem.IsEnabled = selectedDirectory && !isPinned;
@@ -2168,6 +2177,14 @@ public partial class ExplorerWindow : Window
     }
 
     private void NewFolder_Click(object sender, RoutedEventArgs e) => CreateFolder();
+    private void PinTaskbar_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pinTaskbarItem is null || EntriesList.SelectedItems.Count != 1 || EntriesList.SelectedItem is not ExplorerEntry entry)
+            return;
+
+        if (_pinTaskbarItem(entry.FullPath))
+            SetStatus($"Pinned {entry.Name} to the taskbar.");
+    }
     private void Rename_Click(object sender, RoutedEventArgs e) => RenameSelected();
     private void Delete_Click(object sender, RoutedEventArgs e) => DeleteSelected();
     private void Refresh_Click(object sender, RoutedEventArgs e) => RefreshCurrentView();
