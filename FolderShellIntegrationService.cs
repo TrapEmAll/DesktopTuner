@@ -11,8 +11,15 @@ public static class FolderShellIntegrationService
     public const string OpenFolderArgument = "--open-folder";
     private const string DirectoryVerbPath = @"Software\Classes\Directory\shell\DesktopTuner.OpenWith";
     private const string DirectoryBackgroundVerbPath = @"Software\Classes\Directory\Background\shell\DesktopTuner.OpenWith";
+    private const string DirectoryShellPath = @"Software\Classes\Directory\shell";
+    private const string AssociationStatePath = @"Software\DesktopTuner\FolderShellIntegration";
+    private const string PreviousDefaultValue = "PreviousDefaultVerb";
+    private const string HadPreviousDefaultValue = "HadPreviousDefaultVerb";
+    public const string DefaultVerb = "DesktopTuner.OpenWith";
 
     public static IReadOnlyList<string> VerbPaths { get; } = [DirectoryVerbPath, DirectoryBackgroundVerbPath];
+
+    public static string DefaultVerbPath => DirectoryVerbPath;
 
     public static bool TryReadInvocation(IReadOnlyList<string> arguments, out string folderPath)
     {
@@ -40,6 +47,7 @@ public static class FolderShellIntegrationService
     {
         if (!enabled)
         {
+            RestoreDefaultHandler();
             foreach (var path in VerbPaths) Registry.CurrentUser.DeleteSubKeyTree(path, throwOnMissingSubKey: false);
             SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
             return;
@@ -51,6 +59,48 @@ public static class FolderShellIntegrationService
         RegisterVerb(DirectoryVerbPath, "Open with Desktop Tuner", fullExecutablePath, "%1");
         RegisterVerb(DirectoryBackgroundVerbPath, "Browse this folder with Desktop Tuner", fullExecutablePath, "%V");
         SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
+    }
+
+    public static void SetDefaultHandlerEnabled(string? executablePath = null)
+    {
+        SetEnabled(true, executablePath);
+        using var state = Registry.CurrentUser.CreateSubKey(AssociationStatePath, writable: true)
+            ?? throw new IOException("Could not open Desktop Tuner's saved folder-handler state.");
+        using var directoryShell = Registry.CurrentUser.CreateSubKey(DirectoryShellPath, writable: true)
+            ?? throw new IOException("Could not open Windows' per-user folder shell settings.");
+        if (state.GetValue(HadPreviousDefaultValue) is not null)
+        {
+            if (string.Equals(directoryShell.GetValue(null) as string, DefaultVerb, StringComparison.OrdinalIgnoreCase)) return;
+            throw new InvalidOperationException("Windows' default folder handler was changed while Desktop Tuner was active.");
+        }
+
+        var previous = directoryShell.GetValue(null) as string;
+        state.SetValue(HadPreviousDefaultValue, true, RegistryValueKind.DWord);
+        state.SetValue(PreviousDefaultValue, previous ?? string.Empty, RegistryValueKind.String);
+        directoryShell.SetValue(null, DefaultVerb, RegistryValueKind.String);
+        SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
+    }
+
+    public static bool RestoreDefaultHandler()
+    {
+        using var state = Registry.CurrentUser.OpenSubKey(AssociationStatePath, writable: false);
+        if (state is null) return false;
+        using var directoryShell = Registry.CurrentUser.OpenSubKey(DirectoryShellPath, writable: true);
+        if (directoryShell is null) return false;
+        var current = directoryShell.GetValue(null) as string;
+        if (!string.Equals(current, DefaultVerb, StringComparison.OrdinalIgnoreCase))
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(AssociationStatePath, throwOnMissingSubKey: false);
+            return false;
+        }
+
+        var hadPrevious = state.GetValue(HadPreviousDefaultValue) is not null;
+        var previous = state.GetValue(PreviousDefaultValue) as string;
+        if (hadPrevious && !string.IsNullOrEmpty(previous)) directoryShell.SetValue(null, previous, RegistryValueKind.String);
+        else directoryShell.DeleteValue(string.Empty, throwOnMissingValue: false);
+        Registry.CurrentUser.DeleteSubKeyTree(AssociationStatePath, throwOnMissingSubKey: false);
+        SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
+        return true;
     }
 
     private static void RegisterVerb(string verbPath, string label, string executablePath, string shellPathToken)

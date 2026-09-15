@@ -16,6 +16,7 @@ public partial class App : Application
     private Mutex? _instanceMutex;
     private bool _sessionEnding;
     private bool _launchExplorerOnShellHostExit;
+    private bool _shellHostDefaultFolderHandler;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -65,6 +66,15 @@ public partial class App : Application
                 return;
             }
             SystemEvents.SessionEnding += OnSystemSessionEnding;
+            try
+            {
+                FolderShellIntegrationService.SetDefaultHandlerEnabled();
+                _shellHostDefaultFolderHandler = true;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Security.SecurityException)
+            {
+                Trace.TraceWarning($"Could not make Desktop Tuner the temporary shell-host folder handler: {ex.Message}");
+            }
             RunCustomShellSupervisor();
             return;
         }
@@ -309,6 +319,7 @@ public partial class App : Application
 
     private void StartExplorerFallback()
     {
+        RestoreShellHostDefaultFolderHandler();
         if (_sessionEnding)
         {
             Shutdown();
@@ -327,11 +338,23 @@ public partial class App : Application
         Shutdown();
     }
 
+    private void RestoreShellHostDefaultFolderHandler()
+    {
+        if (!_shellHostDefaultFolderHandler) return;
+        try { FolderShellIntegrationService.RestoreDefaultHandler(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            Trace.TraceError($"Could not restore the previous folder shell handler: {ex}");
+        }
+        finally { _shellHostDefaultFolderHandler = false; }
+    }
+
     private void OnSystemSessionEnding(object? sender, SessionEndingEventArgs e) => _sessionEnding = true;
 
     protected override void OnExit(ExitEventArgs e)
     {
         SystemEvents.SessionEnding -= OnSystemSessionEnding;
+        RestoreShellHostDefaultFolderHandler();
         if (ShellHostLaunchPolicy.ShouldRestoreExplorerAfterShellHostExit(_launchExplorerOnShellHostExit, _sessionEnding, e.ApplicationExitCode))
         {
             try

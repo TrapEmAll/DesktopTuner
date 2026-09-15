@@ -789,6 +789,8 @@ Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe
 Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe")}\" --open-folder \"%V\"", FolderShellIntegrationService.BuildCommand(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe", "%V"), "quote the current-folder argument for empty-space context menus");
 Throws<ArgumentOutOfRangeException>(() => FolderShellIntegrationService.BuildCommand(Environment.ProcessPath!, "%*"), "reject unrecognized shell path substitutions");
 Check(2, FolderShellIntegrationService.VerbPaths.Count, "register folder and folder-background context menu commands");
+Check("Software\\Classes\\Directory\\shell\\DesktopTuner.OpenWith", FolderShellIntegrationService.DefaultVerbPath, "use the registered Desktop Tuner folder verb as the shell-host default");
+Check("DesktopTuner.OpenWith", FolderShellIntegrationService.DefaultVerb, "identify the owned shell-host folder verb");
 var auraIcon = BitmapSource.Create(5, 1, 96, 96, PixelFormats.Bgra32, null,
 new byte[]
 {
