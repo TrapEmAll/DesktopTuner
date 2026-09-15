@@ -253,6 +253,11 @@ public partial class TaskbarWindow : Window
             PinDivider.Width = 24;
             PinDivider.Height = 1;
             PinDivider.Margin = new Thickness(0, 5, 0, 5);
+            OverflowButton.HorizontalAlignment = HorizontalAlignment.Center;
+            OverflowButton.VerticalAlignment = VerticalAlignment.Bottom;
+            OverflowButton.Width = 34;
+            OverflowButton.Height = 34;
+            OverflowButton.Margin = new Thickness(0, 0, 0, 4);
         }
         else
         {
@@ -280,6 +285,11 @@ public partial class TaskbarWindow : Window
             PinDivider.Width = 1;
             PinDivider.Height = 24;
             PinDivider.Margin = new Thickness(5, 0, 5, 0);
+            OverflowButton.HorizontalAlignment = HorizontalAlignment.Right;
+            OverflowButton.VerticalAlignment = VerticalAlignment.Center;
+            OverflowButton.Width = 34;
+            OverflowButton.Height = 34;
+            OverflowButton.Margin = new Thickness(0);
         }
 
         if (_preferences.TaskbarLayout == TaskbarStyle.Floating)
