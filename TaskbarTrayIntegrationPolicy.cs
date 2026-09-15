@@ -5,6 +5,16 @@ public static class TaskbarTrayIntegrationPolicy
     private const double MinimumOverlayLength = 260;
     private const double TraySearchBand = 160;
 
+    public static bool ShouldReserveShellHostWorkArea(
+        TaskbarDisplay display,
+        DesktopPreferences preferences,
+        TaskbarBounds? nativeTrayBounds)
+    {
+        ArgumentNullException.ThrowIfNull(display);
+        ArgumentNullException.ThrowIfNull(preferences);
+        return preferences.ReplaceNativeTaskbar || CalculateOverlayBounds(display, preferences, nativeTrayBounds) is null;
+    }
+
     public static TaskbarBounds? CalculateOverlayBounds(
         TaskbarDisplay display,
         DesktopPreferences preferences,

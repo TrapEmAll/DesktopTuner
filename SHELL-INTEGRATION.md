@@ -16,7 +16,7 @@ Edge-docked replacement taskbars register as Windows application desktop toolbar
 
 CI verifies the edge geometry and auto-hide eligibility policies, and replacement mode now restores the native taskbar if Windows refuses to register or position an edge-docked AppBar. CI does not launch the custom taskbar or confirm work-area changes interactively. Positioning with a hidden native taskbar, multi-monitor layouts, Windows auto-hide reveal behavior and collisions with the native taskbar, full-screen z-order, cascade/tile handling, cleanup after unexpected process exit, and floating behavior still need validation on supported Windows 11 desktop builds.
 
-This gives the replacement bar a supported taskbar-like work-area contract. It does not make it the Windows shell, replace native Start visuals, or provide all built-in taskbar and tray behavior.
+This gives each replacement bar a supported taskbar-like work-area contract. In shell-host mode, a display reserves its own AppBar work area whenever that display does not expose an integrated Explorer notification area; another display can continue exposing Explorer's tray without disabling reservation elsewhere. It does not make the replacement bar the Windows shell, replace native Start visuals, or provide all built-in taskbar and tray behavior.
 
 ## Replacing Explorer as the logon shell
 

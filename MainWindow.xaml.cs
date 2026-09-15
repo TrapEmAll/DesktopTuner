@@ -1381,15 +1381,16 @@ public partial class MainWindow : Window
                     throw new InvalidOperationException("Windows did not expose a taskbar on the selected displays, so replacement mode could not start.");
                 }
             }
-            if (hideNativeTaskbar || ShellHostLaunchPolicy.ShouldReserveShellHostWorkArea(_shellHostMode, _shellHostNativeTrayIntegrated))
+            foreach (var taskbar in _taskbarWindows)
             {
-                foreach (var taskbar in _taskbarWindows)
-                    if (!taskbar.EnableReplacementWorkArea(true))
-                    {
-                        if (hideNativeTaskbar)
-                            throw new InvalidOperationException($"Windows could not reserve a work area for the replacement taskbar on {taskbar.Display.DeviceName}. Desktop Tuner will restore the Windows taskbar.");
-                        System.Diagnostics.Trace.TraceWarning($"Windows could not reserve a work area for the shell taskbar on {taskbar.Display.DeviceName}; it will remain an overlay.");
-                    }
+                var reserveWorkArea = hideNativeTaskbar || ShouldReserveShellHostWorkArea(taskbar, preferences);
+                if (!reserveWorkArea) continue;
+                if (!taskbar.EnableReplacementWorkArea(true))
+                {
+                    if (hideNativeTaskbar)
+                        throw new InvalidOperationException($"Windows could not reserve a work area for the replacement taskbar on {taskbar.Display.DeviceName}. Desktop Tuner will restore the Windows taskbar.");
+                    System.Diagnostics.Trace.TraceWarning($"Windows could not reserve a work area for the shell taskbar on {taskbar.Display.DeviceName}; it will remain an overlay.");
+                }
             }
             if (_shellHostMode) _shellHostTrayRefreshTimer.Start();
             if (hideNativeTaskbar) _nativeTaskbarWatchTimer.Start();
@@ -1498,7 +1499,7 @@ public partial class MainWindow : Window
             foreach (var display in topology.Added)
             {
                 var taskbar = AddTaskbarWindow(display, preferences);
-                if (ShellHostLaunchPolicy.ShouldReserveShellHostWorkArea(_shellHostMode, _shellHostNativeTrayIntegrated)
+                if (ShouldReserveShellHostWorkArea(taskbar, preferences)
                     && !taskbar.EnableReplacementWorkArea(true))
                     System.Diagnostics.Trace.TraceWarning($"Windows could not reserve a work area for the shell taskbar on {display.DeviceName}; it will remain an overlay.");
             }
@@ -1618,10 +1619,19 @@ public partial class MainWindow : Window
         if (!_shellHostMode) return;
 
         _shellHostTaskbarNativeTrayIntegrated = _shellHostNativeTrayIntegrated;
-        var reserveWorkArea = ShellHostLaunchPolicy.ShouldReserveShellHostWorkArea(true, _shellHostNativeTrayIntegrated);
         foreach (var taskbar in _taskbarWindows.ToArray())
+        {
+            var reserveWorkArea = ShouldReserveShellHostWorkArea(taskbar, runtimePreferences);
             if (!taskbar.EnableReplacementWorkArea(reserveWorkArea) && reserveWorkArea)
                 System.Diagnostics.Trace.TraceWarning($"Windows could not reserve a work area for the shell taskbar on {taskbar.Display.DeviceName}; it will remain an overlay.");
+        }
+    }
+
+    private bool ShouldReserveShellHostWorkArea(TaskbarWindow taskbar, DesktopPreferences runtimePreferences)
+    {
+        if (!_shellHostMode) return false;
+        var trayBounds = NativeTaskbarTrayService.FindTrayBounds(taskbar.Display);
+        return TaskbarTrayIntegrationPolicy.ShouldReserveShellHostWorkArea(taskbar.Display, runtimePreferences, trayBounds);
     }
 
     private void SetStartMenuCentered(bool centered)
