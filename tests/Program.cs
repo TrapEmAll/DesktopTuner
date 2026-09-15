@@ -176,6 +176,16 @@ selectableDesktopItems[0].IsSelected = false;
 selectableDesktopItems[1].IsSelected = false;
 Check("c", string.Join(',', DesktopHostOpenPolicy.SelectItems(selectableDesktopItems, selectableDesktopItems[2]).Select(item => item.Name)),
     "fall back to the focused replacement desktop item when selection is empty");
+Check(false, DesktopHostContextMenuPolicy.CanInvokeNativeCommand(selectableDesktopItems),
+    "disable direct native desktop item commands when the selected paths do not exist");
+var nativeDesktopItemPath = Path.Combine(desktopHostTestRoot, "native-item.txt");
+File.WriteAllText(nativeDesktopItemPath, "native item");
+var nativeDesktopItem = new DesktopHostItem("native-item.txt", nativeDesktopItemPath, false) { IsSelected = true };
+Check(true, DesktopHostContextMenuPolicy.CanInvokeNativeCommand([nativeDesktopItem]),
+    "enable direct Delete and Properties commands for native desktop items");
+nativeDesktopItem.IsSelected = false;
+Check(false, DesktopHostContextMenuPolicy.CanInvokeNativeCommand([nativeDesktopItem]),
+    "disable direct native desktop item commands when the selection is empty");
 Check(true, DesktopHostKeyboardPolicy.ShouldShowProperties(Key.Enter, ModifierKeys.Alt, hasSelection: true),
     "open native properties for selected replacement desktop items with Alt+Enter");
 Check(true, DesktopHostKeyboardPolicy.ShouldShowProperties(Key.System, ModifierKeys.Alt, hasSelection: true, systemKey: Key.Enter),

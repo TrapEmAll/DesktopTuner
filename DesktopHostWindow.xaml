@@ -52,6 +52,10 @@
                                           Click="OnCutDesktopItemsClick"/>
                                 <MenuItem Header="Copy" InputGestureText="Ctrl+C" IsEnabled="{Binding CanShowNativeContextMenu}"
                                           Click="OnCopyDesktopItemsClick"/>
+                                <MenuItem x:Name="DeleteDesktopItemMenuItem" Header="Delete" InputGestureText="Del"
+                                          Click="OnDeleteDesktopItemsClick"/>
+                                <MenuItem x:Name="PropertiesDesktopItemMenuItem" Header="Properties" InputGestureText="Alt+Enter"
+                                          Click="OnShowDesktopItemPropertiesClick"/>
                                 <Separator/>
                                 <MenuItem Header="Rename" IsEnabled="{Binding CanRename}" Click="OnRenameItemClick"/>
                                 <MenuItem Header="Show more options" IsEnabled="{Binding CanShowNativeContextMenu}"

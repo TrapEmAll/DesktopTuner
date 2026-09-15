@@ -790,6 +790,11 @@ public partial class DesktopHostWindow : Window
             openItem.IsEnabled = DesktopHostOpenPolicy.SelectItems(_desktopItems).Count > 0;
         var selectedItems = _desktopItems.Where(candidate => candidate.IsSelected).ToArray();
         var selected = selectedItems.Length == 1 ? selectedItems[0] : null;
+        var nativeCommandEnabled = DesktopHostContextMenuPolicy.CanInvokeNativeCommand(_desktopItems);
+        if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "DeleteDesktopItemMenuItem") is { } deleteItem)
+            deleteItem.IsEnabled = nativeCommandEnabled;
+        if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "PropertiesDesktopItemMenuItem") is { } propertiesItem)
+            propertiesItem.IsEnabled = nativeCommandEnabled;
         var singleFilesystemItem = selected is not null
             && !selected.IsShellNamespace
             && TaskbarPinCatalog.IsSupportedTarget(selected.FullPath, selected.IsDirectory);
@@ -827,6 +832,10 @@ public partial class DesktopHostWindow : Window
     private async void OnCutDesktopItemsClick(object sender, RoutedEventArgs e) => await CopySelectedDesktopItemsAsync(cut: true);
 
     private async void OnCopyDesktopItemsClick(object sender, RoutedEventArgs e) => await CopySelectedDesktopItemsAsync(cut: false);
+
+    private async void OnDeleteDesktopItemsClick(object sender, RoutedEventArgs e) => await DeleteSelectedDesktopItemsAsync(shiftPressed: false);
+
+    private async void OnShowDesktopItemPropertiesClick(object sender, RoutedEventArgs e) => await ShowSelectedDesktopPropertiesAsync();
 
     private async void OnPasteDesktopItemsClick(object sender, RoutedEventArgs e) => await PasteDesktopItemsAsync();
 
