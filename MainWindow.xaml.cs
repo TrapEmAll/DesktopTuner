@@ -91,6 +91,7 @@ public partial class MainWindow : Window
     private readonly bool _shellHostMode;
     private readonly bool _shellOverlayMode;
     private bool _shellHostReadySignaled;
+    private bool _shellHostNativeTrayIntegrated;
     private bool _closingTaskbars;
     private bool _reconcilingDisplayTopology;
 
@@ -1330,7 +1331,7 @@ public partial class MainWindow : Window
                     throw new InvalidOperationException("Windows did not expose a taskbar on the selected displays, so replacement mode could not start.");
                 }
             }
-            if (hideNativeTaskbar || _shellHostMode)
+            if (hideNativeTaskbar || ShellHostLaunchPolicy.ShouldReserveShellHostWorkArea(_shellHostMode, _shellHostNativeTrayIntegrated))
             {
                 foreach (var taskbar in _taskbarWindows)
                     if (!taskbar.EnableReplacementWorkArea(true))
@@ -1429,7 +1430,8 @@ public partial class MainWindow : Window
             foreach (var display in topology.Added)
             {
                 var taskbar = AddTaskbarWindow(display, preferences);
-                if (_shellHostMode && !taskbar.EnableReplacementWorkArea(true))
+                if (ShellHostLaunchPolicy.ShouldReserveShellHostWorkArea(_shellHostMode, _shellHostNativeTrayIntegrated)
+                    && !taskbar.EnableReplacementWorkArea(true))
                     System.Diagnostics.Trace.TraceWarning($"Windows could not reserve a work area for the shell taskbar on {display.DeviceName}; it will remain an overlay.");
             }
 
@@ -1505,10 +1507,13 @@ public partial class MainWindow : Window
     private DesktopPreferences CreateTaskbarRuntimePreferences()
     {
         var preferences = CreateDesktopPreferences();
+        var nativeTrayAvailable = _shellHostMode && TaskbarDisplayService.Select(allDisplays: true)
+            .Any(display => NativeTaskbarTrayService.FindTrayBounds(display) is not null);
+        _shellHostNativeTrayIntegrated = ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(
+            _shellHostMode, _shellOverlayMode, preferences.ReplaceNativeTaskbar, nativeTrayAvailable);
         return preferences with
         {
-            ReplaceNativeTaskbar = !ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(
-                _shellHostMode, _shellOverlayMode, preferences.ReplaceNativeTaskbar)
+            ReplaceNativeTaskbar = !_shellHostNativeTrayIntegrated
         };
     }
 

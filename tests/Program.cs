@@ -427,6 +427,11 @@ Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true, true), "
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, true), "integrate the native notification area in shell overlay mode without changing the saved replacement preference");
 Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, true), "leave native tray integration disabled in normal replacement mode");
 Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, false, false), "disable native tray integration in shell-host mode so the custom taskbar can reserve its own work area");
+Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, false, false, nativeTrayAvailable: true), "reuse an already-running native notification area in shell-host mode");
+Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, false, true, nativeTrayAvailable: true), "reuse an existing native notification area in shell-host mode regardless of overlay preference");
+Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, false, false, nativeTrayAvailable: false), "keep custom system controls when Explorer provides no notification area");
+Check(false, ShellHostLaunchPolicy.ShouldReserveShellHostWorkArea(true, nativeTrayIntegrated: true), "avoid reserving the work area twice when the native taskbar supplies it");
+Check(true, ShellHostLaunchPolicy.ShouldReserveShellHostWorkArea(true, nativeTrayIntegrated: false), "reserve the work area when shell-host mode has no native taskbar");
 Check(false, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, false, true), "keep native tray integration disabled in regular taskbar replacement mode");
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, false), "integrate the native notification area in normal overlay mode");
 Check(true, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(true, false), "route Win+E to companion Explorer in shell replacement mode regardless of the saved preference");
