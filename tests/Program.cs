@@ -188,6 +188,12 @@ CheckTrue(DesktopHostKeyboardPolicy.ShouldCreateFolder(Key.N, ModifierKeys.Contr
     "create a replacement desktop folder with Ctrl+Shift+N");
 CheckTrue(!DesktopHostKeyboardPolicy.ShouldCreateFolder(Key.N, ModifierKeys.Control | ModifierKeys.Shift, isEditingName: true),
     "preserve Ctrl+Shift+N while editing a replacement desktop item name");
+CheckTrue(DesktopHostKeyboardPolicy.ShouldShowContextMenu(Key.F10, ModifierKeys.Shift),
+    "open the replacement desktop context menu with Shift+F10");
+CheckTrue(DesktopHostKeyboardPolicy.ShouldShowContextMenu(Key.Apps, ModifierKeys.None),
+    "open the replacement desktop context menu with the Menu key");
+CheckTrue(!DesktopHostKeyboardPolicy.ShouldShowContextMenu(Key.F10, ModifierKeys.Shift, isEditingName: true),
+    "preserve Shift+F10 while editing a replacement desktop item name");
 Check(DesktopHostClipboardAction.Copy, DesktopHostKeyboardPolicy.ResolveClipboardAction(Key.C, ModifierKeys.Control, hasSelection: true),
     "copy selected replacement desktop items with Ctrl+C");
 Check(DesktopHostClipboardAction.Cut, DesktopHostKeyboardPolicy.ResolveClipboardAction(Key.X, ModifierKeys.Control, hasSelection: true),

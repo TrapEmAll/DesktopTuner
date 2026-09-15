@@ -12,6 +12,9 @@ public enum DesktopHostClipboardAction
 
 public static class DesktopHostKeyboardPolicy
 {
+    public static bool ShouldShowContextMenu(Key key, ModifierKeys modifiers, bool isEditingName = false) =>
+        (key == Key.Apps && modifiers == ModifierKeys.None || key == Key.F10 && modifiers == ModifierKeys.Shift) && !isEditingName;
+
     public static bool ShouldCreateFolder(Key key, ModifierKeys modifiers, bool isEditingName = false) =>
         key == Key.N && modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && !isEditingName;
 

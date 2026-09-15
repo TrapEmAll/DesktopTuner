@@ -453,13 +453,20 @@ public partial class DesktopHostWindow : Window
             OpenDesktopItem(enterItem);
             e.Handled = true;
         }
-        else if ((e.Key == Key.Apps || e.Key == Key.F10 && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) &&
-                 TryGetFocusedDesktopItem(out var contextButton, out _))
+        else if (DesktopHostKeyboardPolicy.ShouldShowContextMenu(e.Key, Keyboard.Modifiers, e.OriginalSource is TextBox))
         {
-            if (contextButton.ContextMenu is { } contextMenu)
+            if (TryGetFocusedDesktopItem(out var contextButton, out _))
             {
-                contextMenu.PlacementTarget = contextButton;
-                contextMenu.IsOpen = true;
+                if (contextButton.ContextMenu is { } contextMenu)
+                {
+                    contextMenu.PlacementTarget = contextButton;
+                    contextMenu.IsOpen = true;
+                    e.Handled = true;
+                }
+            }
+            else
+            {
+                _ = ShowDesktopBackgroundContextMenuAsync();
                 e.Handled = true;
             }
         }
@@ -1302,7 +1309,9 @@ public partial class DesktopHostWindow : Window
             throw new InvalidOperationException("Desktop Tuner Explorer could not receive the folder request. The folder was not opened in Windows Explorer.");
     }
 
-    private async void OnShowDesktopContextMenuClick(object sender, RoutedEventArgs e)
+    private async void OnShowDesktopContextMenuClick(object sender, RoutedEventArgs e) => await ShowDesktopBackgroundContextMenuAsync();
+
+    private async Task ShowDesktopBackgroundContextMenuAsync()
     {
         try
         {
