@@ -102,6 +102,7 @@
             <ListView.ContextMenu>
                 <ContextMenu Opened="ItemContextMenu_Opened">
                     <MenuItem x:Name="OpenMenuItem" Header="Open" Click="Open_Click" />
+                    <MenuItem x:Name="OpenWithMenuItem" Header="Open with…" Click="OpenWith_Click" Visibility="Collapsed" />
                     <Separator />
                     <MenuItem x:Name="CopyMenuItem" Header="Copy" IsEnabled="False" Click="Copy_Click" />
                     <MenuItem x:Name="CutMenuItem" Header="Cut" IsEnabled="False" Click="Cut_Click" />

@@ -27,6 +27,10 @@ Check(true, desktopHostEntries.Single(entry => entry.Name == "user.txt").CanRena
 Check(true, desktopHostEntries.Single(entry => entry.Name == "This PC").CanShowNativeContextMenu, "offer native Shell context verbs for This PC");
 Check(false, desktopHostEntries.Single(entry => entry.Name == "This PC").CanRename, "keep This PC inline rename disabled when the Shell does not advertise rename support");
 Check(true, desktopHostEntries.Single(entry => entry.Name == "Recycle Bin").CanShowNativeContextMenu, "offer native Shell context verbs for Recycle Bin");
+CheckTrue(ShellOpenWithPolicy.CanOpenWith(true, false, true), "offer Open with for one native file selection");
+Check(false, ShellOpenWithPolicy.CanOpenWith(false, false, true), "hide Open with for an empty or multi-item selection");
+Check(false, ShellOpenWithPolicy.CanOpenWith(true, true, true), "hide Open with for a folder selection");
+Check(false, ShellOpenWithPolicy.CanOpenWith(true, false, false), "hide Open with when native Shell handling is unavailable");
 CheckTrue(TaskbarIconService.LoadNamespaceIcon("shell:MyComputerFolder") is not null, "extract a shell icon for a namespace parsing name");
 Check(ShellNamespaceOpenAction.NavigateCurrentWindow, ShellNamespaceOpenPolicy.Resolve(isFolder: true, selectionCount: 1), "open one Shell folder in the current namespace browser");
 Check(ShellNamespaceOpenAction.OpenCompanionWindow, ShellNamespaceOpenPolicy.Resolve(isFolder: true, selectionCount: 2), "open selected Shell folders in separate companion windows");

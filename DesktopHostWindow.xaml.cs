@@ -795,6 +795,12 @@ public partial class DesktopHostWindow : Window
             openItem.IsEnabled = DesktopHostOpenPolicy.SelectItems(_desktopItems).Count > 0;
         var selectedItems = _desktopItems.Where(candidate => candidate.IsSelected).ToArray();
         var selected = selectedItems.Length == 1 ? selectedItems[0] : null;
+        if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "OpenWithDesktopItemMenuItem") is { } openWithItem)
+        {
+            openWithItem.Visibility = selected is not null && ShellOpenWithPolicy.CanOpenWith(true, selected.IsDirectory, selected.CanShowNativeContextMenu)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
         var nativeCommandEnabled = DesktopHostContextMenuPolicy.CanInvokeNativeCommand(_desktopItems);
         if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "CutDesktopItemMenuItem") is { } cutItem)
             cutItem.IsEnabled = nativeCommandEnabled;
@@ -839,6 +845,21 @@ public partial class DesktopHostWindow : Window
     }
 
     private async void OnCutDesktopItemsClick(object sender, RoutedEventArgs e) => await CopySelectedDesktopItemsAsync(cut: true);
+
+    private async void OnOpenWithItemClick(object sender, RoutedEventArgs e)
+    {
+        var item = _desktopItems.SingleOrDefault(candidate => candidate.IsSelected);
+        if (item is null || !ShellOpenWithPolicy.CanOpenWith(true, item.IsDirectory, item.CanShowNativeContextMenu)) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.OpenWithShellItemAsync(owner, item.FullPath);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not open the Open with dialog", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 
     private async void OnCopyDesktopItemsClick(object sender, RoutedEventArgs e) => await CopySelectedDesktopItemsAsync(cut: false);
 

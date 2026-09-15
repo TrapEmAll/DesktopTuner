@@ -61,6 +61,9 @@ public static class NativeShellContextMenuService
     public static Task<bool> ShowPropertiesForShellItemsAsync(nint owner, IEnumerable<string> parsingNames) =>
         InvokeShellItemsVerbAsync(owner, parsingNames, "properties");
 
+    public static Task<bool> OpenWithShellItemAsync(nint owner, string parsingName) =>
+        InvokeShellItemsVerbAsync(owner, [parsingName], "openas");
+
     public static Task<bool> DeleteShellItemsAsync(nint owner, IEnumerable<string> parsingNames, bool shiftPressed = false) =>
         InvokeShellItemsVerbAsync(owner, parsingNames, "delete", shiftPressed);
 

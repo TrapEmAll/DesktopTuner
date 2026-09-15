@@ -487,6 +487,7 @@ public partial class ShellNamespaceBrowserWindow : Window
     {
         var hasSelection = ItemsList.SelectedItems.Count > 0;
         OpenMenuItem.IsEnabled = ItemsList.SelectedItems.Count > 0;
+        OpenWithMenuItem.Visibility = Visibility.Collapsed;
         CopyMenuItem.IsEnabled = hasSelection;
         CutMenuItem.IsEnabled = hasSelection;
         NewFolderMenuItem.IsEnabled = true;
@@ -497,6 +498,9 @@ public partial class ShellNamespaceBrowserWindow : Window
         PinTaskbarMenuItem.Visibility = Visibility.Collapsed;
         if (ItemsList.SelectedItems.Count == 1 && ItemsList.SelectedItem is DesktopShellNamespaceEntry entry)
         {
+            OpenWithMenuItem.Visibility = ShellOpenWithPolicy.CanOpenWith(true, entry.IsFolder, true)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
             var pinTarget = TaskbarPinCatalog.IsSupportedShellNamespaceTarget(entry.ParsingName)
                 || TaskbarPinCatalog.IsSupportedTarget(entry.ParsingName, entry.IsFolder);
             var canPinStart = pinTarget && _pinStartItem is not null;
@@ -522,6 +526,21 @@ public partial class ShellNamespaceBrowserWindow : Window
     }
 
     private void Rename_Click(object sender, RoutedEventArgs e) => BeginRenameSelected();
+
+    private async void OpenWith_Click(object sender, RoutedEventArgs e)
+    {
+        if (ItemsList.SelectedItems.Count != 1 || ItemsList.SelectedItem is not DesktopShellNamespaceEntry { IsFolder: false } entry)
+            return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.OpenWithShellItemAsync(owner, entry.ParsingName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not open the Open with dialog", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 
     private void PinStart_Click(object sender, RoutedEventArgs e)
     {
