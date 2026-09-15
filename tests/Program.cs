@@ -1473,6 +1473,11 @@ Check(WindowsKeyAction.OpenSnippingTool, snippingToolGesture.KeyDown((uint)'S', 
 Check(WindowsKeyAction.Suppress, snippingToolGesture.KeyUp((uint)'S'), "suppress Snipping Tool shortcut release");
 Check(WindowsKeyAction.PassThrough, snippingToolGesture.KeyUp(0x10), "pass Shift release through after Win+Shift+S");
 Check(WindowsKeyAction.Suppress, snippingToolGesture.KeyUp(0x5b), "avoid opening Start after routing Snipping Tool");
+var copilotGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
+Check(WindowsKeyAction.Suppress, copilotGesture.KeyDown(0x5b), "capture Windows before shell-host Win+C");
+Check(WindowsKeyAction.OpenCopilot, copilotGesture.KeyDown((uint)'C', canOpenCopilot: () => true), "route Win+C to the native Copilot or Chat provider in shell-host mode");
+Check(WindowsKeyAction.Suppress, copilotGesture.KeyUp((uint)'C'), "suppress Copilot shortcut release");
+Check(WindowsKeyAction.Suppress, copilotGesture.KeyUp(0x5b), "avoid opening Start after routing Copilot");
 var taskbarFocusGesture = new WindowsKeyGesture();
 Check(WindowsKeyAction.Suppress, taskbarFocusGesture.KeyDown(0x5b), "capture Windows before focusing the custom taskbar");
 Check(WindowsKeyAction.FocusTaskbar, taskbarFocusGesture.KeyDown((uint)'T', canFocusTaskbar: () => true), "route Win+T to the custom taskbar when it is available");

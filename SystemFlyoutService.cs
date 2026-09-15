@@ -14,6 +14,7 @@ public static class SystemFlyoutService
     private const ushort VK_LWIN = 0x5B;
     private const ushort VK_RWIN = 0x5C;
     private const ushort VK_A = 0x41;
+    private const ushort VK_C = 0x43;
     private const ushort VK_B = 0x42;
     private const ushort VK_CONTROL = 0x11;
     private const ushort VK_D = 0x44;
@@ -154,6 +155,13 @@ public static class SystemFlyoutService
         new(VK_D, true),
         new(VK_LWIN, true)
     ]);
+    private static readonly IReadOnlyList<KeyboardKeyEvent> CopilotSequence = Array.AsReadOnly<KeyboardKeyEvent>(
+    [
+        new(VK_LWIN, false),
+        new(VK_C, false),
+        new(VK_C, true),
+        new(VK_LWIN, true)
+    ]);
 
     public static IReadOnlyList<KeyboardKeyEvent> GetNotificationCenterSequence() => NotificationCenterSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetQuickSettingsSequence() => QuickSettingsSequence;
@@ -172,6 +180,7 @@ public static class SystemFlyoutService
     public static IReadOnlyList<KeyboardKeyEvent> GetConnectSequence() => ConnectSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetProjectSequence() => ProjectSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetShowDesktopSequence() => ShowDesktopSequence;
+    public static IReadOnlyList<KeyboardKeyEvent> GetCopilotSequence() => CopilotSequence;
 
     public static bool OpenNotificationCenter() => SendWindowsShortcut(VK_N, NotificationCenterSequence, "notification center");
 
@@ -206,6 +215,8 @@ public static class SystemFlyoutService
     public static bool OpenProjectPanel() => SendWindowsShortcut(VK_P, ProjectSequence, "Project panel");
 
     public static bool ShowDesktop() => SendWindowsShortcut(VK_D, ShowDesktopSequence, "Show desktop");
+
+    public static bool OpenCopilot() => SendWindowsShortcut(VK_C, CopilotSequence, "Copilot or Chat");
 
     public static bool OpenSettings() => OpenShellUri("ms-settings:", "Settings");
 

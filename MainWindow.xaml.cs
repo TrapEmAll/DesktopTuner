@@ -2305,6 +2305,7 @@ public partial class MainWindow : Window
             canOpenOnScreenKeyboard: CanManageShellHostWindows, openOnScreenKeyboard: () => SystemFlyoutService.OpenOnScreenKeyboard(),
             canOpenNarrator: CanManageShellHostWindows, openNarrator: OpenNarrator,
             canOpenSnippingTool: CanManageShellHostWindows, openSnippingTool: () => SystemFlyoutService.OpenSnippingTool(),
+            canOpenCopilot: CanManageShellHostWindows, openCopilot: () => SystemFlyoutService.OpenCopilot(),
             canLaunchPinnedAppInstance: CanActivateTaskbarPinShortcut, launchPinnedAppInstance: LaunchTaskbarPinInstanceShortcut,
             canLaunchPinnedAppInstanceAsAdministrator: CanLaunchPinnedAppInstanceAsAdministratorShortcut,
             launchPinnedAppInstanceAsAdministrator: LaunchElevatedTaskbarPinInstanceShortcut,
