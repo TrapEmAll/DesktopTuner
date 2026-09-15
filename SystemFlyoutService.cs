@@ -210,6 +210,8 @@ public static class SystemFlyoutService
 
     public static bool OpenAccessibilitySettings() => OpenSettingsUri("ms-settings:easeofaccess", "Accessibility settings");
 
+    public static bool OpenGameBar() => OpenSettingsUri("ms-gamebar:", "Game Bar");
+
     private static bool OpenSettingsUri(string uri, string featureName)
     {
         try

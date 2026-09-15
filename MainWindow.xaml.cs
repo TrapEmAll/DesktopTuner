@@ -2436,6 +2436,7 @@ public partial class MainWindow : Window
         switch (key)
         {
             case (uint)'A': SystemFlyoutService.OpenQuickSettings(); break;
+            case (uint)'G': SystemFlyoutService.OpenGameBar(); break;
             case (uint)'H': SystemFlyoutService.OpenVoiceTyping(); break;
             case (uint)'I': SystemFlyoutService.OpenSettings(); break;
             case (uint)'K': SystemFlyoutService.OpenConnectPanel(); break;
