@@ -8,6 +8,8 @@ namespace DesktopTuner;
 public sealed record RunningWindow(nint Handle, string Title, string ApplicationName, string ExecutablePath, bool IsMinimized)
 {
     public bool CanRunElevated => TaskbarPinCatalog.CanRunAsAdministrator(ApplicationName, ExecutablePath);
+    public bool CanEndTask => ProcessId > 0;
+    public int ProcessId { get; init; }
     public bool IsMaximized { get; init; }
     public bool IsForeground { get; init; }
     public bool? IsOnCurrentVirtualDesktop { get; init; }
@@ -64,6 +66,7 @@ public sealed class RunningWindowService
             }
             windows.Add(new RunningWindow(handle, text, appName, executablePath, IsIconic(handle))
             {
+                ProcessId = checked((int)processId),
                 IsMaximized = IsZoomed(handle),
                 IsForeground = handle == foregroundWindow,
                 IsOnCurrentVirtualDesktop = virtualDesktop?.IsWindowOnCurrentDesktop(handle),
@@ -98,6 +101,25 @@ public sealed class RunningWindowService
     {
         if (!PostMessage(window.Handle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero))
             Trace.TraceWarning($"Could not request closing window '{window.Title}' (0x{window.Handle:X}).");
+    }
+
+    public static bool EndTask(RunningWindow window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        if (window.ProcessId <= 0 || GetWindowThreadProcessId(window.Handle, out var currentProcessId) == 0 || currentProcessId != window.ProcessId)
+            return false;
+        try
+        {
+            using var process = Process.GetProcessById(window.ProcessId);
+            if (process.HasExited) return true;
+            process.Kill();
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+        {
+            Trace.TraceWarning($"Could not end task for '{window.Title}' (PID {window.ProcessId}): {ex.Message}");
+            return false;
+        }
     }
 
     private delegate bool EnumWindowsProc(nint hWnd, nint lParam);

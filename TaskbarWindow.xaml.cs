@@ -967,6 +967,13 @@ public partial class TaskbarWindow : Window
         else if (item.Tag is RunningWindow window) RunningWindowService.Close(window);
     }
 
+    private void EndTask_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: TaskbarWindowGroup group }) return;
+        foreach (var window in group.Windows.Where(window => window.CanEndTask))
+            RunningWindowService.EndTask(window);
+    }
+
     private void LaunchWindowGroupInstance_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: TaskbarWindowGroup group } || TaskbarWindowGrouping.GetLaunchPath(group) is not { } path) return;
