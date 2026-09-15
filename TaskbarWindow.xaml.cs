@@ -974,6 +974,14 @@ public partial class TaskbarWindow : Window
             RunningWindowService.EndTask(window);
     }
 
+    private void EndPinnedTask_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: PinnedTaskbarApp app }) return;
+        foreach (var window in _windows.Enumerate()
+                     .Where(window => TaskbarWindowGrouping.MatchesPinnedApp(app, window) && window.CanEndTask))
+            RunningWindowService.EndTask(window);
+    }
+
     private void LaunchWindowGroupInstance_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: TaskbarWindowGroup group } || TaskbarWindowGrouping.GetLaunchPath(group) is not { } path) return;

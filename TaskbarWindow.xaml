@@ -163,6 +163,7 @@
                                         </MenuItem>
                                         <Separator />
                                         <MenuItem Header="Start new instance" Tag="{Binding}" Click="LaunchPinnedInstance_Click" />
+                                        <MenuItem Header="End task" Tag="{Binding}" IsEnabled="{Binding PlacementTarget.DataContext.IsRunning, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Click="EndPinnedTask_Click" />
                                         <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenLocation}" Click="OpenPinnedLocation_Click" />
                                         <MenuItem Header="Pin to Start" Tag="{Binding}" Click="PinTaskbarAppToStart_Click" />
                                         <MenuItem Header="Start new elevated instance" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunPinnedAsAdministrator_Click" />
