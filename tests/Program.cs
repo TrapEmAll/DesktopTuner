@@ -550,6 +550,8 @@ Check(true, TaskbarTrayIntegrationPolicy.ShouldUseNativeTray(true, false, native
 Check(false, TaskbarTrayIntegrationPolicy.ShouldUseNativeTray(true, false, null), "do not use native tray integration on a shell-host display without Explorer's notification area");
 Check(false, TaskbarTrayIntegrationPolicy.ShouldUseReplacementTaskbar(true, false, nativeTray), "keep replacement system controls off on a shell-host display with a native tray");
 Check(true, TaskbarTrayIntegrationPolicy.ShouldUseReplacementTaskbar(true, false, null), "use replacement system controls on a shell-host display without a native tray");
+Check(false, TaskbarTrayIntegrationPolicy.ShouldUseReplacementWorkArea(true, false, new(0, 1026, 1500, 54)), "keep the native tray layout when the shell-host bar shares its edge safely");
+Check(true, TaskbarTrayIntegrationPolicy.ShouldUseReplacementWorkArea(true, false, null), "reserve a replacement work area when the shell-host tray layout cannot be integrated");
 Check<TaskbarBounds?>(null, TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Bottom, TaskbarLayout: TaskbarStyle.Floating), nativeTray), "keep shortcut fallback on floating bars");
 Check<TaskbarBounds?>(null, TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Top), nativeTray), "keep shortcut fallback on top bars");
 Check<TaskbarBounds?>(null, TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Left), new(900, 800, 176, 280)), "keep shortcut fallback when a vertical bar does not share the tray edge");

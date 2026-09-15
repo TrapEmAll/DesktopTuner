@@ -17,6 +17,12 @@ public static class TaskbarTrayIntegrationPolicy
         TaskbarBounds? nativeTrayBounds) =>
         replaceNativeTaskbar || shellHostMode && !ShouldUseNativeTray(shellHostMode, replaceNativeTaskbar, nativeTrayBounds);
 
+    public static bool ShouldUseReplacementWorkArea(
+        bool shellHostMode,
+        bool replaceNativeTaskbar,
+        TaskbarBounds? integratedTrayBounds) =>
+        replaceNativeTaskbar || shellHostMode && integratedTrayBounds is null;
+
     public static bool ShouldReserveShellHostWorkArea(
         TaskbarDisplay display,
         DesktopPreferences preferences,
