@@ -2201,7 +2201,11 @@ public partial class MainWindow : Window
             _shellNamespaceBrowserWindow.OpenLocationFromShell(location);
             return;
         }
-        _shellNamespaceBrowserWindow = new ShellNamespaceBrowserWindow(location) { Owner = this };
+        _shellNamespaceBrowserWindow = new ShellNamespaceBrowserWindow(location,
+            pinTaskbarItem: TryPinTaskbarItemFromShell,
+            isTaskbarItemPinned: IsTaskbarItemPinnedFromShell,
+            pinStartItem: TryPinStartItemFromShell,
+            isStartItemPinned: IsStartItemPinnedFromShell) { Owner = this };
         _shellNamespaceBrowserWindow.Closed += (_, _) => _shellNamespaceBrowserWindow = null;
         _shellNamespaceBrowserWindow.Show();
     }

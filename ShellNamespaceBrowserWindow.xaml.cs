@@ -34,12 +34,20 @@ public partial class ShellNamespaceBrowserWindow : Window
     private HwndSourceHook? _windowMessageHook;
     private static uint _cutClipboardSequence;
     private bool _clipboardListenerRegistered;
+    private readonly Func<string, bool>? _pinTaskbarItem;
+    private readonly Func<string, bool>? _isTaskbarItemPinned;
+    private readonly Func<string, bool>? _pinStartItem;
+    private readonly Func<string, bool>? _isStartItemPinned;
 
-    public ShellNamespaceBrowserWindow(string location)
+    public ShellNamespaceBrowserWindow(string location, Func<string, bool>? pinTaskbarItem = null, Func<string, bool>? isTaskbarItemPinned = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? isStartItemPinned = null)
     {
         if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(location) && !Directory.Exists(location))
             throw new ArgumentException("The location is not a Windows Shell namespace or an existing folder.", nameof(location));
         _location = location;
+        _pinTaskbarItem = pinTaskbarItem;
+        _isTaskbarItemPinned = isTaskbarItemPinned;
+        _pinStartItem = pinStartItem;
+        _isStartItemPinned = isStartItemPinned;
         InitializeComponent();
         _changeRefreshTimer.Tick += ChangeRefreshTimer_Tick;
         ApplyViewMode(_viewMode);
@@ -481,8 +489,20 @@ public partial class ShellNamespaceBrowserWindow : Window
         CutMenuItem.IsEnabled = hasSelection;
         PropertiesMenuItem.IsEnabled = hasSelection;
         RenameMenuItem.IsEnabled = false;
+        PinStartMenuItem.Visibility = Visibility.Collapsed;
+        PinTaskbarMenuItem.Visibility = Visibility.Collapsed;
         if (ItemsList.SelectedItems.Count == 1 && ItemsList.SelectedItem is DesktopShellNamespaceEntry entry)
+        {
+            var pinTarget = TaskbarPinCatalog.IsSupportedShellNamespaceTarget(entry.ParsingName)
+                || TaskbarPinCatalog.IsSupportedTarget(entry.ParsingName, entry.IsFolder);
+            var canPinStart = pinTarget && _pinStartItem is not null;
+            var canPinTaskbar = pinTarget && _pinTaskbarItem is not null;
+            PinStartMenuItem.Visibility = canPinStart ? Visibility.Visible : Visibility.Collapsed;
+            PinStartMenuItem.IsEnabled = canPinStart && _isStartItemPinned?.Invoke(entry.ParsingName) != true;
+            PinTaskbarMenuItem.Visibility = canPinTaskbar ? Visibility.Visible : Visibility.Collapsed;
+            PinTaskbarMenuItem.IsEnabled = canPinTaskbar && _isTaskbarItemPinned?.Invoke(entry.ParsingName) != true;
             RenameMenuItem.IsEnabled = await CanRenameAsync(entry);
+        }
         ShowMoreOptionsMenuItem.Header = hasSelection ? "Show more options" : "Show folder options";
         ShowMoreOptionsMenuItem.IsEnabled = true;
     }
@@ -498,6 +518,18 @@ public partial class ShellNamespaceBrowserWindow : Window
     }
 
     private void Rename_Click(object sender, RoutedEventArgs e) => BeginRenameSelected();
+
+    private void PinStart_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pinStartItem is null || ItemsList.SelectedItems.Count != 1 || ItemsList.SelectedItem is not DesktopShellNamespaceEntry entry) return;
+        if (_pinStartItem(entry.ParsingName)) StatusText.Text = $"Pinned {entry.Name} to Start.";
+    }
+
+    private void PinTaskbar_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pinTaskbarItem is null || ItemsList.SelectedItems.Count != 1 || ItemsList.SelectedItem is not DesktopShellNamespaceEntry entry) return;
+        if (_pinTaskbarItem(entry.ParsingName)) StatusText.Text = $"Pinned {entry.Name} to the taskbar.";
+    }
 
     private async void Copy_Click(object sender, RoutedEventArgs e) => await CopySelectedItemsAsync(cut: false);
 
