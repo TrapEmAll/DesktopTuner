@@ -184,6 +184,10 @@ Check(false, DesktopHostKeyboardPolicy.ShouldDeleteSelection(Key.Delete, Modifie
     "leave Delete unhandled when no replacement desktop items are selected");
 Check(false, DesktopHostKeyboardPolicy.ShouldDeleteSelection(Key.Delete, ModifierKeys.None, hasSelection: true, isEditingName: true),
     "preserve Delete while editing a replacement desktop item name");
+CheckTrue(DesktopHostKeyboardPolicy.ShouldCreateFolder(Key.N, ModifierKeys.Control | ModifierKeys.Shift),
+    "create a replacement desktop folder with Ctrl+Shift+N");
+CheckTrue(!DesktopHostKeyboardPolicy.ShouldCreateFolder(Key.N, ModifierKeys.Control | ModifierKeys.Shift, isEditingName: true),
+    "preserve Ctrl+Shift+N while editing a replacement desktop item name");
 Check(DesktopHostClipboardAction.Copy, DesktopHostKeyboardPolicy.ResolveClipboardAction(Key.C, ModifierKeys.Control, hasSelection: true),
     "copy selected replacement desktop items with Ctrl+C");
 Check(DesktopHostClipboardAction.Cut, DesktopHostKeyboardPolicy.ResolveClipboardAction(Key.X, ModifierKeys.Control, hasSelection: true),

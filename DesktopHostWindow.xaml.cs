@@ -367,6 +367,13 @@ public partial class DesktopHostWindow : Window
     private void OnKeyDown(object sender, KeyEventArgs e)
     {
         var selectedItems = _desktopItems.Where(item => item.IsSelected).ToArray();
+        if (DesktopHostKeyboardPolicy.ShouldCreateFolder(e.Key, Keyboard.Modifiers, e.OriginalSource is TextBox))
+        {
+            e.Handled = true;
+            _ = CreateDesktopFolderAsync();
+            return;
+        }
+
         var clipboardAction = DesktopHostKeyboardPolicy.ResolveClipboardAction(e.Key, Keyboard.Modifiers,
             selectedItems.Length > 0, e.OriginalSource is TextBox);
         if (clipboardAction != DesktopHostClipboardAction.None)
@@ -1260,14 +1267,17 @@ public partial class DesktopHostWindow : Window
         : [new DesktopHostMonitorViewport("DISPLAY1", 0, 0,
             Math.Max(DesktopIconWidth, DesktopItems.ActualWidth), Math.Max(DesktopIconHeight, DesktopItems.ActualHeight), true)];
 
-    private void OnNewFolderClick(object sender, RoutedEventArgs e)
+    private async void OnNewFolderClick(object sender, RoutedEventArgs e) => await CreateDesktopFolderAsync();
+
+    private async Task CreateDesktopFolderAsync()
     {
         try
         {
-            ExplorerFileOperationService.CreateFolder(_userDesktop);
-            RefreshDesktop();
+            var owner = new WindowInteropHelper(this).Handle;
+            if (await NativeShellContextMenuService.CreateFolderInShellFolderAsync(owner, "shell:Desktop"))
+                RefreshDesktop();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Could not create folder", MessageBoxButton.OK, MessageBoxImage.Error);
         }

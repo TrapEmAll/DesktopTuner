@@ -12,6 +12,9 @@ public enum DesktopHostClipboardAction
 
 public static class DesktopHostKeyboardPolicy
 {
+    public static bool ShouldCreateFolder(Key key, ModifierKeys modifiers, bool isEditingName = false) =>
+        key == Key.N && modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && !isEditingName;
+
     public static bool ShouldShowProperties(Key key, ModifierKeys modifiers, bool hasSelection, bool isEditingName = false, Key systemKey = Key.None)
     {
         if (key == Key.System) key = systemKey;
