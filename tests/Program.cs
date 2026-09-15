@@ -1361,6 +1361,12 @@ var taskbarNavigationDisplays = TaskbarKeyboardNavigationPolicy.OrderDisplays([
     new TaskbarDisplay("DISPLAY-TOP", 320, -1200, 1600, 1200, false)]);
 Check("DISPLAY-PRIMARY,DISPLAY-TOP,DISPLAY-LEFT", string.Join(',', taskbarNavigationDisplays.Select(display => display.DeviceName)),
     "cycle taskbars with primary display first, then by physical position");
+Check("DISPLAY-TOP", TaskbarKeyboardNavigationPolicy.SelectForForeground(taskbarNavigationDisplays, "DISPLAY-TOP")?.DeviceName,
+    "focus Win+B on the taskbar that contains the foreground window");
+Check("DISPLAY-PRIMARY", TaskbarKeyboardNavigationPolicy.SelectForForeground(taskbarNavigationDisplays, "MISSING")?.DeviceName,
+    "fall back to the primary taskbar when the foreground display is unavailable");
+Check("DISPLAY-PRIMARY", TaskbarKeyboardNavigationPolicy.SelectForForeground(taskbarNavigationDisplays, null)?.DeviceName,
+    "start system-area focus on the primary taskbar when no foreground display is known");
 Check<int?>(1, TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(0, 3, forward: true), "advance Win+T to the next display's taskbar");
 Check<int?>(2, TaskbarKeyboardNavigationPolicy.GetAdjacentIndex(0, 3, forward: false), "advance Win+Shift+T to the previous display's taskbar");
 var shortcutGesture = new WindowsKeyGesture();

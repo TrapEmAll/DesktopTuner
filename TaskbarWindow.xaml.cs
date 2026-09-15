@@ -1348,11 +1348,13 @@ public partial class TaskbarWindow : Window
         Activate();
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            var target = ClockButton.IsVisible && ClockButton.IsEnabled
-                ? ClockButton
+            var target = TrayButton.IsVisible && TrayButton.IsEnabled
+                ? TrayButton
                 : QuickSettingsButton.IsVisible && QuickSettingsButton.IsEnabled
                     ? QuickSettingsButton
-                    : FindVisualChildren<Button>(RightControls).FirstOrDefault(button =>
+                    : ClockButton.IsVisible && ClockButton.IsEnabled
+                        ? ClockButton
+                : FindVisualChildren<Button>(RightControls).FirstOrDefault(button =>
                         button != TrayButton && button.IsVisible && button.IsEnabled);
             if (target is null) return;
             _keyboardFocusActive = true;

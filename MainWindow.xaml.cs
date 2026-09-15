@@ -2305,8 +2305,15 @@ public partial class MainWindow : Window
     {
         if (!CanFocusTaskbarSystemArea()) return;
         if (_startMenuWindow?.IsVisible == true) _startMenuWindow.Close();
-        var taskbar = _taskbarWindows.FirstOrDefault(window => window.Display.IsPrimary && window.IsVisible)
-            ?? _taskbarWindows.FirstOrDefault(window => window.IsVisible);
+        var foregroundWindow = GetForegroundWindow();
+        var foregroundDisplay = foregroundWindow != 0
+            ? TaskbarDisplayService.GetDeviceNameForWindow(foregroundWindow)
+            : null;
+        var targetDisplay = TaskbarKeyboardNavigationPolicy.SelectForForeground(
+            _taskbarWindows.Where(window => window.IsVisible).Select(window => window.Display), foregroundDisplay);
+        var taskbar = targetDisplay is null
+            ? null
+            : _taskbarWindows.FirstOrDefault(window => string.Equals(window.Display.DeviceName, targetDisplay.DeviceName, StringComparison.OrdinalIgnoreCase) && window.IsVisible);
         if (taskbar is null) return;
         if (!_taskbarWindows.Any(window => window.HasKeyboardTaskbarFocus))
             _taskbarFocusReturnWindow = GetForegroundWindow();
