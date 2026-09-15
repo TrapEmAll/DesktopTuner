@@ -388,7 +388,13 @@ public partial class StartMenuWindow : Window
             return;
         }
 
-        var results = _catalogLoadError is null ? AppCatalogService.Search(_apps, query) : Array.Empty<AppEntry>();
+        var recentFiles = query.Length == 0
+            ? Array.Empty<AppEntry>()
+            : _recentFilesStore.ReadRecentFiles(_apps.Select(app => app.ShortcutPath));
+        var searchableEntries = query.Length == 0
+            ? _apps
+            : _apps.Concat(recentFiles);
+        var results = _catalogLoadError is null ? AppCatalogService.Search(searchableEntries, query) : Array.Empty<AppEntry>();
         var recentItems = query.Length == 0
             ? _recentAppsStore.Resolve(_apps)
                 .Where(app => !_pinnedApps.Any(pinned => string.Equals(pinned.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase)))

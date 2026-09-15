@@ -1004,6 +1004,9 @@ try
     recentFiles = new StartRecentFilesStore(recentFilesDirectory).ReadRecentFiles();
     Check(1, recentFiles.Count, "read recent document shortcuts from the Windows Recent Items folder");
     Check("Quarterly report", recentFiles[0].Name, "derive recent document names from shortcut filenames");
+    Check("Quarterly report", string.Join(',', AppCatalogService.Search(
+        [new AppEntry("Quarterly report", recentDocument), new AppEntry("Editor", @"C:\Apps\Editor.lnk")], "quarterly")
+        .Select(app => app.Name)), "find recent document shortcuts by name in Start search");
     CheckTrue(recentApps.TryClear(), "clear the locally stored Start recent-app history");
     Check(0, recentApps.LoadPaths().Count, "remove all entries when Start recent history is cleared");
 }
