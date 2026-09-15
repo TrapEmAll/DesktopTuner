@@ -126,6 +126,15 @@ public static class TaskbarAutoHidePolicy
     }
 }
 
+public static class TaskbarOverflowPolicy
+{
+    public static bool ShouldShow(double extent, double viewport)
+    {
+        if (double.IsNaN(extent) || double.IsNaN(viewport) || double.IsInfinity(extent) || double.IsInfinity(viewport)) return false;
+        return extent > Math.Max(0, viewport) + 1;
+    }
+}
+
 public static class TaskbarTransparencyPolicy
 {
     public const int MaximumTransparency = 70;

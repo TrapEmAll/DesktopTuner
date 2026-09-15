@@ -235,6 +235,9 @@
                 </ItemsControl>
                         </StackPanel>
                     </ScrollViewer>
+                    <Button x:Name="OverflowButton" Grid.ZIndex="2" HorizontalAlignment="Right" VerticalAlignment="Center" Width="34" Height="34" Padding="0" Visibility="Collapsed" Style="{StaticResource TaskButton}" Click="OverflowButton_Click" ToolTip="Show taskbar overflow" AutomationProperties.Name="Taskbar overflow">
+                        <TextBlock Text="⋯" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                    </Button>
                     <TextBlock x:Name="EmptyText" Text="No open app windows" Foreground="{DynamicResource TaskbarEmptyTextBrush}" FontSize="11" VerticalAlignment="Center" Margin="6,0" />
                 </Grid>
             </Border>

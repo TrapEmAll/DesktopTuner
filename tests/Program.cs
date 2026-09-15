@@ -706,6 +706,8 @@ CheckTrue(TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.Always,
 CheckTrue(TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.WhenFull, 4, 4), "show taskbar labels while buttons fit");
 CheckTrue(!TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.WhenFull, 5, 4), "hide taskbar labels when buttons exceed capacity");
 CheckTrue(!TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.Never, 1, 4), "hide taskbar labels in never mode");
+CheckTrue(TaskbarOverflowPolicy.ShouldShow(402, 400), "show a taskbar overflow command when app buttons exceed the viewport");
+CheckTrue(!TaskbarOverflowPolicy.ShouldShow(400, 400), "hide taskbar overflow when buttons fit exactly");
 var launchableGroup = new TaskbarWindowGroup("Desktop Tuner", "Desktop Tuner", [new RunningWindow((nint)7, "Desktop Tuner", "Desktop Tuner", Environment.ProcessPath!, false)]);
 Check(Environment.ProcessPath, TaskbarWindowGrouping.GetLaunchPath(launchableGroup), "find an executable path for a running taskbar group's new-instance command");
 var packagedRunningGroup = new TaskbarWindowGroup("Store app", "Store app", [new RunningWindow((nint)10, "Store app", "ApplicationFrameHost", @"C:\\Windows\\System32\\ApplicationFrameHost.exe", false)

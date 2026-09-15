@@ -58,6 +58,8 @@ public partial class TaskbarWindow : Window
     private Visibility? _visibilityBeforeWindowArrange;
     private bool? _systemBackdropForCurrentStyle;
     private bool _nativeTrayExposed;
+    private IReadOnlyList<PinnedTaskbarApp> _overflowPinnedApps = [];
+    private IReadOnlyList<TaskbarWindowGroup> _overflowWindowGroups = [];
     private bool _isDark;
     private bool _keyboardFocusActive;
     private nint _previousForegroundWindow;
@@ -316,6 +318,8 @@ public partial class TaskbarWindow : Window
                 : (_edge == TaskbarEdge.Top ? new Thickness(0, 0, 0, 1) : new Thickness(0, 1, 0, 0));
             ResetSegments();
         }
+
+        UpdateOverflowVisibility();
     }
 
     private void ResetSegments()
@@ -494,12 +498,31 @@ public partial class TaskbarWindow : Window
         }).ToList();
         WindowItems.ItemsSource = groups
             .Select(group => TaskbarButtonViewModel.FromWindowGroup(group, _preferences, vertical, showLabels)).ToList();
+        _overflowPinnedApps = pinnedApps;
+        _overflowWindowGroups = groups;
         EmptyText.Visibility = windows.Count == 0 && _preferences.PinnedApps!.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
+        Dispatcher.BeginInvoke(() =>
+        {
+            UpdateButtonCentering();
+            UpdateOverflowVisibility();
+        });
         UpdateClock();
     }
 
-    private void WindowScroller_SizeChanged(object sender, SizeChangedEventArgs e) => Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
+    private void UpdateOverflowVisibility()
+    {
+        if (!IsLoaded) return;
+        WindowScroller.UpdateLayout();
+        var extent = _edge is TaskbarEdge.Left or TaskbarEdge.Right ? WindowScroller.ExtentHeight : WindowScroller.ExtentWidth;
+        var viewport = _edge is TaskbarEdge.Left or TaskbarEdge.Right ? WindowScroller.ViewportHeight : WindowScroller.ViewportWidth;
+        OverflowButton.Visibility = TaskbarOverflowPolicy.ShouldShow(extent, viewport) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void WindowScroller_SizeChanged(object sender, SizeChangedEventArgs e) => Dispatcher.BeginInvoke(() =>
+    {
+        UpdateButtonCentering();
+        UpdateOverflowVisibility();
+    });
 
     private void UpdateButtonCentering()
     {
@@ -1249,6 +1272,39 @@ public partial class TaskbarWindow : Window
         {
             MessageBox.Show(this, $"Windows could not open {path}.\n\n{ex.Message}", "Could not open folder item", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void OverflowButton_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu();
+        foreach (var app in _overflowPinnedApps)
+        {
+            var item = new MenuItem { Header = $"Pinned: {app.Name}", Tag = app };
+            item.Click += OverflowItem_Click;
+            menu.Items.Add(item);
+        }
+        if (_overflowPinnedApps.Count > 0 && _overflowWindowGroups.Count > 0) menu.Items.Add(new Separator());
+        foreach (var group in _overflowWindowGroups)
+        {
+            var item = new MenuItem { Header = group.Label, Tag = group };
+            item.Click += OverflowItem_Click;
+            menu.Items.Add(item);
+        }
+        if (menu.Items.Count == 0) return;
+        menu.PlacementTarget = OverflowButton;
+        menu.IsOpen = true;
+    }
+
+    private void OverflowItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: PinnedTaskbarApp app })
+        {
+            ActivatePinnedApp(app, showPreview: false, toggleMinimizeOnActive: false);
+            return;
+        }
+
+        if (sender is MenuItem { Tag: TaskbarWindowGroup group } && TaskbarWindowGrouping.SelectCloseTarget(group) is { } target)
+            RunningWindowService.ActivateOrMinimize(target);
     }
 
     private void PinnedButton_Click(object sender, RoutedEventArgs e)
