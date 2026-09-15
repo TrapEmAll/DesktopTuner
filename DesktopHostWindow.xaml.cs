@@ -448,9 +448,9 @@ public partial class DesktopHostWindow : Window
             }
             e.Handled = true;
         }
-        else if (e.Key == Key.Enter && TryGetFocusedDesktopItem(out _, out var enterItem))
+        else if (e.Key == Key.Enter && _desktopItems.Any(item => item.IsSelected))
         {
-            OpenDesktopItem(enterItem);
+            OpenSelectedDesktopItems();
             e.Handled = true;
         }
         else if (DesktopHostKeyboardPolicy.ShouldShowContextMenu(e.Key, Keyboard.Modifiers, e.OriginalSource is TextBox))
@@ -593,7 +593,13 @@ public partial class DesktopHostWindow : Window
 
     private void OnOpenItemClick(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem { DataContext: DesktopHostItem entry }) OpenDesktopItem(entry);
+        if (sender is MenuItem { DataContext: DesktopHostItem entry })
+            OpenSelectedDesktopItems(entry);
+    }
+
+    private void OpenSelectedDesktopItems(DesktopHostItem? fallback = null)
+    {
+        foreach (var entry in DesktopHostOpenPolicy.SelectItems(_desktopItems, fallback)) OpenDesktopItem(entry);
     }
 
     private void OpenDesktopItem(DesktopHostItem entry)
@@ -781,7 +787,7 @@ public partial class DesktopHostWindow : Window
         var selection = DesktopHostSelectionPolicy.PreserveSelectionForContextMenu(_desktopItems, item.FullPath);
         ApplySelection(selection.Paths, selection.AnchorPath);
         if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "OpenDesktopItemMenuItem") is { } openItem)
-            openItem.IsEnabled = _desktopItems.Count(candidate => candidate.IsSelected) == 1;
+            openItem.IsEnabled = DesktopHostOpenPolicy.SelectItems(_desktopItems).Count > 0;
         var selectedItems = _desktopItems.Where(candidate => candidate.IsSelected).ToArray();
         var selected = selectedItems.Length == 1 ? selectedItems[0] : null;
         var singleFilesystemItem = selected is not null

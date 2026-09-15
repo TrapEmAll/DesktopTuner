@@ -168,6 +168,14 @@ Check(new DesktopHostPosition(100, 112), new DesktopHostPosition(gridItems[1].Le
 var selectableDesktopItems = new[] { "a", "b", "c", "d" }
     .Select(name => new DesktopHostItem(name, Path.Combine(desktopHostTestRoot, name), false))
     .ToArray();
+selectableDesktopItems[0].IsSelected = true;
+selectableDesktopItems[1].IsSelected = true;
+Check("a,b", string.Join(',', DesktopHostOpenPolicy.SelectItems(selectableDesktopItems).Select(item => item.Name)),
+    "open every selected replacement desktop item together");
+selectableDesktopItems[0].IsSelected = false;
+selectableDesktopItems[1].IsSelected = false;
+Check("c", string.Join(',', DesktopHostOpenPolicy.SelectItems(selectableDesktopItems, selectableDesktopItems[2]).Select(item => item.Name)),
+    "fall back to the focused replacement desktop item when selection is empty");
 Check(true, DesktopHostKeyboardPolicy.ShouldShowProperties(Key.Enter, ModifierKeys.Alt, hasSelection: true),
     "open native properties for selected replacement desktop items with Alt+Enter");
 Check(true, DesktopHostKeyboardPolicy.ShouldShowProperties(Key.System, ModifierKeys.Alt, hasSelection: true, systemKey: Key.Enter),
