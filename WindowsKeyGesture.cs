@@ -149,7 +149,7 @@ public sealed class WindowsKeyGesture
                     return action;
                 }
             }
-            if (key is (uint)'A' or (uint)'G' or (uint)'H' or (uint)'I' or (uint)'K' or (uint)'L' or (uint)'N' or (uint)'P' or (uint)'Q' or (uint)'S' or (uint)'U' or (uint)'V' or (uint)'W' or (uint)'Z' or 0x09 or 0x20 && !controlPressed && !altPressed && !shiftPressed &&
+            if (key is (uint)'A' or (uint)'F' or (uint)'G' or (uint)'H' or (uint)'I' or (uint)'K' or (uint)'L' or (uint)'N' or (uint)'P' or (uint)'Q' or (uint)'S' or (uint)'U' or (uint)'V' or (uint)'W' or (uint)'Z' or 0x09 or 0x20 && !controlPressed && !altPressed && !shiftPressed &&
                 canOpenShellSystemSurface?.Invoke(key) == true)
             {
                 _taskbarShortcutConsumed = true;

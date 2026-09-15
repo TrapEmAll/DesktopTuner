@@ -206,13 +206,15 @@ public static class SystemFlyoutService
 
     public static bool ShowDesktop() => SendWindowsShortcut(VK_D, ShowDesktopSequence, "Show desktop");
 
-    public static bool OpenSettings() => OpenSettingsUri("ms-settings:", "Settings");
+    public static bool OpenSettings() => OpenShellUri("ms-settings:", "Settings");
 
-    public static bool OpenAccessibilitySettings() => OpenSettingsUri("ms-settings:easeofaccess", "Accessibility settings");
+    public static bool OpenAccessibilitySettings() => OpenShellUri("ms-settings:easeofaccess", "Accessibility settings");
 
-    public static bool OpenGameBar() => OpenSettingsUri("ms-gamebar:", "Game Bar");
+    public static bool OpenGameBar() => OpenShellUri("ms-gamebar:", "Game Bar");
 
-    private static bool OpenSettingsUri(string uri, string featureName)
+    public static bool OpenFeedbackHub() => OpenShellUri("feedback-hub:", "Feedback Hub");
+
+    private static bool OpenShellUri(string uri, string featureName)
     {
         try
         {
