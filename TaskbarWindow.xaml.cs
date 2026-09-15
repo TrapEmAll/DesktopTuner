@@ -1297,16 +1297,13 @@ public partial class TaskbarWindow : Window
         var menu = new ContextMenu();
         foreach (var app in _overflowPinnedApps)
         {
-            var item = new MenuItem { Header = $"Pinned: {app.Name}", Tag = app };
-            item.Click += OverflowItem_Click;
-            menu.Items.Add(item);
+            menu.Items.Add(CreateOverflowMenuItem(app.Name, app, app.ExecutablePath, isActive: false));
         }
         if (_overflowPinnedApps.Count > 0 && _overflowWindowGroups.Count > 0) menu.Items.Add(new Separator());
         foreach (var group in _overflowWindowGroups)
         {
-            var item = new MenuItem { Header = group.Label, Tag = group };
-            item.Click += OverflowItem_Click;
-            menu.Items.Add(item);
+            var executablePath = group.Windows.Select(window => window.ExecutablePath).FirstOrDefault(path => !string.IsNullOrWhiteSpace(path));
+            menu.Items.Add(CreateOverflowMenuItem(group.Label, group, executablePath, group.IsActive));
         }
         if (menu.Items.Count == 0) return;
         menu.PlacementTarget = OverflowButton;
@@ -1319,6 +1316,21 @@ public partial class TaskbarWindow : Window
             _ => PlacementMode.Bottom
         };
         menu.IsOpen = true;
+    }
+
+    private MenuItem CreateOverflowMenuItem(string header, object tag, string? iconPath, bool isActive)
+    {
+        var item = new MenuItem
+        {
+            Header = header,
+            Tag = tag,
+            FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal,
+            ToolTip = isActive ? $"{header} (active)" : header
+        };
+        if (TaskbarIconService.LoadIcon(iconPath ?? string.Empty) is { } icon)
+            item.Icon = new Image { Source = icon, Width = 18, Height = 18 };
+        item.Click += OverflowItem_Click;
+        return item;
     }
 
     private void OverflowItem_Click(object sender, RoutedEventArgs e)
