@@ -448,10 +448,15 @@ public partial class DesktopHostWindow : Window
             }
             e.Handled = true;
         }
-        else if (e.Key == Key.Enter && _desktopItems.Any(item => item.IsSelected))
+        else if (e.Key == Key.Enter && e.OriginalSource is not TextBox)
         {
-            OpenSelectedDesktopItems();
-            e.Handled = true;
+            DesktopHostItem? focusedOpenItem = null;
+            if (TryGetFocusedDesktopItem(out _, out var currentFocusedItem)) focusedOpenItem = currentFocusedItem;
+            if (DesktopHostOpenPolicy.SelectItems(_desktopItems, focusedOpenItem).Count > 0)
+            {
+                OpenSelectedDesktopItems(focusedOpenItem);
+                e.Handled = true;
+            }
         }
         else if (DesktopHostKeyboardPolicy.ShouldShowContextMenu(e.Key, Keyboard.Modifiers, e.OriginalSource is TextBox))
         {
