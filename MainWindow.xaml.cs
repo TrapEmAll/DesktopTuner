@@ -2131,6 +2131,15 @@ public partial class MainWindow : Window
 
     private bool TryPinStartItem(string path)
     {
+        if (TaskbarPinCatalog.IsSupportedPackagedTarget(path))
+        {
+            var taskbarPin = _pinnedApps.FirstOrDefault(pin => string.Equals(pin.ExecutablePath, path, StringComparison.OrdinalIgnoreCase));
+            var packagedName = taskbarPin?.Name ?? path[..path.IndexOf('!', StringComparison.Ordinal)];
+            var packagedApp = new AppEntry(packagedName, path, IsPackagedApp: true);
+            var packagedPins = StartPinCatalog.Pin(_pinnedStartApps, packagedApp);
+            if (packagedPins.Count == _pinnedStartApps.Count) return false;
+            return SavePinnedStartApps(packagedPins);
+        }
         var updatedPins = StartPinCatalog.AddDroppedFiles(_pinnedStartApps, [path]);
         if (updatedPins.Count == _pinnedStartApps.Count)
             return false;
