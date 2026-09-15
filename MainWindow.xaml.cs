@@ -1395,9 +1395,15 @@ public partial class MainWindow : Window
 
     private void OpenPinnedFileLocationInCompanionExplorer(string path)
     {
-        var folder = Directory.Exists(path) ? path : Path.GetDirectoryName(path);
-        if (!string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
-            OpenExplorer(folder);
+        if (Directory.Exists(path))
+        {
+            OpenExplorer(path);
+            return;
+        }
+
+        var folder = Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(folder) && File.Exists(path) && Directory.Exists(folder))
+            OpenExplorer(folder, path);
     }
 
     private void TaskbarWindow_ContentRendered(object? sender, EventArgs e)
@@ -1973,11 +1979,12 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OpenExplorer(string? initialPath = null)
+    private void OpenExplorer(string? initialPath = null, string? selectPath = null)
     {
         if (_explorerWindow is { IsVisible: true })
         {
-            if (!string.IsNullOrWhiteSpace(initialPath)) _explorerWindow.OpenFolderFromShell(initialPath);
+            if (!string.IsNullOrWhiteSpace(selectPath)) _explorerWindow.OpenFileLocationFromShell(selectPath);
+            else if (!string.IsNullOrWhiteSpace(initialPath)) _explorerWindow.OpenFolderFromShell(initialPath);
             _explorerWindow.Activate();
             return;
         }
@@ -1995,6 +2002,7 @@ public partial class MainWindow : Window
         { Owner = this };
         _explorerWindow.Closed += (_, _) => _explorerWindow = null;
         _explorerWindow.Show();
+        if (!string.IsNullOrWhiteSpace(selectPath)) _explorerWindow.SelectPathInCurrentFolder(selectPath);
     }
 
     private bool TryPinTaskbarItem(string path)

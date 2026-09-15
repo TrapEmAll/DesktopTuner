@@ -170,6 +170,38 @@ public partial class ExplorerWindow : Window
         Activate();
     }
 
+    public void OpenFileLocationFromShell(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (Directory.Exists(path))
+        {
+            OpenFolderFromShell(path);
+            return;
+        }
+
+        if (!File.Exists(path)) throw new FileNotFoundException("The pinned target no longer exists.", path);
+        var target = Path.GetFullPath(path);
+        var parent = Directory.GetParent(target)?.FullName;
+        if (string.IsNullOrWhiteSpace(parent) || !Directory.Exists(parent))
+            throw new DirectoryNotFoundException($"The pinned target folder no longer exists: {target}");
+
+        AddTab(new ExplorerLocation(parent));
+        SelectPathInCurrentFolder(target);
+        Activate();
+    }
+
+    public void SelectPathInCurrentFolder(string path)
+    {
+        var target = Path.GetFullPath(path);
+        var entry = EntriesList.Items.OfType<ExplorerEntry>()
+            .FirstOrDefault(item => string.Equals(item.FullPath, target, StringComparison.OrdinalIgnoreCase));
+        if (entry is null) return;
+
+        EntriesList.SelectedItem = entry;
+        EntriesList.ScrollIntoView(entry);
+        EntriesList.Focus();
+    }
+
     public void OpenShellLocationFromShell(string parsingName)
     {
         var location = parsingName.Trim().ToUpperInvariant() switch
