@@ -6,6 +6,7 @@ public sealed record TaskbarWindowGroup(string Label, string ApplicationName, IR
 {
     public bool CanRunElevated => Windows.FirstOrDefault()?.CanRunElevated == true;
     public bool CanLaunchNewInstance => TaskbarWindowGrouping.GetLaunchPath(this) is not null;
+    public bool CanOpenLocation => CanLaunchNewInstance;
     public string ToolTip => string.Join(Environment.NewLine, Windows.Select(window => window.Title));
     public bool IsActive => Windows.Any(window => window.IsForeground);
 }

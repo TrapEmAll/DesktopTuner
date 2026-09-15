@@ -968,6 +968,25 @@ public partial class TaskbarWindow : Window
         }
     }
 
+    private void OpenWindowGroupLocation_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: TaskbarWindowGroup group } || TaskbarWindowGrouping.GetLaunchPath(group) is not { } path) return;
+        try
+        {
+            if (_openFileLocationInCompanionExplorer is not null)
+            {
+                _openFileLocationInCompanionExplorer(path);
+                return;
+            }
+
+            Process.Start(AppCatalogService.BuildFileLocationLaunchInfo(new AppEntry(group.ApplicationName, path)));
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or System.Security.SecurityException)
+        {
+            MessageBox.Show(this, $"Windows could not show the location for {group.ApplicationName}.\n\n{ex.Message}", "Could not open file location", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void JumpListMenu_SubmenuOpened(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem menu || menu.CommandParameter is not TaskbarJumpListCategory category) return;

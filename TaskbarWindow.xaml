@@ -213,6 +213,7 @@
                                     <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
                                         <MenuItem Header="Minimize window(s)" Tag="{Binding}" Click="Minimize_Click" />
                                         <MenuItem Header="Close window(s)" Tag="{Binding}" Click="CloseWindows_Click" />
+                                        <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenLocation}" Click="OpenWindowGroupLocation_Click" />
                                         <MenuItem Header="Start new instance" Tag="{Binding}" IsEnabled="{Binding CanLaunchNewInstance}" Click="LaunchWindowGroupInstance_Click" />
                                         <MenuItem Header="Recent items" Tag="{Binding}" CommandParameter="{x:Static local:TaskbarJumpListCategory.Recent}" SubmenuOpened="JumpListMenu_SubmenuOpened">
                                             <MenuItem Header="Loading..." IsEnabled="False" />
