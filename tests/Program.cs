@@ -787,10 +787,16 @@ var shellFolderPath = Path.GetFullPath(Environment.CurrentDirectory);
 CheckTrue(FolderShellIntegrationService.TryReadInvocation(["--OPEN-FOLDER", shellFolderPath], out var parsedShellFolder), "recognize case-insensitive folder context-menu launch arguments");
 Check(shellFolderPath, parsedShellFolder, "normalize the folder passed by a context-menu command");
 Check(false, FolderShellIntegrationService.TryReadInvocation(["--open-folder", "relative\\folder"], out _), "reject a relative folder context-menu target");
+var shellNamespace = "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}";
+CheckTrue(FolderShellIntegrationService.TryReadShellLocationInvocation(["--OPEN-SHELL-LOCATION", shellNamespace], out var parsedShellNamespace), "recognize namespace context-menu launch arguments");
+Check(shellNamespace, parsedShellNamespace, "preserve the shell namespace parsing name");
+Check(false, FolderShellIntegrationService.TryReadShellLocationInvocation(["--open-shell-location", shellFolderPath], out _), "reject filesystem paths from the namespace command");
 Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe")}\" --open-folder \"%1\"", FolderShellIntegrationService.BuildCommand(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe", "%1"), "quote executable and selected-folder arguments in the directory context command");
 Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe")}\" --open-folder \"%V\"", FolderShellIntegrationService.BuildCommand(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe", "%V"), "quote the current-folder argument for empty-space context menus");
 Throws<ArgumentOutOfRangeException>(() => FolderShellIntegrationService.BuildCommand(Environment.ProcessPath!, "%*"), "reject unrecognized shell path substitutions");
-Check(2, FolderShellIntegrationService.VerbPaths.Count, "register folder and folder-background context menu commands");
+Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe")}\" --open-shell-location \"%1\"", FolderShellIntegrationService.BuildShellLocationCommand(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe", "%1"), "quote executable and namespace arguments in the virtual-folder context command");
+Throws<ArgumentOutOfRangeException>(() => FolderShellIntegrationService.BuildShellLocationCommand(Environment.ProcessPath!, "%*"), "reject unrecognized namespace path substitutions");
+Check(5, FolderShellIntegrationService.VerbPaths.Count, "register directory, virtual-folder, and drive context menu commands");
 Check("Software\\Classes\\Directory\\shell\\DesktopTuner.OpenWith", FolderShellIntegrationService.DefaultVerbPath, "use the registered Desktop Tuner folder verb as the shell-host default");
 Check("DesktopTuner.OpenWith", FolderShellIntegrationService.DefaultVerb, "identify the owned shell-host folder verb");
 var auraIcon = BitmapSource.Create(5, 1, 96, 96, PixelFormats.Bgra32, null,

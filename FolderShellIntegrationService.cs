@@ -9,15 +9,20 @@ public static class FolderShellIntegrationService
     private const uint SHCNE_ASSOCCHANGED = 0x08000000;
     private const uint SHCNF_IDLIST = 0x0000;
     public const string OpenFolderArgument = "--open-folder";
+    public const string OpenShellLocationArgument = "--open-shell-location";
     private const string DirectoryVerbPath = @"Software\Classes\Directory\shell\DesktopTuner.OpenWith";
     private const string DirectoryBackgroundVerbPath = @"Software\Classes\Directory\Background\shell\DesktopTuner.OpenWith";
     private const string DirectoryShellPath = @"Software\Classes\Directory\shell";
+    private const string FolderVerbPath = @"Software\Classes\Folder\shell\DesktopTuner.OpenWith";
+    private const string FolderBackgroundVerbPath = @"Software\Classes\Folder\Background\shell\DesktopTuner.OpenWith";
+    private const string DriveVerbPath = @"Software\Classes\Drive\shell\DesktopTuner.OpenWith";
     private const string AssociationStatePath = @"Software\DesktopTuner\FolderShellIntegration";
     private const string PreviousDefaultValue = "PreviousDefaultVerb";
     private const string HadPreviousDefaultValue = "HadPreviousDefaultVerb";
     public const string DefaultVerb = "DesktopTuner.OpenWith";
 
-    public static IReadOnlyList<string> VerbPaths { get; } = [DirectoryVerbPath, DirectoryBackgroundVerbPath];
+    public static IReadOnlyList<string> VerbPaths { get; } =
+        [DirectoryVerbPath, DirectoryBackgroundVerbPath, FolderVerbPath, FolderBackgroundVerbPath, DriveVerbPath];
 
     public static string DefaultVerbPath => DirectoryVerbPath;
 
@@ -43,6 +48,28 @@ public static class FolderShellIntegrationService
         return $"\"{Path.GetFullPath(executablePath)}\" {OpenFolderArgument} \"{shellPathToken}\"";
     }
 
+    public static bool TryReadShellLocationInvocation(IReadOnlyList<string> arguments, out string shellLocation)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        shellLocation = string.Empty;
+        for (var index = 0; index < arguments.Count - 1; index++)
+        {
+            if (!string.Equals(arguments[index], OpenShellLocationArgument, StringComparison.OrdinalIgnoreCase)) continue;
+            var candidate = Environment.ExpandEnvironmentVariables(arguments[index + 1]).Trim();
+            if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(candidate)) return false;
+            shellLocation = candidate;
+            return true;
+        }
+        return false;
+    }
+
+    public static string BuildShellLocationCommand(string executablePath, string shellPathToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
+        if (shellPathToken is not ("%1" or "%V")) throw new ArgumentOutOfRangeException(nameof(shellPathToken));
+        return $"\"{Path.GetFullPath(executablePath)}\" {OpenShellLocationArgument} \"{shellPathToken}\"";
+    }
+
     public static void SetEnabled(bool enabled, string? executablePath = null)
     {
         if (!enabled)
@@ -58,6 +85,9 @@ public static class FolderShellIntegrationService
         var fullExecutablePath = Path.GetFullPath(executablePath);
         RegisterVerb(DirectoryVerbPath, "Open with Desktop Tuner", fullExecutablePath, "%1");
         RegisterVerb(DirectoryBackgroundVerbPath, "Browse this folder with Desktop Tuner", fullExecutablePath, "%V");
+        RegisterVerb(FolderVerbPath, "Open namespace with Desktop Tuner", fullExecutablePath, "%1", namespaceCommand: true);
+        RegisterVerb(FolderBackgroundVerbPath, "Browse namespace with Desktop Tuner", fullExecutablePath, "%V", namespaceCommand: true);
+        RegisterVerb(DriveVerbPath, "Open drive with Desktop Tuner", fullExecutablePath, "%1", namespaceCommand: true);
         SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
     }
 
@@ -103,7 +133,7 @@ public static class FolderShellIntegrationService
         return true;
     }
 
-    private static void RegisterVerb(string verbPath, string label, string executablePath, string shellPathToken)
+    private static void RegisterVerb(string verbPath, string label, string executablePath, string shellPathToken, bool namespaceCommand = false)
     {
         using var verb = Registry.CurrentUser.CreateSubKey(verbPath, writable: true)
             ?? throw new IOException($"Could not register the Desktop Tuner folder command at {verbPath}.");
@@ -111,7 +141,9 @@ public static class FolderShellIntegrationService
         verb.SetValue("Icon", executablePath, RegistryValueKind.String);
         using var command = verb.CreateSubKey("command", writable: true)
             ?? throw new IOException($"Could not register the Desktop Tuner folder command at {verbPath}.");
-        command.SetValue(null, BuildCommand(executablePath, shellPathToken), RegistryValueKind.String);
+        command.SetValue(null, namespaceCommand
+            ? BuildShellLocationCommand(executablePath, shellPathToken)
+            : BuildCommand(executablePath, shellPathToken), RegistryValueKind.String);
     }
 
     [DllImport("shell32.dll")]

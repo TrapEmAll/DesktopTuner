@@ -1277,7 +1277,7 @@ public partial class MainWindow : Window
         OpenExplorer(Path.GetFullPath(folderPath));
     }
 
-    private void OpenShellLocationFromShell(string shellLocation)
+    public void OpenShellLocationFromShell(string shellLocation)
     {
         if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(shellLocation)) return;
         if (DesktopShellNamespaceCatalog.IsCompanionExplorerLocation(shellLocation))

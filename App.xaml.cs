@@ -44,6 +44,7 @@ public partial class App : Application
         }
 
         var hasFolderShellInvocation = FolderShellIntegrationService.TryReadInvocation(e.Args, out var folderShellPath);
+        var hasShellLocationInvocation = FolderShellIntegrationService.TryReadShellLocationInvocation(e.Args, out var shellLocation);
         var shellHostArgument = ShellHostLaunchPolicy.IsShellHostInvocation(e.Args);
         var shellHostWorkerArgument = ShellHostLaunchPolicy.IsShellHostWorkerInvocation(e.Args);
         var customShellPolicyTargetsApp = CustomShellPolicy.TargetsExecutable(CustomShellPolicy.ReadCurrentUserShellCommand(), Environment.ProcessPath);
@@ -56,6 +57,11 @@ public partial class App : Application
             }
         }
         if (hasFolderShellInvocation && DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(folderShellPath))
+        {
+            Shutdown();
+            return;
+        }
+        if (hasShellLocationInvocation && DesktopTuner.MainWindow.TryOpenShellLocationInExistingInstance(shellLocation))
         {
             Shutdown();
             return;
@@ -146,6 +152,8 @@ public partial class App : Application
         {
             var activated = hasFolderShellInvocation
                 ? DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(folderShellPath)
+                : hasShellLocationInvocation
+                    ? DesktopTuner.MainWindow.TryOpenShellLocationInExistingInstance(shellLocation)
                 : !startInBackground && DesktopTuner.MainWindow.TryActivateExistingInstance(showSettings: true);
             if (!activated && !startInBackground)
                 MessageBox.Show("Desktop Tuner is already running, but the requested window could not be reached.", "Desktop Tuner", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -163,6 +171,7 @@ public partial class App : Application
         MainWindow = window;
         window.Show();
         if (hasFolderShellInvocation) window.OpenFolderFromShell(folderShellPath);
+        else if (hasShellLocationInvocation) window.OpenShellLocationFromShell(shellLocation);
     }
 
     private async void WatchTaskbarOwnerAsync(int ownerProcessId, string snapshotPath)

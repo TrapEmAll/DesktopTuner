@@ -8,6 +8,8 @@ The native bridge in `shell/ExplorerContextMenu` registers the same command for 
 
 The Windows workflow builds the x64 DLL, checks its COM exports, and asks `MakeAppx` to validate the sparse package manifest. It separately checks that the executable, same-directory DLL, and visual assets resolve in the external install layout and that the manifest points to the root-level DLL. Sparse packages keep those files outside the package, so `MakeAppx` skips its package-internal path checks. CI does not register the package or exercise an interactive Explorer context menu.
 
+The optional folder integration also registers per-user verbs for the `Folder` and `Drive` shell classes. Virtual locations such as This PC, Recycle Bin, Network, and Control Panel are passed to `DesktopTuner.exe --open-shell-location` and forwarded to the running companion namespace browser. Filesystem folders continue to use the dedicated `--open-folder` command.
+
 ## Replacement taskbar work area
 
 When running as the replacement shell, the taskbar background menu and Taskbar settings both provide an explicit **Exit shell replacement and start Explorer** action. Exiting the worker cleanly lets the supervisor start Explorer for the current session while leaving the saved shell policy available for the next sign-in. The shell-host taskbar disables its close-bar commands so a user cannot accidentally remove every replacement taskbar while leaving the shell worker running.
