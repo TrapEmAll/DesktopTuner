@@ -146,8 +146,14 @@
             <DockPanel LastChildFill="True">
                 <Menu DockPanel.Dock="Top" Background="Transparent" Foreground="{DynamicResource DesktopPrimaryTextBrush}" Margin="0,0,0,8" KeyboardNavigation.TabNavigation="Cycle">
                     <MenuItem Header="_File">
-                        <MenuItem Header="New window" InputGestureText="Ctrl+N" Click="OpenInNewWindow_Click" />
+                        <MenuItem x:Name="ClassicNewFolderMenuItem" Header="New folder" InputGestureText="Ctrl+Shift+N" Click="NewFolder_Click" />
+                        <MenuItem x:Name="ClassicOpenMenuItem" Header="Open" InputGestureText="Enter" IsEnabled="False" Click="OpenSelected_Click" />
                         <Separator />
+                        <MenuItem x:Name="ClassicRenameMenuItem" Header="Rename" InputGestureText="F2" IsEnabled="False" Click="Rename_Click" />
+                        <MenuItem x:Name="ClassicDeleteMenuItem" Header="Send to Recycle Bin" InputGestureText="Delete" IsEnabled="False" Click="Delete_Click" />
+                        <MenuItem x:Name="ClassicPropertiesMenuItem" Header="Properties" InputGestureText="Alt+Enter" IsEnabled="False" Click="Properties_Click" />
+                        <Separator />
+                        <MenuItem Header="New window" InputGestureText="Ctrl+N" Click="OpenInNewWindow_Click" />
                         <MenuItem Header="Open in new tab" InputGestureText="Ctrl+Enter" Click="OpenInNewTab_Click" />
                         <MenuItem Header="Close window" InputGestureText="Alt+F4" Click="CloseWindowMenuItem_Click" />
                     </MenuItem>

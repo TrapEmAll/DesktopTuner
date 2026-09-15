@@ -1977,6 +1977,11 @@ public partial class ExplorerWindow : Window
         CopyPathButton.IsEnabled = canTransferSelection;
         NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin && !_isSearchView;
         PasteButton.IsEnabled = !ActiveTab.Location.IsDriveList && !ActiveTab.Location.IsHome && !ActiveTab.Location.IsRecycleBin && ClipboardHasFileDrop();
+        ClassicNewFolderMenuItem.IsEnabled = NewFolderButton.IsEnabled;
+        ClassicOpenMenuItem.IsEnabled = OpenSelectedButton.IsEnabled;
+        ClassicRenameMenuItem.IsEnabled = RenameButton.IsEnabled;
+        ClassicDeleteMenuItem.IsEnabled = DeleteButton.IsEnabled;
+        ClassicPropertiesMenuItem.IsEnabled = ExplorerPropertiesService.CanShowProperties(selection);
     }
 
     private async void CopyPath_Click(object sender, RoutedEventArgs e)
