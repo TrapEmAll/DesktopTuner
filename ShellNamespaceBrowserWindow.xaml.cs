@@ -368,6 +368,8 @@ public partial class ShellNamespaceBrowserWindow : Window
 
     private void Open_Click(object sender, RoutedEventArgs e) => OpenSelectedItem();
 
+    private async void Delete_Click(object sender, RoutedEventArgs e) => await DeleteSelectedItemsAsync(shiftPressed: false);
+
     private async void Properties_Click(object sender, RoutedEventArgs e) => await ShowSelectedPropertiesAsync();
 
     private async Task ShowSelectedPropertiesAsync()
@@ -488,6 +490,7 @@ public partial class ShellNamespaceBrowserWindow : Window
         CopyMenuItem.IsEnabled = hasSelection;
         CutMenuItem.IsEnabled = hasSelection;
         NewFolderMenuItem.IsEnabled = true;
+        DeleteMenuItem.IsEnabled = hasSelection;
         PropertiesMenuItem.IsEnabled = hasSelection;
         RenameMenuItem.IsEnabled = false;
         PinStartMenuItem.Visibility = Visibility.Collapsed;
