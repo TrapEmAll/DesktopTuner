@@ -47,6 +47,8 @@ public static class NativeTaskbarTrayService
         ArgumentNullException.ThrowIfNull(display);
         try
         {
+            var targetBounds = FindTrayBounds(display);
+            if (targetBounds is null) return false;
             nint taskbarWindow = 0;
             nint trayWindow = 0;
             EnumWindows((taskbar, _) =>
@@ -59,7 +61,7 @@ public static class NativeTaskbarTrayService
                     if (GetClassName(child) != NotificationAreaClass || !IsWindowVisible(child)) return true;
                     if (!GetWindowRect(child, out var rect)) return true;
                     var bounds = new TaskbarBounds(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
-                    if (!TaskbarDisplayService.Overlaps(bounds, display)) return true;
+                    if (bounds != targetBounds) return true;
                     taskbarWindow = taskbar;
                     trayWindow = child;
                     return false;
