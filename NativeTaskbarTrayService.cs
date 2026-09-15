@@ -70,8 +70,9 @@ public static class NativeTaskbarTrayService
             }, IntPtr.Zero);
 
             if (taskbarWindow == 0 || trayWindow == 0) return false;
-            SetForegroundWindow(taskbarWindow);
-            return SetFocus(trayWindow) != 0;
+            var foregrounded = SetForegroundWindow(taskbarWindow);
+            var focused = SetFocus(trayWindow) != 0;
+            return foregrounded || focused;
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         {
