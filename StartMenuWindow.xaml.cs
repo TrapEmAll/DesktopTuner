@@ -560,11 +560,14 @@ public partial class StartMenuWindow : Window
         if (sender is not ContextMenu { DataContext: AppEntry app } menu) return;
         var pinStartItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Pin to Start"));
         var pinTaskbarItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Pin to taskbar"));
+        var runAsAdministratorItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Run as administrator"));
         if (pinStartItem is not null)
             pinStartItem.IsEnabled = StartPinCatalog.IsSupported(app)
                 && !_pinnedApps.Any(pin => string.Equals(pin.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase));
         if (pinTaskbarItem is not null)
             pinTaskbarItem.IsEnabled = _pinTaskbarItem is not null && app.CanPinToTaskbar;
+        if (runAsAdministratorItem is not null)
+            runAsAdministratorItem.IsEnabled = !_recentFilesStore.IsRecentShortcut(app.ShortcutPath) && app.CanRunElevated;
     }
 
     private void ClearRecentStartApps_Click(object sender, RoutedEventArgs e)
