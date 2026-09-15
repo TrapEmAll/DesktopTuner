@@ -17,6 +17,7 @@ public partial class StartMenuWindow : Window
     private const string PinnedStartDragFormat = "DesktopTuner.StartPinnedApp";
     private readonly AppCatalogService _catalog = new();
     private readonly StartRecentAppsStore _recentAppsStore;
+    private readonly StartRecentFilesStore _recentFilesStore;
     private readonly StartMenuIdentity _identity;
     private readonly Func<IReadOnlyList<AppEntry>, bool>? _savePinnedApps;
     private readonly Func<AppEntry, bool>? _pinTaskbarItem;
@@ -66,6 +67,7 @@ public partial class StartMenuWindow : Window
         _openFileLocation = openFileLocation;
         _pinTaskbarItem = pinTaskbarItem;
         _recentAppsStore = recentAppsStore ?? new StartRecentAppsStore();
+        _recentFilesStore = new StartRecentFilesStore();
         _startPlaces = StartMenuPlaceCatalog.Normalize(startPlaces);
         _controlPanelApplets = ControlPanelAppletCatalog.Normalize(controlPanelApplets);
         _recentAppCount = Math.Clamp(recentAppCount, 0, StartRecentAppsStore.MaximumEntries);
@@ -387,14 +389,15 @@ public partial class StartMenuWindow : Window
         }
 
         var results = _catalogLoadError is null ? AppCatalogService.Search(_apps, query) : Array.Empty<AppEntry>();
-        var recentApps = query.Length == 0
+        var recentItems = query.Length == 0
             ? _recentAppsStore.Resolve(_apps)
                 .Where(app => !_pinnedApps.Any(pinned => string.Equals(pinned.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase)))
+                .Concat(_recentFilesStore.ReadRecentFiles(_apps.Select(app => app.ShortcutPath)))
                 .Take(_recentAppCount)
                 .ToList()
             : [];
-        RecentStartItems.ItemsSource = recentApps;
-        RecentStartPanel.Visibility = recentApps.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        RecentStartItems.ItemsSource = recentItems;
+        RecentStartPanel.Visibility = recentItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         var showFolders = StartMenuAppNavigationPolicy.ShouldShowProgramFolders(_style, query);
         AppTree.ItemsSource = showFolders ? AppCatalogService.BuildTree(_apps) : null;
         AppTree.Visibility = showFolders ? Visibility.Visible : Visibility.Collapsed;

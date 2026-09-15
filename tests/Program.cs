@@ -993,6 +993,17 @@ try
         CheckTrue(recentApps.TryRecordLaunch(new AppEntry($"Recent {index}", $@"C:\Apps\recent{index}.lnk")), "record bounded Start recent-app history entries");
     Check(StartRecentAppsStore.MaximumEntries, recentApps.LoadPaths().Count, "bound the locally stored Start recent-app history");
     Check($@"C:\Apps\recent{StartRecentAppsStore.MaximumEntries + 2}.lnk", recentApps.LoadPaths()[0], "retain the newest apps at the top of bounded Start history");
+
+    var recentFilesDirectory = Path.Combine(Path.GetTempPath(), $"desktop-tuner-recent-files-{Guid.NewGuid():N}");
+    Directory.CreateDirectory(recentFilesDirectory);
+    var recentDocument = Path.Combine(recentFilesDirectory, "Quarterly report.lnk");
+    File.WriteAllText(recentDocument, "placeholder");
+    File.SetLastWriteTimeUtc(recentDocument, DateTime.UtcNow);
+    var recentFiles = new StartRecentFilesStore(recentFilesDirectory).ReadRecentFiles([recentDocument]);
+    Check(0, recentFiles.Count, "exclude app-history shortcuts from recent document results");
+    recentFiles = new StartRecentFilesStore(recentFilesDirectory).ReadRecentFiles();
+    Check(1, recentFiles.Count, "read recent document shortcuts from the Windows Recent Items folder");
+    Check("Quarterly report", recentFiles[0].Name, "derive recent document names from shortcut filenames");
     CheckTrue(recentApps.TryClear(), "clear the locally stored Start recent-app history");
     Check(0, recentApps.LoadPaths().Count, "remove all entries when Start recent history is cleared");
 }
