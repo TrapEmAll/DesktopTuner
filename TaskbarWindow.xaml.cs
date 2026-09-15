@@ -1310,6 +1310,14 @@ public partial class TaskbarWindow : Window
         }
         if (menu.Items.Count == 0) return;
         menu.PlacementTarget = OverflowButton;
+        menu.Placement = _edge switch
+        {
+            TaskbarEdge.Bottom => PlacementMode.Top,
+            TaskbarEdge.Top => PlacementMode.Bottom,
+            TaskbarEdge.Left => PlacementMode.Right,
+            TaskbarEdge.Right => PlacementMode.Left,
+            _ => PlacementMode.Bottom
+        };
         menu.IsOpen = true;
     }
 
