@@ -716,6 +716,9 @@ public partial class ExplorerWindow : Window
                 case ExplorerKeyboardAction.FocusSearch:
                     FocusAndSelect(SearchBox);
                     break;
+                case ExplorerKeyboardAction.FocusNavigationTree:
+                    NavigationTree.Focus();
+                    break;
                 case ExplorerKeyboardAction.NavigateParent:
                     Up_Click(this, new RoutedEventArgs());
                     break;

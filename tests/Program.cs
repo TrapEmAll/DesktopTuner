@@ -1157,6 +1157,7 @@ Check(ExplorerKeyboardAction.NavigateBack, ExplorerKeyboardPolicy.Resolve(Key.Sy
 Check(ExplorerKeyboardAction.NavigateForward, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.Right), "navigate forward through Explorer history with Alt+Right system-key events");
 Check(ExplorerKeyboardAction.NavigateParent, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.Up), "navigate to the parent folder with Alt+Up system-key events");
 Check(ExplorerKeyboardAction.FocusSearch, ExplorerKeyboardPolicy.Resolve(Key.F, ModifierKeys.Control), "focus Explorer search with Ctrl+F");
+Check(ExplorerKeyboardAction.FocusNavigationTree, ExplorerKeyboardPolicy.Resolve(Key.E, ModifierKeys.Control | ModifierKeys.Shift), "focus the Explorer navigation tree with Ctrl+Shift+E");
 Check(ExplorerKeyboardAction.ShowProperties, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.Enter), "open Properties for the current Explorer selection with Alt+Enter");
 Check(ExplorerKeyboardAction.ReopenClosedTab, ExplorerKeyboardPolicy.Resolve(Key.T, ModifierKeys.Control | ModifierKeys.Shift), "reopen the last closed Explorer tab with Ctrl+Shift+T");
 Check(ExplorerKeyboardAction.NextPane, ExplorerKeyboardPolicy.Resolve(Key.F6, ModifierKeys.None), "cycle Explorer navigation panes with F6");
