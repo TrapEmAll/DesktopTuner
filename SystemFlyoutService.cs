@@ -214,6 +214,20 @@ public static class SystemFlyoutService
 
     public static bool OpenFeedbackHub() => OpenShellUri("feedback-hub:", "Feedback Hub");
 
+    public static bool OpenNarrator()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("Narrator.exe") { UseShellExecute = true });
+            return true;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException)
+        {
+            Trace.TraceWarning($"Could not start Narrator directly: {ex.Message}");
+            return OpenShellUri("ms-settings:easeofaccess-narrator", "Narrator settings");
+        }
+    }
+
     private static bool OpenShellUri(string uri, string featureName)
     {
         try

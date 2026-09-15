@@ -2461,14 +2461,7 @@ public partial class MainWindow : Window
 
     private static void OpenNarrator()
     {
-        try
-        {
-            Process.Start(new ProcessStartInfo("Narrator.exe") { UseShellExecute = true });
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException)
-        {
-            System.Diagnostics.Trace.TraceWarning($"Could not open Narrator: {ex.Message}");
-        }
+        SystemFlyoutService.OpenNarrator();
     }
 
     private void ShowRunDialog()
