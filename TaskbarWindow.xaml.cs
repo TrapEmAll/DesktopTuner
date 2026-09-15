@@ -995,6 +995,20 @@ public partial class TaskbarWindow : Window
         RunningWindowService.ActivateOrMinimize(group.Windows[0]);
     }
 
+    private void TaskbarButton_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        var windows = sender is Button { Tag: TaskbarWindowGroup group }
+            ? group.Windows
+            : sender is Button { Tag: PinnedTaskbarApp app }
+                ? _windowOrder.Synchronize(_windows.Enumerate())
+                    .Where(window => TaskbarWindowGrouping.MatchesPinnedApp(app, window))
+                    .ToArray()
+                : [];
+        if (TaskbarWindowWheelPolicy.SelectTarget(windows, e.Delta) is not { } target) return;
+        RunningWindowService.Activate(target);
+        e.Handled = true;
+    }
+
     private void WindowButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Middle

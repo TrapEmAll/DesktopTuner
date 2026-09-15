@@ -718,6 +718,20 @@ var runningWindows = new[]
     new RunningWindow((nint)2, "Document two", "Editor", @"C:\Apps\EDITOR.exe", false),
     new RunningWindow((nint)3, "Inbox", "Mail", @"C:\Apps\mail.exe", false)
 };
+var wheelWindows = new[]
+{
+    new RunningWindow((nint)301, "First", "Editor", @"C:\Apps\editor.exe", false) { IsForeground = true },
+    new RunningWindow((nint)302, "Second", "Editor", @"C:\Apps\editor.exe", false),
+    new RunningWindow((nint)303, "Third", "Editor", @"C:\Apps\editor.exe", false)
+};
+Check((nint)302, TaskbarWindowWheelPolicy.SelectTarget(wheelWindows, -120)?.Handle,
+    "scroll down to the next running window from a taskbar button");
+Check((nint)303, TaskbarWindowWheelPolicy.SelectTarget(wheelWindows, 120)?.Handle,
+    "scroll up to the previous running window from a taskbar button");
+Check((nint)303, TaskbarWindowWheelPolicy.SelectTarget(wheelWindows.Skip(1), 120)?.Handle,
+    "start taskbar wheel navigation at the last available window when no window is foreground");
+Check(null, TaskbarWindowWheelPolicy.SelectTarget(wheelWindows.Take(1), -120),
+    "leave the mouse wheel available when a taskbar target has only one window");
 var alwaysGroupedWindows = TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Always, 10);
 CheckTrue(TaskbarWindowActivationPolicy.ShouldMinimize(isForeground: true, isMinimized: false), "minimize an already active taskbar window on a second click");
 CheckTrue(!TaskbarWindowActivationPolicy.ShouldMinimize(isForeground: true, isMinimized: true), "restore rather than minimize an already minimized taskbar window");
