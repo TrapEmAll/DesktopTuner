@@ -1531,6 +1531,7 @@ public partial class TaskbarWindow : Window
     public void FocusTaskbarSystemArea(nint restoreForegroundWindow = 0)
     {
         if (!_nativeReady) return;
+        if (_nativeTrayExposed && NativeTaskbarTrayService.TryFocusTray(Display)) return;
         _autoHideTimer.Stop();
         if (!_keyboardFocusActive)
             _previousForegroundWindow = restoreForegroundWindow != 0 ? restoreForegroundWindow : GetForegroundWindow();

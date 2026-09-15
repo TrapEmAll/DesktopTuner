@@ -42,6 +42,42 @@ public static class NativeTaskbarTrayService
         return SelectBestTrayBounds(candidates, display);
     }
 
+    public static bool TryFocusTray(TaskbarDisplay display)
+    {
+        ArgumentNullException.ThrowIfNull(display);
+        try
+        {
+            nint taskbarWindow = 0;
+            nint trayWindow = 0;
+            EnumWindows((taskbar, _) =>
+            {
+                var className = GetClassName(taskbar);
+                if (className is not (PrimaryTaskbarClass or SecondaryTaskbarClass)) return true;
+
+                EnumChildWindows(taskbar, (child, _) =>
+                {
+                    if (GetClassName(child) != NotificationAreaClass || !IsWindowVisible(child)) return true;
+                    if (!GetWindowRect(child, out var rect)) return true;
+                    var bounds = new TaskbarBounds(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+                    if (!TaskbarDisplayService.Overlaps(bounds, display)) return true;
+                    taskbarWindow = taskbar;
+                    trayWindow = child;
+                    return false;
+                }, IntPtr.Zero);
+                return trayWindow == 0;
+            }, IntPtr.Zero);
+
+            if (taskbarWindow == 0 || trayWindow == 0) return false;
+            SetForegroundWindow(taskbarWindow);
+            return SetFocus(trayWindow) != 0;
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+        {
+            Trace.TraceWarning($"Could not focus the native Windows notification area: {ex.Message}");
+            return false;
+        }
+    }
+
     public static TaskbarBounds? SelectBestTrayBounds(IEnumerable<TaskbarBounds> candidates, TaskbarDisplay display)
     {
         ArgumentNullException.ThrowIfNull(candidates);
@@ -97,4 +133,11 @@ public static class NativeTaskbarTrayService
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsWindowVisible(IntPtr window);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr window);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetFocus(IntPtr window);
 }
