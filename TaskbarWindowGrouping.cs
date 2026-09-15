@@ -1,12 +1,13 @@
 using System.IO;
+using System.Diagnostics;
 
 namespace DesktopTuner;
 
 public sealed record TaskbarWindowGroup(string Label, string ApplicationName, IReadOnlyList<RunningWindow> Windows)
 {
     public bool CanRunElevated => Windows.FirstOrDefault()?.CanRunElevated == true;
-    public bool CanLaunchNewInstance => TaskbarWindowGrouping.GetLaunchPath(this) is not null;
-    public bool CanOpenLocation => CanLaunchNewInstance;
+    public bool CanLaunchNewInstance => TaskbarWindowGrouping.GetLaunchInfo(this) is not null;
+    public bool CanOpenLocation => TaskbarWindowGrouping.GetLaunchPath(this) is not null;
     public bool CanEndTask => Windows.Any(window => window.CanEndTask);
     public string ToolTip => string.Join(Environment.NewLine, Windows.Select(window => window.Title));
     public bool IsActive => Windows.Any(window => window.IsForeground);
@@ -20,6 +21,25 @@ public static class TaskbarWindowGrouping
         return group.Windows
             .Select(window => window.ExecutablePath)
             .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path));
+    }
+
+    public static ProcessStartInfo? GetLaunchInfo(TaskbarWindowGroup group)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        var window = group.Windows.FirstOrDefault(candidate =>
+            !string.IsNullOrWhiteSpace(candidate.ApplicationUserModelId))
+            ?? group.Windows.FirstOrDefault(candidate =>
+                !string.IsNullOrWhiteSpace(candidate.ExecutablePath) && File.Exists(candidate.ExecutablePath));
+        if (window is null) return null;
+
+        if (!string.IsNullOrWhiteSpace(window.ApplicationUserModelId))
+        {
+            var startInfo = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+            startInfo.ArgumentList.Add($"shell:AppsFolder\\{window.ApplicationUserModelId}");
+            return startInfo;
+        }
+
+        return new ProcessStartInfo(window.ExecutablePath) { UseShellExecute = true };
     }
 
     public static RunningWindow? SelectCloseTarget(TaskbarWindowGroup group)

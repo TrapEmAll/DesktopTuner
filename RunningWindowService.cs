@@ -15,6 +15,7 @@ public sealed record RunningWindow(nint Handle, string Title, string Application
     public bool? IsOnCurrentVirtualDesktop { get; init; }
     public TaskbarBounds Bounds { get; init; } = new(0, 0, 0, 0);
     public string? DisplayDeviceName { get; init; }
+    public string? ApplicationUserModelId { get; init; }
 }
 
 public sealed class RunningWindowService
@@ -64,7 +65,7 @@ public sealed class RunningWindowService
                 Trace.TraceWarning($"Could not read bounds for taskbar window '{text}' (0x{handle:X}); maximized-window detection will ignore its position.");
                 windowBounds = default;
             }
-            windows.Add(new RunningWindow(handle, text, appName, executablePath, IsIconic(handle))
+            var runningWindow = new RunningWindow(handle, text, appName, executablePath, IsIconic(handle))
             {
                 ProcessId = checked((int)processId),
                 IsMaximized = IsZoomed(handle),
@@ -72,7 +73,8 @@ public sealed class RunningWindowService
                 IsOnCurrentVirtualDesktop = virtualDesktop?.IsWindowOnCurrentDesktop(handle),
                 Bounds = new TaskbarBounds(windowBounds.Left, windowBounds.Top, Math.Max(0, windowBounds.Right - windowBounds.Left), Math.Max(0, windowBounds.Bottom - windowBounds.Top)),
                 DisplayDeviceName = TaskbarDisplayService.GetDeviceNameForWindow(handle)
-            });
+            };
+            windows.Add(runningWindow with { ApplicationUserModelId = TaskbarJumpListService.GetAppUserModelId(runningWindow) });
             return true;
         }, IntPtr.Zero);
 

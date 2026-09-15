@@ -708,6 +708,12 @@ CheckTrue(!TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.WhenFu
 CheckTrue(!TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.Never, 1, 4), "hide taskbar labels in never mode");
 var launchableGroup = new TaskbarWindowGroup("Desktop Tuner", "Desktop Tuner", [new RunningWindow((nint)7, "Desktop Tuner", "Desktop Tuner", Environment.ProcessPath!, false)]);
 Check(Environment.ProcessPath, TaskbarWindowGrouping.GetLaunchPath(launchableGroup), "find an executable path for a running taskbar group's new-instance command");
+var packagedRunningGroup = new TaskbarWindowGroup("Store app", "Store app", [new RunningWindow((nint)10, "Store app", "ApplicationFrameHost", @"C:\\Windows\\System32\\ApplicationFrameHost.exe", false)
+{
+    ApplicationUserModelId = "Microsoft.WindowsCalculator_11.0.0.0_x64__8wekyb3d8bbwe!App"
+}]);
+Check("explorer.exe", TaskbarWindowGrouping.GetLaunchInfo(packagedRunningGroup)!.FileName, "launch packaged running apps through the AppsFolder shell namespace");
+Check("shell:AppsFolder\\Microsoft.WindowsCalculator_11.0.0.0_x64__8wekyb3d8bbwe!App", TaskbarWindowGrouping.GetLaunchInfo(packagedRunningGroup)!.ArgumentList[0], "use the packaged app identity instead of ApplicationFrameHost");
 CheckTrue(launchableGroup.CanLaunchNewInstance, "enable new-instance launch for a running taskbar group with a live executable");
 CheckTrue(launchableGroup.CanOpenLocation, "enable file-location navigation for a running taskbar group with a live executable");
 CheckTrue(!new TaskbarWindowGroup("No PID", "No PID", [new RunningWindow((nint)8, "No PID", "No PID", string.Empty, false)]).CanEndTask, "disable End task when a window process is unavailable");

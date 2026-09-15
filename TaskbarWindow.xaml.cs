@@ -923,10 +923,10 @@ public partial class TaskbarWindow : Window
     {
         if (e.ChangedButton != MouseButton.Middle
             || sender is not Button { Tag: TaskbarWindowGroup group }) return;
-        var launchPath = TaskbarWindowGrouping.GetLaunchPath(group);
-        if (TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(e.ChangedButton, launchPath is not null && File.Exists(launchPath)))
+        var launchInfo = TaskbarWindowGrouping.GetLaunchInfo(group);
+        if (TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(e.ChangedButton, launchInfo is not null))
         {
-            try { Process.Start(new ProcessStartInfo(launchPath!) { UseShellExecute = true }); }
+            try { Process.Start(launchInfo!); }
             catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
             {
                 MessageBox.Show(this, ex.Message, "Could not launch a new app instance", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -995,14 +995,14 @@ public partial class TaskbarWindow : Window
 
     private void LaunchWindowGroupInstance_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not MenuItem { Tag: TaskbarWindowGroup group } || TaskbarWindowGrouping.GetLaunchPath(group) is not { } path) return;
+        if (sender is not MenuItem { Tag: TaskbarWindowGroup group } || TaskbarWindowGrouping.GetLaunchInfo(group) is not { } launchInfo) return;
         try
         {
-            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            Process.Start(launchInfo);
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or System.Security.SecurityException)
         {
-            Trace.TraceWarning($"Could not launch a new instance for '{path}': {ex.Message}");
+            Trace.TraceWarning($"Could not launch a new instance for '{launchInfo.FileName}': {ex.Message}");
         }
     }
 
