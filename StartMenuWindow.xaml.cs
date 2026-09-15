@@ -1020,7 +1020,7 @@ public partial class StartMenuWindow : Window
         menuItem.Items.Add(new Separator());
 
         var visibleApplets = _controlPanelApplets.Visible!.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var availableApplets = ControlPanelAppletCatalog.GetAvailableApplets(Environment.SystemDirectory)
+        var availableApplets = ControlPanelAppletCatalog.GetAvailableApplets(Environment.SystemDirectory, canonicalApplicationNames: ControlPanelAppletCatalog.DiscoverCanonicalApplicationNames())
             .ToDictionary(applet => applet.Id, StringComparer.OrdinalIgnoreCase);
         var appletCount = 0;
         foreach (var appletId in _controlPanelApplets.Order!)

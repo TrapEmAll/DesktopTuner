@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace DesktopTuner;
 
@@ -41,17 +42,79 @@ public static class ControlPanelAppletCatalog
 
     public static IReadOnlyList<ControlPanelApplet> GetAvailableApplets(
         string systemDirectory,
-        Func<string, bool>? fileExists = null)
+        Func<string, bool>? fileExists = null,
+        IReadOnlySet<string>? canonicalApplicationNames = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(systemDirectory);
         fileExists ??= File.Exists;
         return Applets.Where(applet =>
         {
             var target = applet.Arguments.FirstOrDefault();
-            if (string.IsNullOrWhiteSpace(target) || target.StartsWith("/", StringComparison.Ordinal) ||
-                !target.EndsWith(".cpl", StringComparison.OrdinalIgnoreCase)) return true;
+            if (string.IsNullOrWhiteSpace(target)) return false;
+            if (target.StartsWith("/", StringComparison.Ordinal))
+                return canonicalApplicationNames is null || canonicalApplicationNames.Count == 0 ||
+                    applet.Arguments.Skip(1).Any(canonicalApplicationNames.Contains);
+            if (!target.EndsWith(".cpl", StringComparison.OrdinalIgnoreCase)) return true;
             return fileExists(Path.Combine(systemDirectory, Path.GetFileName(target)));
         }).ToArray();
+    }
+
+    public static IReadOnlySet<string> DiscoverCanonicalApplicationNames()
+    {
+        object? shell = null;
+        object? folder = null;
+        object? items = null;
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            var shellType = Type.GetTypeFromProgID("Shell.Application", throwOnError: false);
+            if (shellType is null) return names;
+            shell = Activator.CreateInstance(shellType);
+            if (shell is null) return names;
+            dynamic shellDispatch = shell;
+            folder = shellDispatch.Namespace("shell:ControlPanelFolder");
+            if (folder is null) return names;
+            dynamic folderDispatch = folder;
+            items = folderDispatch.Items();
+            if (items is null) return names;
+            foreach (dynamic item in (dynamic)items)
+            {
+                object? itemObject = item;
+                try
+                {
+                    dynamic shellItem = itemObject!;
+                    var rawName = Convert.ToString((object?)shellItem.ExtendedProperty("System.ApplicationName"));
+                    if (string.IsNullOrWhiteSpace(rawName)) continue;
+                    var name = rawName.Split('\0')[0].Trim();
+                    if (name.Length > 0) names.Add(name);
+                }
+                catch (Exception ex) when (ex is COMException or InvalidComObjectException or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException or InvalidCastException or FormatException)
+                {
+                    Trace.TraceWarning($"Could not read a Control Panel canonical application name: {ex.Message}");
+                }
+                finally
+                {
+                    if (itemObject is not null && Marshal.IsComObject(itemObject)) Marshal.ReleaseComObject(itemObject);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is COMException or InvalidComObjectException or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException or InvalidCastException or FormatException or UnauthorizedAccessException or ArgumentException)
+        {
+            Trace.TraceWarning($"Could not probe Control Panel canonical applications: {ex.Message}");
+            names.Clear();
+        }
+        finally
+        {
+            ReleaseComObject(items);
+            ReleaseComObject(folder);
+            ReleaseComObject(shell);
+        }
+        return names;
+    }
+
+    private static void ReleaseComObject(object? value)
+    {
+        if (value is not null && Marshal.IsComObject(value)) Marshal.FinalReleaseComObject(value);
     }
 
     public static ControlPanelAppletPreferences Normalize(ControlPanelAppletPreferences? preferences)

@@ -1043,6 +1043,12 @@ CheckTrue(availableControlPanelApplets.Any(applet => applet.Id == "keyboard"), "
 Check(false, availableControlPanelApplets.Any(applet => applet.Id == "power"), "hide a direct Control Panel applet when its module is absent");
 Check(false, availableControlPanelApplets.Any(applet => applet.Id == "bluetooth"), "hide newly cataloged applets when their module is absent");
 CheckTrue(availableControlPanelApplets.Any(applet => applet.Id == "personalization"), "retain canonical Control Panel entries without a direct cpl file");
+var probedCanonicalApplets = ControlPanelAppletCatalog.GetAvailableApplets(
+    @"C:\Windows\System32",
+    _ => true,
+    new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Microsoft.Personalization" });
+CheckTrue(probedCanonicalApplets.Any(applet => applet.Id == "personalization"), "keep canonical Control Panel entries exposed by the Shell namespace");
+Check(false, probedCanonicalApplets.Any(applet => applet.Id == "credential-manager"), "hide canonical Control Panel entries absent from the Shell namespace probe");
 var availableLegacyApplets = ControlPanelAppletCatalog.GetAvailableApplets(@"C:\Windows\System32",
     path => Path.GetFileName(path) is "bthprops.cpl" or "joy.cpl");
 CheckTrue(availableLegacyApplets.Any(applet => applet.Id == "bluetooth"), "show a newly cataloged applet when its module is installed");

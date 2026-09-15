@@ -351,7 +351,7 @@ public partial class MainWindow : Window
             {
                 appletsPanel.Children.Clear();
                 var visible = _controlPanelApplets.Visible!.ToHashSet(StringComparer.OrdinalIgnoreCase);
-                var availableApplets = ControlPanelAppletCatalog.GetAvailableApplets(Environment.SystemDirectory)
+                var availableApplets = ControlPanelAppletCatalog.GetAvailableApplets(Environment.SystemDirectory, canonicalApplicationNames: ControlPanelAppletCatalog.DiscoverCanonicalApplicationNames())
                     .ToDictionary(applet => applet.Id, StringComparer.OrdinalIgnoreCase);
                 foreach (var appletId in _controlPanelApplets.Order!)
                 {
