@@ -1325,7 +1325,7 @@ public partial class TaskbarWindow : Window
     {
         if (sender is MenuItem { Tag: PinnedTaskbarApp app })
         {
-            ActivatePinnedApp(app, showPreview: false, toggleMinimizeOnActive: false);
+            ActivatePinnedApp(app, showPreview: false, toggleMinimizeOnActive: true);
             return;
         }
 
