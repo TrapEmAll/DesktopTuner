@@ -10,6 +10,7 @@ public readonly record struct KeyboardKeyEvent(ushort VirtualKey, bool KeyUp);
 public static class SystemFlyoutService
 {
     public const string NetworkSettingsUri = "ms-settings:network-wifi";
+    public const string SnippingToolUri = "ms-screenclip:";
     private const ushort VK_LWIN = 0x5B;
     private const ushort VK_RWIN = 0x5C;
     private const ushort VK_A = 0x41;
@@ -227,6 +228,8 @@ public static class SystemFlyoutService
             return OpenShellUri("ms-settings:easeofaccess-narrator", "Narrator settings");
         }
     }
+
+    public static bool OpenSnippingTool() => OpenShellUri(SnippingToolUri, "Snipping Tool");
 
     private static bool OpenShellUri(string uri, string featureName)
     {

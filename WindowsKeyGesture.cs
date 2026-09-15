@@ -21,6 +21,7 @@ public enum WindowsKeyAction
     OpenShellSystemSurface,
     OpenOnScreenKeyboard,
     OpenNarrator,
+    OpenSnippingTool,
     LaunchPinnedAppInstance,
     LaunchPinnedAppInstanceAsAdministrator,
     ActivateLastActivePinnedApp
@@ -58,7 +59,7 @@ public sealed class WindowsKeyGesture
     public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Func<bool>? canOpenExplorer = null,
         bool controlPressed = false, bool altPressed = false, bool shiftPressed = false, Func<bool>? canToggleDesktop = null,
         Func<bool>? canFocusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Func<bool>? canOpenRunDialog = null,
-        Func<bool>? canMinimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null, Func<uint, bool>? canOpenShellSystemSurface = null, Func<bool>? canOpenOnScreenKeyboard = null, Func<bool>? canOpenNarrator = null,
+        Func<bool>? canMinimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null, Func<uint, bool>? canOpenShellSystemSurface = null, Func<bool>? canOpenOnScreenKeyboard = null, Func<bool>? canOpenNarrator = null, Func<bool>? canOpenSnippingTool = null,
         Func<int, bool>? canLaunchPinnedAppInstance = null, Func<int, bool>? canLaunchPinnedAppInstanceAsAdministrator = null,
         Func<int, bool>? canActivateLastActivePinnedApp = null)
     {
@@ -169,6 +170,12 @@ public sealed class WindowsKeyGesture
                 _taskbarShortcutConsumed = true;
                 _suppressedShortcutKeys.Add(key);
                 return WindowsKeyAction.OpenNarrator;
+            }
+            if (key == (uint)'S' && shiftPressed && !controlPressed && !altPressed && canOpenSnippingTool?.Invoke() == true)
+            {
+                _taskbarShortcutConsumed = true;
+                _suppressedShortcutKeys.Add(key);
+                return WindowsKeyAction.OpenSnippingTool;
             }
             if (key == (uint)'E' && canOpenExplorer?.Invoke() == true)
             {

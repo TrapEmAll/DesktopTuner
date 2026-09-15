@@ -1466,6 +1466,13 @@ Check(WindowsKeyAction.OpenNarrator, narratorGesture.KeyDown(0x0D, controlPresse
 Check(WindowsKeyAction.Suppress, narratorGesture.KeyUp(0x0D), "suppress Narrator shortcut release");
 Check(WindowsKeyAction.PassThrough, narratorGesture.KeyUp(0x11), "pass Control release through after Win+Ctrl+Enter");
 Check(WindowsKeyAction.Suppress, narratorGesture.KeyUp(0x5b), "avoid opening Start after routing Narrator");
+var snippingToolGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
+Check(WindowsKeyAction.Suppress, snippingToolGesture.KeyDown(0x5b), "capture Windows before shell-host Win+Shift+S");
+Check(WindowsKeyAction.PassThrough, snippingToolGesture.KeyDown(0x10), "pass Shift while tracking shell-host Win+Shift+S");
+Check(WindowsKeyAction.OpenSnippingTool, snippingToolGesture.KeyDown((uint)'S', shiftPressed: true, canOpenSnippingTool: () => true), "route Win+Shift+S to Snipping Tool in shell-host mode");
+Check(WindowsKeyAction.Suppress, snippingToolGesture.KeyUp((uint)'S'), "suppress Snipping Tool shortcut release");
+Check(WindowsKeyAction.PassThrough, snippingToolGesture.KeyUp(0x10), "pass Shift release through after Win+Shift+S");
+Check(WindowsKeyAction.Suppress, snippingToolGesture.KeyUp(0x5b), "avoid opening Start after routing Snipping Tool");
 var taskbarFocusGesture = new WindowsKeyGesture();
 Check(WindowsKeyAction.Suppress, taskbarFocusGesture.KeyDown(0x5b), "capture Windows before focusing the custom taskbar");
 Check(WindowsKeyAction.FocusTaskbar, taskbarFocusGesture.KeyDown((uint)'T', canFocusTaskbar: () => true), "route Win+T to the custom taskbar when it is available");
