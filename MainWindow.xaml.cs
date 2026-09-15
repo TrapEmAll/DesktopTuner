@@ -97,6 +97,7 @@ public partial class MainWindow : Window
     private bool _shellHostReadySignaled;
     private bool _shellHostNativeTrayIntegrated;
     private bool _shellHostTaskbarNativeTrayIntegrated;
+    private string _shellHostTraySignature = string.Empty;
     private bool _closingTaskbars;
     private bool _reconcilingDisplayTopology;
 
@@ -1535,13 +1536,21 @@ public partial class MainWindow : Window
         try
         {
             var preferences = CreateTaskbarRuntimePreferences();
-            if (!ShellHostLaunchPolicy.ShouldReconcileNativeTrayIntegration(
-                    _shellHostMode, _shellHostTaskbarNativeTrayIntegrated, _shellHostNativeTrayIntegrated)) return;
+            var traySignature = GetShellHostTraySignature();
+            if (!TaskbarTrayIntegrationPolicy.ShouldReconcileTraySignature(_shellHostTraySignature, traySignature)) return;
+            var previouslyIntegrated = _shellHostTaskbarNativeTrayIntegrated;
 
             ApplyTaskbarPreferences(preferences);
-            System.Diagnostics.Trace.TraceInformation(_shellHostTaskbarNativeTrayIntegrated
-                ? "An Explorer notification area appeared; shell-host taskbars now expose it and release their AppBar work-area reservations."
-                : "The Explorer notification area disappeared; shell-host taskbars restored custom system controls and AppBar work-area reservations.");
+            if (previouslyIntegrated != _shellHostTaskbarNativeTrayIntegrated)
+            {
+                System.Diagnostics.Trace.TraceInformation(_shellHostTaskbarNativeTrayIntegrated
+                    ? "An Explorer notification area appeared; shell-host taskbars now expose it and release their AppBar work-area reservations."
+                    : "The Explorer notification area disappeared; shell-host taskbars restored custom system controls and AppBar work-area reservations.");
+            }
+            else
+            {
+                System.Diagnostics.Trace.TraceInformation("The Explorer notification-area layout changed on one or more displays; shell-host taskbars reconciled their per-display tray and AppBar state.");
+            }
         }
         catch (Exception ex)
         {
@@ -1634,7 +1643,19 @@ public partial class MainWindow : Window
             if (!taskbar.EnableReplacementWorkArea(reserveWorkArea) && reserveWorkArea)
                 System.Diagnostics.Trace.TraceWarning($"Windows could not reserve a work area for the shell taskbar on {taskbar.Display.DeviceName}; it will remain an overlay.");
         }
+        _shellHostTraySignature = GetShellHostTraySignature();
     }
+
+    private string GetShellHostTraySignature() => string.Join("|", _taskbarWindows
+        .Where(window => window.IsVisible)
+        .OrderBy(window => window.Display.DeviceName, StringComparer.OrdinalIgnoreCase)
+        .Select(window =>
+        {
+            var bounds = NativeTaskbarTrayService.FindTrayBounds(window.Display);
+            return bounds is { } tray
+                ? $"{window.Display.DeviceName}:{tray.Left},{tray.Top},{tray.Width},{tray.Height}"
+                : $"{window.Display.DeviceName}:none";
+        }));
 
     private bool ShouldReserveShellHostWorkArea(TaskbarWindow taskbar, DesktopPreferences runtimePreferences)
     {

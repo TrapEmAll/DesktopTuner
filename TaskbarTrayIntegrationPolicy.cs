@@ -23,6 +23,12 @@ public static class TaskbarTrayIntegrationPolicy
         TaskbarBounds? integratedTrayBounds) =>
         replaceNativeTaskbar || shellHostMode && integratedTrayBounds is null;
 
+    public static bool ShouldReconcileTraySignature(string? previousSignature, string currentSignature)
+    {
+        ArgumentNullException.ThrowIfNull(currentSignature);
+        return !string.Equals(previousSignature, currentSignature, StringComparison.Ordinal);
+    }
+
     public static bool ShouldReserveShellHostWorkArea(
         TaskbarDisplay display,
         DesktopPreferences preferences,
