@@ -283,7 +283,7 @@ public partial class MainWindow : Window
             centerStartMenu.Unchecked += (_, _) => SetStartMenuCentered(false);
             PageContent.Children.Add(centerStartMenu);
             var recentAppsRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
-            recentAppsRow.Children.Add(new TextBlock { Text = "Recent apps", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+            recentAppsRow.Children.Add(new TextBlock { Text = "Recent Start items", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
             var recentAppsSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
             foreach (var count in Enumerable.Range(0, StartRecentAppsStore.MaximumEntries + 1))
                 recentAppsSelector.Items.Add(new ComboBoxItem { Content = count == 0 ? "Off" : $"{count} app{(count == 1 ? "" : "s")}", Tag = count });
