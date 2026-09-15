@@ -2439,6 +2439,10 @@ public partial class MainWindow : Window
             case (uint)'H': SystemFlyoutService.OpenVoiceTyping(); break;
             case (uint)'I': SystemFlyoutService.OpenSettings(); break;
             case (uint)'K': SystemFlyoutService.OpenConnectPanel(); break;
+            case (uint)'L':
+                if (!LockWorkStation())
+                    System.Diagnostics.Trace.TraceWarning($"Could not lock the workstation (Windows error {Marshal.GetLastWin32Error()}).");
+                break;
             case (uint)'N': SystemFlyoutService.OpenNotificationCenter(); break;
             case (uint)'P': SystemFlyoutService.OpenProjectPanel(); break;
             case (uint)'Q': SystemFlyoutService.OpenWindowsSearchFromQuestionMark(); break;
@@ -2580,6 +2584,10 @@ public partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern nint GetForegroundWindow();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool LockWorkStation();
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
