@@ -29,6 +29,12 @@ public static class FolderShellIntegrationService
     private const string PreviousDriveDefaultValue = "PreviousDriveDefaultVerb";
     public const string DefaultVerb = "DesktopTuner.OpenWith";
 
+    private sealed record RegistryValueSnapshot(object? Value, RegistryValueKind Kind);
+
+    private sealed record RegistryKeySnapshot(
+        IReadOnlyDictionary<string, RegistryValueSnapshot> Values,
+        IReadOnlyDictionary<string, RegistryKeySnapshot> SubKeys);
+
     public static IReadOnlyList<string> VerbPaths { get; } =
         [DirectoryVerbPath, DirectoryBackgroundVerbPath, FolderVerbPath, FolderBackgroundVerbPath, DriveVerbPath];
 
@@ -97,11 +103,27 @@ public static class FolderShellIntegrationService
         executablePath ??= Environment.ProcessPath
             ?? throw new InvalidOperationException("Could not locate Desktop Tuner to register its folder command.");
         var fullExecutablePath = Path.GetFullPath(executablePath);
-        RegisterVerb(DirectoryVerbPath, "Open with Desktop Tuner", fullExecutablePath, "%1");
-        RegisterVerb(DirectoryBackgroundVerbPath, "Browse this folder with Desktop Tuner", fullExecutablePath, "%V");
-        RegisterVerb(FolderVerbPath, "Open namespace with Desktop Tuner", fullExecutablePath, "%1", namespaceCommand: true);
-        RegisterVerb(FolderBackgroundVerbPath, "Browse namespace with Desktop Tuner", fullExecutablePath, "%V", namespaceCommand: true);
-        RegisterVerb(DriveVerbPath, "Open drive with Desktop Tuner", fullExecutablePath, "%1", namespaceCommand: true);
+        var snapshots = VerbPaths.ToDictionary(path => path, CaptureSubKey);
+        try
+        {
+            RegisterVerb(DirectoryVerbPath, "Open with Desktop Tuner", fullExecutablePath, "%1");
+            RegisterVerb(DirectoryBackgroundVerbPath, "Browse this folder with Desktop Tuner", fullExecutablePath, "%V");
+            RegisterVerb(FolderVerbPath, "Open namespace with Desktop Tuner", fullExecutablePath, "%1", namespaceCommand: true);
+            RegisterVerb(FolderBackgroundVerbPath, "Browse namespace with Desktop Tuner", fullExecutablePath, "%V", namespaceCommand: true);
+            RegisterVerb(DriveVerbPath, "Open drive with Desktop Tuner", fullExecutablePath, "%1", namespaceCommand: true);
+        }
+        catch
+        {
+            foreach (var snapshot in snapshots.Reverse())
+            {
+                try { RestoreSubKey(snapshot.Key, snapshot.Value); }
+                catch (Exception rollbackException) when (rollbackException is IOException or UnauthorizedAccessException or SecurityException)
+                {
+                    Trace.TraceError($"Could not roll back the folder shell command at {snapshot.Key}: {rollbackException.Message}");
+                }
+            }
+            throw;
+        }
         SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
     }
 
@@ -218,6 +240,54 @@ public static class FolderShellIntegrationService
         command.SetValue(null, namespaceCommand
             ? BuildShellLocationCommand(executablePath, shellPathToken)
             : BuildCommand(executablePath, shellPathToken), RegistryValueKind.String);
+    }
+
+    private static RegistryKeySnapshot? CaptureSubKey(string path)
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(path, writable: false);
+        return key is null ? null : CaptureSubKey(key);
+    }
+
+    private static RegistryKeySnapshot CaptureSubKey(RegistryKey key)
+    {
+        var values = key.GetValueNames().ToDictionary(
+            name => name,
+            name => new RegistryValueSnapshot(
+                key.GetValue(name, null, RegistryValueOptions.DoNotExpandEnvironmentNames),
+                key.GetValueKind(name)));
+        var subKeys = key.GetSubKeyNames().ToDictionary(
+            name => name,
+            name =>
+            {
+                using var child = key.OpenSubKey(name, writable: false)
+                    ?? throw new IOException($"Could not read the existing folder shell command at {key.Name}\\{name}.");
+                return CaptureSubKey(child);
+            });
+        return new RegistryKeySnapshot(values, subKeys);
+    }
+
+    private static void RestoreSubKey(string path, RegistryKeySnapshot? snapshot)
+    {
+        Registry.CurrentUser.DeleteSubKeyTree(path, throwOnMissingSubKey: false);
+        if (snapshot is null) return;
+        using var key = Registry.CurrentUser.CreateSubKey(path, writable: true)
+            ?? throw new IOException($"Could not restore the folder shell command at {path}.");
+        RestoreSubKey(key, snapshot);
+    }
+
+    private static void RestoreSubKey(RegistryKey key, RegistryKeySnapshot snapshot)
+    {
+        foreach (var value in snapshot.Values)
+        {
+            if (value.Value.Value is null) continue;
+            key.SetValue(value.Key, value.Value.Value, value.Value.Kind);
+        }
+        foreach (var child in snapshot.SubKeys)
+        {
+            using var childKey = key.CreateSubKey(child.Key, writable: true)
+                ?? throw new IOException($"Could not restore the folder shell command at {key.Name}\\{child.Key}.");
+            RestoreSubKey(childKey, child.Value);
+        }
     }
 
     [DllImport("shell32.dll")]
