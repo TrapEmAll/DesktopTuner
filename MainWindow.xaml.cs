@@ -68,6 +68,7 @@ public partial class MainWindow : Window
     private TaskbarSystemButtonVisibility _taskbarSystemButtons = TaskbarSystemButtonVisibility.Default;
     private TaskbarWeatherSettings _taskbarWeather = new();
     private bool _taskbarShowLabels = true;
+    private bool _taskbarLocked;
     private bool _taskbarAutoHide;
     private bool _taskbarAutoHideWhenMaximized;
     private int _taskbarTransparency = 5;
@@ -122,6 +123,7 @@ public partial class MainWindow : Window
         _taskbarSystemButtons = TaskbarSystemButtonVisibility.Normalize(desktopPreferences.TaskbarSystemButtons);
         _taskbarWeather = TaskbarWeatherPolicy.Normalize(desktopPreferences.TaskbarWeather);
         _taskbarShowLabels = desktopPreferences.TaskbarShowLabels;
+        _taskbarLocked = desktopPreferences.TaskbarLocked;
         _taskbarAutoHide = desktopPreferences.AutoHide;
         _taskbarAutoHideWhenMaximized = desktopPreferences.AutoHideWhenMaximized;
         _taskbarTransparency = desktopPreferences.TaskbarTransparency;
@@ -1549,7 +1551,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather, _taskbarLocked);
 
     private DesktopPreferences CreateTaskbarRuntimePreferences(DesktopPreferences? preferences = null)
     {
@@ -1699,6 +1701,7 @@ public partial class MainWindow : Window
             _taskbarAutoHideWhenMaximized = preferences.AutoHideWhenMaximized;
             _taskbarTransparency = preferences.TaskbarTransparency;
             _taskbarDynamicTransparency = preferences.TaskbarDynamicTransparency;
+            _taskbarLocked = preferences.TaskbarLocked;
             _pinnedApps = preferences.PinnedApps ?? [];
             _pinnedStartApps = StartPinCatalog.Normalize(preferences.PinnedStartApps).ToList();
             _startMenuPlaces = StartMenuPlaceCatalog.Normalize(preferences.StartMenuPlaces);

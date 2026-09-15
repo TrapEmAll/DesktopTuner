@@ -652,7 +652,7 @@ public partial class TaskbarWindow : Window
         if (sender is Button { Tag: PinnedTaskbarApp targetApp } button &&
             e.Data.GetDataPresent(PinnedAppDragFormat) && e.Data.GetData(PinnedAppDragFormat) is string sourcePath)
         {
-            var canReorder = !string.Equals(sourcePath, targetApp.ExecutablePath, StringComparison.OrdinalIgnoreCase);
+            var canReorder = !_preferences.TaskbarLocked && !string.Equals(sourcePath, targetApp.ExecutablePath, StringComparison.OrdinalIgnoreCase);
             button.Background = canReorder ? TaskbarTheme.GetBrush("TaskbarPressedBrush") : Brushes.Transparent;
             e.Effects = canReorder ? DragDropEffects.Move : DragDropEffects.None;
             e.Handled = true;
@@ -683,7 +683,7 @@ public partial class TaskbarWindow : Window
         if (button.Tag is not PinnedTaskbarApp app) return;
         button.Background = Brushes.Transparent;
 
-        if (e.Data.GetDataPresent(PinnedAppDragFormat) && e.Data.GetData(PinnedAppDragFormat) is string sourcePath)
+        if (!_preferences.TaskbarLocked && e.Data.GetDataPresent(PinnedAppDragFormat) && e.Data.GetData(PinnedAppDragFormat) is string sourcePath)
         {
             var currentPins = _preferences.PinnedApps ?? [];
             var pins = TaskbarPinCatalog.Move(currentPins, sourcePath, app.ExecutablePath);
@@ -712,6 +712,7 @@ public partial class TaskbarWindow : Window
 
     private void PinnedButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (_preferences.TaskbarLocked) return;
         if (sender is not Button { Tag: PinnedTaskbarApp app }) return;
         _pinDragCandidate = app;
         _pinDragStart = e.GetPosition(this);
@@ -733,6 +734,7 @@ public partial class TaskbarWindow : Window
 
     private void WindowButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (_preferences.TaskbarLocked) return;
         if (sender is not Button { Tag: TaskbarWindowGroup group }) return;
         _windowDragCandidate = group;
         _windowDragStart = e.GetPosition(this);
@@ -834,7 +836,7 @@ public partial class TaskbarWindow : Window
 
     private void WindowButton_DragOver(object sender, DragEventArgs e)
     {
-        if (sender is Button { Tag: TaskbarWindowGroup target } button &&
+        if (!_preferences.TaskbarLocked && sender is Button { Tag: TaskbarWindowGroup target } button &&
             e.Data.GetDataPresent(WindowGroupDragFormat) && e.Data.GetData(WindowGroupDragFormat) is TaskbarWindowGroup source &&
             !source.Windows.Select(window => window.Handle).Intersect(target.Windows.Select(window => window.Handle)).Any())
         {
@@ -855,7 +857,7 @@ public partial class TaskbarWindow : Window
 
     private void WindowButton_Drop(object sender, DragEventArgs e)
     {
-        if (sender is not Button { Tag: TaskbarWindowGroup target } ||
+        if (_preferences.TaskbarLocked || sender is not Button { Tag: TaskbarWindowGroup target } ||
             !e.Data.GetDataPresent(WindowGroupDragFormat) || e.Data.GetData(WindowGroupDragFormat) is not TaskbarWindowGroup moving) return;
 
         if (_windowOrder.MoveGroup(_windows.Enumerate(), moving, target)) RefreshWindows();
@@ -1786,6 +1788,7 @@ public partial class TaskbarWindow : Window
     {
         AutoHideMenuItem.IsChecked = _autoHide;
         AutoHideWhenMaximizedMenuItem.IsChecked = _autoHideWhenMaximized;
+        LockTaskbarMenuItem.IsChecked = _preferences.TaskbarLocked;
     }
 
     private void ShowSettings_Click(object sender, RoutedEventArgs e) => _showSettings();
@@ -1800,6 +1803,11 @@ public partial class TaskbarWindow : Window
         {
             MessageBox.Show(this, $"Windows could not open Task Manager.\n\n{ex.Message}", "Could not open Task Manager", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void LockTaskbarMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        _persistPreferences(_preferences with { TaskbarLocked = LockTaskbarMenuItem.IsChecked });
     }
 
     private void Quit_Click(object sender, RoutedEventArgs e) => _quitApplication();
