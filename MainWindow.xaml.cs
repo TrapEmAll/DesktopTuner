@@ -677,6 +677,20 @@ public partial class MainWindow : Window
             autoHideMaximized.Checked += (_, _) => { _taskbarAutoHideWhenMaximized = true; SaveDesktopPreferences(); };
             autoHideMaximized.Unchecked += (_, _) => { _taskbarAutoHideWhenMaximized = false; SaveDesktopPreferences(); };
             PageContent.Children.Add(autoHideMaximized);
+            var lockTaskbar = new CheckBox
+            {
+                Content = new TextBlock
+                {
+                    Text = "Lock the taskbar (disable pin and window reordering)",
+                    TextWrapping = TextWrapping.Wrap
+                },
+                IsChecked = _taskbarLocked,
+                Margin = new Thickness(0, 0, 0, 16),
+                FontSize = 13
+            };
+            lockTaskbar.Checked += (_, _) => { _taskbarLocked = true; SaveDesktopPreferences(); };
+            lockTaskbar.Unchecked += (_, _) => { _taskbarLocked = false; SaveDesktopPreferences(); };
+            PageContent.Children.Add(lockTaskbar);
             var allDisplays = new CheckBox { Content = "Show the custom taskbar on all displays", IsChecked = _taskbarOnAllDisplays, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
             allDisplays.Checked += (_, _) => { _taskbarOnAllDisplays = true; SaveDesktopPreferences(); };
             allDisplays.Unchecked += (_, _) => { _taskbarOnAllDisplays = false; SaveDesktopPreferences(); };
