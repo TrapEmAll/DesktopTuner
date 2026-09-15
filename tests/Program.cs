@@ -546,6 +546,10 @@ Check(new TaskbarBounds(1744, 0, 176, 800), TaskbarTrayIntegrationPolicy.Calcula
 Check(false, TaskbarTrayIntegrationPolicy.ShouldReserveShellHostWorkArea(trayDisplay, new(TaskbarEdge.Bottom), nativeTray), "avoid reserving a second work area when this display exposes an integrated native tray");
 Check(true, TaskbarTrayIntegrationPolicy.ShouldReserveShellHostWorkArea(secondaryDisplay, new DesktopPreferences(TaskbarEdge.Bottom), null), "reserve a work area on a shell-host display without a native tray");
 Check(true, TaskbarTrayIntegrationPolicy.ShouldReserveShellHostWorkArea(trayDisplay, new DesktopPreferences(TaskbarEdge.Bottom) with { ReplaceNativeTaskbar = true }, nativeTray), "reserve a work area when replacement mode explicitly hides the native taskbar");
+Check(true, TaskbarTrayIntegrationPolicy.ShouldUseNativeTray(true, false, nativeTray), "use the native tray on a shell-host display that exposes Explorer's notification area");
+Check(false, TaskbarTrayIntegrationPolicy.ShouldUseNativeTray(true, false, null), "do not use native tray integration on a shell-host display without Explorer's notification area");
+Check(false, TaskbarTrayIntegrationPolicy.ShouldUseReplacementTaskbar(true, false, nativeTray), "keep replacement system controls off on a shell-host display with a native tray");
+Check(true, TaskbarTrayIntegrationPolicy.ShouldUseReplacementTaskbar(true, false, null), "use replacement system controls on a shell-host display without a native tray");
 Check<TaskbarBounds?>(null, TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Bottom, TaskbarLayout: TaskbarStyle.Floating), nativeTray), "keep shortcut fallback on floating bars");
 Check<TaskbarBounds?>(null, TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Top), nativeTray), "keep shortcut fallback on top bars");
 Check<TaskbarBounds?>(null, TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(trayDisplay, new(TaskbarEdge.Left), new(900, 800, 176, 280)), "keep shortcut fallback when a vertical bar does not share the tray edge");

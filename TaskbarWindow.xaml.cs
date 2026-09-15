@@ -169,7 +169,12 @@ public partial class TaskbarWindow : Window
         RootBorder.Background = TaskbarTheme.CreateBackground(_isDark, GetEffectiveTransparency(), _preferences.TaskbarVisualStyle);
         RootBorder.BorderBrush = TaskbarTheme.GetBrush("TaskbarBorderBrush");
         var bounds = TaskbarLayoutCalculator.Calculate(Display, layoutPreferences, _collapsed);
-        var registerAppBar = _replacementWorkAreaEnabled && _preferences.ReplaceNativeTaskbar
+        var nativeTrayBounds = NativeTaskbarTrayService.FindTrayBounds(Display);
+        var shellHostNativeTrayIntegrated = TaskbarTrayIntegrationPolicy.ShouldUseNativeTray(
+            _shellHostMode, _preferences.ReplaceNativeTaskbar, nativeTrayBounds);
+        var replacementTaskbar = TaskbarTrayIntegrationPolicy.ShouldUseReplacementTaskbar(
+            _shellHostMode, _preferences.ReplaceNativeTaskbar, nativeTrayBounds);
+        var registerAppBar = _replacementWorkAreaEnabled && replacementTaskbar
             && TaskbarAppBarPolicy.ShouldRegister(_preferences.TaskbarLayout);
         var appBarPositionApproved = false;
         if (registerAppBar && _nativeReady && !_nativeAppBar.IsRegistered)
@@ -191,11 +196,11 @@ public partial class TaskbarWindow : Window
         }
         _replacementWorkAreaReady = !registerAppBar || TaskbarAppBarPolicy.CanUseAsReplacement(
             _preferences.TaskbarLayout, _nativeAppBar.IsRegistered, appBarPositionApproved);
-        var trayBounds = _preferences.ReplaceNativeTaskbar ? null : NativeTaskbarTrayService.FindTrayBounds(Display);
+        var trayBounds = replacementTaskbar ? null : nativeTrayBounds;
         var integratedBounds = TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(Display, layoutPreferences, trayBounds, _collapsed);
         _nativeTrayExposed = integratedBounds is not null;
         var systemButtons = _preferences.TaskbarSystemButtons!;
-        BatteryButton.Visibility = _preferences.ReplaceNativeTaskbar && systemButtons.Battery && _batteryStatus is not null ? Visibility.Visible : Visibility.Collapsed;
+        BatteryButton.Visibility = replacementTaskbar && systemButtons.Battery && _batteryStatus is not null ? Visibility.Visible : Visibility.Collapsed;
         QuickSettingsButton.Visibility = !_nativeTrayExposed && systemButtons.QuickSettings ? Visibility.Visible : Visibility.Collapsed;
         if (integratedBounds is { } trayIntegratedBounds) bounds = trayIntegratedBounds;
         SettingsButton.Visibility = !_nativeTrayExposed && systemButtons.Settings ? Visibility.Visible : Visibility.Collapsed;

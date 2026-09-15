@@ -5,6 +5,18 @@ public static class TaskbarTrayIntegrationPolicy
     private const double MinimumOverlayLength = 260;
     private const double TraySearchBand = 160;
 
+    public static bool ShouldUseNativeTray(
+        bool shellHostMode,
+        bool replaceNativeTaskbar,
+        TaskbarBounds? nativeTrayBounds) =>
+        shellHostMode && !replaceNativeTaskbar && nativeTrayBounds is not null;
+
+    public static bool ShouldUseReplacementTaskbar(
+        bool shellHostMode,
+        bool replaceNativeTaskbar,
+        TaskbarBounds? nativeTrayBounds) =>
+        replaceNativeTaskbar || shellHostMode && !ShouldUseNativeTray(shellHostMode, replaceNativeTaskbar, nativeTrayBounds);
+
     public static bool ShouldReserveShellHostWorkArea(
         TaskbarDisplay display,
         DesktopPreferences preferences,
