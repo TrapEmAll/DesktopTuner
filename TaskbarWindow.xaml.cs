@@ -1398,6 +1398,11 @@ public partial class TaskbarWindow : Window
         menu.Items.Add(powerMenu);
         menu.Items.Add(new Separator());
         menu.Items.Add(CreatePowerUserMenuItem("desktop", "Desktop"));
+        if (_shellHostMode)
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(CreatePowerUserMenuItem("exit-shell", ShellHostLaunchPolicy.GetExitLabel(true)));
+        }
         menu.PlacementTarget = StartButton;
         menu.Placement = _edge switch
         {

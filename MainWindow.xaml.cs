@@ -2435,6 +2435,12 @@ public partial class MainWindow : Window
                 case "desktop":
                     ToggleShowDesktop();
                     return;
+                case "exit-shell":
+                    var answer = MessageBox.Show(this,
+                        "Exit Desktop Tuner's shell replacement and start Windows Explorer for this session?",
+                        "Exit shell replacement", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (answer == MessageBoxResult.Yes) Application.Current?.Shutdown();
+                    return;
                 default:
                     AppCatalogService.OpenLocation(ShellHostPowerMenuCatalog.SystemCommand(commandId).Target!);
                     return;
