@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -1867,8 +1868,42 @@ public partial class ExplorerWindow : Window
         SetDetailsPaneVisibility(DetailsPaneToggle.IsChecked == true);
     }
 
+    private void DetailsPaneMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        SetDetailsPaneVisibility(DetailsPaneMenuItem.IsChecked == true);
+    }
+
+    private void CloseWindowMenuItem_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void SelectAllMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        EntriesList.Focus();
+        EntriesList.SelectAll();
+    }
+
+    private void FolderOptionsMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("control.exe", "folders") { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException)
+        {
+            SetStatus($"Could not open Folder Options: {ex.Message}");
+        }
+    }
+
+    private void OpenWindowsSettingsMenuItem_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenSettings();
+
+    private void AboutMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var version = typeof(ExplorerWindow).Assembly.GetName().Version?.ToString(3) ?? "development";
+        MessageBox.Show(this, $"Desktop Tuner Explorer\nVersion {version}", "About Desktop Tuner", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
     private void SetDetailsPaneVisibility(bool visible, bool captureCurrentHeight = true)
     {
+        DetailsPaneMenuItem.IsChecked = visible;
         if (visible)
         {
             DetailsPaneToggle.IsChecked = true;

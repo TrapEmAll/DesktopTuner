@@ -144,6 +144,36 @@
         </Grid.RowDefinitions>
         <Border Grid.Row="0" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="10">
             <DockPanel LastChildFill="True">
+                <Menu DockPanel.Dock="Top" Background="Transparent" Foreground="{DynamicResource DesktopPrimaryTextBrush}" Margin="0,0,0,8" KeyboardNavigation.TabNavigation="Cycle">
+                    <MenuItem Header="_File">
+                        <MenuItem Header="New window" InputGestureText="Ctrl+N" Click="OpenInNewWindow_Click" />
+                        <Separator />
+                        <MenuItem Header="Open in new tab" InputGestureText="Ctrl+Enter" Click="OpenInNewTab_Click" />
+                        <MenuItem Header="Close window" InputGestureText="Alt+F4" Click="CloseWindowMenuItem_Click" />
+                    </MenuItem>
+                    <MenuItem Header="_Edit">
+                        <MenuItem Header="Cut" InputGestureText="Ctrl+X" Click="Cut_Click" />
+                        <MenuItem Header="Copy" InputGestureText="Ctrl+C" Click="Copy_Click" />
+                        <MenuItem Header="Paste" InputGestureText="Ctrl+V" Click="Paste_Click" />
+                        <Separator />
+                        <MenuItem Header="Select all" InputGestureText="Ctrl+A" Click="SelectAllMenuItem_Click" />
+                    </MenuItem>
+                    <MenuItem Header="_View">
+                        <MenuItem Header="Back" InputGestureText="Alt+Left" Click="Back_Click" />
+                        <MenuItem Header="Forward" InputGestureText="Alt+Right" Click="Forward_Click" />
+                        <MenuItem Header="Up" InputGestureText="Alt+Up" Click="Up_Click" />
+                        <Separator />
+                        <MenuItem Header="Refresh" InputGestureText="F5" Click="Refresh_Click" />
+                        <MenuItem x:Name="DetailsPaneMenuItem" Header="Details pane" IsCheckable="True" IsChecked="True" Click="DetailsPaneMenuItem_Click" />
+                    </MenuItem>
+                    <MenuItem Header="_Tools">
+                        <MenuItem Header="Folder options" Click="FolderOptionsMenuItem_Click" />
+                        <MenuItem Header="Open Windows Settings" Click="OpenWindowsSettingsMenuItem_Click" />
+                    </MenuItem>
+                    <MenuItem Header="_Help">
+                        <MenuItem Header="About Desktop Tuner" Click="AboutMenuItem_Click" />
+                    </MenuItem>
+                </Menu>
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                     <Button x:Name="BackButton" Content="←" ToolTip="Back" Width="38" Height="36" Margin="0,0,6,0" Click="Back_Click" />
                     <Button x:Name="ForwardButton" Content="→" ToolTip="Forward" Width="38" Height="36" Margin="0,0,6,0" Click="Forward_Click" />
