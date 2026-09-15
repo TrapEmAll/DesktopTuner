@@ -3,6 +3,7 @@ namespace DesktopTuner;
 public enum TaskbarSystemButton
 {
     Settings,
+    Search,
     Tray,
     QuickSettings,
     Network,
@@ -31,7 +32,8 @@ public sealed record TaskbarSystemButtonVisibility(
     bool Widgets = true,
     bool TaskView = true,
     bool ShowDesktop = true,
-    bool Clock = true)
+    bool Clock = true,
+    bool Search = true)
 {
     public bool InputMethod { get; init; } = true;
     public bool OnScreenKeyboard { get; init; } = true;
@@ -42,6 +44,7 @@ public sealed record TaskbarSystemButtonVisibility(
     public static IReadOnlyList<TaskbarSystemButtonOption> Options { get; } = Array.AsReadOnly<TaskbarSystemButtonOption>(
     [
         new(TaskbarSystemButton.Settings, "Settings", "Open Desktop Tuner settings."),
+        new(TaskbarSystemButton.Search, "Search", "Open Windows Search."),
         new(TaskbarSystemButton.Tray, "Notification area", "Focus the Windows notification area."),
         new(TaskbarSystemButton.QuickSettings, "Quick Settings", "Open Windows Quick Settings."),
         new(TaskbarSystemButton.Network, "Network", "Open Wi-Fi and network settings."),
@@ -62,6 +65,7 @@ public sealed record TaskbarSystemButtonVisibility(
     public bool IsVisible(TaskbarSystemButton button) => button switch
     {
         TaskbarSystemButton.Settings => Settings,
+        TaskbarSystemButton.Search => Search,
         TaskbarSystemButton.Tray => Tray,
         TaskbarSystemButton.QuickSettings => QuickSettings,
         TaskbarSystemButton.Network => Network,
@@ -81,6 +85,7 @@ public sealed record TaskbarSystemButtonVisibility(
     public TaskbarSystemButtonVisibility WithVisibility(TaskbarSystemButton button, bool isVisible) => button switch
     {
         TaskbarSystemButton.Settings => this with { Settings = isVisible },
+        TaskbarSystemButton.Search => this with { Search = isVisible },
         TaskbarSystemButton.Tray => this with { Tray = isVisible },
         TaskbarSystemButton.QuickSettings => this with { QuickSettings = isVisible },
         TaskbarSystemButton.Network => this with { Network = isVisible },

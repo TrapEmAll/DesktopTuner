@@ -2075,6 +2075,7 @@ Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentRe
     var savedControlPanelApplets = ControlPanelAppletCatalog.Normalize(new ControlPanelAppletPreferences(
         ["network-sharing", "programs", "credential-manager"], ["programs", "network-sharing"]));
     var savedTaskbarButtons = TaskbarSystemButtonVisibility.Default
+        .WithVisibility(TaskbarSystemButton.Search, false)
         .WithVisibility(TaskbarSystemButton.Emoji, false)
         .WithVisibility(TaskbarSystemButton.Microphone, false)
         .WithVisibility(TaskbarSystemButton.InputMethod, false)
@@ -2111,11 +2112,13 @@ Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentRe
     Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.InputMethod), "persist hidden taskbar keyboard-layout button");
     Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.OnScreenKeyboard), "persist hidden taskbar On-Screen Keyboard button");
     Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.Widgets), "persist hidden taskbar Widgets button");
+    Check(false, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.Search), "persist hidden taskbar Search button");
     Check(true, loadedPreferences.TaskbarSystemButtons.IsVisible(TaskbarSystemButton.Clock), "preserve enabled taskbar clock visibility");
     Check(true, TaskbarSystemButtonVisibility.Normalize(null).IsVisible(TaskbarSystemButton.Emoji), "default older taskbar preferences to all system buttons visible");
     Check(true, TaskbarSystemButtonVisibility.Normalize(null).IsVisible(TaskbarSystemButton.InputMethod), "default keyboard-layout button to visible for older taskbar preferences");
     Check(true, TaskbarSystemButtonVisibility.Normalize(null).IsVisible(TaskbarSystemButton.OnScreenKeyboard), "default On-Screen Keyboard button to visible for older taskbar preferences");
     Check(true, TaskbarSystemButtonVisibility.Normalize(null).IsVisible(TaskbarSystemButton.Microphone), "default microphone button to visible for older taskbar preferences");
+    Check(true, TaskbarSystemButtonVisibility.Normalize(null).IsVisible(TaskbarSystemButton.Search), "default Search button to visible for older taskbar preferences");
     var legacyTaskbarButtons = JsonSerializer.Deserialize<TaskbarSystemButtonVisibility>("""{"Settings":false,"Network":false}""")!;
     Check(true, legacyTaskbarButtons.IsVisible(TaskbarSystemButton.InputMethod), "default keyboard-layout visibility when loading older custom system-button preferences");
     Check(true, legacyTaskbarButtons.IsVisible(TaskbarSystemButton.OnScreenKeyboard), "default On-Screen Keyboard visibility when loading older custom system-button preferences");
