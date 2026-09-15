@@ -43,6 +43,7 @@ public partial class TaskbarWindow : Window
     private readonly Func<string, bool>? _openShellLocationInCompanionExplorer;
     private readonly Action<string>? _openFileLocationInCompanionExplorer;
     private readonly Func<string, bool>? _pinStartItem;
+    private readonly bool _shellHostMode;
     private DesktopPreferences _preferences = new(TaskbarEdge.Bottom);
     private TaskbarEdge _edge;
     private TaskbarSize _size;
@@ -94,6 +95,9 @@ public partial class TaskbarWindow : Window
         _openShellLocationInCompanionExplorer = openShellLocationInCompanionExplorer;
         _openFileLocationInCompanionExplorer = openFileLocationInCompanionExplorer;
         _pinStartItem = pinStartItem;
+        _shellHostMode = shellHostMode;
+        CloseBarMenuItem.IsEnabled = ShellHostLaunchPolicy.ShouldAllowTaskbarClose(shellHostMode);
+        CloseBarButton.Visibility = shellHostMode ? Visibility.Collapsed : Visibility.Visible;
         QuitMenuItem.Header = ShellHostLaunchPolicy.GetExitLabel(shellHostMode);
         _refreshTimer.Tick += (_, _) => RefreshWindows();
         _batteryRefreshTimer.Tick += (_, _) => UpdateBatteryStatus();
@@ -1900,5 +1904,9 @@ public partial class TaskbarWindow : Window
         _persistPreferences(preferences);
     }
 
-    private void CloseBar_Click(object sender, RoutedEventArgs e) => _closeAllTaskbars();
+    private void CloseBar_Click(object sender, RoutedEventArgs e)
+    {
+        if (ShellHostLaunchPolicy.ShouldAllowTaskbarClose(_shellHostMode))
+            _closeAllTaskbars();
+    }
 }

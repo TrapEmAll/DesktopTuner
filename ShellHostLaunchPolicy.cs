@@ -78,4 +78,6 @@ public static class ShellHostLaunchPolicy
 
     public static string GetExitLabel(bool shellHostMode) =>
         shellHostMode ? "Exit shell replacement and start Explorer" : "Exit Desktop Tuner";
+
+    public static bool ShouldAllowTaskbarClose(bool shellHostMode) => !shellHostMode;
 }
