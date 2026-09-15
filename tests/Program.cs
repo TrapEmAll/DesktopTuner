@@ -728,6 +728,9 @@ CheckTrue(TaskbarPinCatalog.IsSupportedShellNamespaceTarget(shellPin.ExecutableP
 Check(false, shellPin.CanRunElevated, "disable elevation for Shell namespace taskbar pins");
 Check(false, shellPin.CanOpenLocation, "disable file-location navigation for Shell namespace taskbar pins");
 Check(true, shellPin.CanPinToStart, "allow supported Shell namespace taskbar pins to round-trip to Start");
+var pinnedDestinationPins = TaskbarPinCatalog.AddJumpListDestination([editorPin], editorPin.ExecutablePath, "DesktopTuner", Environment.CurrentDirectory);
+Check("DesktopTuner", pinnedDestinationPins.Single().PinnedDestinations!.Single().Name, "add a folder to an app's pinned Jump List destinations");
+Check(1, TaskbarPinCatalog.AddJumpListDestination(pinnedDestinationPins, editorPin.ExecutablePath, "DesktopTuner", Environment.CurrentDirectory).Single().PinnedDestinations!.Count, "avoid duplicate pinned Jump List destinations");
 Check("explorer.exe", TaskbarPinCatalog.BuildLaunchInfo(shellPin).FileName, "launch Shell namespace taskbar pins through Explorer");
 Check("shell:MyComputerFolder", TaskbarPinCatalog.BuildLaunchInfo(shellPin).ArgumentList.Single(), "preserve the Shell parsing name when launching a taskbar pin");
 var shellPins = TaskbarPinCatalog.AddShellNamespace([], "This PC", "shell:MyComputerFolder");
@@ -2188,6 +2191,10 @@ preferencesStore.Save(expectedPreferences with { PinnedApps = [new PinnedTaskbar
 var loadedShellPin = preferencesStore.Load().PinnedApps!.Single();
 Check(true, loadedShellPin.IsShellNamespace, "persist Shell namespace taskbar pin identity");
 Check("shell:MyComputerFolder", loadedShellPin.ExecutablePath, "persist Shell namespace taskbar pin parsing name");
+preferencesStore.Save(expectedPreferences with { PinnedApps = [new PinnedTaskbarApp("Editor", Environment.ProcessPath!, PinnedDestinations: [new TaskbarJumpListDestination("DesktopTuner", Environment.CurrentDirectory)])] });
+var loadedPinnedDestination = preferencesStore.Load().PinnedApps!.Single().PinnedDestinations!.Single();
+Check("DesktopTuner", loadedPinnedDestination.Name, "persist pinned Jump List destination labels");
+Check(Path.GetFullPath(Environment.CurrentDirectory), loadedPinnedDestination.ParsingName, "persist pinned Jump List destination paths");
 preferencesStore.Save(expectedPreferences with { PinnedStartApps = [new AppEntry("This PC", "shell:MyComputerFolder", IsDirectory: true, IsShellNamespace: true)] });
 var loadedShellStartPin = preferencesStore.Load().PinnedStartApps!.Single();
 Check(true, loadedShellStartPin.IsShellNamespace, "persist Shell namespace Start pin identity");

@@ -102,6 +102,20 @@ public static class TaskbarPinCatalog
         return pins;
     }
 
+    public static List<PinnedTaskbarApp> AddJumpListDestination(IEnumerable<PinnedTaskbarApp> current, string targetPath, string name, string destinationPath)
+    {
+        var pins = current.ToList();
+        if (string.IsNullOrWhiteSpace(targetPath) || string.IsNullOrWhiteSpace(name) ||
+            !Path.IsPathFullyQualified(destinationPath) || !Directory.Exists(destinationPath)) return pins;
+        var index = pins.FindIndex(app => string.Equals(app.ExecutablePath, targetPath, StringComparison.OrdinalIgnoreCase));
+        if (index < 0 || pins[index].IsDirectory || pins[index].IsShellNamespace) return pins;
+        var destinations = TaskbarJumpListPolicy.NormalizeDestinations(pins[index].PinnedDestinations ?? []).ToList();
+        if (destinations.Any(item => string.Equals(item.ParsingName, destinationPath, StringComparison.OrdinalIgnoreCase))) return pins;
+        destinations.Add(new TaskbarJumpListDestination(name.Trim(), Path.GetFullPath(destinationPath)));
+        pins[index] = pins[index] with { PinnedDestinations = TaskbarJumpListPolicy.NormalizeDestinations(destinations).ToList() };
+        return pins;
+    }
+
     public static List<PinnedTaskbarApp> Add(IEnumerable<PinnedTaskbarApp> current, string name, string itemPath, bool isDirectory = false)
     {
         var pins = current.ToList();

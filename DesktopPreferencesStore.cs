@@ -17,7 +17,7 @@ public enum TaskbarButtonEffect { Accent, Aura, DynamicAura }
 public enum TaskbarVisualStyle { Windows11, Windows10, Windows7 }
 public enum StartMenuStyle { Modern, Classic, Compact, Windows7, Windows8, Windows10 }
 public enum StartTileSize { Small, Medium, Wide, Large }
-public sealed record PinnedTaskbarApp(string Name, string ExecutablePath, bool IsDirectory = false, bool IsPackagedApp = false, bool IsShellNamespace = false)
+public sealed record PinnedTaskbarApp(string Name, string ExecutablePath, bool IsDirectory = false, bool IsPackagedApp = false, bool IsShellNamespace = false, List<TaskbarJumpListDestination>? PinnedDestinations = null)
 {
     [JsonIgnore]
     public bool CanOpenLocation => TaskbarPinCatalog.CanOpenLocation(this);
@@ -27,6 +27,8 @@ public sealed record PinnedTaskbarApp(string Name, string ExecutablePath, bool I
     public bool CanShowJumpList => !IsDirectory && !IsShellNamespace && (IsPackagedApp || File.Exists(ExecutablePath));
     [JsonIgnore]
     public bool CanPinToStart => !IsShellNamespace || TaskbarPinCatalog.IsSupportedShellNamespaceTarget(ExecutablePath);
+    [JsonIgnore]
+    public bool HasPinnedDestinations => PinnedDestinations is { Count: > 0 };
 }
 public sealed record TaskbarWeatherSettings(bool Enabled = false, string LocationQuery = "", string LocationName = "", double? Latitude = null, double? Longitude = null);
 public sealed record DesktopPreferences(TaskbarEdge TaskbarEdge, TaskbarSize TaskbarSize = TaskbarSize.Standard, bool AutoHide = false, List<PinnedTaskbarApp>? PinnedApps = null, bool ReplaceWindowsKey = false, StartMenuStyle StartMenuStyle = StartMenuStyle.Modern, bool TaskbarOnAllDisplays = false, TaskbarStyle TaskbarLayout = TaskbarStyle.EdgeToEdge, TaskbarGroupingMode TaskbarGrouping = TaskbarGroupingMode.Always, TaskbarButtonAlignment TaskbarButtonAlignment = TaskbarButtonAlignment.Center, bool TaskbarShowLabels = true, TaskbarIconSize TaskbarIconSize = TaskbarIconSize.Standard, TaskbarButtonSpacing TaskbarButtonSpacing = TaskbarButtonSpacing.Standard, bool StartWithWindows = false, bool AutoHideWhenMaximized = false, int TaskbarTransparency = 5, List<AppEntry>? PinnedStartApps = null, bool ReplaceNativeTaskbar = false, bool TaskbarDynamicTransparency = false, TaskbarButtonEffect TaskbarButtonEffect = TaskbarButtonEffect.Accent, StartMenuPlacePreferences? StartMenuPlaces = null, int StartRecentAppCount = 4, TaskbarSystemButtonVisibility? TaskbarSystemButtons = null, bool CenterStartMenu = false, TaskbarWindowDisplayMode TaskbarWindowDisplayMode = TaskbarWindowDisplayMode.AllTaskbars, bool FolderShellIntegrationEnabled = false, bool TaskbarShowWindowsFromAllVirtualDesktops = false, bool ReplaceExplorerShortcut = false, TaskbarVisualStyle TaskbarVisualStyle = TaskbarVisualStyle.Windows11, ControlPanelAppletPreferences? ControlPanelApplets = null, TaskbarWeatherSettings? TaskbarWeather = null, bool TaskbarLocked = false, TaskbarLabelVisibility TaskbarLabelVisibility = TaskbarLabelVisibility.Always);
@@ -55,6 +57,7 @@ public sealed class DesktopPreferencesStore
                         app.IsPackagedApp && TaskbarPinCatalog.IsSupportedPackagedTarget(app.ExecutablePath)))
                 .DistinctBy(app => app.ExecutablePath, StringComparer.OrdinalIgnoreCase)
                 .Take(TaskbarPinCatalog.MaximumPins)
+                .Select(app => app with { PinnedDestinations = TaskbarJumpListPolicy.NormalizeDestinations(app.PinnedDestinations ?? []).ToList() })
                 .ToList();
             var startPins = StartPinCatalog.Normalize(value.PinnedStartApps).ToList();
             var startPlaces = StartMenuPlaceCatalog.Normalize(value.StartMenuPlaces);

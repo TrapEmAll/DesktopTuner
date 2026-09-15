@@ -715,6 +715,16 @@ public partial class TaskbarWindow : Window
             return;
         }
 
+        if (sender is Button { Tag: PinnedTaskbarApp destinationApp } destinationButton &&
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && !destinationApp.IsDirectory &&
+            !destinationApp.IsShellNamespace && GetDroppedFolders(e.Data).Count() == 1)
+        {
+            destinationButton.Background = TaskbarTheme.GetBrush("TaskbarPressedBrush");
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+            return;
+        }
+
         if (sender is Button { Tag: PinnedTaskbarApp app } && !app.IsDirectory &&
             File.Exists(app.ExecutablePath) && GetDroppedDocuments(e.Data).Any())
         {
@@ -750,6 +760,25 @@ public partial class TaskbarWindow : Window
             e.Effects = DragDropEffects.Move;
             e.Handled = true;
             return;
+        }
+
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && !app.IsDirectory && !app.IsShellNamespace)
+        {
+            var folder = GetDroppedFolders(e.Data).SingleOrDefault();
+            if (folder is not null)
+            {
+                var name = Path.GetFileName(Path.TrimEndingDirectorySeparator(folder));
+                if (string.IsNullOrWhiteSpace(name)) name = folder;
+                var pins = TaskbarPinCatalog.AddJumpListDestination(_preferences.PinnedApps ?? [], app.ExecutablePath, name, folder);
+                var before = _preferences.PinnedApps ?? [];
+                if (pins.Select(pin => pin.PinnedDestinations?.Count ?? 0).SequenceEqual(before.Select(pin => pin.PinnedDestinations?.Count ?? 0))) return;
+                _preferences = _preferences with { PinnedApps = pins };
+                _persistPreferences(_preferences);
+                RefreshWindows();
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+                return;
+            }
         }
 
         if (app.IsDirectory || !File.Exists(app.ExecutablePath)) return;
@@ -924,6 +953,12 @@ public partial class TaskbarWindow : Window
     {
         if (!data.GetDataPresent(DataFormats.FileDrop) || data.GetData(DataFormats.FileDrop) is not string[] paths) return [];
         return paths.Where(File.Exists).Where(path => !string.Equals(Path.GetExtension(path), ".exe", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static IEnumerable<string> GetDroppedFolders(IDataObject data)
+    {
+        if (!data.GetDataPresent(DataFormats.FileDrop) || data.GetData(DataFormats.FileDrop) is not string[] paths) return [];
+        return paths.Where(path => Path.IsPathFullyQualified(path) && Directory.Exists(path));
     }
 
     private void AutoHideTimer_Tick()
@@ -1102,6 +1137,37 @@ public partial class TaskbarWindow : Window
             item.Click += JumpListDestination_Click;
             menu.Items.Add(item);
         }
+    }
+
+    private void PinnedDestinationsMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menu || menu.Tag is not PinnedTaskbarApp app) return;
+        menu.Items.Clear();
+        foreach (var destination in app.PinnedDestinations ?? [])
+        {
+            var item = new MenuItem { Header = destination.Name, ToolTip = destination.ParsingName, Tag = destination };
+            item.Click += JumpListDestination_Click;
+            menu.Items.Add(item);
+        }
+        if (menu.Items.Count > 0)
+        {
+            menu.Items.Add(new Separator());
+            var clear = new MenuItem { Header = "Clear pinned destinations", Tag = app };
+            clear.Click += ClearPinnedDestinations_Click;
+            menu.Items.Add(clear);
+        }
+    }
+
+    private void ClearPinnedDestinations_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: PinnedTaskbarApp app }) return;
+        var pins = (_preferences.PinnedApps ?? []).Select(pin =>
+            string.Equals(pin.ExecutablePath, app.ExecutablePath, StringComparison.OrdinalIgnoreCase)
+                ? pin with { PinnedDestinations = null }
+                : pin).ToList();
+        _preferences = _preferences with { PinnedApps = pins };
+        _persistPreferences(_preferences);
+        RefreshWindows();
     }
 
     private void JumpListDestination_Click(object sender, RoutedEventArgs e)
