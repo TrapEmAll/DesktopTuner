@@ -1381,7 +1381,8 @@ public partial class MainWindow : Window
             focusSystemArea: _shellHostMode ? FocusTaskbarSystemArea : null,
             executePowerUserCommand: _shellHostMode ? ExecuteShellHostPowerUserCommand : null,
             openDirectoryInCompanionExplorer: _shellHostMode ? path => OpenExplorer(path) : null,
-            openFileLocationInCompanionExplorer: _shellHostMode ? OpenPinnedFileLocationInCompanionExplorer : null);
+            openFileLocationInCompanionExplorer: _shellHostMode ? OpenPinnedFileLocationInCompanionExplorer : null,
+            openShellLocationInCompanionExplorer: _shellHostMode ? OpenShellLocationFromShell : null);
         taskbar.ContentRendered += TaskbarWindow_ContentRendered;
         taskbar.Closed += (_, _) =>
         {
