@@ -1382,7 +1382,7 @@ public partial class MainWindow : Window
             executePowerUserCommand: _shellHostMode ? ExecuteShellHostPowerUserCommand : null,
             openDirectoryInCompanionExplorer: _shellHostMode ? path => OpenExplorer(path) : null,
             openFileLocationInCompanionExplorer: _shellHostMode ? OpenPinnedFileLocationInCompanionExplorer : null,
-            openShellLocationInCompanionExplorer: _shellHostMode ? OpenShellLocationFromShell : null);
+            openShellLocationInCompanionExplorer: _shellHostMode ? TryOpenLocationInCompanionExplorer : null);
         taskbar.ContentRendered += TaskbarWindow_ContentRendered;
         taskbar.Closed += (_, _) =>
         {

@@ -40,7 +40,7 @@ public partial class TaskbarWindow : Window
     private readonly Action? _focusSystemArea;
     private readonly Action<string>? _executePowerUserCommand;
     private readonly Action<string>? _openDirectoryInCompanionExplorer;
-    private readonly Action<string>? _openShellLocationInCompanionExplorer;
+    private readonly Func<string, bool>? _openShellLocationInCompanionExplorer;
     private readonly Action<string>? _openFileLocationInCompanionExplorer;
     private DesktopPreferences _preferences = new(TaskbarEdge.Bottom);
     private TaskbarEdge _edge;
@@ -73,7 +73,7 @@ public partial class TaskbarWindow : Window
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Action<string>? openDirectoryInCompanionExplorer = null, Action<string>? openFileLocationInCompanionExplorer = null, Action<string>? openShellLocationInCompanionExplorer = null)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Action<string>? openDirectoryInCompanionExplorer = null, Action<string>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null)
     {
         InitializeComponent();
         _isDark = TaskbarTheme.ReadSystemDarkMode();
@@ -986,9 +986,9 @@ public partial class TaskbarWindow : Window
         if (sender is not MenuItem { Tag: TaskbarJumpListDestination destination }) return;
         try
         {
-            if (_openShellLocationInCompanionExplorer is not null && DesktopShellNamespaceCatalog.IsShellNamespaceLocation(destination.ParsingName))
+            if (_openShellLocationInCompanionExplorer is not null && DesktopShellNamespaceCatalog.IsShellNamespaceLocation(destination.ParsingName)
+                && _openShellLocationInCompanionExplorer(destination.ParsingName))
             {
-                _openShellLocationInCompanionExplorer(destination.ParsingName);
                 return;
             }
 
