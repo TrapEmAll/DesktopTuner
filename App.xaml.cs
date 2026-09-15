@@ -302,12 +302,16 @@ public partial class App : Application
     {
         if (pendingFolderPath is not null)
         {
-            if (DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(pendingFolderPath)) pendingFolderPath = null;
+            if (DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(
+                pendingFolderPath,
+                ShellHostLaunchPolicy.PendingInvocationForwardTimeout)) pendingFolderPath = null;
             else Trace.TraceWarning("The shell host became ready, but the pending folder launch could not be forwarded.");
         }
         else if (pendingShellLocation is not null)
         {
-            if (DesktopTuner.MainWindow.TryOpenShellLocationInExistingInstance(pendingShellLocation)) pendingShellLocation = null;
+            if (DesktopTuner.MainWindow.TryOpenShellLocationInExistingInstance(
+                pendingShellLocation,
+                ShellHostLaunchPolicy.PendingInvocationForwardTimeout)) pendingShellLocation = null;
             else Trace.TraceWarning("The shell host became ready, but the pending Shell location launch could not be forwarded.");
         }
     }
