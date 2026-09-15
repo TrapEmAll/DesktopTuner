@@ -727,6 +727,7 @@ var shellPin = new PinnedTaskbarApp("This PC", "shell:MyComputerFolder", IsShell
 CheckTrue(TaskbarPinCatalog.IsSupportedShellNamespaceTarget(shellPin.ExecutablePath), "accept supported Shell namespace locations as taskbar pin targets");
 Check(false, shellPin.CanRunElevated, "disable elevation for Shell namespace taskbar pins");
 Check(false, shellPin.CanOpenLocation, "disable file-location navigation for Shell namespace taskbar pins");
+Check(true, shellPin.CanPinToStart, "allow supported Shell namespace taskbar pins to round-trip to Start");
 Check("explorer.exe", TaskbarPinCatalog.BuildLaunchInfo(shellPin).FileName, "launch Shell namespace taskbar pins through Explorer");
 Check("shell:MyComputerFolder", TaskbarPinCatalog.BuildLaunchInfo(shellPin).ArgumentList.Single(), "preserve the Shell parsing name when launching a taskbar pin");
 var shellPins = TaskbarPinCatalog.AddShellNamespace([], "This PC", "shell:MyComputerFolder");
