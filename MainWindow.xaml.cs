@@ -68,6 +68,7 @@ public partial class MainWindow : Window
     private TaskbarSystemButtonVisibility _taskbarSystemButtons = TaskbarSystemButtonVisibility.Default;
     private TaskbarWeatherSettings _taskbarWeather = new();
     private bool _taskbarShowLabels = true;
+    private TaskbarLabelVisibility _taskbarLabelVisibility = TaskbarLabelVisibility.Always;
     private bool _taskbarLocked;
     private bool _updatingTaskbarClock;
     private bool _taskbarAutoHide;
@@ -124,6 +125,8 @@ public partial class MainWindow : Window
         _taskbarSystemButtons = TaskbarSystemButtonVisibility.Normalize(desktopPreferences.TaskbarSystemButtons);
         _taskbarWeather = TaskbarWeatherPolicy.Normalize(desktopPreferences.TaskbarWeather);
         _taskbarShowLabels = desktopPreferences.TaskbarShowLabels;
+        _taskbarLabelVisibility = !desktopPreferences.TaskbarShowLabels && desktopPreferences.TaskbarLabelVisibility == TaskbarLabelVisibility.Always
+            ? TaskbarLabelVisibility.Never : desktopPreferences.TaskbarLabelVisibility;
         _taskbarLocked = desktopPreferences.TaskbarLocked;
         _taskbarAutoHide = desktopPreferences.AutoHide;
         _taskbarAutoHideWhenMaximized = desktopPreferences.AutoHideWhenMaximized;
@@ -484,10 +487,22 @@ public partial class MainWindow : Window
             spacingRow.Children.Add(spacingSelector);
             PageContent.Children.Add(spacingRow);
 
-            var showLabels = new CheckBox { Content = "Show app names on taskbar buttons", IsChecked = _taskbarShowLabels, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
-            showLabels.Checked += (_, _) => { _taskbarShowLabels = true; SaveDesktopPreferences(); };
-            showLabels.Unchecked += (_, _) => { _taskbarShowLabels = false; SaveDesktopPreferences(); };
-            PageContent.Children.Add(showLabels);
+            var labelsRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            labelsRow.Children.Add(new TextBlock { Text = "Taskbar app labels", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+            var labelsSelector = new ComboBox { Width = 210, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
+            labelsSelector.Items.Add(new ComboBoxItem { Content = "Always", Tag = TaskbarLabelVisibility.Always });
+            labelsSelector.Items.Add(new ComboBoxItem { Content = "When taskbar is full", Tag = TaskbarLabelVisibility.WhenFull });
+            labelsSelector.Items.Add(new ComboBoxItem { Content = "Never", Tag = TaskbarLabelVisibility.Never });
+            labelsSelector.SelectedIndex = (int)_taskbarLabelVisibility;
+            labelsSelector.SelectionChanged += (_, _) =>
+            {
+                if (labelsSelector.SelectedItem is not ComboBoxItem { Tag: TaskbarLabelVisibility visibility }) return;
+                _taskbarLabelVisibility = visibility;
+                _taskbarShowLabels = visibility != TaskbarLabelVisibility.Never;
+                SaveDesktopPreferences();
+            };
+            labelsRow.Children.Add(labelsSelector);
+            PageContent.Children.Add(labelsRow);
 
             AddPageHeading("Taskbar weather", "Show current conditions for a city or postal code you choose. Your location is sent to Open-Meteo only when you search or enable weather.");
             var weatherLocationRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
@@ -1580,7 +1595,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarShowLabels, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather, _taskbarLocked);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarLabelVisibility != TaskbarLabelVisibility.Never, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather, _taskbarLocked, _taskbarLabelVisibility);
 
     private DesktopPreferences CreateTaskbarRuntimePreferences(DesktopPreferences? preferences = null)
     {
@@ -1765,6 +1780,8 @@ public partial class MainWindow : Window
             _taskbarGrouping = preferences.TaskbarGrouping;
             _taskbarButtonAlignment = preferences.TaskbarButtonAlignment;
             _taskbarShowLabels = preferences.TaskbarShowLabels;
+            _taskbarLabelVisibility = !preferences.TaskbarShowLabels && preferences.TaskbarLabelVisibility == TaskbarLabelVisibility.Always
+                ? TaskbarLabelVisibility.Never : preferences.TaskbarLabelVisibility;
             _taskbarIconSize = preferences.TaskbarIconSize;
             _taskbarButtonSpacing = preferences.TaskbarButtonSpacing;
             _taskbarButtonEffect = preferences.TaskbarButtonEffect;

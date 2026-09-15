@@ -14,13 +14,13 @@ public sealed record TaskbarButtonViewModel(string Label, string ToolTip, ImageS
         }
     }
 
-    public static TaskbarButtonViewModel FromPin(PinnedTaskbarApp app, DesktopPreferences preferences, bool vertical, bool isRunning = false, bool isActive = false) =>
-        Create(app.Name, app.ExecutablePath, app, preferences, vertical, isRunning: isRunning, isActive: isActive);
+    public static TaskbarButtonViewModel FromPin(PinnedTaskbarApp app, DesktopPreferences preferences, bool vertical, bool isRunning = false, bool isActive = false, bool? showLabels = null) =>
+        Create(app.Name, app.ExecutablePath, app, preferences, vertical, isRunning: isRunning, isActive: isActive, showLabels: showLabels);
 
-    public static TaskbarButtonViewModel FromWindowGroup(TaskbarWindowGroup group, DesktopPreferences preferences, bool vertical) =>
-        Create(group.Label, group.ToolTip, group, preferences, vertical, group.Windows[0].ExecutablePath, isRunning: true, isActive: group.IsActive);
+    public static TaskbarButtonViewModel FromWindowGroup(TaskbarWindowGroup group, DesktopPreferences preferences, bool vertical, bool? showLabels = null) =>
+        Create(group.Label, group.ToolTip, group, preferences, vertical, group.Windows[0].ExecutablePath, isRunning: true, isActive: group.IsActive, showLabels: showLabels);
 
-    private static TaskbarButtonViewModel Create(string label, string toolTip, object target, DesktopPreferences preferences, bool vertical, string? iconPath = null, bool isRunning = false, bool isActive = false)
+    private static TaskbarButtonViewModel Create(string label, string toolTip, object target, DesktopPreferences preferences, bool vertical, string? iconPath = null, bool isRunning = false, bool isActive = false, bool? showLabels = null)
     {
         var resolvedIconPath = iconPath ?? (target as PinnedTaskbarApp)?.ExecutablePath ?? string.Empty;
         var icon = TaskbarIconService.LoadIcon(resolvedIconPath);
@@ -28,10 +28,11 @@ public sealed record TaskbarButtonViewModel(string Label, string ToolTip, ImageS
         var auraBrush = TaskbarAuraColorPolicy.CreateBrush(auraColor);
         var auraSolidBrush = new SolidColorBrush(auraColor);
         var auraEnabled = preferences.TaskbarButtonEffect != TaskbarButtonEffect.Accent;
+        var effectiveShowLabels = showLabels ?? preferences.TaskbarShowLabels;
         return new(label, toolTip, icon, target,
-            TaskbarIconSizePolicy.GetPixels(preferences.TaskbarIconSize), preferences.TaskbarShowLabels,
+            TaskbarIconSizePolicy.GetPixels(preferences.TaskbarIconSize), effectiveShowLabels,
             TaskbarButtonSpacingPolicy.GetButtonMargin(preferences.TaskbarButtonSpacing, vertical),
-            preferences.TaskbarShowLabels ? new Thickness(0, 0, 8, 0) : new Thickness(0), isRunning, isActive,
+            effectiveShowLabels ? new Thickness(0, 0, 8, 0) : new Thickness(0), isRunning, isActive,
             auraBrush, auraSolidBrush, auraEnabled, preferences.TaskbarButtonEffect == TaskbarButtonEffect.DynamicAura);
     }
 }

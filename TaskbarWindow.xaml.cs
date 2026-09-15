@@ -475,13 +475,20 @@ public partial class TaskbarWindow : Window
             : TaskbarWindowDisplayPolicy.Filter(virtualDesktopWindows, Display, TaskbarDisplayService.Enumerate(), _preferences.TaskbarWindowDisplayMode);
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         var pinnedApps = _preferences.PinnedApps!;
+        var labelVisibility = !_preferences.TaskbarShowLabels && _preferences.TaskbarLabelVisibility == TaskbarLabelVisibility.Always
+            ? TaskbarLabelVisibility.Never : _preferences.TaskbarLabelVisibility;
+        var labelCapacity = GetWindowButtonCapacity(showLabels: true);
+        var preliminaryGroups = TaskbarWindowGrouping.Create(windows, _preferences.TaskbarGrouping, labelCapacity, pinnedApps);
+        var showLabels = TaskbarLabelVisibilityPolicy.ShouldShow(labelVisibility, pinnedApps.Count + preliminaryGroups.Count, labelCapacity);
+        var buttonCapacity = GetWindowButtonCapacity(showLabels);
+        var groups = TaskbarWindowGrouping.Create(windows, _preferences.TaskbarGrouping, buttonCapacity, pinnedApps);
         PinnedItems.ItemsSource = pinnedApps.Select(app =>
         {
             var appWindows = windows.Where(window => TaskbarWindowGrouping.MatchesPinnedApp(app, window)).ToList();
-            return TaskbarButtonViewModel.FromPin(app, _preferences, vertical, appWindows.Count > 0, appWindows.Any(window => window.IsForeground));
+            return TaskbarButtonViewModel.FromPin(app, _preferences, vertical, appWindows.Count > 0, appWindows.Any(window => window.IsForeground), showLabels);
         }).ToList();
-        WindowItems.ItemsSource = TaskbarWindowGrouping.Create(windows, _preferences.TaskbarGrouping, GetWindowButtonCapacity(), pinnedApps)
-            .Select(group => TaskbarButtonViewModel.FromWindowGroup(group, _preferences, vertical)).ToList();
+        WindowItems.ItemsSource = groups
+            .Select(group => TaskbarButtonViewModel.FromWindowGroup(group, _preferences, vertical, showLabels)).ToList();
         EmptyText.Visibility = windows.Count == 0 && _preferences.PinnedApps!.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         Dispatcher.BeginInvoke(new Action(UpdateButtonCentering));
         UpdateClock();
@@ -502,7 +509,7 @@ public partial class TaskbarWindow : Window
         CenterSpacer.Width = TaskbarButtonAlignmentPolicy.CalculateLeadingSpacer(WindowScroller.ViewportWidth, contentWidth, _preferences.TaskbarButtonAlignment);
     }
 
-    private int GetWindowButtonCapacity()
+    private int GetWindowButtonCapacity(bool showLabels)
     {
         var bounds = TaskbarLayoutCalculator.Calculate(Display, _preferences, collapsed: false);
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
@@ -511,7 +518,7 @@ public partial class TaskbarWindow : Window
         var gap = TaskbarButtonSpacingPolicy.GetGap(_preferences.TaskbarButtonSpacing);
         var buttonSpan = vertical
             ? Math.Max(44, iconPixels + 18) + gap * 2
-            : (_preferences.TaskbarShowLabels ? 140 : iconPixels + 24) + (gap - 2) * 2;
+            : (showLabels ? 140 : iconPixels + 24) + (gap - 2) * 2;
         StartControls.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         RightControls.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var startControlsLength = vertical ? StartControls.DesiredSize.Height : StartControls.DesiredSize.Width;

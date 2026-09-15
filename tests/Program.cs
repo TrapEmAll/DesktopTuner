@@ -693,6 +693,10 @@ CheckTrue(TaskbarWindowGrouping.SelectCloseTarget(new TaskbarWindowGroup("Empty"
 Check(3, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Never, 1).Count, "never group taskbar windows");
 Check(3, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFull, 3).Count, "keep windows separate while the taskbar has capacity");
 Check(2, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFull, 2).Count, "group windows when the taskbar is full");
+CheckTrue(TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.Always, 20, 1), "always show taskbar labels");
+CheckTrue(TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.WhenFull, 4, 4), "show taskbar labels while buttons fit");
+CheckTrue(!TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.WhenFull, 5, 4), "hide taskbar labels when buttons exceed capacity");
+CheckTrue(!TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.Never, 1, 4), "hide taskbar labels in never mode");
 var launchableGroup = new TaskbarWindowGroup("Desktop Tuner", "Desktop Tuner", [new RunningWindow((nint)7, "Desktop Tuner", "Desktop Tuner", Environment.ProcessPath!, false)]);
 Check(Environment.ProcessPath, TaskbarWindowGrouping.GetLaunchPath(launchableGroup), "find an executable path for a running taskbar group's new-instance command");
 CheckTrue(launchableGroup.CanLaunchNewInstance, "enable new-instance launch for a running taskbar group with a live executable");
@@ -2174,6 +2178,8 @@ Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentRe
     preferencesStore.Save(expectedPreferences with { TaskbarShowLabels = false, TaskbarIconSize = TaskbarIconSize.Large });
     Check(false, preferencesStore.Load().TaskbarShowLabels, "persist hidden taskbar labels");
     Check(TaskbarIconSize.Large, preferencesStore.Load().TaskbarIconSize, "persist large taskbar icons");
+    preferencesStore.Save(expectedPreferences with { TaskbarLabelVisibility = TaskbarLabelVisibility.WhenFull });
+    Check(TaskbarLabelVisibility.WhenFull, preferencesStore.Load().TaskbarLabelVisibility, "persist taskbar labels when-full mode");
     Check(new TouchMenuMetrics(new System.Windows.Thickness(10, 7, 10, 7), 32), TouchTargetPolicy.Resolve(hasTouchInput: false), "keep context menus compact for pointer input");
     Check(new TouchMenuMetrics(new System.Windows.Thickness(14, 11, 14, 11), 44), TouchTargetPolicy.Resolve(hasTouchInput: true), "expand context-menu hit targets for touch input");
     preferencesStore.Save(expectedPreferences with { TaskbarButtonSpacing = TaskbarButtonSpacing.Relaxed });
@@ -2195,6 +2201,7 @@ Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentRe
     Check(TaskbarGroupingMode.Always, preferencesStore.Load().TaskbarGrouping, "default legacy preferences to grouped taskbar buttons");
     Check(TaskbarButtonAlignment.Center, preferencesStore.Load().TaskbarButtonAlignment, "default legacy preferences to centered taskbar buttons");
     Check(true, preferencesStore.Load().TaskbarShowLabels, "default legacy preferences to visible taskbar labels");
+    Check(TaskbarLabelVisibility.Always, preferencesStore.Load().TaskbarLabelVisibility, "default legacy preferences to always-visible taskbar labels");
     Check(TaskbarIconSize.Standard, preferencesStore.Load().TaskbarIconSize, "default legacy preferences to standard taskbar icons");
     Check(TaskbarButtonSpacing.Standard, preferencesStore.Load().TaskbarButtonSpacing, "default legacy preferences to standard button spacing");
     Check(11, preferencesStore.Load().StartMenuPlaces!.Visible!.Count, "show all Start places for older preference files");
