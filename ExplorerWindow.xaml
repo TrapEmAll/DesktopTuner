@@ -163,6 +163,8 @@
                         <MenuItem Header="Forward" InputGestureText="Alt+Right" Click="Forward_Click" />
                         <MenuItem Header="Up" InputGestureText="Alt+Up" Click="Up_Click" />
                         <Separator />
+                        <MenuItem Header="Address bar" InputGestureText="F4" Click="FocusAddressMenuItem_Click" />
+                        <MenuItem Header="Search" InputGestureText="F3" Click="FocusSearchMenuItem_Click" />
                         <MenuItem Header="Refresh" InputGestureText="F5" Click="Refresh_Click" />
                         <MenuItem x:Name="DetailsPaneMenuItem" Header="Details pane" IsCheckable="True" IsChecked="True" Click="DetailsPaneMenuItem_Click" />
                     </MenuItem>

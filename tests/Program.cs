@@ -1167,6 +1167,7 @@ Check("https://www.bing.com/search?q=caf%C3%A9%20%2F%20tea", StartSearchTargetBu
 Throws<ArgumentException>(() => StartSearchTargetBuilder.WindowsSearch("  "), "reject empty Windows Search requests");
 Throws<ArgumentException>(() => StartSearchTargetBuilder.WebSearch(string.Empty), "reject empty web search requests");
 Check(ExplorerKeyboardAction.FocusAddress, ExplorerKeyboardPolicy.Resolve(Key.L, ModifierKeys.Control), "focus the Explorer address field with Ctrl+L");
+Check(ExplorerKeyboardAction.FocusAddress, ExplorerKeyboardPolicy.Resolve(Key.F4, ModifierKeys.None), "focus the Explorer address field with F4");
 Check(ExplorerKeyboardAction.OpenNewWindow, ExplorerKeyboardPolicy.Resolve(Key.N, ModifierKeys.Control), "open the current Explorer location in a new window with Ctrl+N");
 Check(ExplorerKeyboardAction.CreateFolder, ExplorerKeyboardPolicy.Resolve(Key.N, ModifierKeys.Control | ModifierKeys.Shift), "create a folder with Ctrl+Shift+N");
 Check(ShellNamespaceBrowserKeyboardAction.CreateFolder,
@@ -1177,6 +1178,7 @@ Check(ExplorerKeyboardAction.NavigateBack, ExplorerKeyboardPolicy.Resolve(Key.Sy
 Check(ExplorerKeyboardAction.NavigateForward, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.Right), "navigate forward through Explorer history with Alt+Right system-key events");
 Check(ExplorerKeyboardAction.NavigateParent, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.Up), "navigate to the parent folder with Alt+Up system-key events");
 Check(ExplorerKeyboardAction.FocusSearch, ExplorerKeyboardPolicy.Resolve(Key.F, ModifierKeys.Control), "focus Explorer search with Ctrl+F");
+Check(ExplorerKeyboardAction.FocusSearch, ExplorerKeyboardPolicy.Resolve(Key.F3, ModifierKeys.None), "focus Explorer search with F3");
 Check(ExplorerKeyboardAction.FocusNavigationTree, ExplorerKeyboardPolicy.Resolve(Key.E, ModifierKeys.Control | ModifierKeys.Shift), "focus the Explorer navigation tree with Ctrl+Shift+E");
 Check(ExplorerKeyboardAction.ShowProperties, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.Enter), "open Properties for the current Explorer selection with Alt+Enter");
 Check(ExplorerKeyboardAction.ReopenClosedTab, ExplorerKeyboardPolicy.Resolve(Key.T, ModifierKeys.Control | ModifierKeys.Shift), "reopen the last closed Explorer tab with Ctrl+Shift+T");

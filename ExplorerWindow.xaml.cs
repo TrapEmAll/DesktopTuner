@@ -1881,6 +1881,15 @@ public partial class ExplorerWindow : Window
         EntriesList.SelectAll();
     }
 
+    private void FocusAddressMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        AddressBreadcrumbsScroll.Visibility = Visibility.Collapsed;
+        AddressBox.Visibility = Visibility.Visible;
+        FocusAndSelect(AddressBox);
+    }
+
+    private void FocusSearchMenuItem_Click(object sender, RoutedEventArgs e) => FocusAndSelect(SearchBox);
+
     private void FolderOptionsMenuItem_Click(object sender, RoutedEventArgs e)
     {
         try
