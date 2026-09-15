@@ -975,6 +975,7 @@ Check(1, StartPinCatalog.Pin(startPins, new AppEntry("Editor", @"c:\apps\editor.
 var shellStartPin = StartPinCatalog.AddShellNamespace(startPins, "This PC", "shell:MyComputerFolder");
 Check(true, shellStartPin.Single(pin => pin.IsShellNamespace).IsDirectory, "treat a Shell namespace Start pin as a navigable location");
 Check(true, StartPinCatalog.IsSupported(new AppEntry("Recycle Bin", "shell:RecycleBinFolder", IsDirectory: true, IsShellNamespace: true)), "accept supported Shell namespace locations as Start pins");
+Check(true, StartPinCatalog.IsSupported(new AppEntry("Recent document", @"C:\Users\test\Recent document.lnk")), "accept recent document shortcuts as Start pins");
 Check(false, new AppEntry("Recycle Bin", "shell:RecycleBinFolder", IsDirectory: true, IsShellNamespace: true).CanRunElevated, "disable elevation for Shell namespace Start pins");
 Check(false, new AppEntry("Recycle Bin", "shell:RecycleBinFolder", IsDirectory: true, IsShellNamespace: true).CanOpenFileLocation, "disable file locations for Shell namespace Start pins");
 var recentHistoryPath = Path.Combine(Path.GetTempPath(), $"desktop-tuner-recent-start-{Guid.NewGuid():N}.json");

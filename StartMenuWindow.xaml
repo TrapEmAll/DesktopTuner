@@ -243,8 +243,10 @@
                                 <DataTemplate>
                                     <Button Tag="{Binding}" Click="RecentStartApp_Click" Width="126" Height="36" Margin="2,0,4,0" Padding="6,3" HorizontalContentAlignment="Left" ToolTip="{Binding Name}">
                                         <Button.ContextMenu>
-                                            <ContextMenu>
+                                            <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}" Opened="RecentStartContextMenu_Opened">
                                                 <MenuItem Header="Open file location" Tag="{Binding}" Click="OpenFileLocation_Click" />
+                                                <MenuItem Header="Pin to Start" Tag="{Binding}" Click="PinStartApp_Click" />
+                                                <MenuItem Header="Pin to taskbar" Tag="{Binding}" Click="PinTaskbarItem_Click" />
                                                 <MenuItem Header="Remove from recent list" Tag="{Binding}" Click="RemoveRecentItem_Click" />
                                             </ContextMenu>
                                         </Button.ContextMenu>

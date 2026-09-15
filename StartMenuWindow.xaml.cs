@@ -555,6 +555,18 @@ public partial class StartMenuWindow : Window
         RefreshApps();
     }
 
+    private void RecentStartContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu { DataContext: AppEntry app } menu) return;
+        var pinStartItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Pin to Start"));
+        var pinTaskbarItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Pin to taskbar"));
+        if (pinStartItem is not null)
+            pinStartItem.IsEnabled = StartPinCatalog.IsSupported(app)
+                && !_pinnedApps.Any(pin => string.Equals(pin.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase));
+        if (pinTaskbarItem is not null)
+            pinTaskbarItem.IsEnabled = _pinTaskbarItem is not null && app.CanPinToTaskbar;
+    }
+
     private void ClearRecentStartApps_Click(object sender, RoutedEventArgs e)
     {
         if (!_recentAppsStore.TryClear())
