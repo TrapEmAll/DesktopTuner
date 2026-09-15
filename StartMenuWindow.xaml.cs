@@ -20,6 +20,7 @@ public partial class StartMenuWindow : Window
     private readonly StartMenuIdentity _identity;
     private readonly Func<IReadOnlyList<AppEntry>, bool>? _savePinnedApps;
     private readonly Func<string, bool>? _openShellLocation;
+    private readonly Func<string, bool>? _openFileLocation;
     private StartMenuPlacePreferences _startPlaces;
     private ControlPanelAppletPreferences _controlPanelApplets;
     private IReadOnlyList<AppEntry> _apps = [];
@@ -34,7 +35,7 @@ public partial class StartMenuWindow : Window
     private Point _pinnedStartDrag;
     private bool _suppressPinnedStartClick;
 
-    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, Func<string, bool>? openShellLocation = null)
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null)
     {
         InitializeComponent();
         _identity = StartMenuIdentityService.ReadCurrentUser();
@@ -61,6 +62,7 @@ public partial class StartMenuWindow : Window
         _pinnedApps = StartPinCatalog.Normalize(pinnedApps);
         _savePinnedApps = savePinnedApps;
         _openShellLocation = openShellLocation;
+        _openFileLocation = openFileLocation;
         _recentAppsStore = recentAppsStore ?? new StartRecentAppsStore();
         _startPlaces = StartMenuPlaceCatalog.Normalize(startPlaces);
         _controlPanelApplets = ControlPanelAppletCatalog.Normalize(controlPanelApplets);
@@ -553,6 +555,11 @@ public partial class StartMenuWindow : Window
         if (sender is not MenuItem { Tag: AppEntry { CanOpenFileLocation: true } app }) return;
         try
         {
+            if (_openFileLocation?.Invoke(app.ShortcutPath) == true)
+            {
+                Close();
+                return;
+            }
             AppCatalogService.OpenFileLocation(app);
         }
         catch (Exception ex)

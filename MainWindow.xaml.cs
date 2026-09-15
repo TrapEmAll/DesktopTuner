@@ -1256,7 +1256,8 @@ public partial class MainWindow : Window
         }
         _startMenuWindow = new StartMenuWindow(_startMenuStyle, _pinnedStartApps, SavePinnedStartApps,
             startPlaces: _startMenuPlaces, recentAppCount: _startRecentAppCount, controlPanelApplets: _controlPanelApplets,
-            openShellLocation: _shellHostMode ? TryOpenLocationInCompanionExplorer : null);
+            openShellLocation: _shellHostMode ? TryOpenLocationInCompanionExplorer : null,
+            openFileLocation: _shellHostMode ? TryOpenFileLocationInCompanionExplorer : null);
         _startMenuDisplay = display;
         _startMenuWindow.Closed += (_, _) => { _startMenuWindow = null; _startMenuDisplay = null; };
         if (display is not null)
@@ -2045,6 +2046,15 @@ public partial class MainWindow : Window
             return true;
         }
         OpenExplorer(Path.GetFullPath(location));
+        return true;
+    }
+
+    private bool TryOpenFileLocationInCompanionExplorer(string path)
+    {
+        if (!_shellHostMode || !File.Exists(path)) return false;
+        var folder = Path.GetDirectoryName(path);
+        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return false;
+        OpenExplorer(folder, Path.GetFullPath(path));
         return true;
     }
 
