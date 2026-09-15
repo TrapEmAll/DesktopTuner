@@ -1,6 +1,8 @@
 using Microsoft.Win32;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security;
 
 namespace DesktopTuner;
 
@@ -114,20 +116,46 @@ public static class FolderShellIntegrationService
             (Path: FolderShellPath, HadPrevious: HadPreviousFolderDefaultValue, Previous: PreviousFolderDefaultValue),
             (Path: DriveShellPath, HadPrevious: HadPreviousDriveDefaultValue, Previous: PreviousDriveDefaultValue)
         };
-        foreach (var target in targets)
+        var changedTargets = new List<(string Path, string HadPrevious, string Previous)>();
+        try
         {
-            using var shell = Registry.CurrentUser.CreateSubKey(target.Path, writable: true)
-                ?? throw new IOException($"Could not open Windows' per-user shell settings at {target.Path}.");
-            if (state.GetValue(target.HadPrevious) is not null)
+            foreach (var target in targets)
             {
-                if (string.Equals(shell.GetValue(null) as string, DefaultVerb, StringComparison.OrdinalIgnoreCase)) continue;
-                throw new InvalidOperationException($"Windows' default shell handler at {target.Path} was changed while Desktop Tuner was active.");
-            }
+                using var shell = Registry.CurrentUser.CreateSubKey(target.Path, writable: true)
+                    ?? throw new IOException($"Could not open Windows' per-user shell settings at {target.Path}.");
+                if (state.GetValue(target.HadPrevious) is not null)
+                {
+                    if (string.Equals(shell.GetValue(null) as string, DefaultVerb, StringComparison.OrdinalIgnoreCase)) continue;
+                    throw new InvalidOperationException($"Windows' default shell handler at {target.Path} was changed while Desktop Tuner was active.");
+                }
 
-            var previous = shell.GetValue(null) as string;
-            state.SetValue(target.HadPrevious, true, RegistryValueKind.DWord);
-            state.SetValue(target.Previous, previous ?? string.Empty, RegistryValueKind.String);
-            shell.SetValue(null, DefaultVerb, RegistryValueKind.String);
+                var previous = shell.GetValue(null) as string;
+                state.SetValue(target.HadPrevious, true, RegistryValueKind.DWord);
+                state.SetValue(target.Previous, previous ?? string.Empty, RegistryValueKind.String);
+                shell.SetValue(null, DefaultVerb, RegistryValueKind.String);
+                changedTargets.Add(target);
+            }
+        }
+        catch
+        {
+            foreach (var target in changedTargets.AsEnumerable().Reverse())
+            {
+                try
+                {
+                    using var shell = Registry.CurrentUser.OpenSubKey(target.Path, writable: true);
+                    if (shell is null || !string.Equals(shell.GetValue(null) as string, DefaultVerb, StringComparison.OrdinalIgnoreCase)) continue;
+                    var previous = state.GetValue(target.Previous) as string;
+                    if (!string.IsNullOrEmpty(previous)) shell.SetValue(null, previous, RegistryValueKind.String);
+                    else shell.DeleteValue(string.Empty, throwOnMissingValue: false);
+                    state.DeleteValue(target.HadPrevious, throwOnMissingValue: false);
+                    state.DeleteValue(target.Previous, throwOnMissingValue: false);
+                }
+                catch (Exception rollbackException) when (rollbackException is IOException or UnauthorizedAccessException or SecurityException)
+                {
+                    Trace.TraceError($"Could not roll back the shell handler at {target.Path}: {rollbackException.Message}");
+                }
+            }
+            throw;
         }
         SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
     }
