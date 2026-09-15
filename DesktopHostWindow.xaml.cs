@@ -806,6 +806,8 @@ public partial class DesktopHostWindow : Window
             cutItem.IsEnabled = nativeCommandEnabled;
         if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "CopyDesktopItemMenuItem") is { } copyItem)
             copyItem.IsEnabled = nativeCommandEnabled;
+        if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "CopyPathDesktopItemMenuItem") is { } copyPathItem)
+            copyPathItem.IsEnabled = nativeCommandEnabled;
         if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "DeleteDesktopItemMenuItem") is { } deleteItem)
             deleteItem.IsEnabled = nativeCommandEnabled;
         if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "PropertiesDesktopItemMenuItem") is { } propertiesItem)
@@ -862,6 +864,21 @@ public partial class DesktopHostWindow : Window
     }
 
     private async void OnCopyDesktopItemsClick(object sender, RoutedEventArgs e) => await CopySelectedDesktopItemsAsync(cut: false);
+
+    private async void OnCopyDesktopItemsAsPathClick(object sender, RoutedEventArgs e)
+    {
+        var selection = _desktopItems.Where(item => item.IsSelected && item.CanShowNativeContextMenu).ToArray();
+        if (selection.Length == 0) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.CopyShellItemsAsPathAsync(owner, selection.Select(item => item.FullPath));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not copy the desktop path", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 
     private async void OnDeleteDesktopItemsClick(object sender, RoutedEventArgs e) => await DeleteSelectedDesktopItemsAsync(shiftPressed: false);
 

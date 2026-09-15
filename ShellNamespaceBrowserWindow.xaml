@@ -105,6 +105,7 @@
                     <MenuItem x:Name="OpenWithMenuItem" Header="Open with…" Click="OpenWith_Click" Visibility="Collapsed" />
                     <Separator />
                     <MenuItem x:Name="CopyMenuItem" Header="Copy" IsEnabled="False" Click="Copy_Click" />
+                    <MenuItem x:Name="CopyPathMenuItem" Header="Copy as path" IsEnabled="False" Click="CopyPath_Click" />
                     <MenuItem x:Name="CutMenuItem" Header="Cut" IsEnabled="False" Click="Cut_Click" />
                     <MenuItem Header="Paste" Click="Paste_Click" />
                     <MenuItem x:Name="NewFolderMenuItem" Header="New folder" Click="NewFolder_Click" />

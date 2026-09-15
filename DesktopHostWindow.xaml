@@ -54,6 +54,8 @@
                                           Click="OnCutDesktopItemsClick"/>
                                 <MenuItem x:Name="CopyDesktopItemMenuItem" Header="Copy" InputGestureText="Ctrl+C"
                                           Click="OnCopyDesktopItemsClick"/>
+                                <MenuItem x:Name="CopyPathDesktopItemMenuItem" Header="Copy as path"
+                                          Click="OnCopyDesktopItemsAsPathClick"/>
                                 <MenuItem x:Name="DeleteDesktopItemMenuItem" Header="Delete" InputGestureText="Del"
                                           Click="OnDeleteDesktopItemsClick"/>
                                 <MenuItem x:Name="PropertiesDesktopItemMenuItem" Header="Properties" InputGestureText="Alt+Enter"
