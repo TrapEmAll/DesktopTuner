@@ -34,4 +34,30 @@ public sealed class StartRecentFilesStore
         catch (IOException) { return []; }
         catch (UnauthorizedAccessException) { return []; }
     }
+
+    public bool IsRecentShortcut(string path) => IsPathInRecentDirectory(path)
+        && string.Equals(Path.GetExtension(path), ".lnk", StringComparison.OrdinalIgnoreCase);
+
+    public bool TryRemove(string path)
+    {
+        if (!IsRecentShortcut(path) || !File.Exists(path)) return false;
+        try
+        {
+            File.Delete(path);
+            return true;
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
+
+    private bool IsPathInRecentDirectory(string path)
+    {
+        try
+        {
+            var fullPath = Path.GetFullPath(path);
+            var recentRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_recentDirectory)) + Path.DirectorySeparatorChar;
+            return fullPath.StartsWith(recentRoot, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (ArgumentException) { return false; }
+    }
 }

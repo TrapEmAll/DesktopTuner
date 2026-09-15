@@ -54,6 +54,16 @@ public sealed class StartRecentAppsStore
 
     public bool TryClear() => TrySave([]);
 
+    public bool TryRemove(string shortcutPath)
+    {
+        if (string.IsNullOrWhiteSpace(shortcutPath)) return false;
+        var paths = LoadPaths();
+        var remaining = paths
+            .Where(path => !string.Equals(path, shortcutPath, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        return remaining.Count < paths.Count && TrySave(remaining);
+    }
+
     private bool TrySave(IReadOnlyList<string> paths)
     {
         var temporaryPath = $"{_path}.{Guid.NewGuid():N}.tmp";

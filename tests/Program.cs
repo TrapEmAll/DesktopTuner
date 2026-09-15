@@ -1005,6 +1005,9 @@ try
     Check(1, recentFiles.Count, "read recent document shortcuts from the Windows Recent Items folder");
     Check("Quarterly report", recentFiles[0].Name, "derive recent document names from shortcut filenames");
     Check(1, new StartRecentFilesStore(recentFilesDirectory).ReadRecentFiles(maximumEntries: 1).Count, "bound recent document results to the requested count");
+    Check(true, new StartRecentFilesStore(recentFilesDirectory).IsRecentShortcut(recentDocument), "recognize shortcuts inside the Recent Items folder");
+    CheckTrue(new StartRecentFilesStore(recentFilesDirectory).TryRemove(recentDocument), "remove an individual recent document shortcut");
+    Check(0, new StartRecentFilesStore(recentFilesDirectory).ReadRecentFiles().Count, "omit a removed recent document shortcut");
     Check("Quarterly report", string.Join(',', AppCatalogService.Search(
         [new AppEntry("Quarterly report", recentDocument), new AppEntry("Editor", @"C:\Apps\Editor.lnk")], "quarterly")
         .Select(app => app.Name)), "find recent document shortcuts by name in Start search");

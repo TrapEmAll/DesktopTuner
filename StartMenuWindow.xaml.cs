@@ -541,6 +541,20 @@ public partial class StartMenuWindow : Window
         if (sender is Button { Tag: AppEntry app }) LaunchEntry(app);
     }
 
+    private void RemoveRecentItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AppEntry app }) return;
+        var removed = _recentFilesStore.IsRecentShortcut(app.ShortcutPath)
+            ? _recentFilesStore.TryRemove(app.ShortcutPath)
+            : _recentAppsStore.TryRemove(app.ShortcutPath);
+        if (!removed)
+        {
+            MessageBox.Show(this, $"Desktop Tuner could not remove {app.Name} from recent items.", "Recent item unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        RefreshApps();
+    }
+
     private void ClearRecentStartApps_Click(object sender, RoutedEventArgs e)
     {
         if (!_recentAppsStore.TryClear())
