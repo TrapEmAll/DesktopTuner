@@ -64,6 +64,7 @@ public sealed class WindowsKeyStartHook : IDisposable
     private readonly HookProc _callback;
     private readonly WindowsKeyGesture _gesture;
     private uint? _pendingShellSystemSurfaceKey;
+    private Action? _pendingShellSystemSurfaceAction;
     private bool _shellSystemSurfaceShortcutKeyReleased;
     private bool _shellSystemSurfaceWindowsKeyReleased;
     private nint _hook;
@@ -200,6 +201,20 @@ public sealed class WindowsKeyStartHook : IDisposable
             if (action == WindowsKeyAction.OpenShellSystemSurface)
             {
                 _pendingShellSystemSurfaceKey = _gesture.ShellSystemSurfaceKey;
+                _pendingShellSystemSurfaceAction = _gesture.ShellSystemSurfaceKey is { } shellSurfaceKey ? () => _openShellSystemSurface(shellSurfaceKey) : null;
+                _shellSystemSurfaceShortcutKeyReleased = false;
+                _shellSystemSurfaceWindowsKeyReleased = false;
+            }
+            else if (action is WindowsKeyAction.OpenCopilot or WindowsKeyAction.OpenEmojiPanel or WindowsKeyAction.OpenWindowsTip)
+            {
+                _pendingShellSystemSurfaceKey = data.VirtualKey;
+                _pendingShellSystemSurfaceAction = action switch
+                {
+                    WindowsKeyAction.OpenCopilot => _openCopilot,
+                    WindowsKeyAction.OpenEmojiPanel => _openEmojiPanel,
+                    WindowsKeyAction.OpenWindowsTip => _openWindowsTip,
+                    _ => null
+                };
                 _shellSystemSurfaceShortcutKeyReleased = false;
                 _shellSystemSurfaceWindowsKeyReleased = false;
             }
@@ -210,9 +225,12 @@ public sealed class WindowsKeyStartHook : IDisposable
                 if (_shellSystemSurfaceShortcutKeyReleased && _shellSystemSurfaceWindowsKeyReleased)
                 {
                     _pendingShellSystemSurfaceKey = null;
+                    var pendingAction = _pendingShellSystemSurfaceAction;
+                    _pendingShellSystemSurfaceAction = null;
                     _shellSystemSurfaceShortcutKeyReleased = false;
                     _shellSystemSurfaceWindowsKeyReleased = false;
-                    Application.Current?.Dispatcher.BeginInvoke(() => _openShellSystemSurface(pendingKey), DispatcherPriority.Background);
+                    if (pendingAction is not null)
+                        Application.Current?.Dispatcher.BeginInvoke(pendingAction, DispatcherPriority.Background);
                 }
             }
             switch (action)
@@ -274,13 +292,10 @@ public sealed class WindowsKeyStartHook : IDisposable
                     Application.Current?.Dispatcher.BeginInvoke(_openSnippingTool, DispatcherPriority.Input);
                     return new nint(1);
                 case WindowsKeyAction.OpenCopilot:
-                    Application.Current?.Dispatcher.BeginInvoke(_openCopilot, DispatcherPriority.Input);
                     return new nint(1);
                 case WindowsKeyAction.OpenEmojiPanel:
-                    Application.Current?.Dispatcher.BeginInvoke(_openEmojiPanel, DispatcherPriority.Input);
                     return new nint(1);
                 case WindowsKeyAction.OpenWindowsTip:
-                    Application.Current?.Dispatcher.BeginInvoke(_openWindowsTip, DispatcherPriority.Input);
                     return new nint(1);
                 case WindowsKeyAction.LaunchPinnedAppInstance:
                     if (_gesture.TaskbarPinIndex is { } newInstancePinIndex)
@@ -327,6 +342,7 @@ public sealed class WindowsKeyStartHook : IDisposable
     public void Dispose()
     {
         _pendingShellSystemSurfaceKey = null;
+        _pendingShellSystemSurfaceAction = null;
         _shellSystemSurfaceShortcutKeyReleased = false;
         _shellSystemSurfaceWindowsKeyReleased = false;
         var forwardedKey = _gesture.Cancel();

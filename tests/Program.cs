@@ -1574,6 +1574,20 @@ CheckTrue(SystemFlyoutService.GetEmojiPanelSequence().SequenceEqual(
     new KeyboardKeyEvent(0xBE, true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+period emoji-panel shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetCopilotSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'C', false),
+    new KeyboardKeyEvent((ushort)'C', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+C Copilot or Chat shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetWindowsTipSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'J', false),
+    new KeyboardKeyEvent((ushort)'J', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+J Windows tip shortcut in balanced key order");
 CheckTrue(SystemFlyoutService.GetNotificationAreaSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),
