@@ -24,6 +24,7 @@ public static class NativeShellContextMenuService
     private const uint DropEffectCopy = 0x00000001;
     private const uint DropEffectMove = 0x00000002;
     private const uint FileOperationAllowUndo = 0x00000040;
+    private const uint FileAttributeDirectory = 0x00000010;
     private const uint ClipboardFormatHDrop = 15;
     private const int MaximumClipboardPayloadBytes = 32 * 1024 * 1024;
     private const uint MaximumClipboardItemCount = 4096;
@@ -62,6 +63,19 @@ public static class NativeShellContextMenuService
 
     public static Task<bool> DeleteShellItemsAsync(nint owner, IEnumerable<string> parsingNames, bool shiftPressed = false) =>
         InvokeShellItemsVerbAsync(owner, parsingNames, "delete", shiftPressed);
+
+    public static async Task<bool> CreateFolderInShellFolderAsync(nint owner, string parsingName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(parsingName);
+        var location = DesktopShellNamespaceCatalog.IsShellNamespaceLocation(parsingName)
+            ? parsingName.Trim()
+            : Path.GetFullPath(parsingName);
+        if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(location) && !Directory.Exists(location))
+            throw new DirectoryNotFoundException($"The folder no longer exists: {location}");
+
+        var absolutePidl = await Task.Run(() => ParseDisplayName(location));
+        return CreateShellFolder(owner, absolutePidl);
+    }
 
     public static async Task<uint> CopyShellItemsToClipboardAsync(nint owner, IEnumerable<string> parsingNames, bool cut)
     {
@@ -798,6 +812,44 @@ public static class NativeShellContextMenuService
             if (folder is not null) ReleaseComObject(folder);
             if (parent is not null) ReleaseComObject(parent);
             Marshal.FreeCoTaskMem(absolutePidl);
+        }
+    }
+
+    private static bool CreateShellFolder(nint owner, nint absolutePidl)
+    {
+        if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
+            return RunOnStaThread(() => CreateShellFolder(owner, absolutePidl));
+
+        var initializeResult = CoInitializeEx(nint.Zero, 0);
+        var uninitialize = initializeResult >= 0;
+        if (initializeResult < 0 && initializeResult != unchecked((int)0x80010106))
+            ThrowForFailure(initializeResult, "Could not initialize the Windows Shell folder operation.");
+
+        IFileOperation? operation = null;
+        IShellItem? destination = null;
+        try
+        {
+            var itemId = ShellItemId;
+            ThrowForFailure(SHCreateItemFromIDList(absolutePidl, ref itemId, out destination),
+                "Windows could not resolve the destination Shell folder.");
+            var operationType = Type.GetTypeFromCLSID(FileOperationClassId, throwOnError: true)
+                ?? throw new COMException("Windows could not create the Shell file operation.");
+            operation = (IFileOperation?)Activator.CreateInstance(operationType)
+                ?? throw new COMException("Windows could not create the Shell file operation.");
+            ThrowForFailure(operation.SetOperationFlags(FileOperationAllowUndo), "Windows could not configure the folder operation.");
+            ThrowForFailure(operation.SetOwnerWindow(owner), "Windows could not associate the folder operation with its owner window.");
+            ThrowForFailure(operation.NewItem(destination, FileAttributeDirectory, "New folder", null!, nint.Zero),
+                "The destination Shell folder does not support creating folders.");
+            ThrowForFailure(operation.PerformOperations(), "Windows could not create the new folder.");
+            ThrowForFailure(operation.GetAnyOperationsAborted(out var aborted), "Windows could not determine whether the new folder was created.");
+            return !aborted;
+        }
+        finally
+        {
+            if (destination is not null) ReleaseComObject(destination);
+            if (operation is not null) ReleaseComObject(operation);
+            Marshal.FreeCoTaskMem(absolutePidl);
+            if (uninitialize) CoUninitialize();
         }
     }
 

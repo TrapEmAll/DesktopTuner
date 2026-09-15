@@ -13,7 +13,8 @@ public enum ShellNamespaceBrowserKeyboardAction
     Delete,
     Copy,
     Cut,
-    Paste
+    Paste,
+    CreateFolder
 }
 
 public static class ShellNamespaceBrowserKeyboardPolicy
@@ -28,6 +29,7 @@ public static class ShellNamespaceBrowserKeyboardPolicy
         if (key == Key.C && modifiers == ModifierKeys.Control && hasSelection) return ShellNamespaceBrowserKeyboardAction.Copy;
         if (key == Key.X && modifiers == ModifierKeys.Control && hasSelection) return ShellNamespaceBrowserKeyboardAction.Cut;
         if (key == Key.V && modifiers == ModifierKeys.Control) return ShellNamespaceBrowserKeyboardAction.Paste;
+        if (key == Key.N && modifiers == (ModifierKeys.Control | ModifierKeys.Shift)) return ShellNamespaceBrowserKeyboardAction.CreateFolder;
         if (key == Key.Enter && modifiers == ModifierKeys.Alt && hasSelection) return ShellNamespaceBrowserKeyboardAction.ShowProperties;
         if (key == Key.Delete && (modifiers is ModifierKeys.None or ModifierKeys.Shift) && hasSelection)
             return ShellNamespaceBrowserKeyboardAction.Delete;

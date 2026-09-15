@@ -487,6 +487,7 @@ public partial class ShellNamespaceBrowserWindow : Window
         OpenMenuItem.IsEnabled = ItemsList.SelectedItems.Count > 0;
         CopyMenuItem.IsEnabled = hasSelection;
         CutMenuItem.IsEnabled = hasSelection;
+        NewFolderMenuItem.IsEnabled = true;
         PropertiesMenuItem.IsEnabled = hasSelection;
         RenameMenuItem.IsEnabled = false;
         PinStartMenuItem.Visibility = Visibility.Collapsed;
@@ -536,6 +537,25 @@ public partial class ShellNamespaceBrowserWindow : Window
     private async void Cut_Click(object sender, RoutedEventArgs e) => await CopySelectedItemsAsync(cut: true);
 
     private async void Paste_Click(object sender, RoutedEventArgs e) => await PasteIntoCurrentLocationAsync();
+
+    private async void NewFolder_Click(object sender, RoutedEventArgs e) => await CreateFolderAsync();
+
+    private async Task CreateFolderAsync()
+    {
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            if (await NativeShellContextMenuService.CreateFolderInShellFolderAsync(owner, _location))
+            {
+                StatusText.Text = "Created a new folder.";
+                await RefreshCurrentViewAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Could not create a new folder: {ex.Message}";
+        }
+    }
 
     private void BeginRenameSelected()
     {
@@ -685,6 +705,11 @@ public partial class ShellNamespaceBrowserWindow : Window
         else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.Paste)
         {
             await PasteIntoCurrentLocationAsync();
+            e.Handled = true;
+        }
+        else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.CreateFolder)
+        {
+            await CreateFolderAsync();
             e.Handled = true;
         }
         else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.ShowContextMenu)

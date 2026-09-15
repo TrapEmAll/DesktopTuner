@@ -106,6 +106,7 @@
                     <MenuItem x:Name="CopyMenuItem" Header="Copy" IsEnabled="False" Click="Copy_Click" />
                     <MenuItem x:Name="CutMenuItem" Header="Cut" IsEnabled="False" Click="Cut_Click" />
                     <MenuItem Header="Paste" Click="Paste_Click" />
+                    <MenuItem x:Name="NewFolderMenuItem" Header="New folder" Click="NewFolder_Click" />
                     <Separator />
                     <MenuItem x:Name="PropertiesMenuItem" Header="Properties" Click="Properties_Click" />
                     <MenuItem x:Name="RenameMenuItem" Header="Rename" IsEnabled="False" Click="Rename_Click" />
