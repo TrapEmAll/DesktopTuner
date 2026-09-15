@@ -397,11 +397,11 @@ public partial class MainWindow : Window
             replaceExplorerShortcut.Unchecked += (_, _) => ToggleExplorerShortcutReplacement(replaceExplorerShortcut, false);
             PageContent.Children.Add(replaceExplorerShortcut);
             PageContent.Children.Add(InfoCard("Explorer shortcut integration", "When enabled, Win+E opens the companion Explorer and Windows Explorer stays available from the taskbar and other apps. The shortcut returns to Windows when Desktop Tuner closes."));
-            var folderShellIntegration = new CheckBox { Content = "Add “Open with Desktop Tuner” to folder context menus", IsChecked = _folderShellIntegrationEnabled, Margin = new Thickness(0, 0, 0, 12), FontSize = 13 };
+            var folderShellIntegration = new CheckBox { Content = "Route folder and Shell locations to Desktop Tuner", IsChecked = _folderShellIntegrationEnabled, Margin = new Thickness(0, 0, 0, 12), FontSize = 13 };
             folderShellIntegration.Checked += (_, _) => SetFolderShellIntegration(folderShellIntegration, true);
             folderShellIntegration.Unchecked += (_, _) => SetFolderShellIntegration(folderShellIntegration, false);
             PageContent.Children.Add(folderShellIntegration);
-            PageContent.Children.Add(InfoCard("Folder context menus", "Adds per-user commands for filesystem folders and empty-folder backgrounds. The command opens the selected location in Desktop Tuner Explorer and leaves Windows' default folder handler unchanged. Windows 11 may place these commands under Show more options."));
+            PageContent.Children.Add(InfoCard("Folder and Shell location integration", "Adds per-user commands for filesystem folders, virtual Shell locations, drives, and empty-folder backgrounds. Locations open in Desktop Tuner's companion Explorer or namespace browser. During supervised shell replacement, Desktop Tuner temporarily owns the relevant per-user default handlers and restores them when the shell exits. Windows 11 may place these commands under Show more options."));
             PageContent.Children.Add(InfoCard("Classic browsing tools", "The companion Explorer includes a command strip, quick access locations, current-folder search, and a bottom details pane. Double-click folders to browse or files to open them with their default app."));
         }
         if (section == "Taskbar")
