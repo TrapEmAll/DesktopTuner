@@ -489,6 +489,7 @@ public partial class ShellNamespaceBrowserWindow : Window
         OpenMenuItem.IsEnabled = ItemsList.SelectedItems.Count > 0;
         OpenWithMenuItem.Visibility = Visibility.Collapsed;
         PrintMenuItem.Visibility = Visibility.Collapsed;
+        ShareMenuItem.Visibility = hasSelection ? Visibility.Visible : Visibility.Collapsed;
         CopyMenuItem.IsEnabled = hasSelection;
         CopyPathMenuItem.IsEnabled = hasSelection;
         CutMenuItem.IsEnabled = hasSelection;
@@ -559,6 +560,21 @@ public partial class ShellNamespaceBrowserWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Could not print the Shell item", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void Share_Click(object sender, RoutedEventArgs e)
+    {
+        var selection = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().ToArray();
+        if (selection.Length == 0) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.ShareShellItemsAsync(owner, selection.Select(entry => entry.ParsingName));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not share the Shell item", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

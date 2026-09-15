@@ -1955,6 +1955,23 @@ public partial class ExplorerWindow : Window
         }
     }
 
+    private async void ShareSelected_Click(object sender, RoutedEventArgs e)
+    {
+        var selection = EntriesList.SelectedItems.OfType<ExplorerEntry>()
+            .Where(entry => !entry.IsDrive && !entry.IsRecycleBinItem)
+            .ToArray();
+        if (selection.Length == 0) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.ShareShellItemsAsync(owner, selection.Select(entry => entry.FullPath));
+        }
+        catch (Exception ex)
+        {
+            ShowFileOperationError("Could not share the selected items", ex);
+        }
+    }
+
     private void Copy_Click(object sender, RoutedEventArgs e) => CopyOrCutSelection(move: false);
 
     private void Cut_Click(object sender, RoutedEventArgs e) => CopyOrCutSelection(move: true);
@@ -2151,6 +2168,9 @@ public partial class ExplorerWindow : Window
         PropertiesMenuItem.IsEnabled = ExplorerPropertiesService.CanShowProperties(selection);
         RestoreMenuItem.Visibility = _location.IsRecycleBin ? Visibility.Visible : Visibility.Collapsed;
         RestoreMenuItem.IsEnabled = _location.IsRecycleBin && selection.Count > 0 && selection.All(entry => entry.IsRecycleBinItem);
+        var canShareSelection = !_location.IsRecycleBin && selection.Count > 0 && selection.All(entry => !entry.IsDrive && !entry.IsRecycleBinItem);
+        ShareMenuItem.Visibility = canShareSelection ? Visibility.Visible : Visibility.Collapsed;
+        ShareMenuItem.IsEnabled = canShareSelection;
         CopyMenuItem.IsEnabled = CutMenuItem.IsEnabled = hasTransferableSelection;
         PasteMenuItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin && ClipboardHasFileDrop();
         OpenInNewTabMenuItem.IsEnabled = !_location.IsRecycleBin && hasSingleSelection && selection[0].IsDirectory;

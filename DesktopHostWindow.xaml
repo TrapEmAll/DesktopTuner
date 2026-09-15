@@ -50,6 +50,8 @@
                                           Click="OnOpenWithItemClick"/>
                                 <MenuItem x:Name="PrintDesktopItemMenuItem" Header="Print" Visibility="Collapsed"
                                           Click="OnPrintItemClick"/>
+                                <MenuItem x:Name="ShareDesktopItemMenuItem" Header="Share" Visibility="Collapsed"
+                                          Click="OnShareItemClick"/>
                                 <MenuItem x:Name="PinStartDesktopItemMenuItem" Header="Pin to Start" Click="OnPinStartItemClick"/>
                                 <MenuItem x:Name="PinTaskbarDesktopItemMenuItem" Header="Pin to taskbar" Click="OnPinTaskbarItemClick"/>
                                 <MenuItem x:Name="CutDesktopItemMenuItem" Header="Cut" InputGestureText="Ctrl+X"

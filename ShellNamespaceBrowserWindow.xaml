@@ -104,6 +104,7 @@
                     <MenuItem x:Name="OpenMenuItem" Header="Open" Click="Open_Click" />
                     <MenuItem x:Name="OpenWithMenuItem" Header="Open with…" Click="OpenWith_Click" Visibility="Collapsed" />
                     <MenuItem x:Name="PrintMenuItem" Header="Print" Click="Print_Click" Visibility="Collapsed" />
+                    <MenuItem x:Name="ShareMenuItem" Header="Share" Click="Share_Click" Visibility="Collapsed" />
                     <Separator />
                     <MenuItem x:Name="CopyMenuItem" Header="Copy" IsEnabled="False" Click="Copy_Click" />
                     <MenuItem x:Name="CopyPathMenuItem" Header="Copy as path" IsEnabled="False" Click="CopyPath_Click" />

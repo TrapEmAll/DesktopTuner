@@ -808,6 +808,11 @@ public partial class DesktopHostWindow : Window
                 : Visibility.Collapsed;
         }
         var nativeCommandEnabled = DesktopHostContextMenuPolicy.CanInvokeNativeCommand(_desktopItems);
+        if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "ShareDesktopItemMenuItem") is { } shareItem)
+        {
+            shareItem.Visibility = nativeCommandEnabled ? Visibility.Visible : Visibility.Collapsed;
+            shareItem.IsEnabled = nativeCommandEnabled;
+        }
         if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "CutDesktopItemMenuItem") is { } cutItem)
             cutItem.IsEnabled = nativeCommandEnabled;
         if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "CopyDesktopItemMenuItem") is { } copyItem)
@@ -885,6 +890,21 @@ public partial class DesktopHostWindow : Window
     }
 
     private async void OnCopyDesktopItemsClick(object sender, RoutedEventArgs e) => await CopySelectedDesktopItemsAsync(cut: false);
+
+    private async void OnShareItemClick(object sender, RoutedEventArgs e)
+    {
+        var selection = _desktopItems.Where(item => item.IsSelected && item.CanShowNativeContextMenu).ToArray();
+        if (selection.Length == 0) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.ShareShellItemsAsync(owner, selection.Select(item => item.FullPath));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not share the desktop item", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 
     private async void OnCopyDesktopItemsAsPathClick(object sender, RoutedEventArgs e)
     {
