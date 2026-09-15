@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -1788,6 +1789,18 @@ public partial class TaskbarWindow : Window
     }
 
     private void ShowSettings_Click(object sender, RoutedEventArgs e) => _showSettings();
+
+    private void TaskManager_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("taskmgr.exe") { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+        {
+            MessageBox.Show(this, $"Windows could not open Task Manager.\n\n{ex.Message}", "Could not open Task Manager", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 
     private void Quit_Click(object sender, RoutedEventArgs e) => _quitApplication();
 
