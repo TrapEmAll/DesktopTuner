@@ -20,6 +20,8 @@ CI verifies the edge geometry and auto-hide eligibility policies, and replacemen
 
 This gives each replacement bar a supported taskbar-like work-area contract. In shell-host mode, a display reserves its own AppBar work area whenever that display does not expose an integrated Explorer notification area; another display can continue exposing Explorer's tray without disabling reservation elsewhere. `Win+B` selects the bar on the foreground window's display and focuses its native Explorer notification area when that display exposes one, falling back to the custom tray controls when Explorer is absent; clicking a tray control focuses that specific bar. The shell-host Power User menu provides a bounded **Restart shell replacement** action and the confirmed **Exit shell replacement and start Explorer** recovery action. It does not make the replacement bar the Windows shell, replace native Start visuals, or provide all built-in taskbar and tray behavior.
 
+The replacement-shell keyboard hook also routes `Win+I` to Windows Settings and `Win+U` to Accessibility settings through the documented `ms-settings:` URI scheme. These shortcuts remain available when Explorer is not running as the interactive shell.
+
 ## Replacing Explorer as the logon shell
 
 Windows [Shell Launcher](https://learn.microsoft.com/en-us/windows/configuration/shell-launcher/) can start a Win32 or UWP application in place of `Explorer.exe`. Microsoft supports it on Enterprise, Education, and IoT Enterprise editions; it is an optional Windows feature, and a shell assignment takes effect at sign-in. Shell Launcher v2 is a whole-shell transition, not a taskbar customization API. Its return-action mapping can restart a shell when it exits.

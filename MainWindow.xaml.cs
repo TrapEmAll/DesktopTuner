@@ -2437,11 +2437,13 @@ public partial class MainWindow : Window
         {
             case (uint)'A': SystemFlyoutService.OpenQuickSettings(); break;
             case (uint)'H': SystemFlyoutService.OpenVoiceTyping(); break;
+            case (uint)'I': SystemFlyoutService.OpenSettings(); break;
             case (uint)'K': SystemFlyoutService.OpenConnectPanel(); break;
             case (uint)'N': SystemFlyoutService.OpenNotificationCenter(); break;
             case (uint)'P': SystemFlyoutService.OpenProjectPanel(); break;
             case (uint)'Q': SystemFlyoutService.OpenWindowsSearchFromQuestionMark(); break;
             case (uint)'S': SystemFlyoutService.OpenWindowsSearch(); break;
+            case (uint)'U': SystemFlyoutService.OpenAccessibilitySettings(); break;
             case (uint)'V': SystemFlyoutService.OpenClipboardHistory(); break;
             case (uint)'W': SystemFlyoutService.OpenWidgets(); break;
             case (uint)'Z': SystemFlyoutService.OpenSnapLayouts(); break;

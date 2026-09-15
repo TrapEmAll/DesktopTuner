@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.ComponentModel;
+using System.IO;
 
 namespace DesktopTuner;
 
@@ -203,6 +205,24 @@ public static class SystemFlyoutService
     public static bool OpenProjectPanel() => SendWindowsShortcut(VK_P, ProjectSequence, "Project panel");
 
     public static bool ShowDesktop() => SendWindowsShortcut(VK_D, ShowDesktopSequence, "Show desktop");
+
+    public static bool OpenSettings() => OpenSettingsUri("ms-settings:", "Settings");
+
+    public static bool OpenAccessibilitySettings() => OpenSettingsUri("ms-settings:easeofaccess", "Accessibility settings");
+
+    private static bool OpenSettingsUri(string uri, string featureName)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true });
+            return true;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException)
+        {
+            Trace.TraceWarning($"Could not open Windows {featureName}: {ex.Message}");
+            return false;
+        }
+    }
 
     private static bool SendWindowsShortcut(ushort shortcutKey, IReadOnlyList<KeyboardKeyEvent> sequence, string featureName)
     {
