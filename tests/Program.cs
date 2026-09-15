@@ -1222,8 +1222,9 @@ Check(WindowsKeyAction.Suppress, shellRestoreShortcutGesture.KeyUp((uint)'M'), "
 Check(WindowsKeyAction.Suppress, shellRestoreShortcutGesture.KeyUp(0x5b), "avoid opening Start after routing Win+Shift+M");
 foreach (var (key, surfaceName) in new[]
 {
-    ((uint)'A', "Quick Settings"), ((uint)'N', "Notification Center"), ((uint)'S', "Windows Search"),
-    ((uint)'W', "Widgets"), (0x09u, "Task View"), (0x20u, "keyboard layout picker")
+    ((uint)'A', "Quick Settings"), ((uint)'K', "Connect"), ((uint)'N', "Notification Center"),
+    ((uint)'P', "Project"), ((uint)'S', "Windows Search"), ((uint)'W', "Widgets"),
+    (0x09u, "Task View"), (0x20u, "keyboard layout picker")
 })
 {
     var surfaceGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
@@ -1563,6 +1564,20 @@ CheckTrue(SystemFlyoutService.GetTaskViewSequence().SequenceEqual(
     new KeyboardKeyEvent(0x09, true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+Tab Task View shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetConnectSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'K', false),
+    new KeyboardKeyEvent((ushort)'K', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+K Connect shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetProjectSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'P', false),
+    new KeyboardKeyEvent((ushort)'P', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+P Project shortcut in balanced key order");
 CheckTrue(SystemFlyoutService.GetShowDesktopSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),

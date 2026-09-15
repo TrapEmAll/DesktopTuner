@@ -2410,7 +2410,9 @@ public partial class MainWindow : Window
         switch (key)
         {
             case (uint)'A': SystemFlyoutService.OpenQuickSettings(); break;
+            case (uint)'K': SystemFlyoutService.OpenConnectPanel(); break;
             case (uint)'N': SystemFlyoutService.OpenNotificationCenter(); break;
+            case (uint)'P': SystemFlyoutService.OpenProjectPanel(); break;
             case (uint)'S': SystemFlyoutService.OpenWindowsSearch(); break;
             case (uint)'W': SystemFlyoutService.OpenWidgets(); break;
             case 0x20: SystemFlyoutService.OpenInputMethodSwitcher(); break;

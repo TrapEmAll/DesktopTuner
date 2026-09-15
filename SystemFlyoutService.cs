@@ -17,6 +17,8 @@ public static class SystemFlyoutService
     private const ushort VK_O = 0x4F;
     private const ushort VK_OEM_PERIOD = 0xBE;
     private const ushort VK_N = 0x4E;
+    private const ushort VK_K = 0x4B;
+    private const ushort VK_P = 0x50;
     private const ushort VK_R = 0x52;
     private const ushort VK_S = 0x53;
     private const ushort VK_SPACE = 0x20;
@@ -96,6 +98,20 @@ public static class SystemFlyoutService
         new(VK_TAB, true),
         new(VK_LWIN, true)
     ]);
+    private static readonly IReadOnlyList<KeyboardKeyEvent> ConnectSequence = Array.AsReadOnly<KeyboardKeyEvent>(
+    [
+        new(VK_LWIN, false),
+        new(VK_K, false),
+        new(VK_K, true),
+        new(VK_LWIN, true)
+    ]);
+    private static readonly IReadOnlyList<KeyboardKeyEvent> ProjectSequence = Array.AsReadOnly<KeyboardKeyEvent>(
+    [
+        new(VK_LWIN, false),
+        new(VK_P, false),
+        new(VK_P, true),
+        new(VK_LWIN, true)
+    ]);
     private static readonly IReadOnlyList<KeyboardKeyEvent> ShowDesktopSequence = Array.AsReadOnly<KeyboardKeyEvent>(
     [
         new(VK_LWIN, false),
@@ -114,6 +130,8 @@ public static class SystemFlyoutService
     public static IReadOnlyList<KeyboardKeyEvent> GetRunDialogSequence() => RunDialogSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetWindowsSearchSequence() => WindowsSearchSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetTaskViewSequence() => TaskViewSequence;
+    public static IReadOnlyList<KeyboardKeyEvent> GetConnectSequence() => ConnectSequence;
+    public static IReadOnlyList<KeyboardKeyEvent> GetProjectSequence() => ProjectSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetShowDesktopSequence() => ShowDesktopSequence;
 
     public static bool OpenNotificationCenter() => SendWindowsShortcut(VK_N, NotificationCenterSequence, "notification center");
@@ -135,6 +153,10 @@ public static class SystemFlyoutService
     public static bool OpenWindowsSearch() => SendWindowsShortcut(VK_S, WindowsSearchSequence, "Windows Search");
 
     public static bool OpenTaskView() => SendWindowsShortcut(VK_TAB, TaskViewSequence, "Task View");
+
+    public static bool OpenConnectPanel() => SendWindowsShortcut(VK_K, ConnectSequence, "Connect panel");
+
+    public static bool OpenProjectPanel() => SendWindowsShortcut(VK_P, ProjectSequence, "Project panel");
 
     public static bool ShowDesktop() => SendWindowsShortcut(VK_D, ShowDesktopSequence, "Show desktop");
 
