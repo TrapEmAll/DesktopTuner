@@ -922,9 +922,20 @@ public partial class TaskbarWindow : Window
     private void WindowButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Middle
-            || sender is not Button { Tag: TaskbarWindowGroup group }
-            || TaskbarWindowGrouping.SelectCloseTarget(group) is not { } target) return;
-        RunningWindowService.Close(target);
+            || sender is not Button { Tag: TaskbarWindowGroup group }) return;
+        var launchPath = TaskbarWindowGrouping.GetLaunchPath(group);
+        if (TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(e.ChangedButton, launchPath is not null && File.Exists(launchPath)))
+        {
+            try { Process.Start(new ProcessStartInfo(launchPath!) { UseShellExecute = true }); }
+            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+            {
+                MessageBox.Show(this, ex.Message, "Could not launch a new app instance", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        else if (TaskbarWindowGrouping.SelectCloseTarget(group) is { } target)
+        {
+            RunningWindowService.Close(target);
+        }
         e.Handled = true;
     }
 
