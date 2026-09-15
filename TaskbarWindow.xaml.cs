@@ -548,7 +548,7 @@ public partial class TaskbarWindow : Window
         BatteryFill.Background = status.Percent is <= 15 ? Brushes.IndianRed : TaskbarTheme.GetBrush("TaskbarAccentBrush");
         BatteryPercentText.Text = status.Percent is { } percent ? $"{percent}%" : string.Empty;
         BatteryChargingGlyph.Visibility = status.IsCharging ? Visibility.Visible : Visibility.Collapsed;
-        BatteryButton.ToolTip = TaskbarBatteryService.GetLabel(status);
+        BatteryButton.ToolTip = $"{TaskbarBatteryService.GetLabel(status)}; click for Quick Settings, right-click for Power & battery settings";
         if (IsLoaded && wasVisible != (BatteryButton.Visibility == Visibility.Visible)) RefreshWindows();
     }
 
