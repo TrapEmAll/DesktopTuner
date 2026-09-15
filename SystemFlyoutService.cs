@@ -19,6 +19,7 @@ public static class SystemFlyoutService
     private const ushort VK_N = 0x4E;
     private const ushort VK_K = 0x4B;
     private const ushort VK_P = 0x50;
+    private const ushort VK_Q = 0x51;
     private const ushort VK_R = 0x52;
     private const ushort VK_S = 0x53;
     private const ushort VK_SPACE = 0x20;
@@ -91,6 +92,13 @@ public static class SystemFlyoutService
         new(VK_S, true),
         new(VK_LWIN, true)
     ]);
+    private static readonly IReadOnlyList<KeyboardKeyEvent> WindowsSearchQuestionSequence = Array.AsReadOnly<KeyboardKeyEvent>(
+    [
+        new(VK_LWIN, false),
+        new(VK_Q, false),
+        new(VK_Q, true),
+        new(VK_LWIN, true)
+    ]);
     private static readonly IReadOnlyList<KeyboardKeyEvent> TaskViewSequence = Array.AsReadOnly<KeyboardKeyEvent>(
     [
         new(VK_LWIN, false),
@@ -129,6 +137,7 @@ public static class SystemFlyoutService
     public static IReadOnlyList<KeyboardKeyEvent> GetWidgetsSequence() => WidgetsSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetRunDialogSequence() => RunDialogSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetWindowsSearchSequence() => WindowsSearchSequence;
+    public static IReadOnlyList<KeyboardKeyEvent> GetWindowsSearchQuestionSequence() => WindowsSearchQuestionSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetTaskViewSequence() => TaskViewSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetConnectSequence() => ConnectSequence;
     public static IReadOnlyList<KeyboardKeyEvent> GetProjectSequence() => ProjectSequence;
@@ -151,6 +160,8 @@ public static class SystemFlyoutService
     public static bool OpenRunDialog() => SendWindowsShortcut(VK_R, RunDialogSequence, "Run dialog");
 
     public static bool OpenWindowsSearch() => SendWindowsShortcut(VK_S, WindowsSearchSequence, "Windows Search");
+
+    public static bool OpenWindowsSearchFromQuestionMark() => SendWindowsShortcut(VK_Q, WindowsSearchQuestionSequence, "Windows Search");
 
     public static bool OpenTaskView() => SendWindowsShortcut(VK_TAB, TaskViewSequence, "Task View");
 

@@ -1227,7 +1227,7 @@ Check(WindowsKeyAction.Suppress, shellRestoreShortcutGesture.KeyUp(0x5b), "avoid
 foreach (var (key, surfaceName) in new[]
 {
     ((uint)'A', "Quick Settings"), ((uint)'K', "Connect"), ((uint)'N', "Notification Center"),
-    ((uint)'P', "Project"), ((uint)'S', "Windows Search"), ((uint)'W', "Widgets"),
+    ((uint)'P', "Project"), ((uint)'Q', "Windows Search"), ((uint)'S', "Windows Search"), ((uint)'W', "Widgets"),
     (0x09u, "Task View"), (0x20u, "keyboard layout picker")
 })
 {
@@ -1244,7 +1244,7 @@ modifiedShellSurfaceGesture.KeyDown(0x5b);
 Check(WindowsKeyAction.ForwardWindowsDownThenPass, modifiedShellSurfaceGesture.KeyDown((uint)'N', shiftPressed: true, canOpenShellSystemSurface: _ => true), "preserve modified Win+N instead of opening the unmodified shell surface");
 modifiedShellSurfaceGesture.KeyUp((uint)'N');
 modifiedShellSurfaceGesture.KeyUp(0x5b);
-foreach (var key in new[] { (uint)'A', (uint)'N', (uint)'S', (uint)'W', 0x09u, 0x20u })
+foreach (var key in new[] { (uint)'A', (uint)'N', (uint)'Q', (uint)'S', (uint)'W', 0x09u, 0x20u })
 {
     var nativeSurfaceGesture = new WindowsKeyGesture();
     nativeSurfaceGesture.KeyDown(0x5b);
@@ -1561,6 +1561,13 @@ CheckTrue(SystemFlyoutService.GetWindowsSearchSequence().SequenceEqual(
     new KeyboardKeyEvent((ushort)'S', true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+S search shortcut in balanced key order");
+CheckTrue(SystemFlyoutService.GetWindowsSearchQuestionSequence().SequenceEqual(
+[
+    new KeyboardKeyEvent(0x5B, false),
+    new KeyboardKeyEvent((ushort)'Q', false),
+    new KeyboardKeyEvent((ushort)'Q', true),
+    new KeyboardKeyEvent(0x5B, true)
+]), "send the native Windows+Q search shortcut in balanced key order");
 CheckTrue(SystemFlyoutService.GetTaskViewSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),
