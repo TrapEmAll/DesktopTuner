@@ -1171,4 +1171,6 @@ public partial class StartMenuWindow : Window
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void ProfileButton_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenAccountSettings();
 }
