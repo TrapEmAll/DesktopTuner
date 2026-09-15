@@ -790,7 +790,8 @@ Check(false, FolderShellIntegrationService.TryReadInvocation(["--open-folder", "
 var shellNamespace = "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}";
 CheckTrue(FolderShellIntegrationService.TryReadShellLocationInvocation(["--OPEN-SHELL-LOCATION", shellNamespace], out var parsedShellNamespace), "recognize namespace context-menu launch arguments");
 Check(shellNamespace, parsedShellNamespace, "preserve the shell namespace parsing name");
-Check(false, FolderShellIntegrationService.TryReadShellLocationInvocation(["--open-shell-location", shellFolderPath], out _), "reject filesystem paths from the namespace command");
+CheckTrue(FolderShellIntegrationService.TryReadShellLocationInvocation(["--open-shell-location", shellFolderPath], out var parsedFolderFromVirtualVerb), "accept filesystem folders passed through the virtual-folder shell verb");
+Check(shellFolderPath, parsedFolderFromVirtualVerb, "normalize filesystem folders passed through the virtual-folder shell verb");
 Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe")}\" --open-folder \"%1\"", FolderShellIntegrationService.BuildCommand(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe", "%1"), "quote executable and selected-folder arguments in the directory context command");
 Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe")}\" --open-folder \"%V\"", FolderShellIntegrationService.BuildCommand(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe", "%V"), "quote the current-folder argument for empty-space context menus");
 Throws<ArgumentOutOfRangeException>(() => FolderShellIntegrationService.BuildCommand(Environment.ProcessPath!, "%*"), "reject unrecognized shell path substitutions");

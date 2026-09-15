@@ -1208,7 +1208,7 @@ public partial class MainWindow : Window
 
     public static bool TryOpenShellLocationInExistingInstance(string shellLocation)
     {
-        if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(shellLocation)) return false;
+        if (!FolderShellIntegrationService.IsShellLocationInvocationTarget(shellLocation)) return false;
         var payload = Marshal.StringToHGlobalUni(shellLocation);
         try
         {
@@ -1264,7 +1264,7 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(value)) return false;
         var terminator = value.IndexOf('\0');
         shellLocation = terminator >= 0 ? value[..terminator] : value;
-        return DesktopShellNamespaceCatalog.IsShellNamespaceLocation(shellLocation);
+        return FolderShellIntegrationService.IsShellLocationInvocationTarget(shellLocation);
     }
 
     public void OpenFolderFromShell(string folderPath)
@@ -1279,6 +1279,11 @@ public partial class MainWindow : Window
 
     public void OpenShellLocationFromShell(string shellLocation)
     {
+        if (Path.IsPathFullyQualified(shellLocation))
+        {
+            OpenFolderFromShell(shellLocation);
+            return;
+        }
         if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(shellLocation)) return;
         if (DesktopShellNamespaceCatalog.IsCompanionExplorerLocation(shellLocation))
         {

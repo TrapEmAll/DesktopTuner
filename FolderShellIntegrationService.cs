@@ -64,12 +64,16 @@ public static class FolderShellIntegrationService
         {
             if (!string.Equals(arguments[index], OpenShellLocationArgument, StringComparison.OrdinalIgnoreCase)) continue;
             var candidate = Environment.ExpandEnvironmentVariables(arguments[index + 1]).Trim();
-            if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(candidate)) return false;
-            shellLocation = candidate;
+            if (!IsShellLocationInvocationTarget(candidate)) return false;
+            shellLocation = Path.IsPathFullyQualified(candidate) ? Path.GetFullPath(candidate) : candidate;
             return true;
         }
         return false;
     }
+
+    public static bool IsShellLocationInvocationTarget(string value) =>
+        !string.IsNullOrWhiteSpace(value) &&
+        (DesktopShellNamespaceCatalog.IsShellNamespaceLocation(value) || Path.IsPathFullyQualified(value));
 
     public static string BuildShellLocationCommand(string executablePath, string shellPathToken)
     {
