@@ -74,6 +74,10 @@ public partial class App : Application
             _instanceMutex = new Mutex(initiallyOwned: true, name: @"Local\DesktopTuner.CustomShellSupervisor.Singleton", out var supervisorCreatedNew);
             if (!supervisorCreatedNew)
             {
+                if (hasFolderShellInvocation)
+                    DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(folderShellPath, ShellHostLaunchPolicy.PendingInvocationForwardTimeout);
+                else if (hasShellLocationInvocation)
+                    DesktopTuner.MainWindow.TryOpenShellLocationInExistingInstance(shellLocation, ShellHostLaunchPolicy.PendingInvocationForwardTimeout);
                 _instanceMutex.Dispose();
                 _instanceMutex = null;
                 Shutdown();

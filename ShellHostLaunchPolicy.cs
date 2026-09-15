@@ -4,6 +4,7 @@ public static class ShellHostLaunchPolicy
 {
     public const string ShellHostWorkerArgument = "--shell-host-worker";
     public const int RequestedRestartExitCode = 1;
+    public static TimeSpan PendingInvocationForwardTimeout => CustomShellPolicy.HostStartupReadinessTimeout + TimeSpan.FromSeconds(5);
 
     public static bool IsShellHostInvocation(IEnumerable<string> arguments)
     {

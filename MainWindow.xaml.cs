@@ -1171,7 +1171,7 @@ public partial class MainWindow : Window
         return false;
     }
 
-    public static bool TryOpenFolderInExistingInstance(string folderPath)
+    public static bool TryOpenFolderInExistingInstance(string folderPath, TimeSpan? timeout = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
         var payload = Marshal.StringToHGlobalUni(folderPath);
@@ -1183,7 +1183,9 @@ public partial class MainWindow : Window
                 ByteCount = checked((folderPath.Length + 1) * sizeof(char)),
                 DataPointer = payload
             };
-            for (var attempt = 0; attempt < 20; attempt++)
+            var deadline = Stopwatch.StartNew();
+            var forwardingTimeout = timeout ?? TimeSpan.FromSeconds(1);
+            while (deadline.Elapsed < forwardingTimeout)
             {
                 var window = FindWindow(null, "Desktop Tuner");
                 if (window == IntPtr.Zero)
@@ -1206,7 +1208,7 @@ public partial class MainWindow : Window
         finally { Marshal.FreeHGlobal(payload); }
     }
 
-    public static bool TryOpenShellLocationInExistingInstance(string shellLocation)
+    public static bool TryOpenShellLocationInExistingInstance(string shellLocation, TimeSpan? timeout = null)
     {
         if (!FolderShellIntegrationService.IsShellLocationInvocationTarget(shellLocation)) return false;
         var payload = Marshal.StringToHGlobalUni(shellLocation);
@@ -1218,7 +1220,9 @@ public partial class MainWindow : Window
                 ByteCount = checked((shellLocation.Length + 1) * sizeof(char)),
                 DataPointer = payload
             };
-            for (var attempt = 0; attempt < 20; attempt++)
+            var deadline = Stopwatch.StartNew();
+            var forwardingTimeout = timeout ?? TimeSpan.FromSeconds(1);
+            while (deadline.Elapsed < forwardingTimeout)
             {
                 var window = FindWindow(null, "Desktop Tuner");
                 if (window == IntPtr.Zero)
