@@ -69,6 +69,7 @@ public partial class MainWindow : Window
     private TaskbarWeatherSettings _taskbarWeather = new();
     private bool _taskbarShowLabels = true;
     private bool _taskbarLocked;
+    private bool _updatingTaskbarClock;
     private bool _taskbarAutoHide;
     private bool _taskbarAutoHideWhenMaximized;
     private int _taskbarTransparency = 5;
@@ -604,6 +605,18 @@ public partial class MainWindow : Window
                 Margin = new Thickness(0, 0, 0, 16),
                 Child = systemButtonsPanel
             });
+
+            var showClockSeconds = new CheckBox
+            {
+                Content = "Show seconds in the taskbar clock",
+                IsChecked = TaskbarClockPolicy.ShouldShowSeconds(),
+                ToolTip = "Uses the Windows Explorer taskbar clock preference for both the native and replacement taskbars.",
+                Margin = new Thickness(0, 0, 0, 16),
+                FontSize = 13
+            };
+            showClockSeconds.Checked += (_, _) => { if (!_updatingTaskbarClock) SetTaskbarClockSeconds(showClockSeconds, true); };
+            showClockSeconds.Unchecked += (_, _) => { if (!_updatingTaskbarClock) SetTaskbarClockSeconds(showClockSeconds, false); };
+            PageContent.Children.Add(showClockSeconds);
 
             var styleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
             var visualStyleSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
@@ -1604,6 +1617,22 @@ public partial class MainWindow : Window
     {
         _taskbarSystemButtons = _taskbarSystemButtons.WithVisibility(button, isVisible);
         SaveDesktopPreferences();
+    }
+
+    private void SetTaskbarClockSeconds(CheckBox checkBox, bool enabled)
+    {
+        try
+        {
+            TaskbarClockPolicy.SetShowSeconds(enabled);
+            SetStatus(enabled ? "Taskbar clock seconds are enabled." : "Taskbar clock seconds are disabled.");
+        }
+        catch (Exception ex)
+        {
+            _updatingTaskbarClock = true;
+            checkBox.IsChecked = !enabled;
+            _updatingTaskbarClock = false;
+            MessageBox.Show(this, ex.Message, "Could not change taskbar clock settings", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void SavePlaceVisibility(string placeId, bool isVisible, Action refresh)
