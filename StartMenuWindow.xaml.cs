@@ -19,6 +19,7 @@ public partial class StartMenuWindow : Window
     private readonly StartRecentAppsStore _recentAppsStore;
     private readonly StartMenuIdentity _identity;
     private readonly Func<IReadOnlyList<AppEntry>, bool>? _savePinnedApps;
+    private readonly Func<string, bool>? _pinTaskbarItem;
     private readonly Func<string, bool>? _openShellLocation;
     private readonly Func<string, bool>? _openFileLocation;
     private StartMenuPlacePreferences _startPlaces;
@@ -35,7 +36,7 @@ public partial class StartMenuWindow : Window
     private Point _pinnedStartDrag;
     private bool _suppressPinnedStartClick;
 
-    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null)
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<string, bool>? pinTaskbarItem = null)
     {
         InitializeComponent();
         _identity = StartMenuIdentityService.ReadCurrentUser();
@@ -63,6 +64,7 @@ public partial class StartMenuWindow : Window
         _savePinnedApps = savePinnedApps;
         _openShellLocation = openShellLocation;
         _openFileLocation = openFileLocation;
+        _pinTaskbarItem = pinTaskbarItem;
         _recentAppsStore = recentAppsStore ?? new StartRecentAppsStore();
         _startPlaces = StartMenuPlaceCatalog.Normalize(startPlaces);
         _controlPanelApplets = ControlPanelAppletCatalog.Normalize(controlPanelApplets);
@@ -579,6 +581,13 @@ public partial class StartMenuWindow : Window
             return;
         }
         SavePinnedApps(updated);
+    }
+
+    private void PinTaskbarItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pinTaskbarItem is null || sender is not MenuItem { Tag: AppEntry app }) return;
+        if (!_pinTaskbarItem(app.ShortcutPath))
+            MessageBox.Show(this, $"Could not pin {app.Name} to the taskbar.", "Taskbar pin unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void PinnedStartApp_Click(object sender, RoutedEventArgs e)

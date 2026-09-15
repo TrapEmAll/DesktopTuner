@@ -1628,12 +1628,16 @@ try
     File.WriteAllText(startShortcutPath, "test shortcut fixture");
     var startShortcut = new AppEntry("Editor", startShortcutPath);
     CheckTrue(startShortcut.CanOpenFileLocation, "offer file location for an existing Start shortcut");
+    CheckTrue(startShortcut.CanPinToTaskbar, "offer taskbar pinning for an existing Start shortcut");
+    var startFolder = new AppEntry("Projects", startShortcutDirectory, IsDirectory: true);
+    CheckTrue(startFolder.CanPinToTaskbar, "offer taskbar pinning for an existing Start folder");
     var fileLocationLaunchInfo = AppCatalogService.BuildFileLocationLaunchInfo(startShortcut);
     Check("explorer.exe", fileLocationLaunchInfo.FileName, "open shortcut locations in File Explorer");
     Check($"/select,\"{startShortcutPath}\"", fileLocationLaunchInfo.ArgumentList.Single(), "select the original shortcut path including spaces");
     CheckTrue(fileLocationLaunchInfo.UseShellExecute, "open shortcut locations through the Windows shell");
     CheckTrue(!AppCatalogService.CanOpenFileLocation(new AppEntry("Missing", Path.Combine(startShortcutDirectory, "missing.lnk"))), "disable file location for a removed Start shortcut");
     CheckTrue(!AppCatalogService.CanOpenFileLocation(new AppEntry("Calculator", "CalculatorApp!App", IsPackagedApp: true)), "do not offer a file location for packaged Windows apps");
+    CheckTrue(!new AppEntry("Calculator", "CalculatorApp!App", IsPackagedApp: true).CanPinToTaskbar, "do not offer taskbar pinning for packaged Windows apps");
     Throws<NotSupportedException>(() => AppCatalogService.BuildFileLocationLaunchInfo(new AppEntry("Missing", Path.Combine(startShortcutDirectory, "missing.lnk"))), "reject file location for a removed Start shortcut");
     var pinnedStartShortcut = new PinnedTaskbarApp("Editor", startShortcutPath);
     CheckTrue(pinnedStartShortcut.CanOpenLocation, "offer file location for an existing taskbar app pin");

@@ -1286,7 +1286,8 @@ public partial class MainWindow : Window
         _startMenuWindow = new StartMenuWindow(_startMenuStyle, _pinnedStartApps, SavePinnedStartApps,
             startPlaces: _startMenuPlaces, recentAppCount: _startRecentAppCount, controlPanelApplets: _controlPanelApplets,
             openShellLocation: _shellHostMode ? TryOpenLocationInCompanionExplorer : null,
-            openFileLocation: _shellHostMode ? TryOpenFileLocationInCompanionExplorer : null);
+            openFileLocation: _shellHostMode ? TryOpenFileLocationInCompanionExplorer : null,
+            pinTaskbarItem: TryPinTaskbarItem);
         _startMenuDisplay = display;
         _startMenuWindow.Closed += (_, _) => { _startMenuWindow = null; _startMenuDisplay = null; };
         if (display is not null)

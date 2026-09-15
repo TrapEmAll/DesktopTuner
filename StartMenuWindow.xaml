@@ -148,6 +148,7 @@
                                             <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}" Opened="PinnedStartContextMenu_Opened">
                                                 <MenuItem Header="Open folder" Tag="{Binding}" Click="OpenPinnedFolder_Click" />
                                                 <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenFileLocation}" Click="OpenFileLocation_Click" />
+                                                <MenuItem Header="Pin to taskbar" Tag="{Binding}" IsEnabled="{Binding CanPinToTaskbar}" Click="PinTaskbarItem_Click" />
                                                 <Separator />
                                                 <MenuItem Header="Run as administrator" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunAsAdministrator_Click" />
                                                 <Separator />
@@ -287,6 +288,7 @@
                                 <Grid.ContextMenu>
                                     <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                         <MenuItem Header="Pin to Start" Tag="{Binding Application}" Click="PinStartApp_Click" />
+                                        <MenuItem Header="Pin to taskbar" Tag="{Binding Application}" IsEnabled="{Binding Application.CanPinToTaskbar}" Click="PinTaskbarItem_Click" />
                                         <MenuItem Header="Open file location" Tag="{Binding Application}" IsEnabled="{Binding Application.CanOpenFileLocation}" Click="OpenFileLocation_Click" />
                                         <MenuItem Header="Run as administrator" Tag="{Binding Application}" IsEnabled="{Binding Application.CanRunElevated}" Click="RunAsAdministrator_Click" />
                                     </ContextMenu>
@@ -328,6 +330,7 @@
                                 <StackPanel.ContextMenu>
                                     <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                         <MenuItem Header="Pin to Start" Tag="{Binding Application}" IsEnabled="{Binding CanPinApplication}" Click="PinStartApp_Click" />
+                                        <MenuItem Header="Pin to taskbar" Tag="{Binding Application}" IsEnabled="{Binding CanPinApplicationToTaskbar}" Click="PinTaskbarItem_Click" />
                                         <Separator />
                                         <MenuItem Header="Open file location" Tag="{Binding Application}" IsEnabled="{Binding CanOpenApplicationFileLocation}" Click="OpenFileLocation_Click" />
                                         <Separator />

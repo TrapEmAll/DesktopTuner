@@ -15,6 +15,8 @@ public sealed record AppEntry(string Name, string ShortcutPath, bool IsPackagedA
     public bool CanRunElevated => AppCatalogService.CanRunAsAdministrator(this);
     [JsonIgnore]
     public bool CanOpenFileLocation => AppCatalogService.CanOpenFileLocation(this);
+    [JsonIgnore]
+    public bool CanPinToTaskbar => !IsPackagedApp && TaskbarPinCatalog.IsSupportedTarget(ShortcutPath, IsDirectory) && (IsDirectory ? Directory.Exists(ShortcutPath) : CanOpenFileLocation);
 }
 
 public sealed class StartMenuNode(string name, AppEntry? application = null)
@@ -24,6 +26,7 @@ public sealed class StartMenuNode(string name, AppEntry? application = null)
     public bool CanPinApplication => StartPinCatalog.IsSupported(Application);
     public bool CanRunApplicationAsAdministrator => Application?.CanRunElevated == true;
     public bool CanOpenApplicationFileLocation => Application?.CanOpenFileLocation == true;
+    public bool CanPinApplicationToTaskbar => Application?.CanPinToTaskbar == true;
     public List<StartMenuNode> Children { get; } = [];
 }
 
