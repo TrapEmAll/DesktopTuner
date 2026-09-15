@@ -880,6 +880,13 @@ public partial class TaskbarWindow : Window
 
     private void Start_Click(object sender, RoutedEventArgs e) => _showStartMenu(Display);
 
+    private void StartButton_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        if (_executePowerUserCommand is null) return;
+        e.Handled = true;
+        ShowPowerUserMenu();
+    }
+
     private void WindowButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: TaskbarWindowGroup group } button) return;
