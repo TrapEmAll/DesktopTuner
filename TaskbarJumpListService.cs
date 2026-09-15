@@ -26,12 +26,16 @@ public static class TaskbarJumpListService
     public static string? GetAppUserModelId(PinnedTaskbarApp app)
     {
         ArgumentNullException.ThrowIfNull(app);
-        if (app.IsDirectory || string.IsNullOrWhiteSpace(app.ExecutablePath) || !File.Exists(app.ExecutablePath)) return null;
+        if (app.IsDirectory || string.IsNullOrWhiteSpace(app.ExecutablePath) ||
+            (!app.IsPackagedApp && !File.Exists(app.ExecutablePath))) return null;
         IPropertyStore? store = null;
         try
         {
+            var parsingName = app.IsPackagedApp
+                ? $"shell:AppsFolder\\{app.ExecutablePath}"
+                : app.ExecutablePath;
             var interfaceId = PropertyStoreId;
-            ThrowForFailure(SHGetPropertyStoreFromParsingName(app.ExecutablePath, nint.Zero, PropertyStoreDefault, ref interfaceId, out store),
+            ThrowForFailure(SHGetPropertyStoreFromParsingName(parsingName, nint.Zero, PropertyStoreDefault, ref interfaceId, out store),
                 "Windows could not read the pinned app's Shell properties.");
             return ReadAppUserModelId(store);
         }

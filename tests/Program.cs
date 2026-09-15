@@ -1680,6 +1680,7 @@ try
     Check("shell:AppsFolder\\CalculatorApp!App", TaskbarPinCatalog.BuildLaunchInfo(packagedPins.Single()).ArgumentList.Single(), "pass the packaged app identity to the AppsFolder namespace");
     CheckTrue(!packagedPins.Single().CanOpenLocation, "hide file location for packaged taskbar pins");
     Check(false, packagedPins.Single().CanRunElevated, "hide elevation for packaged taskbar pins");
+    CheckTrue(packagedPins.Single().CanShowJumpList, "allow Jump List menus for packaged taskbar pins");
     CheckTrue(!TaskbarPinIdentityService.Matches(packagedPins.Single(), new RunningWindow(nint.Zero, "Calculator", "Calculator", "", false)), "avoid matching a packaged pin when Windows exposes no app identity");
     var pinnedFolder = new PinnedTaskbarApp("ExplorerOperations", explorerTestDirectory, IsDirectory: true);
     CheckTrue(pinnedFolder.CanOpenLocation, "offer the folder itself for an existing taskbar folder pin");
