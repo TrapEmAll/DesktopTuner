@@ -1,14 +1,25 @@
+using System.IO;
+
 namespace DesktopTuner;
 
 public sealed record TaskbarWindowGroup(string Label, string ApplicationName, IReadOnlyList<RunningWindow> Windows)
 {
     public bool CanRunElevated => Windows.FirstOrDefault()?.CanRunElevated == true;
+    public bool CanLaunchNewInstance => TaskbarWindowGrouping.GetLaunchPath(this) is not null;
     public string ToolTip => string.Join(Environment.NewLine, Windows.Select(window => window.Title));
     public bool IsActive => Windows.Any(window => window.IsForeground);
 }
 
 public static class TaskbarWindowGrouping
 {
+    public static string? GetLaunchPath(TaskbarWindowGroup group)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        return group.Windows
+            .Select(window => window.ExecutablePath)
+            .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path));
+    }
+
     public static RunningWindow? SelectCloseTarget(TaskbarWindowGroup group)
     {
         ArgumentNullException.ThrowIfNull(group);

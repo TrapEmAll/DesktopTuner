@@ -955,6 +955,19 @@ public partial class TaskbarWindow : Window
         else if (item.Tag is RunningWindow window) RunningWindowService.Close(window);
     }
 
+    private void LaunchWindowGroupInstance_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: TaskbarWindowGroup group } || TaskbarWindowGrouping.GetLaunchPath(group) is not { } path) return;
+        try
+        {
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or System.Security.SecurityException)
+        {
+            Trace.TraceWarning($"Could not launch a new instance for '{path}': {ex.Message}");
+        }
+    }
+
     private void JumpListMenu_SubmenuOpened(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem menu || menu.CommandParameter is not TaskbarJumpListCategory category) return;

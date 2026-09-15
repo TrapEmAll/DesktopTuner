@@ -693,6 +693,9 @@ CheckTrue(TaskbarWindowGrouping.SelectCloseTarget(new TaskbarWindowGroup("Empty"
 Check(3, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.Never, 1).Count, "never group taskbar windows");
 Check(3, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFull, 3).Count, "keep windows separate while the taskbar has capacity");
 Check(2, TaskbarWindowGrouping.Create(runningWindows, TaskbarGroupingMode.WhenFull, 2).Count, "group windows when the taskbar is full");
+var launchableGroup = new TaskbarWindowGroup("Desktop Tuner", "Desktop Tuner", [new RunningWindow((nint)7, "Desktop Tuner", "Desktop Tuner", Environment.ProcessPath!, false)]);
+Check(Environment.ProcessPath, TaskbarWindowGrouping.GetLaunchPath(launchableGroup), "find an executable path for a running taskbar group's new-instance command");
+CheckTrue(launchableGroup.CanLaunchNewInstance, "enable new-instance launch for a running taskbar group with a live executable");
 var editorPin = new PinnedTaskbarApp("Editor", @"C:\Apps\editor.exe");
 CheckTrue(TaskbarWindowGrouping.MatchesPinnedApp(editorPin, runningWindows[1]), "match a running window to its pinned app without case-sensitive path differences");
 Check((nint)1, TaskbarWindowGrouping.SelectPinnedRepresentative(editorPin, [runningWindows[1], runningWindows[0]])!.Handle, "prefer the foreground matching window for a pinned taskbar button");
