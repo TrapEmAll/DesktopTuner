@@ -31,6 +31,7 @@ public partial class TaskbarWindow : Window
     private readonly DispatcherTimer _previewOpenTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
     private readonly DispatcherTimer _previewCloseTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
     private readonly Action<TaskbarDisplay> _showStartMenu;
+    private readonly Action<TaskbarDisplay, string>? _searchStartMenu;
     private readonly Func<bool> _isStartMenuVisible;
     private readonly Action<DesktopPreferences> _persistPreferences;
     private readonly Action _closeAllTaskbars;
@@ -77,13 +78,14 @@ public partial class TaskbarWindow : Window
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Action<string>? openDirectoryInCompanionExplorer = null, Action<string>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? pinStartItem = null, bool shellHostMode = false)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Action<string>? openDirectoryInCompanionExplorer = null, Action<string>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? pinStartItem = null, bool shellHostMode = false, Action<TaskbarDisplay, string>? searchStartMenu = null)
     {
         InitializeComponent();
         _isDark = TaskbarTheme.ReadSystemDarkMode();
         SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
         Display = display;
         _showStartMenu = showStartMenu;
+        _searchStartMenu = searchStartMenu;
         _isStartMenuVisible = isStartMenuVisible;
         _windowOrder = windowOrder;
         _persistPreferences = persistPreferences;
@@ -203,6 +205,8 @@ public partial class TaskbarWindow : Window
         if (integratedBounds is { } trayIntegratedBounds) bounds = trayIntegratedBounds;
         SettingsButton.Visibility = !_nativeTrayExposed && systemButtons.Settings ? Visibility.Visible : Visibility.Collapsed;
         SearchButton.Visibility = systemButtons.Search ? Visibility.Visible : Visibility.Collapsed;
+        SearchBox.Visibility = systemButtons.Search && _preferences.TaskbarSearchStyle == TaskbarSearchStyle.Box ? Visibility.Visible : Visibility.Collapsed;
+        if (SearchBox.Visibility == Visibility.Visible) SearchButton.Visibility = Visibility.Collapsed;
         NetworkButton.Visibility = !_nativeTrayExposed && systemButtons.Network ? Visibility.Visible : Visibility.Collapsed;
         InputMethodButton.Visibility = !_nativeTrayExposed && systemButtons.InputMethod ? Visibility.Visible : Visibility.Collapsed;
         OnScreenKeyboardButton.Visibility = !_nativeTrayExposed && systemButtons.OnScreenKeyboard ? Visibility.Visible : Visibility.Collapsed;
@@ -2029,6 +2033,13 @@ public partial class TaskbarWindow : Window
     private void Weather_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWidgets();
 
     private void Search_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWindowsSearch();
+
+    private void SearchBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || string.IsNullOrWhiteSpace(SearchBox.Text)) return;
+        _searchStartMenu?.Invoke(Display, SearchBox.Text.Trim());
+        e.Handled = true;
+    }
 
     private void TaskView_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenTaskView();
 

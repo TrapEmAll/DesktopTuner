@@ -110,6 +110,7 @@
                             <Path Grid.Row="2" Grid.Column="2" Fill="White" Data="M0,0 L8,0 L8,7 L0,8 Z" />
                         </Grid>
                     </Button>
+                    <TextBox x:Name="SearchBox" Width="190" Height="36" VerticalContentAlignment="Center" Padding="10,0" Margin="2,0,4,0" KeyDown="SearchBox_KeyDown" ToolTip="Search apps and Windows" AutomationProperties.Name="Taskbar search" />
                     <Button x:Name="SearchButton" Width="38" Height="38" Style="{StaticResource TaskButton}" Click="Search_Click" ToolTip="Open Windows Search (Win+S)" AutomationProperties.Name="Search">
                         <Grid Width="20" Height="20">
                             <Ellipse Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="1" Stroke="{DynamicResource TaskbarForegroundBrush}" StrokeThickness="2" />

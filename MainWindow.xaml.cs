@@ -69,6 +69,7 @@ public partial class MainWindow : Window
     private TaskbarWeatherSettings _taskbarWeather = new();
     private bool _taskbarShowLabels = true;
     private TaskbarLabelVisibility _taskbarLabelVisibility = TaskbarLabelVisibility.Always;
+    private TaskbarSearchStyle _taskbarSearchStyle = TaskbarSearchStyle.Button;
     private bool _taskbarLocked;
     private bool _updatingTaskbarClock;
     private bool _taskbarAutoHide;
@@ -128,6 +129,7 @@ public partial class MainWindow : Window
         _taskbarShowLabels = desktopPreferences.TaskbarShowLabels;
         _taskbarLabelVisibility = !desktopPreferences.TaskbarShowLabels && desktopPreferences.TaskbarLabelVisibility == TaskbarLabelVisibility.Always
             ? TaskbarLabelVisibility.Never : desktopPreferences.TaskbarLabelVisibility;
+        _taskbarSearchStyle = desktopPreferences.TaskbarSearchStyle;
         _taskbarLocked = desktopPreferences.TaskbarLocked;
         _taskbarAutoHide = desktopPreferences.AutoHide;
         _taskbarAutoHideWhenMaximized = desktopPreferences.AutoHideWhenMaximized;
@@ -504,6 +506,21 @@ public partial class MainWindow : Window
             };
             labelsRow.Children.Add(labelsSelector);
             PageContent.Children.Add(labelsRow);
+
+            var searchStyleSelector = new ComboBox { Width = 210, Margin = new Thickness(8, 0, 0, 0) };
+            searchStyleSelector.Items.Add(new ComboBoxItem { Content = "Search button", Tag = TaskbarSearchStyle.Button });
+            searchStyleSelector.Items.Add(new ComboBoxItem { Content = "Search box", Tag = TaskbarSearchStyle.Box });
+            searchStyleSelector.SelectedItem = searchStyleSelector.Items.Cast<ComboBoxItem>().First(item => item.Tag is TaskbarSearchStyle style && style == _taskbarSearchStyle);
+            searchStyleSelector.SelectionChanged += (_, _) =>
+            {
+                if (searchStyleSelector.SelectedItem is not ComboBoxItem { Tag: TaskbarSearchStyle style }) return;
+                _taskbarSearchStyle = style;
+                SaveDesktopPreferences();
+            };
+            var searchStyleRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
+            searchStyleRow.Children.Add(new TextBlock { Text = "Taskbar search", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+            searchStyleRow.Children.Add(searchStyleSelector);
+            PageContent.Children.Add(searchStyleRow);
 
             AddPageHeading("Taskbar weather", "Show current conditions for a city or postal code you choose. Your location is sent to Open-Meteo only when you search or enable weather.");
             var weatherLocationRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
@@ -1322,6 +1339,12 @@ public partial class MainWindow : Window
         _startMenuWindow.Activate();
     }
 
+    private void ShowStartMenuSearch(TaskbarDisplay display, string query)
+    {
+        if (_startMenuWindow is not { IsVisible: true }) ShowStartMenu(display);
+        _startMenuWindow?.FocusSearch(query);
+    }
+
     private void PositionStartMenuWindow(TaskbarDisplay? display = null)
     {
         if (_startMenuWindow is null) return;
@@ -1440,7 +1463,8 @@ public partial class MainWindow : Window
             openFileLocationInCompanionExplorer: _shellHostMode ? OpenPinnedFileLocationInCompanionExplorer : null,
             openShellLocationInCompanionExplorer: _shellHostMode ? TryOpenLocationInCompanionExplorer : null,
             pinStartItem: TryPinStartItem,
-            shellHostMode: _shellHostMode);
+            shellHostMode: _shellHostMode,
+            searchStartMenu: ShowStartMenuSearch);
         taskbar.ContentRendered += TaskbarWindow_ContentRendered;
         taskbar.Closed += (_, _) =>
         {
@@ -1615,7 +1639,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarLabelVisibility != TaskbarLabelVisibility.Never, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather, _taskbarLocked, _taskbarLabelVisibility);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarLabelVisibility != TaskbarLabelVisibility.Never, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather, _taskbarLocked, _taskbarLabelVisibility, _taskbarSearchStyle);
 
     private DesktopPreferences CreateTaskbarRuntimePreferences(DesktopPreferences? preferences = null)
     {
@@ -1828,6 +1852,7 @@ public partial class MainWindow : Window
             _taskbarButtonEffect = preferences.TaskbarButtonEffect;
             _taskbarSystemButtons = TaskbarSystemButtonVisibility.Normalize(preferences.TaskbarSystemButtons);
             _taskbarWeather = TaskbarWeatherPolicy.Normalize(preferences.TaskbarWeather);
+            _taskbarSearchStyle = preferences.TaskbarSearchStyle;
             _startWithWindows = preferences.StartWithWindows;
             _replaceNativeTaskbar = preferences.ReplaceNativeTaskbar;
             if ((displayModeChanged || replacementModeChanged) && _taskbarWindows.Any(window => window.IsVisible))

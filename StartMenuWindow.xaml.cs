@@ -82,6 +82,14 @@ public partial class StartMenuWindow : Window
         RefreshApps();
     }
 
+    public void FocusSearch(string query)
+    {
+        SearchBox.Text = query ?? string.Empty;
+        SearchBox.Focus();
+        Keyboard.Focus(SearchBox);
+        SearchBox.SelectAll();
+    }
+
     public void SetStyle(StartMenuStyle style)
     {
         _style = style;
