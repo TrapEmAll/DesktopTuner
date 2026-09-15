@@ -45,6 +45,8 @@ public sealed class WindowsKeyStartHook : IDisposable
     private readonly Action<uint> _openShellSystemSurface;
     private readonly Func<bool> _canOpenOnScreenKeyboard;
     private readonly Action _openOnScreenKeyboard;
+    private readonly Func<bool> _canOpenNarrator;
+    private readonly Action _openNarrator;
     private readonly Func<int, bool> _canLaunchPinnedAppInstance;
     private readonly Action<int> _launchPinnedAppInstance;
     private readonly Func<int, bool> _canLaunchPinnedAppInstanceAsAdministrator;
@@ -58,7 +60,7 @@ public sealed class WindowsKeyStartHook : IDisposable
     private bool _shellSystemSurfaceWindowsKeyReleased;
     private nint _hook;
 
-    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Action<bool>? focusTaskbar = null, bool replaceBareWindowsKey = true, Func<bool>? canOpenExplorer = null, Action? openExplorer = null, bool replaceControlEscape = false, Func<bool>? canToggleDesktop = null, Action? toggleDesktop = null, Func<bool>? canFocusTaskbarSystem = null, Action? focusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Action? openPowerUserMenu = null, Func<bool>? canOpenRunDialog = null, Action? openRunDialog = null, Func<bool>? canMinimizeAllWindows = null, Action? minimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null, Action? restoreMinimizedWindows = null, Func<uint, bool>? canOpenShellSystemSurface = null, Action<uint>? openShellSystemSurface = null, Func<bool>? canOpenOnScreenKeyboard = null, Action? openOnScreenKeyboard = null, Func<int, bool>? canLaunchPinnedAppInstance = null, Action<int>? launchPinnedAppInstance = null, Func<int, bool>? canLaunchPinnedAppInstanceAsAdministrator = null, Action<int>? launchPinnedAppInstanceAsAdministrator = null, Func<int, bool>? canActivateLastActivePinnedApp = null, Action<int>? activateLastActivePinnedApp = null)
+    public WindowsKeyStartHook(Action showStartMenu, Func<int, bool>? canActivateTaskbarPin = null, Action<int>? activateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Action<bool>? focusTaskbar = null, bool replaceBareWindowsKey = true, Func<bool>? canOpenExplorer = null, Action? openExplorer = null, bool replaceControlEscape = false, Func<bool>? canToggleDesktop = null, Action? toggleDesktop = null, Func<bool>? canFocusTaskbarSystem = null, Action? focusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Action? openPowerUserMenu = null, Func<bool>? canOpenRunDialog = null, Action? openRunDialog = null, Func<bool>? canMinimizeAllWindows = null, Action? minimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null, Action? restoreMinimizedWindows = null, Func<uint, bool>? canOpenShellSystemSurface = null, Action<uint>? openShellSystemSurface = null, Func<bool>? canOpenOnScreenKeyboard = null, Action? openOnScreenKeyboard = null, Func<bool>? canOpenNarrator = null, Action? openNarrator = null, Func<int, bool>? canLaunchPinnedAppInstance = null, Action<int>? launchPinnedAppInstance = null, Func<int, bool>? canLaunchPinnedAppInstanceAsAdministrator = null, Action<int>? launchPinnedAppInstanceAsAdministrator = null, Func<int, bool>? canActivateLastActivePinnedApp = null, Action<int>? activateLastActivePinnedApp = null)
     {
         _showStartMenu = showStartMenu;
         _canActivateTaskbarPin = replaceBareWindowsKey ? canActivateTaskbarPin ?? (_ => false) : _ => false;
@@ -83,6 +85,8 @@ public sealed class WindowsKeyStartHook : IDisposable
         _openShellSystemSurface = openShellSystemSurface ?? (_ => { });
         _canOpenOnScreenKeyboard = canOpenOnScreenKeyboard ?? (() => false);
         _openOnScreenKeyboard = openOnScreenKeyboard ?? (() => { });
+        _canOpenNarrator = canOpenNarrator ?? (() => false);
+        _openNarrator = openNarrator ?? (() => { });
         _canLaunchPinnedAppInstance = canLaunchPinnedAppInstance ?? (_ => false);
         _launchPinnedAppInstance = launchPinnedAppInstance ?? (_ => { });
         _canLaunchPinnedAppInstanceAsAdministrator = canLaunchPinnedAppInstanceAsAdministrator ?? (_ => false);
@@ -146,6 +150,9 @@ public sealed class WindowsKeyStartHook : IDisposable
             var canOpenOnScreenKeyboard = IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_MENU)
                 ? _canOpenOnScreenKeyboard
                 : static () => false;
+            var canOpenNarrator = IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_MENU)
+                ? _canOpenNarrator
+                : static () => false;
             var canLaunchPinnedAppInstance = IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_MENU)
                 ? _canLaunchPinnedAppInstance
                 : static _ => false;
@@ -158,7 +165,7 @@ public sealed class WindowsKeyStartHook : IDisposable
             var action = message switch
             {
                 WM_KEYDOWN or WM_SYSKEYDOWN => _gesture.KeyDown(data.VirtualKey, canActivateTaskbarPin, canFocusTaskbar, canOpenExplorer,
-                    IsModifierPressed(VK_CONTROL), IsModifierPressed(VK_MENU), IsModifierPressed(VK_SHIFT), canToggleDesktop, canFocusTaskbarSystem, canOpenPowerUserMenu, canOpenRunDialog, canMinimizeAllWindows, canRestoreMinimizedWindows, canOpenShellSystemSurface, canOpenOnScreenKeyboard, canLaunchPinnedAppInstance, canLaunchPinnedAppInstanceAsAdministrator, canActivateLastActivePinnedApp),
+                    IsModifierPressed(VK_CONTROL), IsModifierPressed(VK_MENU), IsModifierPressed(VK_SHIFT), canToggleDesktop, canFocusTaskbarSystem, canOpenPowerUserMenu, canOpenRunDialog, canMinimizeAllWindows, canRestoreMinimizedWindows, canOpenShellSystemSurface, canOpenOnScreenKeyboard, canOpenNarrator, canLaunchPinnedAppInstance, canLaunchPinnedAppInstanceAsAdministrator, canActivateLastActivePinnedApp),
                 WM_KEYUP or WM_SYSKEYUP => _gesture.KeyUp(data.VirtualKey),
                 _ => WindowsKeyAction.PassThrough
             };
@@ -231,6 +238,9 @@ public sealed class WindowsKeyStartHook : IDisposable
                     return new nint(1);
                 case WindowsKeyAction.OpenOnScreenKeyboard:
                     Application.Current?.Dispatcher.BeginInvoke(_openOnScreenKeyboard, DispatcherPriority.Input);
+                    return new nint(1);
+                case WindowsKeyAction.OpenNarrator:
+                    Application.Current?.Dispatcher.BeginInvoke(_openNarrator, DispatcherPriority.Input);
                     return new nint(1);
                 case WindowsKeyAction.LaunchPinnedAppInstance:
                     if (_gesture.TaskbarPinIndex is { } newInstancePinIndex)

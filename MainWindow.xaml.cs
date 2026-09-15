@@ -2303,6 +2303,7 @@ public partial class MainWindow : Window
             canRestoreMinimizedWindows: CanManageShellHostWindows, restoreMinimizedWindows: RestoreShellWindowsMinimizedByShortcut,
             canOpenShellSystemSurface: _ => CanManageShellHostWindows(), openShellSystemSurface: OpenShellSystemSurfaceShortcut,
             canOpenOnScreenKeyboard: CanManageShellHostWindows, openOnScreenKeyboard: () => SystemFlyoutService.OpenOnScreenKeyboard(),
+            canOpenNarrator: CanManageShellHostWindows, openNarrator: OpenNarrator,
             canLaunchPinnedAppInstance: CanActivateTaskbarPinShortcut, launchPinnedAppInstance: LaunchTaskbarPinInstanceShortcut,
             canLaunchPinnedAppInstanceAsAdministrator: CanLaunchPinnedAppInstanceAsAdministratorShortcut,
             launchPinnedAppInstanceAsAdministrator: LaunchElevatedTaskbarPinInstanceShortcut,
@@ -2455,6 +2456,18 @@ public partial class MainWindow : Window
             case (uint)'Z': SystemFlyoutService.OpenSnapLayouts(); break;
             case 0x20: SystemFlyoutService.OpenInputMethodSwitcher(); break;
             case 0x09: SystemFlyoutService.OpenTaskView(); break;
+        }
+    }
+
+    private static void OpenNarrator()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("Narrator.exe") { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException)
+        {
+            System.Diagnostics.Trace.TraceWarning($"Could not open Narrator: {ex.Message}");
         }
     }
 
