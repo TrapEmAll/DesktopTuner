@@ -9,6 +9,10 @@ public sealed record ControlPanelAppletPreferences(List<string>? Order = null, L
 
 public static class ControlPanelAppletCatalog
 {
+    private static readonly object CanonicalProbeLock = new();
+    private static IReadOnlySet<string> _canonicalApplicationNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    private static DateTime _canonicalProbeExpiresUtc;
+
     public static IReadOnlyList<ControlPanelApplet> Applets { get; } =
     [
         new("programs", "Programs and Features", ["appwiz.cpl"]),
@@ -60,6 +64,23 @@ public static class ControlPanelAppletCatalog
     }
 
     public static IReadOnlySet<string> DiscoverCanonicalApplicationNames()
+    {
+        lock (CanonicalProbeLock)
+        {
+            if (DateTime.UtcNow < _canonicalProbeExpiresUtc)
+                return new HashSet<string>(_canonicalApplicationNames, StringComparer.OrdinalIgnoreCase);
+        }
+
+        var names = ProbeCanonicalApplicationNames();
+        lock (CanonicalProbeLock)
+        {
+            _canonicalApplicationNames = names;
+            _canonicalProbeExpiresUtc = DateTime.UtcNow.AddSeconds(30);
+            return new HashSet<string>(_canonicalApplicationNames, StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private static HashSet<string> ProbeCanonicalApplicationNames()
     {
         object? shell = null;
         object? folder = null;
