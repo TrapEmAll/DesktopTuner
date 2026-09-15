@@ -1483,6 +1483,11 @@ Check(WindowsKeyAction.Suppress, emojiGesture.KeyDown(0x5b), "capture Windows be
 Check(WindowsKeyAction.OpenEmojiPanel, emojiGesture.KeyDown(0xBE, canOpenEmojiPanel: () => true), "route Win+period to the native emoji panel in shell-host mode");
 Check(WindowsKeyAction.Suppress, emojiGesture.KeyUp(0xBE), "suppress emoji panel shortcut release");
 Check(WindowsKeyAction.Suppress, emojiGesture.KeyUp(0x5b), "avoid opening Start after routing the emoji panel");
+var windowsTipGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
+Check(WindowsKeyAction.Suppress, windowsTipGesture.KeyDown(0x5b), "capture Windows before shell-host Win+J");
+Check(WindowsKeyAction.OpenWindowsTip, windowsTipGesture.KeyDown((uint)'J', canOpenWindowsTip: () => true), "route Win+J to the native Windows tip in shell-host mode");
+Check(WindowsKeyAction.Suppress, windowsTipGesture.KeyUp((uint)'J'), "suppress Windows tip shortcut release");
+Check(WindowsKeyAction.Suppress, windowsTipGesture.KeyUp(0x5b), "avoid opening Start after routing Windows tips");
 var taskbarFocusGesture = new WindowsKeyGesture();
 Check(WindowsKeyAction.Suppress, taskbarFocusGesture.KeyDown(0x5b), "capture Windows before focusing the custom taskbar");
 Check(WindowsKeyAction.FocusTaskbar, taskbarFocusGesture.KeyDown((uint)'T', canFocusTaskbar: () => true), "route Win+T to the custom taskbar when it is available");
