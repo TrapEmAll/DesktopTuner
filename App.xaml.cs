@@ -47,6 +47,14 @@ public partial class App : Application
         var shellHostArgument = ShellHostLaunchPolicy.IsShellHostInvocation(e.Args);
         var shellHostWorkerArgument = ShellHostLaunchPolicy.IsShellHostWorkerInvocation(e.Args);
         var customShellPolicyTargetsApp = CustomShellPolicy.TargetsExecutable(CustomShellPolicy.ReadCurrentUserShellCommand(), Environment.ProcessPath);
+        if (!shellHostArgument && !shellHostWorkerArgument && !customShellPolicyTargetsApp)
+        {
+            try { FolderShellIntegrationService.RestoreDefaultHandler(); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                Trace.TraceWarning($"Could not restore an orphaned shell-host folder handler: {ex.Message}");
+            }
+        }
         if (hasFolderShellInvocation && DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(folderShellPath))
         {
             Shutdown();
