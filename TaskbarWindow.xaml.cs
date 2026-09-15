@@ -523,9 +523,17 @@ public partial class TaskbarWindow : Window
     {
         if (!IsLoaded) return;
         WindowScroller.UpdateLayout();
-        var extent = _edge is TaskbarEdge.Left or TaskbarEdge.Right ? WindowScroller.ExtentHeight : WindowScroller.ExtentWidth;
-        var viewport = _edge is TaskbarEdge.Left or TaskbarEdge.Right ? WindowScroller.ViewportHeight : WindowScroller.ViewportWidth;
-        OverflowButton.Visibility = TaskbarOverflowPolicy.ShouldShow(extent, viewport) ? Visibility.Visible : Visibility.Collapsed;
+        var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
+        var extent = vertical ? WindowScroller.ExtentHeight : WindowScroller.ExtentWidth;
+        var viewport = vertical ? WindowScroller.ViewportHeight : WindowScroller.ViewportWidth;
+        var showOverflow = TaskbarOverflowPolicy.ShouldShow(extent, viewport);
+        OverflowButton.Visibility = showOverflow ? Visibility.Visible : Visibility.Collapsed;
+
+        var reservedSpace = showOverflow ? 44 : 10;
+        var margin = vertical
+            ? new Thickness(0, 10, 0, reservedSpace)
+            : new Thickness(10, 0, reservedSpace, 0);
+        if (WindowScroller.Margin != margin) WindowScroller.Margin = margin;
     }
 
     private void WindowScroller_SizeChanged(object sender, SizeChangedEventArgs e) => Dispatcher.BeginInvoke(() =>
