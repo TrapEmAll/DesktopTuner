@@ -1147,6 +1147,19 @@ public partial class TaskbarWindow : Window
         ActivatePinnedApp(app, sender as Button);
     }
 
+    private void PinnedButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(e.ChangedButton)
+            || sender is not Button { Tag: PinnedTaskbarApp app }) return;
+        LaunchPinnedApp(app);
+        e.Handled = true;
+    }
+
+    private void LaunchPinnedInstance_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: PinnedTaskbarApp app }) LaunchPinnedApp(app);
+    }
+
     public bool TryActivatePinnedApp(int oneBasedIndex)
     {
         if (oneBasedIndex < 1 || oneBasedIndex > (_preferences.PinnedApps?.Count ?? 0)) return false;

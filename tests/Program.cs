@@ -1375,6 +1375,8 @@ CheckTrue(SystemFlyoutService.GetQuickSettingsSequence().SequenceEqual(
     new KeyboardKeyEvent((ushort)'A', true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+A Quick Settings shortcut in balanced key order");
+CheckTrue(TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(System.Windows.Input.MouseButton.Middle), "use middle-click to launch a new pinned taskbar instance");
+Check(false, TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(System.Windows.Input.MouseButton.Left), "keep primary click on the existing pinned taskbar activation path");
 CheckTrue(SystemFlyoutService.GetEmojiPanelSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),

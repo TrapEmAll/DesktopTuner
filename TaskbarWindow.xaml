@@ -123,7 +123,7 @@
                 <ItemsControl x:Name="PinnedItems" VerticalAlignment="Center" ItemsPanel="{StaticResource HorizontalWindowPanel}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Style="{StaticResource TaskButton}" Margin="{Binding ButtonMargin}" Tag="{Binding Target}" Click="PinnedButton_Click" ToolTip="{Binding ToolTip}" MouseMove="TaskbarAppButton_MouseMove" MouseLeave="TaskbarAppButton_MouseLeave"
+                            <Button Style="{StaticResource TaskButton}" Margin="{Binding ButtonMargin}" Tag="{Binding Target}" Click="PinnedButton_Click" ToolTip="{Binding ToolTip}" MouseMove="TaskbarAppButton_MouseMove" MouseLeave="TaskbarAppButton_MouseLeave" PreviewMouseDown="PinnedButton_PreviewMouseDown"
                                     AllowDrop="True" PreviewMouseLeftButtonDown="PinnedButton_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="PinnedButton_PreviewMouseLeftButtonUp" PreviewMouseMove="PinnedButton_PreviewMouseMove"
                                     DragOver="PinnedButton_DragOver" DragLeave="PinnedButton_DragLeave" Drop="PinnedButton_Drop">
                                 <StackPanel Orientation="Horizontal" MaxWidth="190">
@@ -159,6 +159,7 @@
                                             <MenuItem Header="Loading..." IsEnabled="False" />
                                         </MenuItem>
                                         <Separator />
+                                        <MenuItem Header="Start new instance" Tag="{Binding}" Click="LaunchPinnedInstance_Click" />
                                         <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenLocation}" Click="OpenPinnedLocation_Click" />
                                         <MenuItem Header="Start new elevated instance" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunPinnedAsAdministrator_Click" />
                                         <Separator />
