@@ -442,6 +442,8 @@ Check(true, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(false, true), "h
 Check(false, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(false, false), "preserve native Win+E behavior when companion Explorer routing is disabled");
 Check("Exit shell replacement and start Explorer", ShellHostLaunchPolicy.GetExitLabel(true), "label shell-host exit as Explorer recovery");
 Check("Exit Desktop Tuner", ShellHostLaunchPolicy.GetExitLabel(false), "keep the normal app exit label");
+Check("Restart shell replacement", ShellHostLaunchPolicy.GetRestartLabel(true), "label the bounded shell-host restart command");
+Check(1, ShellHostLaunchPolicy.RequestedRestartExitCode, "use the supervisor retry code for a requested shell restart");
 Check(false, ShellHostLaunchPolicy.ShouldAllowTaskbarClose(true), "keep replacement taskbars available throughout shell-host mode");
 Check(true, ShellHostLaunchPolicy.ShouldAllowTaskbarClose(false), "allow taskbar closing outside shell-host mode");
 Check(true, ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(true), "keep desktop folder navigation inside the replacement shell");

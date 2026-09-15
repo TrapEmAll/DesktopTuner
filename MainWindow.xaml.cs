@@ -2435,6 +2435,13 @@ public partial class MainWindow : Window
                 case "desktop":
                     ToggleShowDesktop();
                     return;
+                case "restart-shell":
+                    var restartAnswer = MessageBox.Show(this,
+                        "Restart Desktop Tuner's shell replacement? The shell supervisor will start it again once.",
+                        "Restart shell replacement", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (restartAnswer == MessageBoxResult.Yes)
+                        Application.Current?.Shutdown(ShellHostLaunchPolicy.RequestedRestartExitCode);
+                    return;
                 case "exit-shell":
                     var answer = MessageBox.Show(this,
                         "Exit Desktop Tuner's shell replacement and start Windows Explorer for this session?",

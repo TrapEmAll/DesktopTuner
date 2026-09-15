@@ -1401,6 +1401,7 @@ public partial class TaskbarWindow : Window
         if (_shellHostMode)
         {
             menu.Items.Add(new Separator());
+            menu.Items.Add(CreatePowerUserMenuItem("restart-shell", ShellHostLaunchPolicy.GetRestartLabel(true)));
             menu.Items.Add(CreatePowerUserMenuItem("exit-shell", ShellHostLaunchPolicy.GetExitLabel(true)));
         }
         menu.PlacementTarget = StartButton;

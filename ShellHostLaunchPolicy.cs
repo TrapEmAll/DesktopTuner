@@ -3,6 +3,7 @@ namespace DesktopTuner;
 public static class ShellHostLaunchPolicy
 {
     public const string ShellHostWorkerArgument = "--shell-host-worker";
+    public const int RequestedRestartExitCode = 1;
 
     public static bool IsShellHostInvocation(IEnumerable<string> arguments)
     {
@@ -78,6 +79,9 @@ public static class ShellHostLaunchPolicy
 
     public static string GetExitLabel(bool shellHostMode) =>
         shellHostMode ? "Exit shell replacement and start Explorer" : "Exit Desktop Tuner";
+
+    public static string GetRestartLabel(bool shellHostMode) =>
+        shellHostMode ? "Restart shell replacement" : "Restart Desktop Tuner";
 
     public static bool ShouldAllowTaskbarClose(bool shellHostMode) => !shellHostMode;
 }
