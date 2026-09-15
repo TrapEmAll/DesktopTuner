@@ -18,7 +18,7 @@
             <MenuItem x:Name="AutoHideWhenMaximizedMenuItem" Header="Hide when an app is maximized" IsCheckable="True" Click="AutoHideWhenMaximizedMenuItem_Click" />
             <Separator />
             <MenuItem Header="Close Desktop Tuner taskbar" Click="CloseBar_Click" />
-            <MenuItem Header="Exit Desktop Tuner" Click="Quit_Click" />
+            <MenuItem x:Name="QuitMenuItem" Header="Exit Desktop Tuner" Click="Quit_Click" />
         </ContextMenu>
     </Window.ContextMenu>
     <Window.Resources>

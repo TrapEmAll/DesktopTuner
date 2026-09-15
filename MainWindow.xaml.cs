@@ -1428,7 +1428,8 @@ public partial class MainWindow : Window
             openDirectoryInCompanionExplorer: _shellHostMode ? path => OpenExplorer(path) : null,
             openFileLocationInCompanionExplorer: _shellHostMode ? OpenPinnedFileLocationInCompanionExplorer : null,
             openShellLocationInCompanionExplorer: _shellHostMode ? TryOpenLocationInCompanionExplorer : null,
-            pinStartItem: TryPinStartItem);
+            pinStartItem: TryPinStartItem,
+            shellHostMode: _shellHostMode);
         taskbar.ContentRendered += TaskbarWindow_ContentRendered;
         taskbar.Closed += (_, _) =>
         {
@@ -1893,6 +1894,16 @@ public partial class MainWindow : Window
         };
         restore.Click += RestoreCustomShell_Click;
         actions.Children.Add(restore);
+        if (_shellHostMode)
+        {
+            var exitShellHost = new Button
+            {
+                Content = "Exit shell replacement and start Explorer",
+                Style = (Style)FindResource("SecondaryButton")
+            };
+            exitShellHost.Click += ExitShellHost_Click;
+            actions.Children.Add(exitShellHost);
+        }
         PageContent.Children.Add(actions);
 
         if (ShellLauncherService.IsSupportedWindowsEdition())
@@ -2044,6 +2055,15 @@ public partial class MainWindow : Window
         {
             MessageBox.Show(this, ex.Message, "Could not restore Windows Explorer as the shell", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void ExitShellHost_Click(object sender, RoutedEventArgs e)
+    {
+        var answer = MessageBox.Show(this,
+            "Exit Desktop Tuner's shell replacement and start Windows Explorer for this session?",
+            "Exit shell replacement", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (answer == MessageBoxResult.Yes)
+            Application.Current.Shutdown();
     }
 
     private void OpenExplorer(string? initialPath = null, string? selectPath = null)

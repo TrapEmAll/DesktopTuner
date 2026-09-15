@@ -440,6 +440,8 @@ Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, false), 
 Check(true, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(true, false), "route Win+E to companion Explorer in shell replacement mode regardless of the saved preference");
 Check(true, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(false, true), "honor opt-in Win+E routing outside shell replacement mode");
 Check(false, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(false, false), "preserve native Win+E behavior when companion Explorer routing is disabled");
+Check("Exit shell replacement and start Explorer", ShellHostLaunchPolicy.GetExitLabel(true), "label shell-host exit as Explorer recovery");
+Check("Exit Desktop Tuner", ShellHostLaunchPolicy.GetExitLabel(false), "keep the normal app exit label");
 Check(true, ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(true), "keep desktop folder navigation inside the replacement shell");
 Check(false, ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(false), "preserve normal desktop-host folder activation outside replacement shell mode");
 Check(true, ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(true, true, false), "route filesystem-backed Start places through companion Explorer in replacement mode");

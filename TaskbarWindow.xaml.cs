@@ -74,7 +74,7 @@ public partial class TaskbarWindow : Window
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Action<string>? openDirectoryInCompanionExplorer = null, Action<string>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? pinStartItem = null)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Action<string>? openDirectoryInCompanionExplorer = null, Action<string>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? pinStartItem = null, bool shellHostMode = false)
     {
         InitializeComponent();
         _isDark = TaskbarTheme.ReadSystemDarkMode();
@@ -94,6 +94,7 @@ public partial class TaskbarWindow : Window
         _openShellLocationInCompanionExplorer = openShellLocationInCompanionExplorer;
         _openFileLocationInCompanionExplorer = openFileLocationInCompanionExplorer;
         _pinStartItem = pinStartItem;
+        QuitMenuItem.Header = ShellHostLaunchPolicy.GetExitLabel(shellHostMode);
         _refreshTimer.Tick += (_, _) => RefreshWindows();
         _batteryRefreshTimer.Tick += (_, _) => UpdateBatteryStatus();
         _microphoneRefreshTimer.Tick += (_, _) => UpdateMicrophoneStatus();

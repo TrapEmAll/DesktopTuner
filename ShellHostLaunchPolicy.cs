@@ -75,4 +75,7 @@ public static class ShellHostLaunchPolicy
 
     public static bool ShouldRestoreExplorerAfterShellHostExit(bool shellLauncherHost, bool sessionEnding, int exitCode) =>
         shellLauncherHost && !sessionEnding && exitCode == 0;
+
+    public static string GetExitLabel(bool shellHostMode) =>
+        shellHostMode ? "Exit shell replacement and start Explorer" : "Exit Desktop Tuner";
 }
