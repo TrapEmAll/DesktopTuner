@@ -2323,7 +2323,11 @@ public partial class MainWindow : Window
 
     private bool CanLaunchPinnedAppInstanceAsAdministratorShortcut(int oneBasedIndex) =>
         CanActivateTaskbarPinShortcut(oneBasedIndex) &&
-        TaskbarPinCatalog.CanRunAsAdministrator(_pinnedApps[oneBasedIndex - 1].Name, _pinnedApps[oneBasedIndex - 1].ExecutablePath, _pinnedApps[oneBasedIndex - 1].IsDirectory);
+        TaskbarPinCatalog.CanRunAsAdministrator(
+            _pinnedApps[oneBasedIndex - 1].Name,
+            _pinnedApps[oneBasedIndex - 1].ExecutablePath,
+            _pinnedApps[oneBasedIndex - 1].IsDirectory,
+            _pinnedApps[oneBasedIndex - 1].IsShellNamespace);
 
     private void LaunchElevatedTaskbarPinInstanceShortcut(int oneBasedIndex)
     {
