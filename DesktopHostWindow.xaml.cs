@@ -801,6 +801,12 @@ public partial class DesktopHostWindow : Window
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
+        if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "PrintDesktopItemMenuItem") is { } printItem)
+        {
+            printItem.Visibility = selected is not null && ShellOpenWithPolicy.CanOpenWith(true, selected.IsDirectory, selected.CanShowNativeContextMenu)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
         var nativeCommandEnabled = DesktopHostContextMenuPolicy.CanInvokeNativeCommand(_desktopItems);
         if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "CutDesktopItemMenuItem") is { } cutItem)
             cutItem.IsEnabled = nativeCommandEnabled;
@@ -860,6 +866,21 @@ public partial class DesktopHostWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Could not open the Open with dialog", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void OnPrintItemClick(object sender, RoutedEventArgs e)
+    {
+        var item = _desktopItems.SingleOrDefault(candidate => candidate.IsSelected);
+        if (item is null || !ShellOpenWithPolicy.CanOpenWith(true, item.IsDirectory, item.CanShowNativeContextMenu)) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.PrintShellItemAsync(owner, item.FullPath);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not print the desktop item", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

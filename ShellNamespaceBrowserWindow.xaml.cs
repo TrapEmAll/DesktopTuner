@@ -488,6 +488,7 @@ public partial class ShellNamespaceBrowserWindow : Window
         var hasSelection = ItemsList.SelectedItems.Count > 0;
         OpenMenuItem.IsEnabled = ItemsList.SelectedItems.Count > 0;
         OpenWithMenuItem.Visibility = Visibility.Collapsed;
+        PrintMenuItem.Visibility = Visibility.Collapsed;
         CopyMenuItem.IsEnabled = hasSelection;
         CopyPathMenuItem.IsEnabled = hasSelection;
         CutMenuItem.IsEnabled = hasSelection;
@@ -500,6 +501,9 @@ public partial class ShellNamespaceBrowserWindow : Window
         if (ItemsList.SelectedItems.Count == 1 && ItemsList.SelectedItem is DesktopShellNamespaceEntry entry)
         {
             OpenWithMenuItem.Visibility = ShellOpenWithPolicy.CanOpenWith(true, entry.IsFolder, true)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            PrintMenuItem.Visibility = ShellOpenWithPolicy.CanOpenWith(true, entry.IsFolder, true)
                 ? Visibility.Visible
                 : Visibility.Collapsed;
             var pinTarget = TaskbarPinCatalog.IsSupportedShellNamespaceTarget(entry.ParsingName)
@@ -540,6 +544,21 @@ public partial class ShellNamespaceBrowserWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Could not open the Open with dialog", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void Print_Click(object sender, RoutedEventArgs e)
+    {
+        if (ItemsList.SelectedItems.Count != 1 || ItemsList.SelectedItem is not DesktopShellNamespaceEntry { IsFolder: false } entry)
+            return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.PrintShellItemAsync(owner, entry.ParsingName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not print the Shell item", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

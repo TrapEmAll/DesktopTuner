@@ -64,6 +64,9 @@ public static class NativeShellContextMenuService
     public static Task<bool> OpenWithShellItemAsync(nint owner, string parsingName) =>
         InvokeShellItemsVerbAsync(owner, [parsingName], "openas");
 
+    public static Task<bool> PrintShellItemAsync(nint owner, string parsingName) =>
+        InvokeShellItemsVerbAsync(owner, [parsingName], "print");
+
     public static Task<bool> CopyShellItemsAsPathAsync(nint owner, IEnumerable<string> parsingNames) =>
         InvokeShellItemsVerbAsync(owner, parsingNames, "copyaspath");
 
