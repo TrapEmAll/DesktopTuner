@@ -796,6 +796,10 @@ public partial class DesktopHostWindow : Window
         var selectedItems = _desktopItems.Where(candidate => candidate.IsSelected).ToArray();
         var selected = selectedItems.Length == 1 ? selectedItems[0] : null;
         var nativeCommandEnabled = DesktopHostContextMenuPolicy.CanInvokeNativeCommand(_desktopItems);
+        if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "CutDesktopItemMenuItem") is { } cutItem)
+            cutItem.IsEnabled = nativeCommandEnabled;
+        if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "CopyDesktopItemMenuItem") is { } copyItem)
+            copyItem.IsEnabled = nativeCommandEnabled;
         if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "DeleteDesktopItemMenuItem") is { } deleteItem)
             deleteItem.IsEnabled = nativeCommandEnabled;
         if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "PropertiesDesktopItemMenuItem") is { } propertiesItem)
