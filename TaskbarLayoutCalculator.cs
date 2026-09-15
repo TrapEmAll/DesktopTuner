@@ -133,6 +133,13 @@ public static class TaskbarOverflowPolicy
         if (double.IsNaN(extent) || double.IsNaN(viewport) || double.IsInfinity(extent) || double.IsInfinity(viewport)) return false;
         return extent > Math.Max(0, viewport) + 1;
     }
+
+    public static bool IsPinnedAppActive(PinnedTaskbarApp app, IEnumerable<RunningWindow> windows)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        ArgumentNullException.ThrowIfNull(windows);
+        return windows.Any(window => window.IsForeground && TaskbarWindowGrouping.MatchesPinnedApp(app, window));
+    }
 }
 
 public static class TaskbarTransparencyPolicy

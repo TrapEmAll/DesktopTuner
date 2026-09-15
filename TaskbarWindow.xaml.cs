@@ -1376,9 +1376,11 @@ public partial class TaskbarWindow : Window
     private void OverflowButton_Click(object sender, RoutedEventArgs e)
     {
         var menu = new ContextMenu();
+        var windows = _windows.Enumerate();
         foreach (var app in _overflowPinnedApps)
         {
-            menu.Items.Add(CreateOverflowMenuItem(app.Name, app, app.ExecutablePath, isActive: false));
+            menu.Items.Add(CreateOverflowMenuItem(app.Name, app, app.ExecutablePath,
+                TaskbarOverflowPolicy.IsPinnedAppActive(app, windows)));
         }
         if (_overflowPinnedApps.Count > 0 && _overflowWindowGroups.Count > 0) menu.Items.Add(new Separator());
         foreach (var group in _overflowWindowGroups)

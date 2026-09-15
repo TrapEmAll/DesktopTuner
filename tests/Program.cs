@@ -753,6 +753,13 @@ CheckTrue(!TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.WhenFu
 CheckTrue(!TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.Never, 1, 4), "hide taskbar labels in never mode");
 CheckTrue(TaskbarOverflowPolicy.ShouldShow(402, 400), "show a taskbar overflow command when app buttons exceed the viewport");
 CheckTrue(!TaskbarOverflowPolicy.ShouldShow(400, 400), "hide taskbar overflow when buttons fit exactly");
+var overflowPin = new PinnedTaskbarApp("Editor", @"C:\Apps\editor.exe");
+CheckTrue(TaskbarOverflowPolicy.IsPinnedAppActive(overflowPin, [
+    new RunningWindow((nint)11, "Editor document", "Editor", @"C:\Apps\editor.exe", false) { IsForeground = true }
+]), "mark a pinned app active in the taskbar overflow menu when its window is foreground");
+Check(false, TaskbarOverflowPolicy.IsPinnedAppActive(overflowPin, [
+    new RunningWindow((nint)12, "Editor document", "Editor", @"C:\Apps\editor.exe", false)
+]), "leave a pinned app inactive in overflow when none of its windows is foreground");
 var launchableGroup = new TaskbarWindowGroup("Desktop Tuner", "Desktop Tuner", [new RunningWindow((nint)7, "Desktop Tuner", "Desktop Tuner", Environment.ProcessPath!, false)]);
 Check(Environment.ProcessPath, TaskbarWindowGrouping.GetLaunchPath(launchableGroup), "find an executable path for a running taskbar group's new-instance command");
 var packagedRunningGroup = new TaskbarWindowGroup("Store app", "Store app", [new RunningWindow((nint)10, "Store app", "ApplicationFrameHost", @"C:\\Windows\\System32\\ApplicationFrameHost.exe", false)
