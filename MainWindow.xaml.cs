@@ -2281,6 +2281,7 @@ public partial class MainWindow : Window
             canMinimizeAllWindows: CanManageShellHostWindows, minimizeAllWindows: MinimizeAllShellWindows,
             canRestoreMinimizedWindows: CanManageShellHostWindows, restoreMinimizedWindows: RestoreShellWindowsMinimizedByShortcut,
             canOpenShellSystemSurface: _ => CanManageShellHostWindows(), openShellSystemSurface: OpenShellSystemSurfaceShortcut,
+            canOpenOnScreenKeyboard: CanManageShellHostWindows, openOnScreenKeyboard: () => SystemFlyoutService.OpenOnScreenKeyboard(),
             canLaunchPinnedAppInstance: CanActivateTaskbarPinShortcut, launchPinnedAppInstance: LaunchTaskbarPinInstanceShortcut,
             canLaunchPinnedAppInstanceAsAdministrator: CanLaunchPinnedAppInstanceAsAdministratorShortcut,
             launchPinnedAppInstanceAsAdministrator: LaunchElevatedTaskbarPinInstanceShortcut,

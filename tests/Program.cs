@@ -1432,6 +1432,18 @@ Check(WindowsKeyAction.ActivateLastActivePinnedApp, controlFirstLastActivePinGes
 controlFirstLastActivePinGesture.KeyUp((uint)'2');
 controlFirstLastActivePinGesture.KeyUp(0x11);
 Check(WindowsKeyAction.Suppress, controlFirstLastActivePinGesture.KeyUp(0x5b), "consume Windows release after Control-first Win+Ctrl+number");
+var onScreenKeyboardGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
+Check(WindowsKeyAction.Suppress, onScreenKeyboardGesture.KeyDown(0x5b), "capture Windows before shell-host Win+Ctrl+O");
+Check(WindowsKeyAction.PassThrough, onScreenKeyboardGesture.KeyDown(0x11), "pass Control while tracking shell-host Win+Ctrl+O");
+Check(WindowsKeyAction.OpenOnScreenKeyboard, onScreenKeyboardGesture.KeyDown((uint)'O', controlPressed: true, canOpenOnScreenKeyboard: () => true), "route Win+Ctrl+O to the On-Screen Keyboard");
+Check(WindowsKeyAction.Suppress, onScreenKeyboardGesture.KeyUp((uint)'O'), "suppress Win+Ctrl+O release after opening the On-Screen Keyboard");
+Check(WindowsKeyAction.PassThrough, onScreenKeyboardGesture.KeyUp(0x11), "pass Control release through after Win+Ctrl+O");
+Check(WindowsKeyAction.Suppress, onScreenKeyboardGesture.KeyUp(0x5b), "avoid opening Start after Win+Ctrl+O");
+var unavailableOnScreenKeyboardGesture = new WindowsKeyGesture();
+unavailableOnScreenKeyboardGesture.KeyDown(0x5b);
+Check(WindowsKeyAction.ForwardWindowsDownThenPass, unavailableOnScreenKeyboardGesture.KeyDown((uint)'O', controlPressed: true, canOpenOnScreenKeyboard: () => false), "preserve Win+Ctrl+O when shell-host routing is unavailable");
+unavailableOnScreenKeyboardGesture.KeyUp((uint)'O');
+Check(WindowsKeyAction.ForwardWindowsUpThenSuppress, unavailableOnScreenKeyboardGesture.KeyUp(0x5b), "release Windows after passing unsupported Win+Ctrl+O through");
 var taskbarFocusGesture = new WindowsKeyGesture();
 Check(WindowsKeyAction.Suppress, taskbarFocusGesture.KeyDown(0x5b), "capture Windows before focusing the custom taskbar");
 Check(WindowsKeyAction.FocusTaskbar, taskbarFocusGesture.KeyDown((uint)'T', canFocusTaskbar: () => true), "route Win+T to the custom taskbar when it is available");
