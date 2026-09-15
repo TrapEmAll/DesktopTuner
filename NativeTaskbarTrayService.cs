@@ -13,7 +13,7 @@ public static class NativeTaskbarTrayService
     public static TaskbarBounds? FindTrayBounds(TaskbarDisplay display)
     {
         ArgumentNullException.ThrowIfNull(display);
-        TaskbarBounds? result = null;
+        var candidates = new List<TaskbarBounds>();
         try
         {
             EnumWindows((taskbar, _) =>
@@ -27,7 +27,7 @@ public static class NativeTaskbarTrayService
                     if (!GetWindowRect(child, out var rect)) return true;
 
                     var bounds = new TaskbarBounds(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
-                    if (TaskbarDisplayService.Overlaps(bounds, display)) result = bounds;
+                    if (TaskbarDisplayService.Overlaps(bounds, display)) candidates.Add(bounds);
                     return true;
                 }, IntPtr.Zero);
                 return true;
@@ -39,7 +39,27 @@ public static class NativeTaskbarTrayService
             return null;
         }
 
-        return result;
+        return SelectBestTrayBounds(candidates, display);
+    }
+
+    public static TaskbarBounds? SelectBestTrayBounds(IEnumerable<TaskbarBounds> candidates, TaskbarDisplay display)
+    {
+        ArgumentNullException.ThrowIfNull(candidates);
+        ArgumentNullException.ThrowIfNull(display);
+        return candidates
+            .Where(candidate => candidate.Width > 0 && candidate.Height > 0 && TaskbarDisplayService.Overlaps(candidate, display))
+            .OrderByDescending(candidate => GetIntersectionArea(candidate, display))
+            .ThenByDescending(candidate => candidate.Width * candidate.Height)
+            .FirstOrDefault();
+    }
+
+    private static long GetIntersectionArea(TaskbarBounds bounds, TaskbarDisplay display)
+    {
+        var left = Math.Max(bounds.Left, display.Left);
+        var top = Math.Max(bounds.Top, display.Top);
+        var right = Math.Min(bounds.Left + bounds.Width, display.Left + display.Width);
+        var bottom = Math.Min(bounds.Top + bounds.Height, display.Top + display.Height);
+        return right <= left || bottom <= top ? 0 : (long)((right - left) * (bottom - top));
     }
 
     private static string GetClassName(IntPtr window)
