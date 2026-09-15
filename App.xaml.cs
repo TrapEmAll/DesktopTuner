@@ -89,7 +89,9 @@ public partial class App : Application
             {
                 Trace.TraceWarning($"Could not make Desktop Tuner the temporary shell-host folder handler: {ex.Message}");
             }
-            RunCustomShellSupervisor();
+            RunCustomShellSupervisor(
+                hasFolderShellInvocation ? folderShellPath : null,
+                hasShellLocationInvocation ? shellLocation : null);
             return;
         }
 
@@ -180,7 +182,7 @@ public partial class App : Application
         finally { Shutdown(); }
     }
 
-    private async void RunCustomShellSupervisor()
+    private async void RunCustomShellSupervisor(string? pendingFolderPath, string? pendingShellLocation)
     {
         var executablePath = Environment.ProcessPath;
         if (string.IsNullOrWhiteSpace(executablePath))
@@ -223,6 +225,7 @@ public partial class App : Application
                     if (shellHost is null) throw new InvalidOperationException("Windows did not start the Desktop Tuner shell host.");
                     if (await WaitForShellHostReadyAsync(shellHost, readinessSignal))
                     {
+                        ForwardPendingShellInvocation(ref pendingFolderPath, ref pendingShellLocation);
                         if (await WaitForShellHostExitOrHeartbeatTimeoutAsync(shellHost, heartbeatSignal))
                         {
                             exitCode = shellHost.ExitCode;
@@ -288,6 +291,20 @@ public partial class App : Application
                 StartExplorerFallback();
                 return;
             }
+        }
+    }
+
+    private static void ForwardPendingShellInvocation(ref string? pendingFolderPath, ref string? pendingShellLocation)
+    {
+        if (pendingFolderPath is not null)
+        {
+            if (DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(pendingFolderPath)) pendingFolderPath = null;
+            else Trace.TraceWarning("The shell host became ready, but the pending folder launch could not be forwarded.");
+        }
+        else if (pendingShellLocation is not null)
+        {
+            if (DesktopTuner.MainWindow.TryOpenShellLocationInExistingInstance(pendingShellLocation)) pendingShellLocation = null;
+            else Trace.TraceWarning("The shell host became ready, but the pending Shell location launch could not be forwarded.");
         }
     }
 
@@ -394,4 +411,3 @@ public partial class App : Application
         base.OnExit(e);
     }
 }
-
