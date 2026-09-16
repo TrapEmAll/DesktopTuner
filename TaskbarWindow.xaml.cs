@@ -2061,8 +2061,7 @@ public partial class TaskbarWindow : Window
                         ?? StartButton
                     : buttons.LastOrDefault() ?? StartButton;
             _keyboardFocusActive = true;
-            target.Focus();
-            Keyboard.Focus(target);
+            FocusTaskbarButton(target);
         }), DispatcherPriority.Input);
     }
 
@@ -2091,8 +2090,7 @@ public partial class TaskbarWindow : Window
                         button != TrayButton && button.IsVisible && button.IsEnabled);
             if (target is null) return;
             _keyboardFocusActive = true;
-            target.Focus();
-            Keyboard.Focus(target);
+            FocusTaskbarButton(target);
         }), DispatcherPriority.Input);
     }
 
@@ -2185,8 +2183,15 @@ public partial class TaskbarWindow : Window
         else if (e.Key == Key.Home) targetIndex = 0;
         else if (e.Key == Key.End) targetIndex = buttons.Count - 1;
         else return;
-        buttons[targetIndex].Focus();
+        FocusTaskbarButton(buttons[targetIndex]);
         e.Handled = true;
+    }
+
+    private static void FocusTaskbarButton(Button target)
+    {
+        target.BringIntoView();
+        target.Focus();
+        Keyboard.Focus(target);
     }
 
     private List<Button> GetFocusableTaskbarButtons() =>
