@@ -1329,6 +1329,7 @@ public partial class StartMenuWindow : Window
                 Icon = icon is null ? null : new Image { Source = icon, Width = 18, Height = 18 }
             };
             item.Click += SystemPlace_Click;
+            item.PreviewMouseDown += StartPlaceMenuItem_PreviewMouseDown;
             item.PreviewKeyDown += StartPlaceMenuItem_PreviewKeyDown;
             if (TryResolveNativeStartShellTarget(placeId) is { } nativeTarget)
                 item.ContextMenu = CreateNativeStartShellContextMenu(nativeTarget,
@@ -1429,6 +1430,7 @@ public partial class StartMenuWindow : Window
                     : new Image { Source = icon, Style = (Style)FindResource("StartFlyoutIcon") }
             };
             item.Click += StartPlaceEntry_Click;
+            item.PreviewMouseDown += StartPlaceMenuItem_PreviewMouseDown;
             item.PreviewKeyDown += StartPlaceMenuItem_PreviewKeyDown;
             item.ContextMenu = CreateNativeStartShellContextMenu(entry.FullPath, entry.IsDirectory);
             if (StartMenuPlaceCatalog.CanExpand(entry))
@@ -1518,6 +1520,24 @@ public partial class StartMenuWindow : Window
         };
         if (target is null || (!Directory.Exists(target) && !DesktopShellNamespaceCatalog.IsShellNamespaceLocation(target))
             || _openFolderInNewWindow?.Invoke(target) != true) return;
+
+        Close();
+        e.Handled = true;
+    }
+
+    private void StartPlaceMenuItem_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle || _openFolderInNewWindow is null || sender is not MenuItem menuItem)
+            return;
+
+        var target = menuItem.Tag switch
+        {
+            StartMenuPlaceEntry { IsDirectory: true } entry => entry.FullPath,
+            string placeId => TryResolveNativeStartShellTarget(placeId),
+            _ => null
+        };
+        if (target is null || (!Directory.Exists(target) && !DesktopShellNamespaceCatalog.IsShellNamespaceLocation(target))
+            || !_openFolderInNewWindow(target)) return;
 
         Close();
         e.Handled = true;
