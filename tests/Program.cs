@@ -463,6 +463,9 @@ Check(false, ShellHostLaunchPolicy.ShouldProvidePowerUserMenu(false, false), "pr
 Check(true, ShellHostLaunchPolicy.ShouldProvideReplacementRunDialog(false, true), "route Win+R to the companion Run dialog in all-edition shell overlay mode");
 Check(true, ShellHostLaunchPolicy.ShouldProvideReplacementRunDialog(true, false), "route Win+R to the companion Run dialog when Explorer is absent");
 Check(false, ShellHostLaunchPolicy.ShouldProvideReplacementRunDialog(false, false), "preserve the native Run dialog outside replacement modes");
+Check(true, ShellHostLaunchPolicy.ShouldManageReplacementDesktop(false, true), "manage replacement desktop windows in all-edition shell overlay mode");
+Check(true, ShellHostLaunchPolicy.ShouldManageReplacementDesktop(true, false), "manage replacement desktop windows when Explorer is absent");
+Check(false, ShellHostLaunchPolicy.ShouldManageReplacementDesktop(false, false), "preserve native desktop window management outside replacement modes");
 Check(true, ShellHostLaunchPolicy.ShouldCoverAllDisplays(true, false), "cover every display in shell-host mode regardless of overlay preferences");
 Check(true, ShellHostLaunchPolicy.ShouldCoverAllDisplays(false, false, true), "cover every display in shell overlay mode regardless of display preferences");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, true), "avoid trying to hide an Explorer taskbar when running as the logon shell");

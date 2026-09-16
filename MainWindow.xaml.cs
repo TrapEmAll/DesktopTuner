@@ -1552,7 +1552,7 @@ public partial class MainWindow : Window
     private TaskbarWindow AddTaskbarWindow(TaskbarDisplay display, DesktopPreferences preferences)
     {
         var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, _taskbarWindowOrder, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication,
-            showDesktop: _shellHostMode ? ToggleShowDesktop : null,
+            showDesktop: ShellHostLaunchPolicy.ShouldManageReplacementDesktop(_shellHostMode, _shellOverlayMode) ? ToggleShowDesktop : null,
             focusSystemArea: _shellHostMode ? FocusTaskbarSystemArea : null,
             executePowerUserCommand: ShellHostLaunchPolicy.ShouldProvidePowerUserMenu(_shellHostMode, _shellOverlayMode) ? ExecuteShellHostPowerUserCommand : null,
             openDirectoryInCompanionExplorer: _shellHostMode ? path => OpenExplorer(path) : null,
@@ -2448,7 +2448,7 @@ public partial class MainWindow : Window
         var hook = new WindowsKeyStartHook(ShowStartMenu, CanActivateTaskbarPinShortcut, ActivateTaskbarPinShortcut, CanFocusTaskbar, FocusTaskbar,
             replaceBareWindowsKey: ShellHostLaunchPolicy.ShouldReplaceWindowsKey(_shellHostMode, _replaceWindowsKey), canOpenExplorer: () => _replaceExplorerShortcut, openExplorer: () => OpenExplorer(),
             replaceControlEscape: _shellHostMode || _shellOverlayMode,
-            canToggleDesktop: () => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible), toggleDesktop: ToggleShowDesktop,
+            canToggleDesktop: () => ShellHostLaunchPolicy.ShouldManageReplacementDesktop(_shellHostMode, _shellOverlayMode) && _taskbarWindows.Any(window => window.IsVisible), toggleDesktop: ToggleShowDesktop,
             canFocusTaskbarSystem: CanFocusTaskbarSystemArea, focusTaskbarSystem: FocusTaskbarSystemArea,
             canOpenPowerUserMenu: CanOpenPowerUserMenu, openPowerUserMenu: OpenPowerUserMenu,
             canOpenRunDialog: CanOpenRunDialog, openRunDialog: ShowRunDialog,
@@ -2566,7 +2566,7 @@ public partial class MainWindow : Window
 
     private bool CanOpenRunDialog() => ShellHostLaunchPolicy.ShouldProvideReplacementRunDialog(_shellHostMode, _shellOverlayMode) && _taskbarWindows.Any(window => window.IsVisible);
 
-    private bool CanManageShellHostWindows() => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible);
+    private bool CanManageShellHostWindows() => ShellHostLaunchPolicy.ShouldManageReplacementDesktop(_shellHostMode, _shellOverlayMode) && _taskbarWindows.Any(window => window.IsVisible);
 
     private List<nint> GetShellSurfaceHandles()
     {
@@ -2733,7 +2733,7 @@ public partial class MainWindow : Window
 
     private void ToggleShowDesktop()
     {
-        if (!_shellHostMode) return;
+        if (!ShellHostLaunchPolicy.ShouldManageReplacementDesktop(_shellHostMode, _shellOverlayMode)) return;
         if (_startMenuWindow?.IsVisible == true) _startMenuWindow.Close();
         _showDesktopWindows.Toggle(GetShellSurfaceHandles());
     }
