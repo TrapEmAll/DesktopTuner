@@ -946,8 +946,14 @@ public partial class StartMenuWindow : Window
     {
         if (sender is not ContextMenu { DataContext: AppEntry app } menu) return;
         var openFolderItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open folder"));
+        var browseFolderItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Browse folder contents"));
         var openFileLocationItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open file location"));
         if (openFolderItem is not null) openFolderItem.Visibility = app.IsDirectory ? Visibility.Visible : Visibility.Collapsed;
+        if (browseFolderItem is not null)
+        {
+            browseFolderItem.Visibility = app.IsDirectory || app.IsShellNamespace ? Visibility.Visible : Visibility.Collapsed;
+            browseFolderItem.IsEnabled = app.IsDirectory || app.IsShellNamespace;
+        }
         if (openFileLocationItem is not null) openFileLocationItem.Visibility = app.IsDirectory || app.IsShellNamespace ? Visibility.Collapsed : Visibility.Visible;
         ConfigureNativeShellMenu(menu, app);
         var tileSizeMenu = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Tile size"));
@@ -968,6 +974,13 @@ public partial class StartMenuWindow : Window
     private void OpenPinnedFolder_Click(object sender, RoutedEventArgs e)
     {
         if (sender is MenuItem { Tag: AppEntry { IsDirectory: true } app }) LaunchEntry(app);
+    }
+
+    private async void PinnedStartFolderMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AppEntry app } menuItem
+            || (!app.IsDirectory && !app.IsShellNamespace)) return;
+        await FillPlaceFlyoutAsync(menuItem, app.ShortcutPath);
     }
 
     private async void ShowNativeStartShellContextMenu_Click(object sender, RoutedEventArgs e)
