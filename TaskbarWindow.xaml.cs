@@ -1674,10 +1674,26 @@ public partial class TaskbarWindow : Window
     private ContextMenu CreateNativeTaskbarFolderContextMenu(string path)
     {
         var context = new ContextMenu();
+        var canPinQuickAccess = DesktopShellNamespaceCatalog.IsShellNamespaceLocation(path) || Directory.Exists(path);
+        var quickAccessMenu = new MenuItem
+        {
+            Header = "Pin to quick access",
+            Tag = path,
+            Visibility = canPinQuickAccess && _pinQuickAccessItem is not null ? Visibility.Visible : Visibility.Collapsed,
+            IsEnabled = canPinQuickAccess && _pinQuickAccessItem is not null && _isQuickAccessItemPinned?.Invoke(path) != true
+        };
+        quickAccessMenu.Click += PinFolderToQuickAccess_Click;
+        context.Items.Add(quickAccessMenu);
         var nativeMenu = new MenuItem { Header = "Show more options", Tag = path };
         nativeMenu.Click += ShowNativeTaskbarShellContextMenu_Click;
         context.Items.Add(nativeMenu);
         return context;
+    }
+
+    private void PinFolderToQuickAccess_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pinQuickAccessItem is not null && sender is MenuItem { Tag: string path })
+            _pinQuickAccessItem(path);
     }
 
     private void OpenFolderMenuEntry_Click(object sender, RoutedEventArgs e)
