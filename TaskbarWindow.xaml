@@ -154,7 +154,7 @@
                                     </TextBlock>
                                 </StackPanel>
                                 <Button.ContextMenu>
-                                    <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                    <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}" Opened="WindowGroupContextMenu_Opened">
                                         <MenuItem Header="Browse folder contents" Tag="{Binding}" IsEnabled="{Binding IsDirectory}" SubmenuOpened="PinnedFolderMenu_SubmenuOpened">
                                             <MenuItem Header="Loading..." IsEnabled="False" />
                                         </MenuItem>
@@ -227,6 +227,7 @@
                                         <MenuItem Header="Window actions" Tag="{Binding}" SubmenuOpened="WindowActionsMenu_SubmenuOpened">
                                             <MenuItem Header="Loading..." IsEnabled="False" />
                                         </MenuItem>
+                                        <MenuItem Header="Snap group" Tag="{Binding}" Visibility="Collapsed" SubmenuOpened="SnapGroupMenu_SubmenuOpened" />
                                         <MenuItem Header="Minimize window(s)" Tag="{Binding}" Click="Minimize_Click" />
                                         <MenuItem Header="Close window(s)" Tag="{Binding}" Click="CloseWindows_Click" />
                                         <MenuItem Header="End task" Tag="{Binding}" IsEnabled="{Binding CanEndTask}" Click="EndTask_Click" />

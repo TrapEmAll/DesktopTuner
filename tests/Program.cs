@@ -2398,6 +2398,11 @@ Check(TaskbarWeatherAnimation.Rain, TaskbarWeatherPolicy.GetAnimation(63), "anim
 Check(TaskbarWeatherAnimation.Snow, TaskbarWeatherPolicy.GetAnimation(75), "animate snowy taskbar weather with a snow motion");
 Check(TaskbarWeatherAnimation.Storm, TaskbarWeatherPolicy.GetAnimation(99), "animate storm taskbar weather with a warning motion");
 Check(TaskbarWeatherAnimation.None, TaskbarWeatherPolicy.GetAnimation(3), "keep overcast taskbar weather stable");
+var snapLeft = new RunningWindow((nint)101, "Editor", "Editor", "C:\\Apps\\Editor.exe", false) { DisplayDeviceName = "DISPLAY1", Bounds = new TaskbarBounds(0, 0, 960, 1080) };
+var snapRight = new RunningWindow((nint)102, "Browser", "Browser", "C:\\Apps\\Browser.exe", false) { DisplayDeviceName = "DISPLAY1", Bounds = new TaskbarBounds(960, 0, 960, 1080) };
+Check(1, TaskbarSnapGroupPolicy.Detect([snapLeft, snapRight]).Count, "detect adjacent same-display windows as a snap group");
+var unrelatedWindow = snapRight with { Handle = (nint)103, Bounds = new TaskbarBounds(1200, 100, 500, 400) };
+Check(0, TaskbarSnapGroupPolicy.Detect([snapLeft, unrelatedWindow]).Count, "leave non-adjacent same-display windows ungrouped");
 Check(new TaskbarCurrentWeather(21.5, "°F", 2, true), TaskbarWeatherPolicy.ParseCurrentResponse("""{"current":{"temperature_2m":21.5,"weather_code":2,"is_day":1}}""", "fahrenheit"), "parse current weather API conditions and unit");
 Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentResponse("{}", "celsius"), "reject weather responses without current conditions");
     var staleTaskbarSnapshot = Path.Combine(temporaryPreferencesDirectory, "taskbar-restore.json");

@@ -62,6 +62,7 @@ public partial class TaskbarWindow : Window
     private bool _nativeTrayExposed;
     private IReadOnlyList<PinnedTaskbarApp> _overflowPinnedApps = [];
     private IReadOnlyList<TaskbarWindowGroup> _overflowWindowGroups = [];
+    private IReadOnlyList<TaskbarSnapGroup> _snapGroups = [];
     private bool _isDark;
     private bool _keyboardFocusActive;
     private nint _previousForegroundWindow;
@@ -500,6 +501,7 @@ public partial class TaskbarWindow : Window
         var windows = _preferences.TaskbarWindowDisplayMode == TaskbarWindowDisplayMode.AllTaskbars
             ? virtualDesktopWindows
             : TaskbarWindowDisplayPolicy.Filter(virtualDesktopWindows, Display, TaskbarDisplayService.Enumerate(), _preferences.TaskbarWindowDisplayMode);
+        _snapGroups = TaskbarSnapGroupPolicy.Detect(windows);
         var vertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         var pinnedApps = _preferences.PinnedApps!;
         var labelVisibility = !_preferences.TaskbarShowLabels && _preferences.TaskbarLabelVisibility == TaskbarLabelVisibility.Always
@@ -1102,6 +1104,38 @@ public partial class TaskbarWindow : Window
         if (sender is not MenuItem menu || menu.Tag is not TaskbarWindowGroup group) return;
 
         PopulateWindowActions(menu, group.Windows, group.ApplicationName);
+    }
+
+    private void WindowGroupContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu menu || menu.DataContext is not TaskbarWindowGroup group) return;
+        if (menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Snap group")) is { } snapItem)
+            snapItem.Visibility = _snapGroups.Any(snap => snap.Windows.Any(window => group.Windows.Any(member => member.Handle == window.Handle)))
+                ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void SnapGroupMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menu || menu.Tag is not TaskbarWindowGroup group) return;
+        var snap = _snapGroups.FirstOrDefault(candidate => candidate.Windows.Any(window => group.Windows.Any(member => member.Handle == window.Handle)));
+        menu.Items.Clear();
+        if (snap is null) return;
+        foreach (var window in snap.Windows)
+        {
+            var item = new MenuItem { Header = string.IsNullOrWhiteSpace(window.Title) ? window.ApplicationName : window.Title, Tag = window, IsCheckable = true, IsChecked = window.IsForeground };
+            item.Click += WindowGroupWindow_Click;
+            menu.Items.Add(item);
+        }
+        menu.Items.Add(new Separator());
+        var minimize = new MenuItem { Header = "Minimize snap group", Tag = snap };
+        minimize.Click += MinimizeSnapGroup_Click;
+        menu.Items.Add(minimize);
+    }
+
+    private static void MinimizeSnapGroup_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: TaskbarSnapGroup group }) return;
+        foreach (var window in group.Windows) RunningWindowService.Minimize(window);
     }
 
     private void PinnedRunningWindowsMenu_SubmenuOpened(object sender, RoutedEventArgs e)
