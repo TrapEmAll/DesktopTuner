@@ -1432,6 +1432,7 @@ public partial class MainWindow : Window
             openAllApps: _startOpenAllApps,
             openShellLocation: TryOpenStartShellLocation,
             openFileLocation: _shellHostMode ? TryOpenFileLocationInCompanionExplorer : null,
+            openFolderInNewWindow: _shellHostMode ? TryOpenFolderInNewWindowFromShell : null,
             pinTaskbarItem: app => TryPinTaskbarItem(app),
             pinQuickAccessItem: app => TryPinQuickAccessItemFromShell(app.ShortcutPath),
             isQuickAccessItemPinned: app => IsQuickAccessItemPinnedFromShell(app.ShortcutPath),

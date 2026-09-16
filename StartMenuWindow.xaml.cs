@@ -27,6 +27,7 @@ public partial class StartMenuWindow : Window
     private readonly Func<AppEntry, bool>? _pinQuickAccessItem;
     private readonly Func<AppEntry, bool>? _isQuickAccessItemPinned;
     private readonly Func<string, bool>? _openShellLocation;
+    private readonly Func<string, bool>? _openFolderInNewWindow;
     private readonly Func<string, bool>? _openFileLocation;
     private StartMenuPlacePreferences _startPlaces;
     private ControlPanelAppletPreferences _controlPanelApplets;
@@ -52,7 +53,7 @@ public partial class StartMenuWindow : Window
         private set => SetValue(IconSizeProperty, value);
     }
 
-    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, StartMenuIconSize iconSize = StartMenuIconSize.Standard, bool openAllApps = false, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<AppEntry, bool>? pinTaskbarItem = null, Func<AppEntry, bool>? pinQuickAccessItem = null, Func<AppEntry, bool>? isQuickAccessItemPinned = null, Action? exitShellHost = null)
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, StartMenuIconSize iconSize = StartMenuIconSize.Standard, bool openAllApps = false, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<AppEntry, bool>? pinTaskbarItem = null, Func<AppEntry, bool>? pinQuickAccessItem = null, Func<AppEntry, bool>? isQuickAccessItemPinned = null, Func<string, bool>? openFolderInNewWindow = null, Action? exitShellHost = null)
     {
         InitializeComponent();
         SourceInitialized += Window_SourceInitialized;
@@ -80,6 +81,7 @@ public partial class StartMenuWindow : Window
         _pinnedApps = StartPinCatalog.Normalize(pinnedApps);
         _savePinnedApps = savePinnedApps;
         _openShellLocation = openShellLocation;
+        _openFolderInNewWindow = openFolderInNewWindow;
         _openFileLocation = openFileLocation;
         _pinTaskbarItem = pinTaskbarItem;
         _pinQuickAccessItem = pinQuickAccessItem;
@@ -1012,6 +1014,13 @@ public partial class StartMenuWindow : Window
             browseFolderItem.Visibility = app.IsDirectory || app.IsShellNamespace ? Visibility.Visible : Visibility.Collapsed;
             browseFolderItem.IsEnabled = app.IsDirectory || app.IsShellNamespace;
         }
+        var openNewWindowItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open folder in new window"));
+        if (openNewWindowItem is not null)
+        {
+            var canOpen = (app.IsDirectory || app.IsShellNamespace) && _openFolderInNewWindow is not null;
+            openNewWindowItem.Visibility = canOpen ? Visibility.Visible : Visibility.Collapsed;
+            openNewWindowItem.IsEnabled = canOpen;
+        }
         if (openFileLocationItem is not null) openFileLocationItem.Visibility = app.IsDirectory || app.IsShellNamespace ? Visibility.Collapsed : Visibility.Visible;
         if (pinQuickAccessItem is not null)
         {
@@ -1038,6 +1047,18 @@ public partial class StartMenuWindow : Window
     private void OpenPinnedFolder_Click(object sender, RoutedEventArgs e)
     {
         if (sender is MenuItem { Tag: AppEntry app } && (app.IsDirectory || app.IsShellNamespace)) LaunchEntry(app);
+    }
+
+    private void OpenPinnedFolderInNewWindow_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: AppEntry { IsDirectory: true } app })
+        {
+            if (_openFolderInNewWindow?.Invoke(app.ShortcutPath) == true) Close();
+        }
+        else if (sender is MenuItem { Tag: AppEntry { IsShellNamespace: true } shellApp })
+        {
+            if (_openFolderInNewWindow?.Invoke(shellApp.ShortcutPath) == true) Close();
+        }
     }
 
     private async void PinnedStartFolderMenu_Opened(object sender, RoutedEventArgs e)
