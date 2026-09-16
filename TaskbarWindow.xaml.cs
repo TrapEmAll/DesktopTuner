@@ -390,6 +390,7 @@ public partial class TaskbarWindow : Window
         RefreshWindows();
         ApplyLayout();
         UpdateClock();
+        UpdateInputMethodStatus();
         UpdateBatteryStatus();
         UpdateVolumeStatus();
         UpdateMicrophoneStatus();
@@ -531,6 +532,7 @@ public partial class TaskbarWindow : Window
             UpdateOverflowVisibility();
         });
         UpdateClock();
+        UpdateInputMethodStatus();
     }
 
     private void UpdateOverflowVisibility()
@@ -2072,6 +2074,15 @@ public partial class TaskbarWindow : Window
     }
 
     private void InputMethod_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenInputMethodSwitcher();
+
+    private void UpdateInputMethodStatus()
+    {
+        var label = SystemFlyoutService.ReadKeyboardLayoutLabel();
+        InputMethodLabel.Text = label ?? string.Empty;
+        InputMethodButton.ToolTip = label is null
+            ? "Choose a keyboard layout or input method (Win+Space)"
+            : $"{label} · Choose a keyboard layout or input method (Win+Space)";
+    }
 
     private void InputMethodContextMenu_Opened(object sender, RoutedEventArgs e)
     {

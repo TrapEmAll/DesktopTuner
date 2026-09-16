@@ -1726,6 +1726,9 @@ CheckTrue(SystemFlyoutService.GetInputMethodSequence().SequenceEqual(
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+Space keyboard-layout picker shortcut in balanced key order");
 Check("ms-settings:regionlanguage", SystemFlyoutService.LanguageSettingsUri, "keep the replacement keyboard-layout settings link on Windows' Language & region page");
+Check("EN", SystemFlyoutService.FormatKeyboardLayoutLabel("00000409"), "show the active keyboard layout's language code");
+Check("ABCD", SystemFlyoutService.FormatKeyboardLayoutLabel("ABCD"), "keep an unknown keyboard layout identifier readable");
+Check<string?>(null, SystemFlyoutService.FormatKeyboardLayoutLabel(null), "leave the keyboard layout label empty when Windows provides no layout");
 CheckTrue(SystemFlyoutService.GetOnScreenKeyboardSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),

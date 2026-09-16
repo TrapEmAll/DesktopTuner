@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 
 namespace DesktopTuner;
@@ -205,6 +206,24 @@ public static class SystemFlyoutService
 
     public static bool OpenLanguageSettings() => OpenShellUri(LanguageSettingsUri, "Language & region settings");
 
+    public static string? ReadKeyboardLayoutLabel()
+    {
+        var foreground = GetForegroundWindow();
+        var threadId = foreground == 0 ? 0u : GetWindowThreadProcessId(foreground, out _);
+        var layout = GetKeyboardLayout(threadId);
+        return FormatKeyboardLayoutLabel(layout == 0 ? null : $"{layout.ToInt64():X8}");
+    }
+
+    public static string? FormatKeyboardLayoutLabel(string? layoutName)
+    {
+        if (string.IsNullOrWhiteSpace(layoutName)) return null;
+        var value = layoutName.Trim();
+        if (value.Length < 4 || !uint.TryParse(value[^4..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var lcid))
+            return value.Length <= 4 ? value.ToUpperInvariant() : value[^4..].ToUpperInvariant();
+        try { return CultureInfo.GetCultureInfo((int)lcid).TwoLetterISOLanguageName.ToUpperInvariant(); }
+        catch (CultureNotFoundException) { return value[^4..].ToUpperInvariant(); }
+    }
+
     public static bool OpenOnScreenKeyboard() => SendModifiedShortcut(OnScreenKeyboardSequence, "On-Screen Keyboard");
 
     public static bool OpenWidgets() => SendWindowsShortcut(VK_W, WidgetsSequence, "Widgets board");
@@ -315,6 +334,15 @@ public static class SystemFlyoutService
     }
 
     private static bool IsKeyDown(ushort key) => (GetAsyncKeyState(key) & 0x8000) != 0;
+
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint windowHandle, out uint processId);
+
+    [DllImport("user32.dll")]
+    private static extern nint GetKeyboardLayout(uint threadId);
 
     private static Input Keyboard(ushort key, bool keyUp) => new()
     {

@@ -279,8 +279,11 @@
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>
-                <Button x:Name="InputMethodButton" Style="{StaticResource TaskButton}" Click="InputMethod_Click" Width="38" Height="38" ToolTip="Choose a keyboard layout or input method (Win+Space)" AutomationProperties.Name="Keyboard layout">
-                    <TextBlock Text="&#xE774;" FontFamily="{DynamicResource TaskbarSystemIconFontFamily}" FontSize="18" />
+                <Button x:Name="InputMethodButton" Style="{StaticResource TaskButton}" Click="InputMethod_Click" Width="50" Height="38" ToolTip="Choose a keyboard layout or input method (Win+Space)" AutomationProperties.Name="Keyboard layout">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE774;" FontFamily="{DynamicResource TaskbarSystemIconFontFamily}" FontSize="15" />
+                        <TextBlock x:Name="InputMethodLabel" FontSize="9" FontWeight="SemiBold" Margin="2,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
                     <Button.ContextMenu>
                         <ContextMenu Opened="InputMethodContextMenu_Opened">
                             <MenuItem Header="Language &amp; region settings" Click="LanguageSettings_Click" />
