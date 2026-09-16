@@ -19,6 +19,7 @@ public static class StartMenuPlaceCatalog
         new("videos", "Videos"),
         new("libraries", "Libraries"),
         new("favorites", "Favorites"),
+        new("games", "Games"),
         new("devices-printers", "Devices and Printers"),
         new("network", "Network")
     ];
@@ -76,6 +77,7 @@ public static class StartMenuPlaceCatalog
         "computer" => "shell:MyComputerFolder",
         "libraries" => "shell:Libraries",
         "favorites" => "shell:Favorites",
+        "games" => "shell:Games",
         "devices-printers" => "shell:PrintersFolder",
         "recycle-bin" => "shell:RecycleBinFolder",
         "control-panel" => "control.exe",
