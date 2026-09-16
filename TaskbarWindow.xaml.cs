@@ -1119,6 +1119,9 @@ public partial class TaskbarWindow : Window
     private void TaskbarShellContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         if (sender is not ContextMenu menu) return;
+        if (menu.DataContext is PinnedTaskbarApp pinnedApp
+            && menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Browse folder contents")) is { } browseMenu)
+            browseMenu.IsEnabled = pinnedApp.IsDirectory || pinnedApp.IsShellNamespace;
         if (menu.DataContext is TaskbarWindowGroup group
             && menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Snap group")) is { } snapItem)
         {
@@ -1555,22 +1558,23 @@ public partial class TaskbarWindow : Window
         }
     }
 
-    private void PinnedFolderMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    private async void PinnedFolderMenu_SubmenuOpened(object sender, RoutedEventArgs e)
     {
-        if (sender is not MenuItem { Tag: PinnedTaskbarApp { IsDirectory: true } app } menu) return;
-        PopulatePinnedFolderMenu(menu, app.ExecutablePath, depth: 0);
+        if (sender is not MenuItem { Tag: PinnedTaskbarApp app } menu
+            || (!app.IsDirectory && !app.IsShellNamespace)) return;
+        await PopulatePinnedFolderMenuAsync(menu, app.ExecutablePath, depth: 0);
     }
 
-    private void PinnedFolderSubmenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    private async void PinnedFolderSubmenu_SubmenuOpened(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: string path } menu || !int.TryParse(menu.Uid, out var depth)) return;
-        PopulatePinnedFolderMenu(menu, path, depth);
+        await PopulatePinnedFolderMenuAsync(menu, path, depth);
     }
 
-    private void PopulatePinnedFolderMenu(MenuItem menu, string path, int depth)
+    private async Task PopulatePinnedFolderMenuAsync(MenuItem menu, string path, int depth)
     {
         menu.Items.Clear();
-        if (!Directory.Exists(path))
+        if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(path) && !Directory.Exists(path))
         {
             menu.Items.Add(new MenuItem { Header = "Folder is unavailable", IsEnabled = false });
             return;
@@ -1582,7 +1586,8 @@ public partial class TaskbarWindow : Window
         menu.Items.Add(new Separator());
         try
         {
-            var entries = TaskbarFolderMenuCatalog.ReadChildren(path);
+            var entries = await ReadPinnedFolderChildrenAsync(path);
+            if (!menu.IsSubmenuOpen) return;
             if (entries.Count == 0)
                 menu.Items.Add(new MenuItem { Header = "No visible items", IsEnabled = false });
             foreach (var entry in entries)
@@ -1609,6 +1614,18 @@ public partial class TaskbarWindow : Window
         }
     }
 
+    private static async Task<IReadOnlyList<TaskbarFolderMenuEntry>> ReadPinnedFolderChildrenAsync(string path)
+    {
+        if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(path))
+            return TaskbarFolderMenuCatalog.ReadChildren(path);
+
+        var entries = await DesktopShellNamespaceCatalog.ReadChildrenAsync(path).ConfigureAwait(true);
+        return entries
+            .Take(TaskbarFolderMenuCatalog.MaximumVisibleEntries)
+            .Select(entry => new TaskbarFolderMenuEntry(entry.Name, entry.ParsingName, entry.IsFolder, IsReparsePoint: false))
+            .ToArray();
+    }
+
     private ContextMenu CreateNativeTaskbarFolderContextMenu(string path)
     {
         var context = new ContextMenu();
@@ -1623,10 +1640,14 @@ public partial class TaskbarWindow : Window
         if (sender is not MenuItem { Tag: string path }) return;
         try
         {
-            var startInfo = Directory.Exists(path)
+            if (DesktopShellNamespaceCatalog.IsShellNamespaceLocation(path)
+                && _openShellLocationInCompanionExplorer?.Invoke(path) == true)
+                return;
+
+            var startInfo = DesktopShellNamespaceCatalog.IsShellNamespaceLocation(path) || Directory.Exists(path)
                 ? new ProcessStartInfo("explorer.exe") { UseShellExecute = true }
                 : new ProcessStartInfo(path) { UseShellExecute = true };
-            if (Directory.Exists(path)) startInfo.ArgumentList.Add(path);
+            if (DesktopShellNamespaceCatalog.IsShellNamespaceLocation(path) || Directory.Exists(path)) startInfo.ArgumentList.Add(path);
             Process.Start(startInfo);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
