@@ -63,8 +63,6 @@ public partial class TaskbarWindow : Window
     private Visibility? _visibilityBeforeWindowArrange;
     private bool? _systemBackdropForCurrentStyle;
     private bool _nativeTrayExposed;
-    private IReadOnlyList<PinnedTaskbarApp> _overflowPinnedApps = [];
-    private IReadOnlyList<TaskbarWindowGroup> _overflowWindowGroups = [];
     private IReadOnlyList<TaskbarSnapGroup> _snapGroups = [];
     private bool _isDark;
     private bool _keyboardFocusActive;
@@ -533,8 +531,6 @@ public partial class TaskbarWindow : Window
         }).ToList();
         WindowItems.ItemsSource = groups
             .Select(group => TaskbarButtonViewModel.FromWindowGroup(group, _preferences, vertical, showLabels)).ToList();
-        _overflowPinnedApps = pinnedApps;
-        _overflowWindowGroups = groups;
         EmptyText.Visibility = windows.Count == 0 && _preferences.PinnedApps!.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         Dispatcher.BeginInvoke(() =>
         {
@@ -1783,13 +1779,15 @@ public partial class TaskbarWindow : Window
     {
         var menu = new ContextMenu();
         var windows = _windows.Enumerate();
-        foreach (var app in _overflowPinnedApps)
+        var overflowPinnedApps = GetOverflowItems<PinnedTaskbarApp>(PinnedItems);
+        var overflowWindowGroups = GetOverflowItems<TaskbarWindowGroup>(WindowItems);
+        foreach (var app in overflowPinnedApps)
         {
             menu.Items.Add(CreateOverflowMenuItem(app.Name, app, app.ExecutablePath,
                 TaskbarOverflowPolicy.IsPinnedAppActive(app, windows)));
         }
-        if (_overflowPinnedApps.Count > 0 && _overflowWindowGroups.Count > 0) menu.Items.Add(new Separator());
-        foreach (var group in _overflowWindowGroups)
+        if (overflowPinnedApps.Count > 0 && overflowWindowGroups.Count > 0) menu.Items.Add(new Separator());
+        foreach (var group in overflowWindowGroups)
         {
             var executablePath = group.Windows.Select(window => window.ExecutablePath).FirstOrDefault(path => !string.IsNullOrWhiteSpace(path));
             menu.Items.Add(CreateOverflowMenuItem(group.Label, group, executablePath, group.IsActive));
@@ -1805,6 +1803,33 @@ public partial class TaskbarWindow : Window
             _ => PlacementMode.Bottom
         };
         menu.IsOpen = true;
+    }
+
+    private IReadOnlyList<T> GetOverflowItems<T>(ItemsControl itemsControl)
+    {
+        var items = new List<T>();
+        foreach (var button in FindVisualChildren<Button>(itemsControl))
+        {
+            if (button.DataContext is not TaskbarButtonViewModel { Target: T item } || IsTaskbarButtonFullyVisible(button)) continue;
+            items.Add(item);
+        }
+        return items;
+    }
+
+    private bool IsTaskbarButtonFullyVisible(Button button)
+    {
+        if (!button.IsVisible || button.ActualWidth <= 0 || button.ActualHeight <= 0 || WindowScroller.ViewportWidth <= 0 || WindowScroller.ViewportHeight <= 0)
+            return false;
+        try
+        {
+            var bounds = button.TransformToAncestor(WindowScroller).TransformBounds(new Rect(0, 0, button.ActualWidth, button.ActualHeight));
+            var viewport = new Rect(0, 0, WindowScroller.ViewportWidth, WindowScroller.ViewportHeight);
+            return viewport.Contains(bounds.TopLeft) && viewport.Contains(bounds.BottomRight);
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     private MenuItem CreateOverflowMenuItem(string header, object tag, string? iconPath, bool isActive)
