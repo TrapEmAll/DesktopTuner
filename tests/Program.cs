@@ -2393,6 +2393,11 @@ Check("°F", TaskbarWeatherPolicy.GetTemperatureUnit("US"), "use Fahrenheit for 
 Check("°C", TaskbarWeatherPolicy.GetTemperatureUnit("GB"), "use Celsius for UK taskbar weather");
 Check("Thunderstorm with hail", TaskbarWeatherPolicy.GetCondition(99, true), "describe severe thunderstorm taskbar weather codes");
 Check("☾", TaskbarWeatherPolicy.GetGlyph(0, false), "show a night glyph for clear night conditions");
+Check(TaskbarWeatherAnimation.Sun, TaskbarWeatherPolicy.GetAnimation(0), "animate clear-sky taskbar weather with a sun cycle");
+Check(TaskbarWeatherAnimation.Rain, TaskbarWeatherPolicy.GetAnimation(63), "animate rainy taskbar weather with a rain motion");
+Check(TaskbarWeatherAnimation.Snow, TaskbarWeatherPolicy.GetAnimation(75), "animate snowy taskbar weather with a snow motion");
+Check(TaskbarWeatherAnimation.Storm, TaskbarWeatherPolicy.GetAnimation(99), "animate storm taskbar weather with a warning motion");
+Check(TaskbarWeatherAnimation.None, TaskbarWeatherPolicy.GetAnimation(3), "keep overcast taskbar weather stable");
 Check(new TaskbarCurrentWeather(21.5, "°F", 2, true), TaskbarWeatherPolicy.ParseCurrentResponse("""{"current":{"temperature_2m":21.5,"weather_code":2,"is_day":1}}""", "fahrenheit"), "parse current weather API conditions and unit");
 Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentResponse("{}", "celsius"), "reject weather responses without current conditions");
     var staleTaskbarSnapshot = Path.Combine(temporaryPreferencesDirectory, "taskbar-restore.json");

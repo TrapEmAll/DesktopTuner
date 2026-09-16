@@ -7,6 +7,7 @@ namespace DesktopTuner;
 
 public sealed record TaskbarWeatherLocation(string Name, double Latitude, double Longitude);
 public sealed record TaskbarCurrentWeather(double Temperature, string Unit, int WeatherCode, bool IsDay);
+public enum TaskbarWeatherAnimation { None, Sun, Rain, Snow, Storm }
 
 public static class TaskbarWeatherPolicy
 {
@@ -62,6 +63,15 @@ public static class TaskbarWeatherPolicy
         71 or 73 or 75 or 77 or 85 or 86 => "❄",
         95 or 96 or 99 => "⛈",
         _ => "?"
+    };
+
+    public static TaskbarWeatherAnimation GetAnimation(int code) => code switch
+    {
+        0 => TaskbarWeatherAnimation.Sun,
+        51 or 53 or 55 or 56 or 57 or 61 or 63 or 65 or 66 or 67 or 80 or 81 or 82 => TaskbarWeatherAnimation.Rain,
+        71 or 73 or 75 or 77 or 85 or 86 => TaskbarWeatherAnimation.Snow,
+        95 or 96 or 99 => TaskbarWeatherAnimation.Storm,
+        _ => TaskbarWeatherAnimation.None
     };
 
     public static TaskbarCurrentWeather ParseCurrentResponse(string json, string unit)

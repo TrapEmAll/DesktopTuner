@@ -9,6 +9,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Microsoft.Win32;
 
@@ -2317,6 +2318,7 @@ public partial class TaskbarWindow : Window
         if (!weather.Enabled)
         {
             _weatherRefreshTimer.Stop();
+            ClearWeatherAnimation();
             WeatherButton.ToolTip = "Enable taskbar weather in Desktop Tuner settings";
             return;
         }
@@ -2335,6 +2337,7 @@ public partial class TaskbarWindow : Window
             var current = await TaskbarWeatherService.GetCurrentAsync(latitude, longitude, GetWeatherRegionCode(), _weatherCancellation.Token);
             if (_weatherCancellation.IsCancellationRequested || _preferences.TaskbarWeather != weatherSettings) return;
             WeatherGlyph.Text = TaskbarWeatherPolicy.GetGlyph(current.WeatherCode, current.IsDay);
+            ApplyWeatherAnimation(TaskbarWeatherPolicy.GetAnimation(current.WeatherCode));
             WeatherTemperature.Text = $"{Math.Round(current.Temperature, MidpointRounding.AwayFromZero):0}{current.Unit}";
             WeatherButton.ToolTip = $"{weatherSettings.LocationName} · {TaskbarWeatherPolicy.GetCondition(current.WeatherCode, current.IsDay)} · Weather data by Open-Meteo";
         }
@@ -2347,6 +2350,41 @@ public partial class TaskbarWindow : Window
                 Trace.TraceWarning($"Could not refresh taskbar weather: {ex.Message}");
             }
         }
+    }
+
+    private void ApplyWeatherAnimation(TaskbarWeatherAnimation animation)
+    {
+        ClearWeatherAnimation();
+        switch (animation)
+        {
+            case TaskbarWeatherAnimation.Sun:
+                WeatherGlyph.RenderTransform = new RotateTransform { CenterX = 0.5, CenterY = 0.5 };
+                WeatherGlyph.RenderTransform.BeginAnimation(RotateTransform.AngleProperty,
+                    new DoubleAnimation(0, 360, TimeSpan.FromSeconds(14)) { RepeatBehavior = RepeatBehavior.Forever });
+                break;
+            case TaskbarWeatherAnimation.Rain:
+                WeatherGlyph.RenderTransform = new TranslateTransform();
+                WeatherGlyph.RenderTransform.BeginAnimation(TranslateTransform.YProperty,
+                    new DoubleAnimation(0, 2, TimeSpan.FromSeconds(0.8)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever });
+                break;
+            case TaskbarWeatherAnimation.Snow:
+                WeatherGlyph.RenderTransform = new TranslateTransform();
+                WeatherGlyph.RenderTransform.BeginAnimation(TranslateTransform.YProperty,
+                    new DoubleAnimation(-1, 3, TimeSpan.FromSeconds(1.6)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever });
+                break;
+            case TaskbarWeatherAnimation.Storm:
+                WeatherGlyph.RenderTransform = new RotateTransform { CenterX = 0.5, CenterY = 0.5 };
+                WeatherGlyph.RenderTransform.BeginAnimation(RotateTransform.AngleProperty,
+                    new DoubleAnimation(-4, 4, TimeSpan.FromSeconds(0.35)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever });
+                break;
+        }
+    }
+
+    private void ClearWeatherAnimation()
+    {
+        WeatherGlyph.RenderTransform?.BeginAnimation(RotateTransform.AngleProperty, null);
+        WeatherGlyph.RenderTransform?.BeginAnimation(TranslateTransform.YProperty, null);
+        WeatherGlyph.RenderTransform = Transform.Identity;
     }
 
     private static string GetWeatherRegionCode()
