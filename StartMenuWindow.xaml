@@ -10,6 +10,46 @@
         <ItemsPanelTemplate x:Key="PinnedStartHorizontalPanel"><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
         <ItemsPanelTemplate x:Key="PinnedStartGroupsPanel"><StackPanel Orientation="Vertical" /></ItemsPanelTemplate>
         <ItemsPanelTemplate x:Key="Windows8TilePanel"><WrapPanel /></ItemsPanelTemplate>
+        <Style x:Key="StartRecentIcon" TargetType="Image">
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IconSize, RelativeSource={RelativeSource AncestorType={x:Type local:StartMenuWindow}}}" Value="Small"><Setter Property="Width" Value="16" /><Setter Property="Height" Value="16" /></DataTrigger>
+                <DataTrigger Binding="{Binding IconSize, RelativeSource={RelativeSource AncestorType={x:Type local:StartMenuWindow}}}" Value="Large"><Setter Property="Width" Value="24" /><Setter Property="Height" Value="24" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="StartSearchIconHost" TargetType="Grid">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IconSize, RelativeSource={RelativeSource AncestorType={x:Type local:StartMenuWindow}}}" Value="Small"><Setter Property="Width" Value="24" /><Setter Property="Height" Value="24" /></DataTrigger>
+                <DataTrigger Binding="{Binding IconSize, RelativeSource={RelativeSource AncestorType={x:Type local:StartMenuWindow}}}" Value="Large"><Setter Property="Width" Value="38" /><Setter Property="Height" Value="38" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="StartSearchIcon" TargetType="Image">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IconSize, RelativeSource={RelativeSource AncestorType={x:Type local:StartMenuWindow}}}" Value="Small"><Setter Property="Width" Value="22" /><Setter Property="Height" Value="22" /></DataTrigger>
+                <DataTrigger Binding="{Binding IconSize, RelativeSource={RelativeSource AncestorType={x:Type local:StartMenuWindow}}}" Value="Large"><Setter Property="Width" Value="36" /><Setter Property="Height" Value="36" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="StartFlyoutIconHost" TargetType="Grid">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IconSize, RelativeSource={RelativeSource AncestorType={x:Type local:StartMenuWindow}}}" Value="Small"><Setter Property="Width" Value="20" /><Setter Property="Height" Value="20" /></DataTrigger>
+                <DataTrigger Binding="{Binding IconSize, RelativeSource={RelativeSource AncestorType={x:Type local:StartMenuWindow}}}" Value="Large"><Setter Property="Width" Value="32" /><Setter Property="Height" Value="32" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="StartFlyoutIcon" TargetType="Image">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IconSize, RelativeSource={RelativeSource AncestorType={x:Type local:StartMenuWindow}}}" Value="Small"><Setter Property="Width" Value="18" /><Setter Property="Height" Value="18" /></DataTrigger>
+                <DataTrigger Binding="{Binding IconSize, RelativeSource={RelativeSource AncestorType={x:Type local:StartMenuWindow}}}" Value="Large"><Setter Property="Width" Value="30" /><Setter Property="Height" Value="30" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
@@ -264,7 +304,7 @@
                                             </ContextMenu>
                                         </Button.ContextMenu>
                                         <StackPanel Orientation="Horizontal">
-                                            <Image Source="{Binding Icon}" Width="20" Height="20" Margin="0,0,6,0" />
+                                            <Image Source="{Binding Icon}" Style="{StaticResource StartRecentIcon}" Margin="0,0,6,0" />
                                             <TextBlock Text="{Binding Name}" FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
                                     </Button>
@@ -324,8 +364,8 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                <Grid Grid.Row="1" Width="30" Height="30" VerticalAlignment="Center">
-                                    <Image Source="{Binding Application.Icon}" Width="28" Height="28" />
+                                <Grid Grid.Row="1" Style="{StaticResource StartSearchIconHost}" VerticalAlignment="Center">
+                                    <Image Source="{Binding Application.Icon}" Style="{StaticResource StartSearchIcon}" />
                                     <Border CornerRadius="8" Background="{DynamicResource DesktopAccentTintBrush}">
                                         <Border.Style>
                                             <Style TargetType="Border">
@@ -358,8 +398,8 @@
                                         <MenuItem Header="Run as administrator" Tag="{Binding Application}" IsEnabled="{Binding CanRunApplicationAsAdministrator}" Click="RunAsAdministrator_Click" />
                                     </ContextMenu>
                                 </StackPanel.ContextMenu>
-                                <Grid Width="24" Height="24" Margin="4,0,6,0" VerticalAlignment="Center">
-                                    <Image Source="{Binding Application.Icon}" Width="22" Height="22" />
+                                <Grid Style="{StaticResource StartFlyoutIconHost}" Margin="4,0,6,0" VerticalAlignment="Center">
+                                    <Image Source="{Binding Application.Icon}" Style="{StaticResource StartFlyoutIcon}" />
                                     <Border CornerRadius="5" Background="{DynamicResource DesktopAccentTintBrush}">
                                         <Border.Style>
                                             <Style TargetType="Border">

@@ -2488,12 +2488,13 @@ Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentRe
     var savedWeather = new TaskbarWeatherSettings(true, "Seattle, Washington", "Seattle, Washington, United States", 47.6062, -122.3321);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons, CenterStartMenu: true, TaskbarWindowDisplayMode: TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, TaskbarShowWindowsFromAllVirtualDesktops: true, ControlPanelApplets: savedControlPanelApplets, TaskbarWeather: savedWeather);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons, CenterStartMenu: true, TaskbarWindowDisplayMode: TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, TaskbarShowWindowsFromAllVirtualDesktops: true, ControlPanelApplets: savedControlPanelApplets, TaskbarWeather: savedWeather, StartMenuIconSize: StartMenuIconSize.Large);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
     Check(expectedPreferences.TaskbarSize, loadedPreferences.TaskbarSize, "persist taskbar size");
     Check(expectedPreferences.StartMenuStyle, loadedPreferences.StartMenuStyle, "persist Start menu style");
+    Check(StartMenuIconSize.Large, loadedPreferences.StartMenuIconSize, "persist Start menu icon size");
     Check(true, loadedPreferences.CenterStartMenu, "persist centered Start menu preference");
     Check(savedWeather, loadedPreferences.TaskbarWeather, "persist opt-in weather location and coordinates");
     Check(TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, loadedPreferences.TaskbarWindowDisplayMode, "persist the taskbar app display mode");
@@ -2604,6 +2605,7 @@ preferencesStore.Save(expectedPreferences);
     Check(false, preferencesStore.Load().TaskbarShowWindowsFromAllVirtualDesktops, "default older preferences to the current virtual desktop");
     Check(false, preferencesStore.Load().StartWithWindows, "disable sign-in startup for older preference files");
     Check(4, preferencesStore.Load().StartRecentAppCount, "default older preferences to four recent Start apps");
+    Check(StartMenuIconSize.Standard, preferencesStore.Load().StartMenuIconSize, "default older preferences to standard Start menu icons");
     Check(5, preferencesStore.Load().TaskbarTransparency, "default taskbar transparency for older preference files");
     Check(false, preferencesStore.Load().TaskbarDynamicTransparency, "disable adaptive transparency for older preference files");
     Check(TaskbarButtonEffect.Accent, preferencesStore.Load().TaskbarButtonEffect, "default older preference files to the Windows accent button effect");

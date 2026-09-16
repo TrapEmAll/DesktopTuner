@@ -38,7 +38,16 @@ public partial class StartMenuWindow : Window
     private Point _pinnedStartDrag;
     private bool _suppressPinnedStartClick;
 
-    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<AppEntry, bool>? pinTaskbarItem = null)
+    public static readonly DependencyProperty IconSizeProperty = DependencyProperty.Register(
+        nameof(IconSize), typeof(StartMenuIconSize), typeof(StartMenuWindow), new PropertyMetadata(StartMenuIconSize.Standard));
+
+    public StartMenuIconSize IconSize
+    {
+        get => (StartMenuIconSize)GetValue(IconSizeProperty);
+        private set => SetValue(IconSizeProperty, value);
+    }
+
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, StartMenuIconSize iconSize = StartMenuIconSize.Standard, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<AppEntry, bool>? pinTaskbarItem = null)
     {
         InitializeComponent();
         SourceInitialized += Window_SourceInitialized;
@@ -73,6 +82,7 @@ public partial class StartMenuWindow : Window
         _startPlaces = StartMenuPlaceCatalog.Normalize(startPlaces);
         _controlPanelApplets = ControlPanelAppletCatalog.Normalize(controlPanelApplets);
         _recentAppCount = Math.Clamp(recentAppCount, 0, StartRecentAppsStore.MaximumEntries);
+        SetIconSize(iconSize);
         SetStyle(style);
     }
 
@@ -92,6 +102,8 @@ public partial class StartMenuWindow : Window
         _recentAppCount = Math.Clamp(count, 0, StartRecentAppsStore.MaximumEntries);
         RefreshApps();
     }
+
+    public void SetIconSize(StartMenuIconSize size) => IconSize = Enum.IsDefined(size) ? size : StartMenuIconSize.Standard;
 
     public void FocusSearch(string query)
     {

@@ -84,6 +84,7 @@ public partial class MainWindow : Window
     private bool _replaceWindowsKeyPreference;
     private bool _replaceExplorerShortcut;
     private StartMenuStyle _startMenuStyle = StartMenuStyle.Modern;
+    private StartMenuIconSize _startMenuIconSize = StartMenuIconSize.Standard;
     private int _startRecentAppCount = 4;
     private bool _centerStartMenu;
     private bool _taskbarOnAllDisplays = true;
@@ -278,6 +279,22 @@ public partial class MainWindow : Window
             };
             menuStyleRow.Children.Add(menuStyleSelector);
             PageContent.Children.Add(menuStyleRow);
+            var iconSizeRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            iconSizeRow.Children.Add(new TextBlock { Text = "Start menu icon size", VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+            var iconSizeSelector = new ComboBox { Width = 190, Height = 36, VerticalContentAlignment = VerticalAlignment.Center };
+            iconSizeSelector.Items.Add(new ComboBoxItem { Content = "Small", Tag = StartMenuIconSize.Small });
+            iconSizeSelector.Items.Add(new ComboBoxItem { Content = "Standard", Tag = StartMenuIconSize.Standard });
+            iconSizeSelector.Items.Add(new ComboBoxItem { Content = "Large", Tag = StartMenuIconSize.Large });
+            iconSizeSelector.SelectedIndex = (int)_startMenuIconSize;
+            iconSizeSelector.SelectionChanged += (_, _) =>
+            {
+                if (iconSizeSelector.SelectedItem is not ComboBoxItem { Tag: StartMenuIconSize size }) return;
+                _startMenuIconSize = size;
+                SaveDesktopPreferences();
+                _startMenuWindow?.SetIconSize(size);
+            };
+            iconSizeRow.Children.Add(iconSizeSelector);
+            PageContent.Children.Add(iconSizeRow);
             var centerStartMenu = new CheckBox { Content = "Center the Start menu along the taskbar edge", IsChecked = _centerStartMenu, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
             centerStartMenu.Checked += (_, _) => SetStartMenuCentered(true);
             centerStartMenu.Unchecked += (_, _) => SetStartMenuCentered(false);
@@ -1402,8 +1419,8 @@ public partial class MainWindow : Window
             _startMenuWindow.Close();
             return;
         }
-        _startMenuWindow = new StartMenuWindow(_startMenuStyle, _pinnedStartApps, SavePinnedStartApps,
-            startPlaces: _startMenuPlaces, recentAppCount: _startRecentAppCount, controlPanelApplets: _controlPanelApplets,
+            _startMenuWindow = new StartMenuWindow(_startMenuStyle, _pinnedStartApps, SavePinnedStartApps,
+            startPlaces: _startMenuPlaces, recentAppCount: _startRecentAppCount, controlPanelApplets: _controlPanelApplets, iconSize: _startMenuIconSize,
             openShellLocation: _shellHostMode ? TryOpenLocationInCompanionExplorer : null,
             openFileLocation: _shellHostMode ? TryOpenFileLocationInCompanionExplorer : null,
             pinTaskbarItem: app => TryPinTaskbarItem(app));
@@ -1716,7 +1733,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarLabelVisibility != TaskbarLabelVisibility.Never, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather, _taskbarLocked, _taskbarLabelVisibility, _taskbarSearchStyle);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarLabelVisibility != TaskbarLabelVisibility.Never, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather, _taskbarLocked, _taskbarLabelVisibility, _taskbarSearchStyle, _startMenuIconSize);
 
     private DesktopPreferences CreateTaskbarRuntimePreferences(DesktopPreferences? preferences = null)
     {
@@ -1896,6 +1913,7 @@ public partial class MainWindow : Window
             _replaceWindowsKey = _shellHostMode || _shellOverlayMode || preferences.ReplaceWindowsKey;
             _replaceExplorerShortcut = ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(_shellHostMode, preferences.ReplaceExplorerShortcut);
             _startMenuStyle = preferences.StartMenuStyle;
+            _startMenuIconSize = preferences.StartMenuIconSize;
             _startRecentAppCount = preferences.StartRecentAppCount;
             _centerStartMenu = preferences.CenterStartMenu;
             _taskbarOnAllDisplays = preferences.TaskbarOnAllDisplays;
@@ -1926,6 +1944,7 @@ public partial class MainWindow : Window
                 ApplyTaskbarPreferences(preferences);
             }
             _startMenuWindow?.SetStyle(_startMenuStyle);
+            _startMenuWindow?.SetIconSize(_startMenuIconSize);
             _startMenuWindow?.SetRecentAppCount(_startRecentAppCount);
             _startMenuWindow?.SetStartPlaces(_startMenuPlaces);
             _startMenuWindow?.SetControlPanelApplets(_controlPanelApplets);
