@@ -1193,7 +1193,15 @@ public partial class StartMenuWindow : Window
         if (!menuItem.IsSubmenuOpen) return;
         foreach (var entry in entries)
         {
-            var item = new MenuItem { Header = entry.Name, Tag = entry, Icon = icons.GetValueOrDefault(entry.FullPath) };
+            var icon = icons.GetValueOrDefault(entry.FullPath);
+            var item = new MenuItem
+            {
+                Header = entry.Name,
+                Tag = entry,
+                Icon = icon is null
+                    ? null
+                    : new Image { Source = icon, Style = (Style)FindResource("StartFlyoutIcon") }
+            };
             item.Click += StartPlaceEntry_Click;
             if (StartMenuPlaceCatalog.CanExpand(entry))
                 item.SubmenuOpened += NestedPlaceFlyout_Opened;
