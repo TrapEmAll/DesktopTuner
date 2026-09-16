@@ -29,6 +29,7 @@ public static class StartMenuPlaceCatalog
         new("recycle-bin", "Recycle Bin"),
         new("control-panel", "Control Panel"),
         new("default-programs", "Default Programs"),
+        new("network-connections", "Network Connections"),
         new("recent", "Recent items"),
         new("run", "Run...")
     ];
@@ -74,6 +75,7 @@ public static class StartMenuPlaceCatalog
         "recycle-bin" => "shell:RecycleBinFolder",
         "control-panel" => "control.exe",
         "default-programs" => "ms-settings:defaultapps",
+        "network-connections" => "ncpa.cpl",
         "network" => "shell:NetworkPlacesFolder",
         "music" => Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
         "pictures" => Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
