@@ -105,6 +105,7 @@ public partial class TaskbarWindow : Window
         CloseBarMenuItem.IsEnabled = ShellHostLaunchPolicy.ShouldAllowTaskbarClose(shellHostMode);
         CloseBarButton.Visibility = shellHostMode ? Visibility.Collapsed : Visibility.Visible;
         QuitMenuItem.Header = ShellHostLaunchPolicy.GetExitLabel(shellHostMode);
+        RestartShellMenuItem.Visibility = shellHostMode ? Visibility.Visible : Visibility.Collapsed;
         _refreshTimer.Tick += (_, _) => RefreshWindows();
         _batteryRefreshTimer.Tick += (_, _) => UpdateBatteryStatus();
         _microphoneRefreshTimer.Tick += (_, _) => UpdateMicrophoneStatus();
@@ -2060,6 +2061,8 @@ public partial class TaskbarWindow : Window
         if (!ExplorerRestartService.TryRestart(out var error))
             MessageBox.Show(this, error ?? "Windows could not restart Explorer.", "Could not restart Windows Explorer", MessageBoxButton.OK, MessageBoxImage.Error);
     }
+
+    private void RestartShell_Click(object sender, RoutedEventArgs e) => _executePowerUserCommand?.Invoke("restart-shell");
 
     private void SoundSettings_Click(object sender, RoutedEventArgs e)
     {
