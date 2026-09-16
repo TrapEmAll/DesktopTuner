@@ -1295,6 +1295,11 @@ public partial class StartMenuWindow : Window
                     : new Image { Source = icon, Style = (Style)FindResource("StartFlyoutIcon") }
             };
             item.Click += StartPlaceEntry_Click;
+            var nativeContextMenu = new ContextMenu();
+            var nativeMenuItem = new MenuItem { Header = "Show more options", Tag = entry.FullPath };
+            nativeMenuItem.Click += ShowNativeStartShellContextMenu_Click;
+            nativeContextMenu.Items.Add(nativeMenuItem);
+            item.ContextMenu = nativeContextMenu;
             if (StartMenuPlaceCatalog.CanExpand(entry))
                 item.SubmenuOpened += NestedPlaceFlyout_Opened;
             menuItem.Items.Add(item);
