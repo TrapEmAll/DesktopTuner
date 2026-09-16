@@ -94,6 +94,12 @@ namespace
         return S_OK;
     }
 
+    bool HasFileSystemItem(IShellItemArray* items)
+    {
+        std::wstring path;
+        return GetItemPath(items, path);
+    }
+
     class ExplorerCommand final : public IExplorerCommand
     {
     public:
@@ -129,15 +135,15 @@ namespace
         HRESULT STDMETHODCALLTYPE GetIcon(IShellItemArray*, PWSTR* icon) override
         {
             if (icon == nullptr) return E_POINTER;
-            *icon = nullptr;
-            return E_NOTIMPL;
+            std::wstring directory;
+            if (!GetInstallDirectory(directory)) return HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
+            return CopyString((directory + L"\\DesktopTuner.exe,0").c_str(), icon);
         }
 
         HRESULT STDMETHODCALLTYPE GetToolTip(IShellItemArray*, PWSTR* tooltip) override
         {
             if (tooltip == nullptr) return E_POINTER;
-            *tooltip = nullptr;
-            return E_NOTIMPL;
+            return CopyString(L"Open the selected item location in Desktop Tuner Explorer", tooltip);
         }
 
         HRESULT STDMETHODCALLTYPE GetCanonicalName(GUID* name) override
@@ -147,10 +153,10 @@ namespace
             return S_OK;
         }
 
-        HRESULT STDMETHODCALLTYPE GetState(IShellItemArray*, BOOL, EXPCMDSTATE* state) override
+        HRESULT STDMETHODCALLTYPE GetState(IShellItemArray* items, BOOL, EXPCMDSTATE* state) override
         {
             if (state == nullptr) return E_POINTER;
-            *state = ECS_ENABLED;
+            *state = HasFileSystemItem(items) ? ECS_ENABLED : ECS_DISABLED;
             return S_OK;
         }
 
