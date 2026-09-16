@@ -569,6 +569,11 @@ public partial class StartMenuWindow : Window
     {
         try
         {
+            if ((entry.IsDirectory || entry.IsShellNamespace) && _openShellLocation?.Invoke(entry.ShortcutPath) == true)
+            {
+                Close();
+                return;
+            }
             AppCatalogService.Launch(entry);
             if (!entry.IsDirectory && !_recentAppsStore.TryRecordLaunch(entry))
             {
