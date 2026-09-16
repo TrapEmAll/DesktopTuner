@@ -2210,7 +2210,16 @@ public partial class ExplorerWindow : Window
 
     private void EntriesList_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && e.Key == Key.C)
+        if (ExplorerKeyboardPolicy.Resolve(e.Key, Keyboard.Modifiers) == ExplorerKeyboardAction.ShowContextMenu)
+        {
+            if (EntriesList.ContextMenu is { } menu)
+            {
+                menu.PlacementTarget = EntriesList;
+                menu.IsOpen = true;
+                e.Handled = true;
+            }
+        }
+        else if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && e.Key == Key.C)
         {
             CopyOrCutSelection(move: false);
             e.Handled = true;

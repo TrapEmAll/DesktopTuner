@@ -1295,6 +1295,8 @@ Check(ExplorerKeyboardAction.FocusSearch, ExplorerKeyboardPolicy.Resolve(Key.F, 
 Check(ExplorerKeyboardAction.FocusSearch, ExplorerKeyboardPolicy.Resolve(Key.F3, ModifierKeys.None), "focus Explorer search with F3");
 Check(ExplorerKeyboardAction.FocusNavigationTree, ExplorerKeyboardPolicy.Resolve(Key.E, ModifierKeys.Control | ModifierKeys.Shift), "focus the Explorer navigation tree with Ctrl+Shift+E");
 Check(ExplorerKeyboardAction.ShowProperties, ExplorerKeyboardPolicy.Resolve(Key.System, ModifierKeys.Alt, Key.Enter), "open Properties for the current Explorer selection with Alt+Enter");
+Check(ExplorerKeyboardAction.ShowContextMenu, ExplorerKeyboardPolicy.Resolve(Key.F10, ModifierKeys.Shift), "open the Explorer item context menu with Shift+F10");
+Check(ExplorerKeyboardAction.ShowContextMenu, ExplorerKeyboardPolicy.Resolve(Key.Apps, ModifierKeys.None), "open the Explorer item context menu with the keyboard context-menu key");
 Check(ExplorerKeyboardAction.ReopenClosedTab, ExplorerKeyboardPolicy.Resolve(Key.T, ModifierKeys.Control | ModifierKeys.Shift), "reopen the last closed Explorer tab with Ctrl+Shift+T");
 Check(ExplorerKeyboardAction.NextPane, ExplorerKeyboardPolicy.Resolve(Key.F6, ModifierKeys.None), "cycle Explorer navigation panes with F6");
 Check(ExplorerKeyboardAction.PreviousPane, ExplorerKeyboardPolicy.Resolve(Key.F6, ModifierKeys.Shift), "cycle Explorer navigation panes in reverse with Shift+F6");

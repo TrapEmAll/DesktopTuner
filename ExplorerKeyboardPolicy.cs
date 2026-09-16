@@ -16,7 +16,8 @@ public enum ExplorerKeyboardAction
     NavigateParent,
     NextPane,
     PreviousPane,
-    ShowProperties
+    ShowProperties,
+    ShowContextMenu
 }
 
 public static class ExplorerKeyboardPolicy
@@ -24,6 +25,8 @@ public static class ExplorerKeyboardPolicy
     public static ExplorerKeyboardAction Resolve(Key key, ModifierKeys modifiers, Key systemKey = Key.None)
     {
         if (key == Key.System) key = systemKey;
+        if ((key == Key.Apps && modifiers == ModifierKeys.None) || (key == Key.F10 && modifiers == ModifierKeys.Shift))
+            return ExplorerKeyboardAction.ShowContextMenu;
         return (key, modifiers) switch
         {
             (Key.Left, ModifierKeys.Alt) => ExplorerKeyboardAction.NavigateBack,
