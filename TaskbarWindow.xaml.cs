@@ -1398,6 +1398,14 @@ public partial class TaskbarWindow : Window
         var openLocation = new MenuItem { Header = "Open file location", Tag = destination, IsEnabled = isFile };
         openLocation.Click += JumpListDestinationLocation_Click;
         context.Items.Add(openLocation);
+        var nativeTarget = DesktopShellNamespaceCatalog.IsShellNamespaceLocation(destination.ParsingName)
+            || isFile
+            || Directory.Exists(destination.ParsingName)
+            ? destination.ParsingName
+            : null;
+        var nativeMenu = new MenuItem { Header = "Show more options", Tag = nativeTarget, Visibility = nativeTarget is null ? Visibility.Collapsed : Visibility.Visible };
+        nativeMenu.Click += ShowNativeTaskbarShellContextMenu_Click;
+        context.Items.Add(nativeMenu);
         if (isFile)
         {
             var openWith = new MenuItem { Header = "Open with…", Tag = destination };
