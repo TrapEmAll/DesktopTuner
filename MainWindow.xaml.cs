@@ -2453,6 +2453,7 @@ public partial class MainWindow : Window
             canOpenRunDialog: CanOpenRunDialog, openRunDialog: ShowRunDialog,
             canMinimizeAllWindows: CanManageShellHostWindows, minimizeAllWindows: MinimizeAllShellWindows,
             canRestoreMinimizedWindows: CanManageShellHostWindows, restoreMinimizedWindows: RestoreShellWindowsMinimizedByShortcut,
+            canMinimizeOtherWindows: CanManageShellHostWindows, minimizeOtherWindows: MinimizeOtherShellWindows,
             canOpenShellSystemSurface: _ => CanManageShellHostWindows(), openShellSystemSurface: OpenShellSystemSurfaceShortcut,
             canOpenOnScreenKeyboard: CanManageShellHostWindows, openOnScreenKeyboard: () => SystemFlyoutService.OpenOnScreenKeyboard(),
             canOpenNarrator: CanManageShellHostWindows, openNarrator: OpenNarrator,
@@ -2579,6 +2580,13 @@ public partial class MainWindow : Window
         if (!CanManageShellHostWindows()) return;
         if (_startMenuWindow?.IsVisible == true) _startMenuWindow.Close();
         _showDesktopWindows.MinimizeAllWindows(GetShellSurfaceHandles());
+    }
+
+    private void MinimizeOtherShellWindows()
+    {
+        if (!CanManageShellHostWindows()) return;
+        if (_startMenuWindow?.IsVisible == true) _startMenuWindow.Close();
+        _showDesktopWindows.MinimizeOtherWindows(GetShellSurfaceHandles(), GetForegroundWindow());
     }
 
     private void RestoreShellWindowsMinimizedByShortcut()

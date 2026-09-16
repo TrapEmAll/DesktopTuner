@@ -20,6 +20,12 @@ public sealed class ShowDesktopWindowService
             if (!_windowsMinimizedByShortcut.Contains(window)) _windowsMinimizedByShortcut.Add(window);
     }
 
+    public void MinimizeOtherWindows(IEnumerable<nint> shellSurfaceHandles, nint foregroundWindow)
+    {
+        foreach (var window in MinimizeEligibleWindows(shellSurfaceHandles, foregroundWindow))
+            if (!_windowsMinimizedByShortcut.Contains(window)) _windowsMinimizedByShortcut.Add(window);
+    }
+
     public void RestoreMinimizedWindows()
     {
         RestoreWindows(_windowsMinimizedByShortcut);
@@ -38,7 +44,7 @@ public sealed class ShowDesktopWindowService
         _desktopIsShown = true;
     }
 
-    private static List<nint> MinimizeEligibleWindows(IEnumerable<nint> shellSurfaceHandles)
+    private static List<nint> MinimizeEligibleWindows(IEnumerable<nint> shellSurfaceHandles, nint foregroundWindow = 0)
     {
         var shellSurfaces = shellSurfaceHandles.Where(handle => handle != 0).ToHashSet();
         var candidates = new List<ShowDesktopWindowCandidate>();
@@ -57,7 +63,7 @@ public sealed class ShowDesktopWindowService
         }, 0);
 
         var minimized = new List<nint>();
-        foreach (var window in ShowDesktopWindowPolicy.SelectWindowsToMinimize(candidates))
+        foreach (var window in ShowDesktopWindowPolicy.SelectWindowsToMinimize(candidates, foregroundWindow))
         {
             ShowWindow(window, SW_MINIMIZE);
             if (IsIconic(window)) minimized.Add(window);

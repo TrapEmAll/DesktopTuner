@@ -1300,6 +1300,11 @@ shellMinimizeShortcutGesture.KeyDown(0x5b);
 Check(WindowsKeyAction.MinimizeAllWindows, shellMinimizeShortcutGesture.KeyDown((uint)'M', canMinimizeAllWindows: () => true), "route Win+M to minimize eligible windows in shell-host mode");
 Check(WindowsKeyAction.Suppress, shellMinimizeShortcutGesture.KeyUp((uint)'M'), "suppress Win+M release after minimizing windows");
 Check(WindowsKeyAction.Suppress, shellMinimizeShortcutGesture.KeyUp(0x5b), "avoid opening Start after routing Win+M");
+var shellMinimizeOtherShortcutGesture = new WindowsKeyGesture(replaceBareWindowsKey: true);
+Check(WindowsKeyAction.Suppress, shellMinimizeOtherShortcutGesture.KeyDown(0x5b), "capture Windows before routing shell-host Win+Home");
+Check(WindowsKeyAction.MinimizeOtherWindows, shellMinimizeOtherShortcutGesture.KeyDown(0x24, canMinimizeOtherWindows: () => true), "route Win+Home to minimize every eligible window except the foreground window");
+Check(WindowsKeyAction.Suppress, shellMinimizeOtherShortcutGesture.KeyUp(0x24), "suppress Win+Home release after minimizing other windows");
+Check(WindowsKeyAction.Suppress, shellMinimizeOtherShortcutGesture.KeyUp(0x5b), "avoid opening Start after routing Win+Home");
 var shellRestoreShortcutGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
 shellRestoreShortcutGesture.KeyDown(0x5b);
 Check(WindowsKeyAction.PassThrough, shellRestoreShortcutGesture.KeyDown(0xa0), "allow Shift to pass while tracking shell-host Win+Shift+M");
@@ -1458,6 +1463,11 @@ var showDesktopWindows = ShowDesktopWindowPolicy.SelectWindowsToMinimize([
     new(1, IsVisible: true, IsMinimized: false, HasOwner: false, IsShellSurface: false, IsCloaked: false)
 ]);
 Check("1", string.Join(',', showDesktopWindows), "minimize only unique visible, unowned, uncloaked non-shell windows");
+var showOtherWindows = ShowDesktopWindowPolicy.SelectWindowsToMinimize([
+    new(1, IsVisible: true, IsMinimized: false, HasOwner: false, IsShellSurface: false, IsCloaked: false),
+    new(2, IsVisible: true, IsMinimized: false, HasOwner: false, IsShellSurface: false, IsCloaked: false)
+], foregroundWindow: 1);
+Check("2", string.Join(',', showOtherWindows), "leave the foreground window visible for Win+Home");
 var explorerOnlyBareKeyGesture = new WindowsKeyGesture(replaceBareWindowsKey: false);
 Check(WindowsKeyAction.Suppress, explorerOnlyBareKeyGesture.KeyDown(0x5b), "capture a Windows-key tap while Explorer routing is enabled");
 Check(WindowsKeyAction.ForwardWindowsTapThenSuppress, explorerOnlyBareKeyGesture.KeyUp(0x5b), "forward bare Windows-key taps to native Start when Start replacement is disabled");

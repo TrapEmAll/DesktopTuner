@@ -17,6 +17,7 @@ public enum WindowsKeyAction
     ForwardWindowsTapThenSuppress,
     ToggleDesktop,
     MinimizeAllWindows,
+    MinimizeOtherWindows,
     RestoreMinimizedWindows,
     OpenShellSystemSurface,
     OpenOnScreenKeyboard,
@@ -62,7 +63,7 @@ public sealed class WindowsKeyGesture
     public WindowsKeyAction KeyDown(uint key, Func<int, bool>? canActivateTaskbarPin = null, Func<bool>? canFocusTaskbar = null, Func<bool>? canOpenExplorer = null,
         bool controlPressed = false, bool altPressed = false, bool shiftPressed = false, Func<bool>? canToggleDesktop = null,
         Func<bool>? canFocusTaskbarSystem = null, Func<bool>? canOpenPowerUserMenu = null, Func<bool>? canOpenRunDialog = null,
-        Func<bool>? canMinimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null, Func<uint, bool>? canOpenShellSystemSurface = null, Func<bool>? canOpenOnScreenKeyboard = null, Func<bool>? canOpenNarrator = null, Func<bool>? canOpenSnippingTool = null, Func<bool>? canOpenCopilot = null, Func<bool>? canOpenEmojiPanel = null, Func<bool>? canOpenWindowsTip = null,
+        Func<bool>? canMinimizeAllWindows = null, Func<bool>? canRestoreMinimizedWindows = null, Func<bool>? canMinimizeOtherWindows = null, Func<uint, bool>? canOpenShellSystemSurface = null, Func<bool>? canOpenOnScreenKeyboard = null, Func<bool>? canOpenNarrator = null, Func<bool>? canOpenSnippingTool = null, Func<bool>? canOpenCopilot = null, Func<bool>? canOpenEmojiPanel = null, Func<bool>? canOpenWindowsTip = null,
         Func<int, bool>? canLaunchPinnedAppInstance = null, Func<int, bool>? canLaunchPinnedAppInstanceAsAdministrator = null,
         Func<int, bool>? canActivateLastActivePinnedApp = null)
     {
@@ -153,6 +154,12 @@ public sealed class WindowsKeyGesture
                     _suppressedShortcutKeys.Add(key);
                     return action;
                 }
+            }
+            if (key == 0x24 && !controlPressed && !altPressed && !shiftPressed && canMinimizeOtherWindows?.Invoke() == true)
+            {
+                _taskbarShortcutConsumed = true;
+                _suppressedShortcutKeys.Add(key);
+                return WindowsKeyAction.MinimizeOtherWindows;
             }
             if (key is (uint)'A' or (uint)'F' or (uint)'G' or (uint)'H' or (uint)'I' or (uint)'K' or (uint)'L' or (uint)'N' or (uint)'P' or (uint)'Q' or (uint)'S' or (uint)'U' or (uint)'V' or (uint)'W' or (uint)'Z' or 0x09 or 0x20 && !controlPressed && !altPressed && !shiftPressed &&
                 canOpenShellSystemSurface?.Invoke(key) == true)

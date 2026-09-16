@@ -4,10 +4,10 @@ public readonly record struct ShowDesktopWindowCandidate(nint Handle, bool IsVis
 
 public static class ShowDesktopWindowPolicy
 {
-    public static IReadOnlyList<nint> SelectWindowsToMinimize(IEnumerable<ShowDesktopWindowCandidate> candidates) =>
+    public static IReadOnlyList<nint> SelectWindowsToMinimize(IEnumerable<ShowDesktopWindowCandidate> candidates, nint foregroundWindow = 0) =>
         candidates
             .Where(candidate => candidate.Handle != 0 && candidate.IsVisible && !candidate.IsMinimized &&
-                !candidate.HasOwner && !candidate.IsShellSurface && !candidate.IsCloaked)
+                candidate.Handle != foregroundWindow && !candidate.HasOwner && !candidate.IsShellSurface && !candidate.IsCloaked)
             .Select(candidate => candidate.Handle)
             .Distinct()
             .ToArray();
