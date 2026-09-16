@@ -333,6 +333,8 @@
                         <ListView.ContextMenu>
                             <ContextMenu Opened="EntriesContextMenu_Opened">
                                 <MenuItem Header="Open" Click="OpenSelected_Click" />
+                                <MenuItem x:Name="OpenWithMenuItem" Header="Open with…" Visibility="Collapsed" Click="OpenWith_Click" />
+                                <MenuItem x:Name="PrintMenuItem" Header="Print" Visibility="Collapsed" Click="Print_Click" />
                                 <MenuItem x:Name="ShareMenuItem" Header="Share" Visibility="Collapsed" Click="ShareSelected_Click" />
                                 <MenuItem x:Name="RestoreMenuItem" Header="Restore" Click="RestoreSelected_Click" />
                                 <MenuItem x:Name="PropertiesMenuItem" Header="Properties" Click="Properties_Click" />

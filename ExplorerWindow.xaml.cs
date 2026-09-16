@@ -2027,6 +2027,36 @@ public partial class ExplorerWindow : Window
         }
     }
 
+    private async void OpenWith_Click(object sender, RoutedEventArgs e)
+    {
+        var entry = EntriesList.SelectedItems.OfType<ExplorerEntry>().SingleOrDefault();
+        if (entry is null || _location.IsRecycleBin || entry.IsDirectory || entry.IsDrive || entry.IsRecycleBinItem) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.OpenWithShellItemAsync(owner, entry.FullPath);
+        }
+        catch (Exception ex)
+        {
+            ShowFileOperationError("Could not open the Open with dialog", ex);
+        }
+    }
+
+    private async void Print_Click(object sender, RoutedEventArgs e)
+    {
+        var entry = EntriesList.SelectedItems.OfType<ExplorerEntry>().SingleOrDefault();
+        if (entry is null || _location.IsRecycleBin || entry.IsDirectory || entry.IsDrive || entry.IsRecycleBinItem) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.PrintShellItemAsync(owner, entry.FullPath);
+        }
+        catch (Exception ex)
+        {
+            ShowFileOperationError("Could not print the selected file", ex);
+        }
+    }
+
     private void Copy_Click(object sender, RoutedEventArgs e) => CopyOrCutSelection(move: false);
 
     private void Cut_Click(object sender, RoutedEventArgs e) => CopyOrCutSelection(move: true);
@@ -2226,6 +2256,12 @@ public partial class ExplorerWindow : Window
         var canShareSelection = !_location.IsRecycleBin && selection.Count > 0 && selection.All(entry => !entry.IsDrive && !entry.IsRecycleBinItem);
         ShareMenuItem.Visibility = canShareSelection ? Visibility.Visible : Visibility.Collapsed;
         ShareMenuItem.IsEnabled = canShareSelection;
+        var canOpenNativeFileVerb = !_location.IsRecycleBin && hasSingleSelection && !selection[0].IsDrive && !selection[0].IsRecycleBinItem &&
+            ShellOpenWithPolicy.CanOpenWith(true, selection[0].IsDirectory, CanShowNativeShellContextMenu(selection));
+        OpenWithMenuItem.Visibility = canOpenNativeFileVerb ? Visibility.Visible : Visibility.Collapsed;
+        OpenWithMenuItem.IsEnabled = canOpenNativeFileVerb;
+        PrintMenuItem.Visibility = canOpenNativeFileVerb ? Visibility.Visible : Visibility.Collapsed;
+        PrintMenuItem.IsEnabled = canOpenNativeFileVerb;
         CopyMenuItem.IsEnabled = CutMenuItem.IsEnabled = hasTransferableSelection;
         PasteMenuItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin && ClipboardHasFileDrop();
         OpenInNewTabMenuItem.IsEnabled = !_location.IsRecycleBin && hasSingleSelection && selection[0].IsDirectory;
