@@ -14,6 +14,7 @@ public static class StartMenuPlaceCatalog
     [
         new("documents", "Documents"),
         new("desktop", "Desktop"),
+        new("public", "Public"),
         new("downloads", "Downloads"),
         new("music", "Music"),
         new("pictures", "Pictures"),
@@ -76,6 +77,8 @@ public static class StartMenuPlaceCatalog
         "user-profile" => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         "documents" => Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
         "desktop" => Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+        "public" => Directory.GetParent(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments))?.FullName
+            ?? Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
         "downloads" => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
         "computer" => "shell:MyComputerFolder",
         "libraries" => "shell:Libraries",
