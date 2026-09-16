@@ -1590,9 +1590,22 @@ public partial class TaskbarWindow : Window
             if (!menu.IsSubmenuOpen) return;
             if (entries.Count == 0)
                 menu.Items.Add(new MenuItem { Header = "No visible items", IsEnabled = false });
+            var icons = await Task.Run(() => entries.ToDictionary(
+                entry => entry.FullPath,
+                entry => DesktopShellNamespaceCatalog.IsShellNamespaceLocation(entry.FullPath)
+                    ? TaskbarIconService.LoadNamespaceIcon(entry.FullPath)
+                    : TaskbarIconService.LoadIcon(entry.FullPath),
+                StringComparer.OrdinalIgnoreCase));
+            if (!menu.IsSubmenuOpen) return;
             foreach (var entry in entries)
             {
-                var item = new MenuItem { Header = entry.Name, Tag = entry.FullPath };
+                var icon = icons.GetValueOrDefault(entry.FullPath);
+                var item = new MenuItem
+                {
+                    Header = entry.Name,
+                    Tag = entry.FullPath,
+                    Icon = icon is null ? null : new Image { Source = icon, Width = 18, Height = 18 }
+                };
                 item.ContextMenu = CreateNativeTaskbarFolderContextMenu(entry.FullPath);
                 if (entry.IsDirectory && !entry.IsReparsePoint && depth < 2)
                 {
