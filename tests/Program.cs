@@ -474,6 +474,9 @@ Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(false, false), 
 Check(true, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(true, false), "route Win+E to companion Explorer in shell replacement mode regardless of the saved preference");
 Check(true, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(false, true), "honor opt-in Win+E routing outside shell replacement mode");
 Check(false, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(false, false), "preserve native Win+E behavior when companion Explorer routing is disabled");
+Check(true, ShellHostLaunchPolicy.ShouldReplaceWindowsKey(true, false), "route the bare Windows key to the companion Start menu in shell replacement mode");
+Check(true, ShellHostLaunchPolicy.ShouldReplaceWindowsKey(false, true), "honor opt-in bare Windows-key routing outside shell replacement mode");
+Check(false, ShellHostLaunchPolicy.ShouldReplaceWindowsKey(false, false), "preserve native bare Windows-key behavior outside shell replacement mode");
 Check("Exit shell replacement and start Explorer", ShellHostLaunchPolicy.GetExitLabel(true), "label shell-host exit as Explorer recovery");
 Check("Exit Desktop Tuner", ShellHostLaunchPolicy.GetExitLabel(false), "keep the normal app exit label");
 Check("Restart shell replacement", ShellHostLaunchPolicy.GetRestartLabel(true), "label the bounded shell-host restart command");

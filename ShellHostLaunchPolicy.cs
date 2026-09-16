@@ -67,6 +67,9 @@ public static class ShellHostLaunchPolicy
     public static bool ShouldReplaceExplorerShortcut(bool shellHostMode, bool preference) =>
         shellHostMode || preference;
 
+    public static bool ShouldReplaceWindowsKey(bool shellHostMode, bool preference) =>
+        shellHostMode || preference;
+
     public static bool ShouldRouteDesktopFoldersToCompanionExplorer(bool shellHostMode) => shellHostMode;
 
     public static bool ShouldRouteStartMenuLocationToCompanionExplorer(bool shellHostMode, bool isFilesystemDirectory, bool isShellNamespaceLocation) =>

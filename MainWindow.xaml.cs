@@ -2406,7 +2406,7 @@ public partial class MainWindow : Window
             _windowsKeyHook = null;
         }
         var hook = new WindowsKeyStartHook(ShowStartMenu, CanActivateTaskbarPinShortcut, ActivateTaskbarPinShortcut, CanFocusTaskbar, FocusTaskbar,
-            replaceBareWindowsKey: _replaceWindowsKey, canOpenExplorer: () => _replaceExplorerShortcut, openExplorer: () => OpenExplorer(),
+            replaceBareWindowsKey: ShellHostLaunchPolicy.ShouldReplaceWindowsKey(_shellHostMode, _replaceWindowsKey), canOpenExplorer: () => _replaceExplorerShortcut, openExplorer: () => OpenExplorer(),
             replaceControlEscape: _shellHostMode || _shellOverlayMode,
             canToggleDesktop: () => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible), toggleDesktop: ToggleShowDesktop,
             canFocusTaskbarSystem: CanFocusTaskbarSystemArea, focusTaskbarSystem: FocusTaskbarSystemArea,
