@@ -17,17 +17,17 @@ public static class StartMenuPlaceCatalog
         new("music", "Music"),
         new("pictures", "Pictures"),
         new("videos", "Videos"),
-        new("libraries", "Libraries")
+        new("libraries", "Libraries"),
+        new("devices-printers", "Devices and Printers"),
+        new("network", "Network")
     ];
 
     public static IReadOnlyList<StartMenuPlace> AdditionalPlaces { get; } =
     [
         new("user-profile", "User profile"),
         new("computer", "This PC"),
-        new("devices-printers", "Devices and Printers"),
         new("recycle-bin", "Recycle Bin"),
         new("control-panel", "Control Panel"),
-        new("network", "Network"),
         new("recent", "Recent items"),
         new("run", "Run...")
     ];
