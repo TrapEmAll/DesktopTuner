@@ -20,7 +20,8 @@ public sealed record ExplorerSession(
     List<ExplorerTabSession> Tabs,
     double DetailsPaneHeight = 160,
     bool DetailsPaneVisible = true,
-    bool OpenFoldersInNewTab = false);
+    bool OpenFoldersInNewTab = false,
+    bool CommandRibbonVisible = true);
 
 public sealed class ExplorerSessionStore
 {
@@ -54,7 +55,7 @@ public sealed class ExplorerSessionStore
                 .ToList();
             if (tabs.Count == 0) return null;
             var detailsPaneHeight = double.IsFinite(session.DetailsPaneHeight) ? Math.Clamp(session.DetailsPaneHeight, 100, 8000) : 160;
-            return new ExplorerSession(Math.Clamp(session.ActiveTabIndex, 0, tabs.Count - 1), tabs, detailsPaneHeight, session.DetailsPaneVisible, session.OpenFoldersInNewTab);
+            return new ExplorerSession(Math.Clamp(session.ActiveTabIndex, 0, tabs.Count - 1), tabs, detailsPaneHeight, session.DetailsPaneVisible, session.OpenFoldersInNewTab, session.CommandRibbonVisible);
         }
         catch (JsonException) { return null; }
         catch (IOException) { return null; }
@@ -76,6 +77,6 @@ public sealed class ExplorerSessionStore
         if (tabs.Count == 0) return;
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
         var detailsPaneHeight = double.IsFinite(session.DetailsPaneHeight) ? Math.Clamp(session.DetailsPaneHeight, 100, 8000) : 160;
-        File.WriteAllText(_path, JsonSerializer.Serialize(new ExplorerSession(Math.Clamp(session.ActiveTabIndex, 0, tabs.Count - 1), tabs, detailsPaneHeight, session.DetailsPaneVisible, session.OpenFoldersInNewTab), new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(_path, JsonSerializer.Serialize(new ExplorerSession(Math.Clamp(session.ActiveTabIndex, 0, tabs.Count - 1), tabs, detailsPaneHeight, session.DetailsPaneVisible, session.OpenFoldersInNewTab, session.CommandRibbonVisible), new JsonSerializerOptions { WriteIndented = true }));
     }
 }

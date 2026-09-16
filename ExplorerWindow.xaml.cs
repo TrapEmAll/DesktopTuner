@@ -80,6 +80,7 @@ public partial class ExplorerWindow : Window
     }
     private double _detailsPaneHeight = 160;
     private bool _openFoldersInNewTab;
+    private bool _commandRibbonVisible = true;
 
     private void Window_SourceInitialized(object? sender, EventArgs e)
     {
@@ -105,7 +106,10 @@ public partial class ExplorerWindow : Window
         RefreshQuickAccessPins();
         var savedSession = restoreSavedSession ? _sessionStore.Load() : null;
         _openFoldersInNewTab = openFoldersInNewTab ?? savedSession?.OpenFoldersInNewTab ?? false;
+        _commandRibbonVisible = savedSession?.CommandRibbonVisible ?? true;
         OpenFoldersInNewTabToggle.IsChecked = _openFoldersInNewTab;
+        CommandRibbonMenuItem.IsChecked = _commandRibbonVisible;
+        CommandRibbonContainer.Visibility = _commandRibbonVisible ? Visibility.Visible : Visibility.Collapsed;
         var sessionToRestore = string.IsNullOrWhiteSpace(initialPath) && !startInThisPc ? savedSession : null;
         var initialLocation = sessionToRestore is not null
             ? sessionToRestore.Tabs[sessionToRestore.ActiveTabIndex].Location
@@ -229,7 +233,7 @@ public partial class ExplorerWindow : Window
                 tab.HomeSortColumn,
                 tab.HomeSortAscending,
                 tab.HomeSortExplicitly,
-                tab.GroupDrives)).ToList(), _detailsPaneHeight, DetailsPaneToggle.IsChecked == true, _openFoldersInNewTab));
+                tab.GroupDrives)).ToList(), _detailsPaneHeight, DetailsPaneToggle.IsChecked == true, _openFoldersInNewTab, _commandRibbonVisible));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -1881,9 +1885,11 @@ public partial class ExplorerWindow : Window
 
     private void CommandRibbonMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        CommandRibbonContainer.Visibility = CommandRibbonMenuItem.IsChecked == true
+        _commandRibbonVisible = CommandRibbonMenuItem.IsChecked == true;
+        CommandRibbonContainer.Visibility = _commandRibbonVisible
             ? Visibility.Visible
             : Visibility.Collapsed;
+        SaveExplorerSession();
     }
 
     private void CloseWindowMenuItem_Click(object sender, RoutedEventArgs e) => Close();

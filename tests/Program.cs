@@ -2142,6 +2142,11 @@ Check(ShellNamespaceBrowserKeyboardAction.Delete, ShellNamespaceBrowserKeyboardP
     Check(245d, loadedExplorerSession.DetailsPaneHeight, "restore the companion Explorer details pane height");
     Check(false, loadedExplorerSession.DetailsPaneVisible, "restore a hidden companion Explorer details pane");
     Check(false, loadedExplorerSession.OpenFoldersInNewTab, "restore the companion Explorer folder opening preference");
+    Check(true, loadedExplorerSession.CommandRibbonVisible, "default the companion Explorer command ribbon to visible");
+    var classicExplorerSessionPath = Path.Combine(temporaryPreferencesDirectory, "classic-explorer-session.json");
+    var classicExplorerSessionStore = new ExplorerSessionStore(classicExplorerSessionPath);
+    classicExplorerSessionStore.Save(savedExplorerSession with { CommandRibbonVisible = false });
+    Check(false, classicExplorerSessionStore.Load()!.CommandRibbonVisible, "save and restore the classic Explorer command-only layout");
     Check(true, ExplorerFolderOpenPolicy.ShouldOpenInNewTab(true, isDirectory: true, isDrive: false), "open folders in a new tab when the preference is enabled");
     Check(false, ExplorerFolderOpenPolicy.ShouldOpenInNewTab(false, isDirectory: true, isDrive: false), "navigate in the active tab by default");
     Check(false, ExplorerFolderOpenPolicy.ShouldOpenInNewTab(true, isDirectory: true, isDrive: true), "keep drive rows out of the folder-in-new-tab preference");
