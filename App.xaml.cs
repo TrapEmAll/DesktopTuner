@@ -152,7 +152,9 @@ public partial class App : Application
                 pinTaskbarItem: shellControls is null ? null : new Func<string, bool>(shellControls.TryPinTaskbarItemFromShell),
                 isTaskbarItemPinned: shellControls is null ? null : new Func<string, bool>(shellControls.IsTaskbarItemPinnedFromShell),
                 pinStartItem: shellControls is null ? null : new Func<string, bool>(shellControls.TryPinStartItemFromShell),
-                isStartItemPinned: shellControls is null ? null : new Func<string, bool>(shellControls.IsStartItemPinnedFromShell));
+                isStartItemPinned: shellControls is null ? null : new Func<string, bool>(shellControls.IsStartItemPinnedFromShell),
+                pinQuickAccessItem: shellControls is null ? null : new Func<string, bool>(shellControls.TryPinQuickAccessItemFromShell),
+                isQuickAccessItemPinned: shellControls is null ? null : new Func<string, bool>(shellControls.IsQuickAccessItemPinnedFromShell));
             MainWindow = desktopHost;
             desktopHost.Show();
             shellControls?.Show();

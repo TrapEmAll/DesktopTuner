@@ -1370,7 +1370,7 @@ public partial class ExplorerWindow : Window
         Navigate(new ExplorerLocation(path));
     }
 
-    private void RefreshQuickAccessPins()
+    public void RefreshQuickAccessPins()
     {
         QuickAccessPinsPanel.Children.Clear();
         foreach (var pin in _quickAccessStore.Load())

@@ -2302,6 +2302,16 @@ public partial class MainWindow : Window
         return true;
     }
 
+    public bool TryPinQuickAccessItemFromShell(string path)
+    {
+        var added = _explorerQuickAccessStore.Add(path);
+        if (added) _explorerWindow?.RefreshQuickAccessPins();
+        return added;
+    }
+
+    public bool IsQuickAccessItemPinnedFromShell(string path) =>
+        _explorerQuickAccessStore.Load().Any(pin => string.Equals(pin.Path, path, StringComparison.OrdinalIgnoreCase));
+
     private bool TryPinTaskbarItem(AppEntry app)
     {
         ArgumentNullException.ThrowIfNull(app);
