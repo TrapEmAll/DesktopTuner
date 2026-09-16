@@ -1722,6 +1722,13 @@ public partial class TaskbarWindow : Window
         var menu = new ContextMenu();
         if (tag is PinnedTaskbarApp app)
         {
+            if (app.IsDirectory || app.IsShellNamespace)
+            {
+                var browse = new MenuItem { Header = "Browse folder contents", Tag = app };
+                browse.SubmenuOpened += PinnedFolderMenu_SubmenuOpened;
+                browse.Items.Add(new MenuItem { Header = "Loading...", IsEnabled = false });
+                menu.Items.Add(browse);
+            }
             var runningWindows = new MenuItem { Header = "Running windows", Tag = app };
             runningWindows.SubmenuOpened += PinnedRunningWindowsMenu_SubmenuOpened;
             menu.Items.Add(runningWindows);
