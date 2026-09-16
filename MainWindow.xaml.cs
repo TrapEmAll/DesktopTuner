@@ -2349,13 +2349,21 @@ public partial class MainWindow : Window
         if (!ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(_shellHostMode, isFilesystemDirectory, isShellNamespaceLocation))
             return false;
 
-        if (isShellNamespaceLocation)
+        try
         {
-            OpenShellLocationFromShell(location);
+            if (isShellNamespaceLocation)
+            {
+                OpenShellLocationFromShell(location);
+                return true;
+            }
+            OpenExplorer(Path.GetFullPath(location));
             return true;
         }
-        OpenExplorer(Path.GetFullPath(location));
-        return true;
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
+        {
+            System.Diagnostics.Trace.TraceWarning($"Could not open companion Explorer location '{location}': {ex.Message}");
+            return false;
+        }
     }
 
     private bool TryOpenStartShellLocation(string location)
