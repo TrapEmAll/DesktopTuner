@@ -16,14 +16,14 @@ public static class StartMenuPlaceCatalog
         new("downloads", "Downloads"),
         new("music", "Music"),
         new("pictures", "Pictures"),
-        new("videos", "Videos")
+        new("videos", "Videos"),
+        new("libraries", "Libraries")
     ];
 
     public static IReadOnlyList<StartMenuPlace> AdditionalPlaces { get; } =
     [
         new("user-profile", "User profile"),
         new("computer", "This PC"),
-        new("libraries", "Libraries"),
         new("devices-printers", "Devices and Printers"),
         new("recycle-bin", "Recycle Bin"),
         new("control-panel", "Control Panel"),
@@ -84,7 +84,23 @@ public static class StartMenuPlaceCatalog
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directoryPath);
         if (maximum < 0) throw new ArgumentOutOfRangeException(nameof(maximum));
-        if (maximum == 0 || !Directory.Exists(directoryPath)) return [];
+        if (maximum == 0) return [];
+        if (DesktopShellNamespaceCatalog.IsShellNamespaceLocation(directoryPath))
+        {
+            try
+            {
+                return DesktopShellNamespaceCatalog.ReadChildren(directoryPath)
+                    .Take(maximum)
+                    .Select(entry => new StartMenuPlaceEntry(entry.Name, entry.ParsingName, entry.IsFolder, IsReparsePoint: false))
+                    .ToArray();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Security.SecurityException)
+            {
+                System.Diagnostics.Trace.TraceWarning($"Could not read Start Shell place '{directoryPath}': {ex.Message}");
+                return [];
+            }
+        }
+        if (!Directory.Exists(directoryPath)) return [];
 
         var children = new List<(StartMenuPlaceEntry Entry, DateTime Modified)>();
         try
