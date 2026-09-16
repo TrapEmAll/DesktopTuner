@@ -13,6 +13,7 @@ public static class StartMenuPlaceCatalog
     public static IReadOnlyList<StartMenuPlace> DropdownPlaces { get; } =
     [
         new("documents", "Documents"),
+        new("desktop", "Desktop"),
         new("downloads", "Downloads"),
         new("music", "Music"),
         new("pictures", "Pictures"),
@@ -74,6 +75,7 @@ public static class StartMenuPlaceCatalog
     {
         "user-profile" => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         "documents" => Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        "desktop" => Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
         "downloads" => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
         "computer" => "shell:MyComputerFolder",
         "libraries" => "shell:Libraries",
