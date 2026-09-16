@@ -19,6 +19,7 @@ public partial class StartMenuWindow : Window
     private readonly AppCatalogService _catalog = new();
     private readonly StartRecentAppsStore _recentAppsStore;
     private readonly StartRecentFilesStore _recentFilesStore;
+    private readonly Action? _exitShellHost;
     private readonly StartMenuIdentity _identity;
     private readonly Func<IReadOnlyList<AppEntry>, bool>? _savePinnedApps;
     private readonly Func<AppEntry, bool>? _pinTaskbarItem;
@@ -47,7 +48,7 @@ public partial class StartMenuWindow : Window
         private set => SetValue(IconSizeProperty, value);
     }
 
-    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, StartMenuIconSize iconSize = StartMenuIconSize.Standard, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<AppEntry, bool>? pinTaskbarItem = null)
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, StartMenuIconSize iconSize = StartMenuIconSize.Standard, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<AppEntry, bool>? pinTaskbarItem = null, Action? exitShellHost = null)
     {
         InitializeComponent();
         SourceInitialized += Window_SourceInitialized;
@@ -77,6 +78,7 @@ public partial class StartMenuWindow : Window
         _openShellLocation = openShellLocation;
         _openFileLocation = openFileLocation;
         _pinTaskbarItem = pinTaskbarItem;
+        _exitShellHost = exitShellHost;
         _recentAppsStore = recentAppsStore ?? new StartRecentAppsStore();
         _recentFilesStore = new StartRecentFilesStore();
         _startPlaces = StartMenuPlaceCatalog.Normalize(startPlaces);
@@ -1019,6 +1021,17 @@ public partial class StartMenuWindow : Window
                         var item = new MenuItem { Header = powerAction.Label, Tag = powerAction.Id };
                         item.Click += PowerAction_Click;
                         menu.Items.Add(item);
+                    }
+                    if (_exitShellHost is not null)
+                    {
+                        menu.Items.Add(new Separator());
+                        var exitShell = new MenuItem { Header = "Exit shell replacement and start Explorer" };
+                        exitShell.Click += (_, _) =>
+                        {
+                            Close();
+                            _exitShellHost();
+                        };
+                        menu.Items.Add(exitShell);
                     }
                 }
                 menu.PlacementTarget = powerButton;

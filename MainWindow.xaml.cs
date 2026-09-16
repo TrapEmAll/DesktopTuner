@@ -1424,7 +1424,8 @@ public partial class MainWindow : Window
             startPlaces: _startMenuPlaces, recentAppCount: _startRecentAppCount, controlPanelApplets: _controlPanelApplets, iconSize: _startMenuIconSize,
             openShellLocation: TryOpenStartShellLocation,
             openFileLocation: _shellHostMode ? TryOpenFileLocationInCompanionExplorer : null,
-            pinTaskbarItem: app => TryPinTaskbarItem(app));
+            pinTaskbarItem: app => TryPinTaskbarItem(app),
+            exitShellHost: _shellHostMode ? () => ExitShellHost_Click(this, new RoutedEventArgs()) : null);
         _startMenuDisplay = display;
         _startMenuWindow.Closed += (_, _) => { _startMenuWindow = null; _startMenuDisplay = null; };
         if (display is not null)
