@@ -1569,6 +1569,8 @@ public partial class MainWindow : Window
             openFileLocationInCompanionExplorer: _shellHostMode ? TryOpenFileLocationInCompanionExplorer : null,
             openShellLocationInCompanionExplorer: _shellHostMode ? TryOpenLocationInCompanionExplorer : null,
             pinStartItem: TryPinStartItem,
+            pinQuickAccessItem: TryPinQuickAccessItemFromShell,
+            isQuickAccessItemPinned: IsQuickAccessItemPinnedFromShell,
             shellHostMode: _shellHostMode,
             searchStartMenu: ShowStartMenuSearch);
         taskbar.ContentRendered += TaskbarWindow_ContentRendered;

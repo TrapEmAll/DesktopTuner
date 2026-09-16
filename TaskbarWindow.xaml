@@ -188,6 +188,7 @@
                                         <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenLocation}" Click="OpenPinnedLocation_Click" />
                                         <MenuItem Header="Show more options" Tag="{Binding}" Visibility="Collapsed" Click="ShowNativeTaskbarShellContextMenu_Click" />
                                         <MenuItem Header="Pin to Start" Tag="{Binding}" IsEnabled="{Binding CanPinToStart}" Click="PinTaskbarAppToStart_Click" />
+                                        <MenuItem Header="Pin to quick access" Tag="{Binding}" Visibility="Collapsed" Click="PinTaskbarAppToQuickAccess_Click" />
                                         <MenuItem Header="Start new elevated instance" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunPinnedAsAdministrator_Click" />
                                         <Separator />
                                         <MenuItem Header="Unpin from taskbar" Tag="{Binding}" Click="Unpin_Click" />

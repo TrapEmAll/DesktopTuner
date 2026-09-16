@@ -45,6 +45,8 @@ public partial class TaskbarWindow : Window
     private readonly Func<string, bool>? _openShellLocationInCompanionExplorer;
     private readonly Func<string, bool>? _openFileLocationInCompanionExplorer;
     private readonly Func<string, bool>? _pinStartItem;
+    private readonly Func<string, bool>? _pinQuickAccessItem;
+    private readonly Func<string, bool>? _isQuickAccessItemPinned;
     private readonly bool _shellHostMode;
     private DesktopPreferences _preferences = new(TaskbarEdge.Bottom);
     private TaskbarEdge _edge;
@@ -80,7 +82,7 @@ public partial class TaskbarWindow : Window
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Func<string, bool>? openDirectoryInCompanionExplorer = null, Func<string, bool>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? pinStartItem = null, bool shellHostMode = false, Action<TaskbarDisplay, string>? searchStartMenu = null)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Func<string, bool>? openDirectoryInCompanionExplorer = null, Func<string, bool>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? pinQuickAccessItem = null, Func<string, bool>? isQuickAccessItemPinned = null, bool shellHostMode = false, Action<TaskbarDisplay, string>? searchStartMenu = null)
     {
         InitializeComponent();
         _isDark = TaskbarTheme.ReadSystemDarkMode();
@@ -101,6 +103,8 @@ public partial class TaskbarWindow : Window
         _openShellLocationInCompanionExplorer = openShellLocationInCompanionExplorer;
         _openFileLocationInCompanionExplorer = openFileLocationInCompanionExplorer;
         _pinStartItem = pinStartItem;
+        _pinQuickAccessItem = pinQuickAccessItem;
+        _isQuickAccessItemPinned = isQuickAccessItemPinned;
         _shellHostMode = shellHostMode;
         CloseBarMenuItem.IsEnabled = ShellHostLaunchPolicy.ShouldAllowTaskbarClose(shellHostMode);
         CloseBarButton.Visibility = shellHostMode ? Visibility.Collapsed : Visibility.Visible;
@@ -1142,6 +1146,14 @@ public partial class TaskbarWindow : Window
         }
 
         var nativeMenu = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Show more options"));
+        var quickAccessMenu = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Pin to quick access"));
+        if (quickAccessMenu is not null)
+        {
+            var app = menu.DataContext as PinnedTaskbarApp;
+            var canPin = app is { IsDirectory: true } or { IsShellNamespace: true } && _pinQuickAccessItem is not null;
+            quickAccessMenu.Visibility = canPin ? Visibility.Visible : Visibility.Collapsed;
+            quickAccessMenu.IsEnabled = canPin && _isQuickAccessItemPinned?.Invoke(app!.ExecutablePath) != true;
+        }
         if (nativeMenu is null) return;
         var parsingName = menu.DataContext switch
         {
@@ -1517,6 +1529,13 @@ public partial class TaskbarWindow : Window
         _pinStartItem(path);
     }
 
+    private void PinTaskbarAppToQuickAccess_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pinQuickAccessItem is null || sender is not MenuItem { Tag: PinnedTaskbarApp app }
+            || (!app.IsDirectory && !app.IsShellNamespace)) return;
+        _pinQuickAccessItem(app.ExecutablePath);
+    }
+
     private void OpenPinnedLocation_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: PinnedTaskbarApp { CanOpenLocation: true } app }) return;
@@ -1740,6 +1759,10 @@ public partial class TaskbarWindow : Window
                 browse.SubmenuOpened += PinnedFolderMenu_SubmenuOpened;
                 browse.Items.Add(new MenuItem { Header = "Loading...", IsEnabled = false });
                 menu.Items.Add(browse);
+                var quickAccess = new MenuItem { Header = "Pin to quick access", Tag = app,
+                    IsEnabled = _pinQuickAccessItem is not null && _isQuickAccessItemPinned?.Invoke(app.ExecutablePath) != true };
+                quickAccess.Click += PinTaskbarAppToQuickAccess_Click;
+                menu.Items.Add(quickAccess);
             }
             var runningWindows = new MenuItem { Header = "Running windows", Tag = app };
             runningWindows.SubmenuOpened += PinnedRunningWindowsMenu_SubmenuOpened;
