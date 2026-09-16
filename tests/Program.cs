@@ -389,6 +389,8 @@ Check(false, SystemBackdropService.TryApplySmallRoundedCorners(IntPtr.Zero), "le
 Check(false, new DesktopPreferences(TaskbarEdge.Bottom).TaskbarOnAllDisplays, "preserve the primary-display behavior for older preference data");
 Check(false, new DesktopPreferences(TaskbarEdge.Bottom).ReplaceNativeTaskbar, "leave native taskbar replacement disabled by default");
 Check(TaskbarSearchStyle.Button, new DesktopPreferences(TaskbarEdge.Bottom).TaskbarSearchStyle, "default the taskbar search control to a button");
+Check(0, (int)TaskbarSearchStyle.Button, "preserve the saved numeric value for the taskbar search button");
+Check(1, (int)TaskbarSearchStyle.Box, "preserve the saved numeric value for the taskbar search box");
 Check(true, Enum.IsDefined(TaskbarSearchStyle.None), "support hiding the custom taskbar search control");
 Check(true, Enum.IsDefined(TaskbarSearchStyle.IconAndLabel), "support labeling the custom taskbar search control");
 Check<TaskbarBatteryStatus?>(null, TaskbarBatteryService.Parse(0, 0x80, 57, 3600), "hide the replacement taskbar battery control when no battery is installed");

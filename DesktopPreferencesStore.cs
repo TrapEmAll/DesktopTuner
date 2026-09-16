@@ -15,7 +15,13 @@ public enum TaskbarButtonSpacing { Compact, Standard, Relaxed }
 public enum TaskbarLabelVisibility { Always, WhenFull, Never }
 public enum TaskbarButtonEffect { Accent, Aura, DynamicAura }
 public enum TaskbarVisualStyle { Windows11, Windows10, Windows7 }
-public enum TaskbarSearchStyle { None, Button, IconAndLabel, Box }
+public enum TaskbarSearchStyle
+{
+    Button = 0,
+    Box = 1,
+    None = 2,
+    IconAndLabel = 3
+}
 public enum StartMenuStyle { Modern, Classic, Compact, Windows7, Windows8, Windows10 }
 public enum StartTileSize { Small, Medium, Wide, Large }
 public sealed record PinnedTaskbarApp(string Name, string ExecutablePath, bool IsDirectory = false, bool IsPackagedApp = false, bool IsShellNamespace = false, List<TaskbarJumpListDestination>? PinnedDestinations = null)
