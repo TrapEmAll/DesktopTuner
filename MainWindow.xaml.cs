@@ -1433,6 +1433,8 @@ public partial class MainWindow : Window
             openShellLocation: TryOpenStartShellLocation,
             openFileLocation: _shellHostMode ? TryOpenFileLocationInCompanionExplorer : null,
             pinTaskbarItem: app => TryPinTaskbarItem(app),
+            pinQuickAccessItem: app => TryPinQuickAccessItemFromShell(app.ShortcutPath),
+            isQuickAccessItemPinned: app => IsQuickAccessItemPinnedFromShell(app.ShortcutPath),
             exitShellHost: _shellHostMode ? () => ExitShellHost_Click(this, new RoutedEventArgs()) : null);
         _startMenuDisplay = display;
         _startMenuWindow.Closed += (_, _) => { _startMenuWindow = null; _startMenuDisplay = null; };

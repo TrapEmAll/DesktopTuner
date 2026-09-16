@@ -24,6 +24,8 @@ public partial class StartMenuWindow : Window
     private readonly StartMenuIdentity _identity;
     private readonly Func<IReadOnlyList<AppEntry>, bool>? _savePinnedApps;
     private readonly Func<AppEntry, bool>? _pinTaskbarItem;
+    private readonly Func<AppEntry, bool>? _pinQuickAccessItem;
+    private readonly Func<AppEntry, bool>? _isQuickAccessItemPinned;
     private readonly Func<string, bool>? _openShellLocation;
     private readonly Func<string, bool>? _openFileLocation;
     private StartMenuPlacePreferences _startPlaces;
@@ -50,7 +52,7 @@ public partial class StartMenuWindow : Window
         private set => SetValue(IconSizeProperty, value);
     }
 
-    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, StartMenuIconSize iconSize = StartMenuIconSize.Standard, bool openAllApps = false, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<AppEntry, bool>? pinTaskbarItem = null, Action? exitShellHost = null)
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, StartMenuIconSize iconSize = StartMenuIconSize.Standard, bool openAllApps = false, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<AppEntry, bool>? pinTaskbarItem = null, Func<AppEntry, bool>? pinQuickAccessItem = null, Func<AppEntry, bool>? isQuickAccessItemPinned = null, Action? exitShellHost = null)
     {
         InitializeComponent();
         SourceInitialized += Window_SourceInitialized;
@@ -80,6 +82,8 @@ public partial class StartMenuWindow : Window
         _openShellLocation = openShellLocation;
         _openFileLocation = openFileLocation;
         _pinTaskbarItem = pinTaskbarItem;
+        _pinQuickAccessItem = pinQuickAccessItem;
+        _isQuickAccessItemPinned = isQuickAccessItemPinned;
         _exitShellHost = exitShellHost;
         _recentAppsStore = recentAppsStore ?? new StartRecentAppsStore();
         _recentFilesStore = new StartRecentFilesStore();
@@ -769,6 +773,13 @@ public partial class StartMenuWindow : Window
             MessageBox.Show(this, $"Could not pin {app.Name} to the taskbar.", "Taskbar pin unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
+    private void PinQuickAccessItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pinQuickAccessItem is null || sender is not MenuItem { Tag: AppEntry app }) return;
+        if (!_pinQuickAccessItem(app))
+            MessageBox.Show(this, $"Could not pin {app.Name} to quick access.", "Quick Access pin unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
     private void PinnedStartApp_Click(object sender, RoutedEventArgs e)
     {
         if (_suppressPinnedStartClick)
@@ -994,6 +1005,7 @@ public partial class StartMenuWindow : Window
         var openFolderItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open folder"));
         var browseFolderItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Browse folder contents"));
         var openFileLocationItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open file location"));
+        var pinQuickAccessItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Pin to quick access"));
         if (openFolderItem is not null) openFolderItem.Visibility = app.IsDirectory || app.IsShellNamespace ? Visibility.Visible : Visibility.Collapsed;
         if (browseFolderItem is not null)
         {
@@ -1001,6 +1013,12 @@ public partial class StartMenuWindow : Window
             browseFolderItem.IsEnabled = app.IsDirectory || app.IsShellNamespace;
         }
         if (openFileLocationItem is not null) openFileLocationItem.Visibility = app.IsDirectory || app.IsShellNamespace ? Visibility.Collapsed : Visibility.Visible;
+        if (pinQuickAccessItem is not null)
+        {
+            var canPin = (app.IsDirectory || app.IsShellNamespace) && _pinQuickAccessItem is not null;
+            pinQuickAccessItem.Visibility = canPin ? Visibility.Visible : Visibility.Collapsed;
+            pinQuickAccessItem.IsEnabled = canPin && _isQuickAccessItemPinned?.Invoke(app) != true;
+        }
         ConfigureNativeShellMenu(menu, app);
         var tileSizeMenu = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Tile size"));
         var tileLayout = _style is StartMenuStyle.Windows8 or StartMenuStyle.Windows10;

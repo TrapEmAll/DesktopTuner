@@ -203,6 +203,7 @@
                                                 <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenFileLocation}" Click="OpenFileLocation_Click" />
                                                 <MenuItem Header="Show more options" Tag="{Binding}" Visibility="Collapsed" Click="ShowNativeStartShellContextMenu_Click" />
                                                 <MenuItem Header="Pin to taskbar" Tag="{Binding}" IsEnabled="{Binding CanPinToTaskbar}" Click="PinTaskbarItem_Click" />
+                                                <MenuItem Header="Pin to quick access" Tag="{Binding}" Visibility="Collapsed" Click="PinQuickAccessItem_Click" />
                                                 <Separator />
                                                 <MenuItem Header="Run as administrator" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunAsAdministrator_Click" />
                                                 <Separator />
