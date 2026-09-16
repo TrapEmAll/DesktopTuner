@@ -159,7 +159,18 @@ public partial class MainWindow : Window
         if (_classicContextMenus)
         {
             try { ClassicContextMenuService.SetEnabled(true); }
-            catch (Exception ex) { Trace.TraceWarning($"Could not restore classic context-menu integration: {ex.Message}"); }
+            catch (Exception ex)
+            {
+                _classicContextMenus = false;
+                try { _preferences.Save(desktopPreferences with { ClassicContextMenus = false }); }
+                catch (Exception saveError) { Trace.TraceWarning($"Could not persist classic context-menu recovery: {saveError.Message}"); }
+                Trace.TraceWarning($"Could not restore classic context-menu integration; the preference was disabled: {ex.Message}");
+            }
+        }
+        else if (ClassicContextMenuService.IsOwned())
+        {
+            try { ClassicContextMenuService.SetEnabled(false); }
+            catch (Exception ex) { Trace.TraceWarning($"Could not remove an abandoned classic context-menu registration: {ex.Message}"); }
         }
         _nativeTaskbarWatchTimer.Tick += (_, _) => MaintainNativeTaskbars();
         _startWithWindows = desktopPreferences.StartWithWindows;
