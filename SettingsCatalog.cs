@@ -59,6 +59,10 @@ public static class SettingsCatalog
         new("taskbar-clock-seconds", "Taskbar", "Clock seconds", "Choose whether the Windows taskbar clock includes seconds.", ExplorerAdvanced, "ShowSecondsInSystemClock",
             [new("Hide seconds", 0), new("Show seconds", 1)], 0, true),
         new("taskbar-show-desktop", "Taskbar", "Show desktop button", "Choose whether Windows keeps the narrow Show desktop target at the end of the taskbar.", ExplorerAdvanced, "TaskbarSd",
+            [new("Show", 1), new("Hide", 0)], 1, true),
+        new("taskbar-task-view", "Taskbar", "Task View button", "Choose whether Windows shows the Task View button on the taskbar.", ExplorerAdvanced, "TaskbarMn",
+            [new("Show", 1), new("Hide", 0)], 1, true),
+        new("taskbar-widgets", "Taskbar", "Widgets button", "Choose whether Windows shows the Widgets button on the taskbar.", ExplorerAdvanced, "TaskbarDa",
             [new("Show", 1), new("Hide", 0)], 1, true)
     ];
 
