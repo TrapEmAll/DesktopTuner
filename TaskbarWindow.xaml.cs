@@ -1588,6 +1588,7 @@ public partial class TaskbarWindow : Window
             foreach (var entry in entries)
             {
                 var item = new MenuItem { Header = entry.Name, Tag = entry.FullPath };
+                item.ContextMenu = CreateNativeTaskbarFolderContextMenu(entry.FullPath);
                 if (entry.IsDirectory && !entry.IsReparsePoint && depth < 2)
                 {
                     item.Uid = (depth + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -1606,6 +1607,15 @@ public partial class TaskbarWindow : Window
             System.Diagnostics.Trace.TraceWarning($"Could not read taskbar folder menu '{path}': {ex.Message}");
             menu.Items.Add(new MenuItem { Header = "Could not read this folder", IsEnabled = false });
         }
+    }
+
+    private ContextMenu CreateNativeTaskbarFolderContextMenu(string path)
+    {
+        var context = new ContextMenu();
+        var nativeMenu = new MenuItem { Header = "Show more options", Tag = path };
+        nativeMenu.Click += ShowNativeTaskbarShellContextMenu_Click;
+        context.Items.Add(nativeMenu);
+        return context;
     }
 
     private void OpenFolderMenuEntry_Click(object sender, RoutedEventArgs e)
