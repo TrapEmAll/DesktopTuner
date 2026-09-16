@@ -55,7 +55,9 @@ public static class SettingsCatalog
         new("taskbar-tray-icons", "Taskbar", "Notification area icons", "Choose whether Windows keeps notification-area icons visible or collapses them behind the tray overflow.", ExplorerRoot, "EnableAutoTray",
             [new("Show all icons", 0), new("Collapse inactive icons", 1)], 1, true),
         new("taskbar-size", "Taskbar", "Taskbar size", "Choose the compact, default, or larger Windows taskbar height and button scale.", ExplorerAdvanced, "TaskbarSi",
-            [new("Small", 0), new("Medium", 1), new("Large", 2)], 1, true)
+            [new("Small", 0), new("Medium", 1), new("Large", 2)], 1, true),
+        new("taskbar-clock-seconds", "Taskbar", "Clock seconds", "Choose whether the Windows taskbar clock includes seconds.", ExplorerAdvanced, "ShowSecondsInSystemClock",
+            [new("Hide seconds", 0), new("Show seconds", 1)], 0, true)
     ];
 
     public static SettingDefinition ById(string id) => All.Single(setting => setting.Id == id);
