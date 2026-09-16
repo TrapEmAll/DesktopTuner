@@ -602,9 +602,24 @@ public partial class DesktopHostWindow : Window
             OpenSelectedDesktopItems(entry);
     }
 
-    private void OpenSelectedDesktopItems(DesktopHostItem? fallback = null)
+    private async void OpenSelectedDesktopItems(DesktopHostItem? fallback = null)
     {
-        foreach (var entry in DesktopHostOpenPolicy.SelectItems(_desktopItems, fallback)) OpenDesktopItem(entry);
+        var selection = DesktopHostOpenPolicy.SelectItems(_desktopItems, fallback).ToArray();
+        if (selection.Length > 1 && selection.All(entry => !entry.IsDirectory && entry.CanShowNativeContextMenu))
+        {
+            try
+            {
+                var owner = new WindowInteropHelper(this).Handle;
+                if (await NativeShellContextMenuService.OpenShellItemsAsync(owner, selection.Select(entry => entry.FullPath)))
+                    return;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception)
+            {
+                Trace.TraceWarning($"Could not open the selected desktop Shell items together: {ex.Message}");
+            }
+        }
+
+        foreach (var entry in selection) OpenDesktopItem(entry);
     }
 
     private void OpenDesktopItem(DesktopHostItem entry)
