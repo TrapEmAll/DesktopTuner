@@ -2257,6 +2257,12 @@ public partial class TaskbarWindow : Window
                 contextMenu.IsOpen = true;
                 e.Handled = true;
             }
+            else if (ContextMenu is { } taskbarMenu)
+            {
+                taskbarMenu.PlacementTarget = this;
+                taskbarMenu.IsOpen = true;
+                e.Handled = true;
+            }
             return;
         }
 
