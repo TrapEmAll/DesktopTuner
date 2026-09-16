@@ -10,6 +10,7 @@ public sealed class ShowDesktopWindowService
     private const int SW_RESTORE = 9;
     private readonly List<nint> _minimizedWindows = [];
     private readonly List<nint> _windowsMinimizedByShortcut = [];
+    private readonly List<nint> _windowsMinimizedByHomeShortcut = [];
     private bool _desktopIsShown;
 
     public bool IsDesktopShown => _desktopIsShown;
@@ -20,10 +21,15 @@ public sealed class ShowDesktopWindowService
             if (!_windowsMinimizedByShortcut.Contains(window)) _windowsMinimizedByShortcut.Add(window);
     }
 
-    public void MinimizeOtherWindows(IEnumerable<nint> shellSurfaceHandles, nint foregroundWindow)
+    public void ToggleOtherWindows(IEnumerable<nint> shellSurfaceHandles, nint foregroundWindow)
     {
-        foreach (var window in MinimizeEligibleWindows(shellSurfaceHandles, foregroundWindow))
-            if (!_windowsMinimizedByShortcut.Contains(window)) _windowsMinimizedByShortcut.Add(window);
+        if (_windowsMinimizedByHomeShortcut.Count > 0)
+        {
+            RestoreWindows(_windowsMinimizedByHomeShortcut);
+            return;
+        }
+
+        _windowsMinimizedByHomeShortcut.AddRange(MinimizeEligibleWindows(shellSurfaceHandles, foregroundWindow));
     }
 
     public void RestoreMinimizedWindows()
