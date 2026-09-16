@@ -120,7 +120,7 @@
                             </ItemsControl.GroupStyle>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Tag="{Binding}" Click="PinnedStartApp_Click" PreviewMouseLeftButtonDown="PinnedStartApp_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="PinnedStartApp_PreviewMouseLeftButtonUp" PreviewMouseMove="PinnedStartApp_PreviewMouseMove" AllowDrop="True" DragOver="PinnedStartApp_DragOver" Drop="PinnedStartApp_Drop" ToolTip="{Binding Name}">
+                                    <Button Tag="{Binding}" Click="PinnedStartApp_Click" PreviewMouseDown="PinnedStartApp_PreviewMouseDown" PreviewMouseLeftButtonDown="PinnedStartApp_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="PinnedStartApp_PreviewMouseLeftButtonUp" PreviewMouseMove="PinnedStartApp_PreviewMouseMove" AllowDrop="True" DragOver="PinnedStartApp_DragOver" Drop="PinnedStartApp_Drop" ToolTip="{Binding Name}">
                                         <Button.Style>
                                             <Style TargetType="Button">
                                                 <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />

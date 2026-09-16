@@ -793,6 +793,17 @@ public partial class StartMenuWindow : Window
         if (sender is Button { Tag: AppEntry app }) LaunchEntry(app);
     }
 
+    private void PinnedStartApp_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle || sender is not Button { Tag: AppEntry app }
+            || (!app.IsDirectory && !app.IsShellNamespace) || _openFolderInNewWindow is null) return;
+        if (_openFolderInNewWindow(app.ShortcutPath))
+        {
+            Close();
+            e.Handled = true;
+        }
+    }
+
     private void PinnedStartApp_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not Button { Tag: AppEntry app } button) return;
