@@ -613,15 +613,12 @@ public partial class DesktopHostWindow : Window
         {
             if (_routeFoldersToCompanionExplorer && !entry.IsShellNamespace && Directory.Exists(entry.FullPath))
             {
-                OpenFolderInCompanionExplorer(entry.FullPath);
-                return;
+                if (OpenFolderInCompanionExplorer(entry.FullPath)) return;
             }
             if (_routeFoldersToCompanionExplorer && entry.IsShellNamespace &&
                 DesktopShellNamespaceCatalog.IsShellNamespaceLocation(entry.FullPath))
             {
-                if (!MainWindow.TryOpenShellLocationInExistingInstance(entry.FullPath))
-                    throw new InvalidOperationException("Desktop Tuner Explorer could not receive this location. It was not opened in Windows Explorer.");
-                return;
+                if (MainWindow.TryOpenShellLocationInExistingInstance(entry.FullPath)) return;
             }
 
             var start = new ProcessStartInfo(entry.IsShellNamespace ? "explorer.exe" : entry.FullPath) { UseShellExecute = true };
@@ -1429,8 +1426,8 @@ public partial class DesktopHostWindow : Window
     {
         try
         {
-            if (_routeFoldersToCompanionExplorer) OpenFolderInCompanionExplorer(_userDesktop);
-            else Process.Start(new ProcessStartInfo(_userDesktop) { UseShellExecute = true });
+            if (!_routeFoldersToCompanionExplorer || !OpenFolderInCompanionExplorer(_userDesktop))
+                Process.Start(new ProcessStartInfo(_userDesktop) { UseShellExecute = true });
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
@@ -1438,11 +1435,8 @@ public partial class DesktopHostWindow : Window
         }
     }
 
-    private static void OpenFolderInCompanionExplorer(string folderPath)
-    {
-        if (!MainWindow.TryOpenFolderInExistingInstance(folderPath))
-            throw new InvalidOperationException("Desktop Tuner Explorer could not receive the folder request. The folder was not opened in Windows Explorer.");
-    }
+    private static bool OpenFolderInCompanionExplorer(string folderPath) =>
+        MainWindow.TryOpenFolderInExistingInstance(folderPath);
 
     private async void OnShowDesktopContextMenuClick(object sender, RoutedEventArgs e) => await ShowDesktopBackgroundContextMenuAsync();
 
