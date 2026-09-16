@@ -1806,6 +1806,7 @@ var scrollbarSetting = SettingsCatalog.ById("explorer-scrollbars");
 var trayIconsSetting = SettingsCatalog.ById("taskbar-tray-icons");
 var taskbarSizeSetting = SettingsCatalog.ById("taskbar-size");
 var taskbarClockSecondsSetting = SettingsCatalog.ById("taskbar-clock-seconds");
+var taskbarShowDesktopSetting = SettingsCatalog.ById("taskbar-show-desktop");
 var fullPathSetting = SettingsCatalog.ById("explorer-full-path");
 var separateExplorerProcessesSetting = SettingsCatalog.ById("explorer-separate-process");
 var alignmentSetting = SettingsCatalog.ById("taskbar-alignment");
@@ -1853,6 +1854,10 @@ Check(SettingsCatalog.ExplorerAdvanced, taskbarClockSecondsSetting.RegistryPath,
 Check("ShowSecondsInSystemClock", taskbarClockSecondsSetting.ValueName, "target the Windows taskbar seconds preference");
 Check(0, taskbarClockSecondsSetting.Choices.Single(choice => choice.Label == "Hide seconds").Value, "map hidden taskbar clock seconds to the Windows registry value");
 Check(1, taskbarClockSecondsSetting.Choices.Single(choice => choice.Label == "Show seconds").Value, "map visible taskbar clock seconds to the Windows registry value");
+Check(SettingsCatalog.ExplorerAdvanced, taskbarShowDesktopSetting.RegistryPath, "use Explorer advanced settings for the Show desktop button");
+Check("TaskbarSd", taskbarShowDesktopSetting.ValueName, "target the Windows Show desktop button preference");
+Check(1, taskbarShowDesktopSetting.Choices.Single(choice => choice.Label == "Show").Value, "map the visible Show desktop button to the Windows registry value");
+Check(0, taskbarShowDesktopSetting.Choices.Single(choice => choice.Label == "Hide").Value, "map the hidden Show desktop button to the Windows registry value");
 Check((int)TaskbarButtonAlignment.Left, alignmentSetting.Choices.Single(choice => choice.Label == "Left").Value, "map left taskbar alignment to the overlay setting");
 Check((int)TaskbarButtonAlignment.Center, alignmentSetting.Choices.Single(choice => choice.Label == "Center").Value, "map centered taskbar alignment to the overlay setting");
 var temporaryPreferencesDirectory = Path.Combine(Path.GetTempPath(), $"DesktopTuner.Tests-{Guid.NewGuid():N}");

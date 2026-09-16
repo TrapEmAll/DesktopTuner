@@ -57,7 +57,9 @@ public static class SettingsCatalog
         new("taskbar-size", "Taskbar", "Taskbar size", "Choose the compact, default, or larger Windows taskbar height and button scale.", ExplorerAdvanced, "TaskbarSi",
             [new("Small", 0), new("Medium", 1), new("Large", 2)], 1, true),
         new("taskbar-clock-seconds", "Taskbar", "Clock seconds", "Choose whether the Windows taskbar clock includes seconds.", ExplorerAdvanced, "ShowSecondsInSystemClock",
-            [new("Hide seconds", 0), new("Show seconds", 1)], 0, true)
+            [new("Hide seconds", 0), new("Show seconds", 1)], 0, true),
+        new("taskbar-show-desktop", "Taskbar", "Show desktop button", "Choose whether Windows keeps the narrow Show desktop target at the end of the taskbar.", ExplorerAdvanced, "TaskbarSd",
+            [new("Show", 1), new("Hide", 0)], 1, true)
     ];
 
     public static SettingDefinition ById(string id) => All.Single(setting => setting.Id == id);
