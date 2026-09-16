@@ -1015,6 +1015,12 @@ public partial class TaskbarWindow : Window
     private void WindowButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: TaskbarWindowGroup group } button) return;
+        if (TaskbarInteractionPolicy.ShouldCycleWindows(Keyboard.Modifiers) && group.Windows.Count > 1)
+        {
+            if (TaskbarWindowGrouping.SelectNextWindow(group.Windows) is { } next)
+                RunningWindowService.Activate(next);
+            return;
+        }
         if (group.Windows.Count > 1)
         {
             _previewOpenTimer.Stop();
@@ -1974,6 +1980,18 @@ public partial class TaskbarWindow : Window
     private void PinnedButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: PinnedTaskbarApp app }) return;
+        if (TaskbarInteractionPolicy.ShouldCycleWindows(Keyboard.Modifiers))
+        {
+            var windows = _windows.Enumerate()
+                .Where(window => _preferences.TaskbarShowWindowsFromAllVirtualDesktops || window.IsOnCurrentVirtualDesktop is not false)
+                .Where(window => TaskbarWindowGrouping.MatchesPinnedApp(app, window))
+                .ToList();
+            if (windows.Count > 1 && TaskbarWindowGrouping.SelectNextWindow(windows) is { } next)
+            {
+                RunningWindowService.Activate(next);
+                return;
+            }
+        }
         ActivatePinnedApp(app, sender as Button);
     }
 

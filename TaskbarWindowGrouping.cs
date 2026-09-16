@@ -60,6 +60,15 @@ public static class TaskbarWindowGrouping
         return group.Windows.FirstOrDefault(window => window.IsForeground) ?? group.Windows.FirstOrDefault();
     }
 
+    public static RunningWindow? SelectNextWindow(IEnumerable<RunningWindow> windows)
+    {
+        ArgumentNullException.ThrowIfNull(windows);
+        var entries = windows.ToList();
+        if (entries.Count == 0) return null;
+        var activeIndex = entries.FindIndex(window => window.IsForeground);
+        return entries[(activeIndex + 1 + entries.Count) % entries.Count];
+    }
+
     public static RunningWindow? SelectPinnedRepresentative(PinnedTaskbarApp app, IEnumerable<RunningWindow> windows)
     {
         ArgumentNullException.ThrowIfNull(app);

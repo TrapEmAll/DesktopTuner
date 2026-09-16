@@ -1717,6 +1717,15 @@ CheckTrue(TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(System.Windows
 Check(false, TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(System.Windows.Input.MouseButton.Middle, false), "keep middle-click close behavior when a running app has no launchable executable");
 CheckTrue(TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(System.Windows.Input.MouseButton.Left, true, System.Windows.Input.ModifierKeys.Shift), "launch a new running-app instance on Shift-click when its executable is available");
 Check(false, TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(System.Windows.Input.MouseButton.Left, false, System.Windows.Input.ModifierKeys.Shift), "keep Shift-click close behavior when a running app has no launchable executable");
+CheckTrue(TaskbarInteractionPolicy.ShouldCycleWindows(System.Windows.Input.ModifierKeys.Control), "use Ctrl-click to cycle grouped taskbar windows");
+Check(false, TaskbarInteractionPolicy.ShouldCycleWindows(System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift), "keep Ctrl+Shift-click out of the ordinary grouped-window cycle gesture");
+var groupedCycleWindows = new[]
+{
+    new RunningWindow((nint)21, "First", "Editor", @"C:\Apps\editor.exe", false),
+    new RunningWindow((nint)22, "Second", "Editor", @"C:\Apps\editor.exe", false) { IsForeground = true },
+    new RunningWindow((nint)23, "Third", "Editor", @"C:\Apps\editor.exe", false)
+};
+Check((nint)23, TaskbarWindowGrouping.SelectNextWindow(groupedCycleWindows)!.Handle, "advance Ctrl-click to the next grouped taskbar window");
 CheckTrue(SystemFlyoutService.GetEmojiPanelSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),
