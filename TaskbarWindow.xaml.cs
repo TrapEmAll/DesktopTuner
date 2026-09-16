@@ -2011,6 +2011,9 @@ public partial class TaskbarWindow : Window
                 MessageBox.Show(this, "Windows Shell locations cannot be started with administrator privileges.", "Could not run pinned location as administrator", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            if (ShellHostLaunchPolicy.ShouldRoutePinnedShellLocationToCompanionExplorer(_shellHostMode, app.IsShellNamespace)
+                && _openShellLocationInCompanionExplorer?.Invoke(app.ExecutablePath) == true)
+                return;
             try { Process.Start(TaskbarPinCatalog.BuildLaunchInfo(app)); }
             catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not launch pinned Shell location", MessageBoxButton.OK, MessageBoxImage.Error); }
             return;

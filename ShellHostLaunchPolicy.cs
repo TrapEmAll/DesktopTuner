@@ -84,6 +84,9 @@ public static class ShellHostLaunchPolicy
     public static bool ShouldRouteStartMenuLocationToCompanionExplorer(bool shellHostMode, bool isFilesystemDirectory, bool isShellNamespaceLocation) =>
         shellHostMode && (isFilesystemDirectory || isShellNamespaceLocation);
 
+    public static bool ShouldRoutePinnedShellLocationToCompanionExplorer(bool shellHostMode, bool isShellNamespaceLocation) =>
+        shellHostMode && isShellNamespaceLocation;
+
     public static bool ShouldLaunchExplorerOnShellHostExit(bool shellHostMode, bool customShellSupervisorActive) =>
         shellHostMode && !customShellSupervisorActive;
 

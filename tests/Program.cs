@@ -509,6 +509,9 @@ Check(true, ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplore
 Check(true, ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(true, false, true), "route supported namespace Start places through companion Explorer in replacement mode");
 Check(false, ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(false, true, true), "preserve native Start place handlers outside replacement mode");
 Check(false, ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(true, false, false), "leave unsupported Start locations on their existing handler");
+Check(true, ShellHostLaunchPolicy.ShouldRoutePinnedShellLocationToCompanionExplorer(true, true), "route pinned Shell namespace locations through companion Explorer in shell-host mode");
+Check(false, ShellHostLaunchPolicy.ShouldRoutePinnedShellLocationToCompanionExplorer(false, true), "preserve native pinned Shell location launch outside shell-host mode");
+Check(false, ShellHostLaunchPolicy.ShouldRoutePinnedShellLocationToCompanionExplorer(true, false), "leave ordinary pinned app launch outside Shell namespace routing");
 Check(true, DesktopShellNamespaceCatalog.IsCompanionExplorerLocation("shell:MyComputerFolder"), "route the This PC desktop namespace item to companion Explorer");
 Check(true, DesktopShellNamespaceCatalog.IsCompanionExplorerLocation("shell:RecycleBinFolder"), "route the Recycle Bin desktop namespace item to companion Explorer");
 Check(false, DesktopShellNamespaceCatalog.IsCompanionExplorerLocation("shell:PrintersFolder"), "keep This PC and Recycle Bin on their specialized companion Explorer views");
