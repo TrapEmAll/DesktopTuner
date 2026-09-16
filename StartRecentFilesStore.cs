@@ -41,6 +41,15 @@ public sealed class StartRecentFilesStore
     public bool IsRecentShortcut(string path) => IsPathInRecentDirectory(path)
         && string.Equals(Path.GetExtension(path), ".lnk", StringComparison.OrdinalIgnoreCase);
 
+    public bool TryResolveTargetPath(string shortcutPath, out string targetPath)
+    {
+        targetPath = string.Empty;
+        return IsRecentShortcut(shortcutPath)
+            && File.Exists(shortcutPath)
+            && TryReadTargetPath(shortcutPath, out targetPath)
+            && !string.IsNullOrWhiteSpace(targetPath);
+    }
+
     public bool TryRemove(string path)
     {
         if (!IsRecentShortcut(path) || !File.Exists(path)) return false;
@@ -67,29 +76,34 @@ public sealed class StartRecentFilesStore
     private static string GetDisplayName(FileInfo shortcut)
     {
         var fallback = Path.GetFileNameWithoutExtension(shortcut.Name);
+        return TryReadTargetPath(shortcut.FullName, out var targetPath)
+            && Path.GetFileName(targetPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) is { Length: > 0 } targetName
+                ? targetName
+                : fallback;
+    }
+
+    private static bool TryReadTargetPath(string shortcutPath, out string targetPath)
+    {
+        targetPath = string.Empty;
         object? shellObject = null;
         object? shortcutObject = null;
         try
         {
             var shellType = Type.GetTypeFromProgID("WScript.Shell");
-            if (shellType is null) return fallback;
+            if (shellType is null) return false;
             shellObject = Activator.CreateInstance(shellType);
-            if (shellObject is null) return fallback;
+            if (shellObject is null) return false;
             dynamic shell = shellObject;
-            shortcutObject = shell.CreateShortcut(shortcut.FullName);
-            if (shortcutObject is null) return fallback;
+            shortcutObject = shell.CreateShortcut(shortcutPath);
+            if (shortcutObject is null) return false;
             dynamic recentShortcut = shortcutObject;
-            var targetPath = (string)recentShortcut.TargetPath;
-            return string.IsNullOrWhiteSpace(targetPath)
-                ? fallback
-                : Path.GetFileName(targetPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) is { Length: > 0 } targetName
-                    ? targetName
-                    : fallback;
+            targetPath = ((string)recentShortcut.TargetPath).Trim();
+            return targetPath.Length > 0;
         }
         catch (Exception ex) when (ex is COMException or RuntimeBinderException or IOException or UnauthorizedAccessException or ArgumentException or InvalidCastException or NotSupportedException)
         {
-            Trace.TraceWarning($"Could not resolve recent shortcut '{shortcut.FullName}': {ex.Message}");
-            return fallback;
+            Trace.TraceWarning($"Could not resolve recent shortcut '{shortcutPath}': {ex.Message}");
+            return false;
         }
         finally
         {

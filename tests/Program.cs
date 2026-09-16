@@ -1026,8 +1026,11 @@ try
         if (recentShellObject is not null && System.Runtime.InteropServices.Marshal.IsComObject(recentShellObject)) System.Runtime.InteropServices.Marshal.ReleaseComObject(recentShellObject);
     }
     File.SetLastWriteTimeUtc(validRecentShortcut, DateTime.UtcNow.AddSeconds(1));
-    recentFiles = new StartRecentFilesStore(recentFilesDirectory).ReadRecentFiles();
+    var recentStore = new StartRecentFilesStore(recentFilesDirectory);
+    recentFiles = recentStore.ReadRecentFiles();
     Check("Annual budget.xlsx", recentFiles[0].Name, "resolve valid recent shortcuts to their target document names");
+    Check(recentTarget, recentStore.TryResolveTargetPath(validRecentShortcut, out var resolvedRecentTarget) ? resolvedRecentTarget : string.Empty, "resolve recent shortcut targets for file-location actions");
+    Check(false, recentStore.TryResolveTargetPath(recentDocument, out _), "fall back safely when a recent shortcut target cannot be resolved");
     Check(1, new StartRecentFilesStore(recentFilesDirectory).ReadRecentFiles(maximumEntries: 1).Count, "bound recent document results to the requested count");
     Check(true, new StartRecentFilesStore(recentFilesDirectory).IsRecentShortcut(recentDocument), "recognize shortcuts inside the Recent Items folder");
     CheckTrue(new StartRecentFilesStore(recentFilesDirectory).TryRemove(recentDocument), "remove an individual recent document shortcut");
@@ -2099,14 +2102,16 @@ Check(ShellNamespaceBrowserKeyboardAction.Delete, ShellNamespaceBrowserKeyboardP
         if (shortcutObject is not null && System.Runtime.InteropServices.Marshal.IsComObject(shortcutObject)) System.Runtime.InteropServices.Marshal.ReleaseComObject(shortcutObject);
         if (shortcutShellObject is not null && System.Runtime.InteropServices.Marshal.IsComObject(shortcutShellObject)) System.Runtime.InteropServices.Marshal.ReleaseComObject(shortcutShellObject);
     }
-    var linkedExecutableWindow = new RunningWindow((nint)90, "Test process", "Test app", linkedExecutablePath, false);
-    CheckTrue(TaskbarPinIdentityService.Matches(new PinnedTaskbarApp("Test application", taskbarShortcutPath), linkedExecutableWindow), "resolve a Windows shortcut target when matching a running taskbar app");
+var linkedExecutableWindow = new RunningWindow((nint)90, "Test process", "Test app", linkedExecutablePath, false);
+CheckTrue(TaskbarPinIdentityService.Matches(new PinnedTaskbarApp("Test application", taskbarShortcutPath), linkedExecutableWindow), "resolve a Windows shortcut target when matching a running taskbar app");
     var firstCreatedFolder = ExplorerFileOperationService.CreateFolder(explorerTestDirectory);
     var secondCreatedFolder = ExplorerFileOperationService.CreateFolder(explorerTestDirectory);
     Check("New folder", Path.GetFileName(firstCreatedFolder), "create a new folder using the familiar default name");
     Check("New folder (2)", Path.GetFileName(secondCreatedFolder), "avoid overwriting an existing folder when creating another");
     var sourceFile = Path.Combine(explorerTestDirectory, "draft.txt");
     File.WriteAllText(sourceFile, "draft");
+    var pathLocation = AppCatalogService.BuildPathLocationLaunchInfo(sourceFile);
+    Check($"/select,\"{Path.GetFullPath(sourceFile)}\"", pathLocation.ArgumentList[0], "build a document location launch command");
     CheckTrue(new ExplorerEntry("draft.txt", sourceFile, false, false, new FileInfo(sourceFile).Length, File.GetLastWriteTime(sourceFile)).Icon is not null, "expose shell file icons to Explorer rows");
     CheckTrue(new ExplorerEntry("ExplorerOperations", explorerTestDirectory, true, false, null, Directory.GetLastWriteTime(explorerTestDirectory)).Icon is not null, "expose shell folder icons to Explorer rows");
     var editableEntry = new ExplorerEntry("draft.txt", sourceFile, false, false, 5, DateTime.Now);

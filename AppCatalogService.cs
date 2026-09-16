@@ -242,6 +242,20 @@ public sealed class AppCatalogService
 
     public static void OpenFileLocation(AppEntry entry) => Process.Start(BuildFileLocationLaunchInfo(entry));
 
+    public static ProcessStartInfo BuildPathLocationLaunchInfo(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var fullPath = Path.GetFullPath(path);
+        if (!File.Exists(fullPath) && !Directory.Exists(fullPath))
+            throw new NotSupportedException("The requested Shell item is no longer available.");
+
+        var startInfo = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+        startInfo.ArgumentList.Add(Directory.Exists(fullPath) ? fullPath : $"/select,\"{fullPath}\"");
+        return startInfo;
+    }
+
+    public static void OpenPathLocation(string path) => Process.Start(BuildPathLocationLaunchInfo(path));
+
     public static ProcessStartInfo BuildLaunchInfo(AppEntry entry, bool runAsAdministrator = false)
     {
         ArgumentNullException.ThrowIfNull(entry);

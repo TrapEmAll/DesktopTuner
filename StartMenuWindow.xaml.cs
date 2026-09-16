@@ -603,12 +603,19 @@ public partial class StartMenuWindow : Window
         if (sender is not MenuItem { Tag: AppEntry { CanOpenFileLocation: true } app }) return;
         try
         {
-            if (_openFileLocation?.Invoke(app.ShortcutPath) == true)
+            var locationPath = app.ShortcutPath;
+            var resolvedRecentTarget = _recentFilesStore.TryResolveTargetPath(app.ShortcutPath, out var recentTargetPath)
+                && (File.Exists(recentTargetPath) || Directory.Exists(recentTargetPath));
+            if (resolvedRecentTarget) locationPath = recentTargetPath;
+            if (_openFileLocation?.Invoke(locationPath) == true)
             {
                 Close();
                 return;
             }
-            AppCatalogService.OpenFileLocation(app);
+            if (resolvedRecentTarget)
+                AppCatalogService.OpenPathLocation(locationPath);
+            else
+                AppCatalogService.OpenFileLocation(app);
         }
         catch (Exception ex)
         {
