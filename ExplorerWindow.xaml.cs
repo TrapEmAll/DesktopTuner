@@ -1879,6 +1879,13 @@ public partial class ExplorerWindow : Window
         SetDetailsPaneVisibility(DetailsPaneMenuItem.IsChecked == true);
     }
 
+    private void CommandRibbonMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        CommandRibbonContainer.Visibility = CommandRibbonMenuItem.IsChecked == true
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
     private void CloseWindowMenuItem_Click(object sender, RoutedEventArgs e) => Close();
 
     private void SelectAllMenuItem_Click(object sender, RoutedEventArgs e)

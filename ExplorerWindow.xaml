@@ -173,6 +173,7 @@
                         <MenuItem Header="Search" InputGestureText="F3" Click="FocusSearchMenuItem_Click" />
                         <MenuItem Header="Refresh" InputGestureText="F5" Click="Refresh_Click" />
                         <MenuItem x:Name="DetailsPaneMenuItem" Header="Details pane" IsCheckable="True" IsChecked="True" Click="DetailsPaneMenuItem_Click" />
+                        <MenuItem x:Name="CommandRibbonMenuItem" Header="Command ribbon" IsCheckable="True" IsChecked="True" Click="CommandRibbonMenuItem_Click" />
                     </MenuItem>
                     <MenuItem Header="_Tools">
                         <MenuItem Header="Folder options" Click="FolderOptionsMenuItem_Click" />
@@ -203,7 +204,7 @@
                 </DockPanel>
             </DockPanel>
         </Border>
-        <Border Grid.Row="2" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="4">
+        <Border x:Name="CommandRibbonContainer" Grid.Row="2" Background="{DynamicResource DesktopSurfaceBrush}" BorderBrush="{DynamicResource DesktopBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="4">
             <TabControl x:Name="CommandRibbon" Background="Transparent" BorderThickness="0">
                 <TabControl.ItemContainerStyle>
                     <Style TargetType="TabItem">
