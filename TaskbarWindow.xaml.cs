@@ -1132,6 +1132,7 @@ public partial class TaskbarWindow : Window
         {
             PinnedTaskbarApp app when app.IsPackagedApp && TaskbarPinCatalog.IsSupportedPackagedTarget(app.ExecutablePath) => $"shell:AppsFolder\\{app.ExecutablePath}",
             PinnedTaskbarApp app when app.IsShellNamespace || File.Exists(app.ExecutablePath) || Directory.Exists(app.ExecutablePath) => app.ExecutablePath,
+            TaskbarWindowGroup windowGroup when windowGroup.Windows.Select(window => window.ApplicationUserModelId).FirstOrDefault(id => !string.IsNullOrWhiteSpace(id)) is { } appUserModelId => $"shell:AppsFolder\\{appUserModelId}",
             TaskbarWindowGroup windowGroup when TaskbarWindowGrouping.GetLaunchPath(windowGroup) is { } path => path,
             _ => null
         };
@@ -1744,6 +1745,7 @@ public partial class TaskbarWindow : Window
         {
             PinnedTaskbarApp app when app.IsPackagedApp && TaskbarPinCatalog.IsSupportedPackagedTarget(app.ExecutablePath) => $"shell:AppsFolder\\{app.ExecutablePath}",
             PinnedTaskbarApp app when app.IsShellNamespace || File.Exists(app.ExecutablePath) || Directory.Exists(app.ExecutablePath) => app.ExecutablePath,
+            TaskbarWindowGroup group when group.Windows.Select(window => window.ApplicationUserModelId).FirstOrDefault(id => !string.IsNullOrWhiteSpace(id)) is { } appUserModelId => $"shell:AppsFolder\\{appUserModelId}",
             TaskbarWindowGroup group when TaskbarWindowGrouping.GetLaunchPath(group) is { } path => path,
             _ => null
         };
