@@ -1045,10 +1045,9 @@ public partial class TaskbarWindow : Window
 
     private void WindowButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ChangedButton != MouseButton.Middle
-            || sender is not Button { Tag: TaskbarWindowGroup group }) return;
+        if (sender is not Button { Tag: TaskbarWindowGroup group }) return;
         var launchInfo = TaskbarWindowGrouping.GetLaunchInfo(group);
-        if (TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(e.ChangedButton, launchInfo is not null))
+        if (TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(e.ChangedButton, launchInfo is not null, Keyboard.Modifiers))
         {
             try { Process.Start(launchInfo!); }
             catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
@@ -1056,7 +1055,7 @@ public partial class TaskbarWindow : Window
                 MessageBox.Show(this, ex.Message, "Could not launch a new app instance", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        else if (TaskbarWindowGrouping.SelectCloseTarget(group) is { } target)
+        else if (e.ChangedButton == MouseButton.Middle && TaskbarWindowGrouping.SelectCloseTarget(group) is { } target)
         {
             RunningWindowService.Close(target);
         }
@@ -1980,7 +1979,7 @@ public partial class TaskbarWindow : Window
 
     private void PinnedButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (!TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(e.ChangedButton)
+        if (!TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(e.ChangedButton, Keyboard.Modifiers)
             || sender is not Button { Tag: PinnedTaskbarApp app }) return;
         LaunchPinnedApp(app);
         e.Handled = true;

@@ -1711,8 +1711,12 @@ CheckTrue(SystemFlyoutService.GetQuickSettingsSequence().SequenceEqual(
 ]), "send the native Windows+A Quick Settings shortcut in balanced key order");
 CheckTrue(TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(System.Windows.Input.MouseButton.Middle), "use middle-click to launch a new pinned taskbar instance");
 Check(false, TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(System.Windows.Input.MouseButton.Left), "keep primary click on the existing pinned taskbar activation path");
+CheckTrue(TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(System.Windows.Input.MouseButton.Left, System.Windows.Input.ModifierKeys.Shift), "use Shift-click to launch a new pinned taskbar instance");
+Check(false, TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(System.Windows.Input.MouseButton.Left, System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift), "keep Ctrl+Shift-click out of the ordinary pinned new-instance gesture");
 CheckTrue(TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(System.Windows.Input.MouseButton.Middle, true), "launch a new running-app instance on middle-click when its executable is available");
 Check(false, TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(System.Windows.Input.MouseButton.Middle, false), "keep middle-click close behavior when a running app has no launchable executable");
+CheckTrue(TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(System.Windows.Input.MouseButton.Left, true, System.Windows.Input.ModifierKeys.Shift), "launch a new running-app instance on Shift-click when its executable is available");
+Check(false, TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(System.Windows.Input.MouseButton.Left, false, System.Windows.Input.ModifierKeys.Shift), "keep Shift-click close behavior when a running app has no launchable executable");
 CheckTrue(SystemFlyoutService.GetEmojiPanelSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),
