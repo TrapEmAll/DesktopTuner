@@ -1322,7 +1322,8 @@ public partial class StartMenuWindow : Window
             };
             item.Click += SystemPlace_Click;
             if (TryResolveNativeStartShellTarget(placeId) is { } nativeTarget)
-                item.ContextMenu = CreateNativeStartShellContextMenu(nativeTarget);
+                item.ContextMenu = CreateNativeStartShellContextMenu(nativeTarget,
+                    DesktopShellNamespaceCatalog.IsShellNamespaceLocation(nativeTarget) || Directory.Exists(nativeTarget));
             if (dropdownIds.Contains(placeId)) item.SubmenuOpened += PlaceFlyout_Opened;
             if (placeId == "control-panel") item.SubmenuOpened += ControlPanelFlyout_Opened;
             menu.Items.Add(item);
@@ -1419,7 +1420,7 @@ public partial class StartMenuWindow : Window
                     : new Image { Source = icon, Style = (Style)FindResource("StartFlyoutIcon") }
             };
             item.Click += StartPlaceEntry_Click;
-            item.ContextMenu = CreateNativeStartShellContextMenu(entry.FullPath);
+            item.ContextMenu = CreateNativeStartShellContextMenu(entry.FullPath, entry.IsDirectory);
             if (StartMenuPlaceCatalog.CanExpand(entry))
                 item.SubmenuOpened += NestedPlaceFlyout_Opened;
             menuItem.Items.Add(item);
@@ -1470,13 +1471,28 @@ public partial class StartMenuWindow : Window
         return File.Exists(path) ? path : null;
     }
 
-    private ContextMenu CreateNativeStartShellContextMenu(string target)
+    private ContextMenu CreateNativeStartShellContextMenu(string target, bool canOpenInNewWindow = false)
     {
         var nativeContextMenu = new ContextMenu();
+        var openNewWindow = new MenuItem
+        {
+            Header = "Open in new window",
+            Tag = target,
+            Visibility = canOpenInNewWindow && _openFolderInNewWindow is not null ? Visibility.Visible : Visibility.Collapsed,
+            IsEnabled = canOpenInNewWindow && _openFolderInNewWindow is not null
+        };
+        openNewWindow.Click += OpenStartPlaceInNewWindow_Click;
+        nativeContextMenu.Items.Add(openNewWindow);
         var nativeMenuItem = new MenuItem { Header = "Show more options", Tag = target };
         nativeMenuItem.Click += ShowNativeStartShellContextMenu_Click;
         nativeContextMenu.Items.Add(nativeMenuItem);
         return nativeContextMenu;
+    }
+
+    private void OpenStartPlaceInNewWindow_Click(object sender, RoutedEventArgs e)
+    {
+        if (_openFolderInNewWindow is not null && sender is MenuItem { Tag: string target } && _openFolderInNewWindow(target))
+            Close();
     }
 
     private void StartPlaceEntry_Click(object sender, RoutedEventArgs e)
