@@ -1533,6 +1533,16 @@ public partial class TaskbarWindow : Window
             var runningWindows = new MenuItem { Header = "Running windows", Tag = app };
             runningWindows.SubmenuOpened += PinnedRunningWindowsMenu_SubmenuOpened;
             menu.Items.Add(runningWindows);
+            var recent = CreateOverflowJumpListMenu("Recent items", app, TaskbarJumpListCategory.Recent);
+            menu.Items.Add(recent);
+            var frequent = CreateOverflowJumpListMenu("Frequent items", app, TaskbarJumpListCategory.Frequent);
+            menu.Items.Add(frequent);
+            if (app.HasPinnedDestinations)
+            {
+                var pinned = new MenuItem { Header = "Pinned destinations", Tag = app };
+                pinned.SubmenuOpened += PinnedDestinationsMenu_SubmenuOpened;
+                menu.Items.Add(pinned);
+            }
             menu.Items.Add(new Separator());
             var launch = new MenuItem { Header = "Start new instance", Tag = app };
             launch.Click += LaunchPinnedInstance_Click;
@@ -1553,6 +1563,8 @@ public partial class TaskbarWindow : Window
             var actions = new MenuItem { Header = "Window actions", Tag = group };
             actions.SubmenuOpened += WindowActionsMenu_SubmenuOpened;
             menu.Items.Add(actions);
+            menu.Items.Add(CreateOverflowJumpListMenu("Recent items", group, TaskbarJumpListCategory.Recent));
+            menu.Items.Add(CreateOverflowJumpListMenu("Frequent items", group, TaskbarJumpListCategory.Frequent));
             menu.Items.Add(new Separator());
             var minimize = new MenuItem { Header = "Minimize window(s)", Tag = group };
             minimize.Click += Minimize_Click;
@@ -1577,6 +1589,14 @@ public partial class TaskbarWindow : Window
             elevated.Click += RunWindowAsAdministrator_Click;
             menu.Items.Add(elevated);
         }
+        return menu;
+    }
+
+    private MenuItem CreateOverflowJumpListMenu(string header, object tag, TaskbarJumpListCategory category)
+    {
+        var menu = new MenuItem { Header = header, Tag = tag, CommandParameter = category };
+        menu.SubmenuOpened += JumpListMenu_SubmenuOpened;
+        menu.Items.Add(new MenuItem { Header = "Loading...", IsEnabled = false });
         return menu;
     }
 
