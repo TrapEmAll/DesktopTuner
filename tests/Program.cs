@@ -460,6 +460,9 @@ Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(false, true, false), "start
 Check(true, ShellHostLaunchPolicy.ShouldProvidePowerUserMenu(false, true), "route Win+X to the custom Power User menu in all-edition shell overlay mode");
 Check(true, ShellHostLaunchPolicy.ShouldProvidePowerUserMenu(true, false), "route Win+X to the custom Power User menu when Explorer is absent");
 Check(false, ShellHostLaunchPolicy.ShouldProvidePowerUserMenu(false, false), "preserve the native Power User menu outside replacement modes");
+Check(true, ShellHostLaunchPolicy.ShouldProvideReplacementRunDialog(false, true), "route Win+R to the companion Run dialog in all-edition shell overlay mode");
+Check(true, ShellHostLaunchPolicy.ShouldProvideReplacementRunDialog(true, false), "route Win+R to the companion Run dialog when Explorer is absent");
+Check(false, ShellHostLaunchPolicy.ShouldProvideReplacementRunDialog(false, false), "preserve the native Run dialog outside replacement modes");
 Check(true, ShellHostLaunchPolicy.ShouldCoverAllDisplays(true, false), "cover every display in shell-host mode regardless of overlay preferences");
 Check(true, ShellHostLaunchPolicy.ShouldCoverAllDisplays(false, false, true), "cover every display in shell overlay mode regardless of display preferences");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, true), "avoid trying to hide an Explorer taskbar when running as the logon shell");

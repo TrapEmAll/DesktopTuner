@@ -73,6 +73,9 @@ public static class ShellHostLaunchPolicy
     public static bool ShouldProvidePowerUserMenu(bool shellHostMode, bool shellOverlayMode) =>
         shellHostMode || shellOverlayMode;
 
+    public static bool ShouldProvideReplacementRunDialog(bool shellHostMode, bool shellOverlayMode) =>
+        shellHostMode || shellOverlayMode;
+
     public static bool ShouldRouteDesktopFoldersToCompanionExplorer(bool shellHostMode) => shellHostMode;
 
     public static bool ShouldRouteStartMenuLocationToCompanionExplorer(bool shellHostMode, bool isFilesystemDirectory, bool isShellNamespaceLocation) =>

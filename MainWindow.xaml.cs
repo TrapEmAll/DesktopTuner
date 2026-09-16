@@ -2564,7 +2564,7 @@ public partial class MainWindow : Window
         taskbar?.ShowPowerUserMenu();
     }
 
-    private bool CanOpenRunDialog() => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible);
+    private bool CanOpenRunDialog() => ShellHostLaunchPolicy.ShouldProvideReplacementRunDialog(_shellHostMode, _shellOverlayMode) && _taskbarWindows.Any(window => window.IsVisible);
 
     private bool CanManageShellHostWindows() => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible);
 
