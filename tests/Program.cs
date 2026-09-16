@@ -1803,6 +1803,7 @@ var appModeSetting = SettingsCatalog.ById("explorer-app-mode");
 var systemModeSetting = SettingsCatalog.ById("explorer-system-mode");
 var transparencySetting = SettingsCatalog.ById("explorer-transparency");
 var scrollbarSetting = SettingsCatalog.ById("explorer-scrollbars");
+var trayIconsSetting = SettingsCatalog.ById("taskbar-tray-icons");
 var fullPathSetting = SettingsCatalog.ById("explorer-full-path");
 var separateExplorerProcessesSetting = SettingsCatalog.ById("explorer-separate-process");
 var alignmentSetting = SettingsCatalog.ById("taskbar-alignment");
@@ -1830,6 +1831,8 @@ Check((byte)77, ((SolidColorBrush)TaskbarTheme.CreateBackground(dark: false, 70)
 Check("EnableTransparency", transparencySetting.ValueName, "target Windows transparency setting");
 Check(SettingsCatalog.Accessibility, scrollbarSetting.RegistryPath, "use the Windows accessibility registry location for scrollbar visibility");
 Check("DynamicScrollbars", scrollbarSetting.ValueName, "target the Windows always-show-scrollbars preference");
+Check(SettingsCatalog.ExplorerRoot, trayIconsSetting.RegistryPath, "use the Windows Explorer registry location for notification-area visibility");
+Check("EnableAutoTray", trayIconsSetting.ValueName, "target the Windows notification-area collapse preference");
 Check(SettingsCatalog.ExplorerCabinetState, fullPathSetting.RegistryPath, "use Windows Explorer's cabinet-state registry location");
 Check("FullPath", fullPathSetting.ValueName, "target the documented full-path title-bar preference");
 Check(1, fullPathSetting.Choices.Single(choice => choice.Label == "Show full path").Value, "map full-path title bars to the Explorer option");
@@ -1838,6 +1841,7 @@ Check(1, separateExplorerProcessesSetting.Choices.Single(choice => choice.Label 
 Check(0, appModeSetting.Choices.Single(choice => choice.Label == "Dark").Value, "map dark app mode to the Windows registry value");
 Check(1, transparencySetting.Choices.Single(choice => choice.Label == "On").Value, "map enabled transparency to the Windows registry value");
 Check(1, scrollbarSetting.Choices.Single(choice => choice.Label == "Always show").Value, "map always-visible scrollbars to the Windows registry value");
+Check(0, trayIconsSetting.Choices.Single(choice => choice.Label == "Show all icons").Value, "map all-visible notification icons to the Windows registry value");
 Check((int)TaskbarButtonAlignment.Left, alignmentSetting.Choices.Single(choice => choice.Label == "Left").Value, "map left taskbar alignment to the overlay setting");
 Check((int)TaskbarButtonAlignment.Center, alignmentSetting.Choices.Single(choice => choice.Label == "Center").Value, "map centered taskbar alignment to the overlay setting");
 var temporaryPreferencesDirectory = Path.Combine(Path.GetTempPath(), $"DesktopTuner.Tests-{Guid.NewGuid():N}");

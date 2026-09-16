@@ -16,6 +16,7 @@ public sealed record SettingDefinition(
 public static class SettingsCatalog
 {
     public const string ExplorerAdvanced = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
+    public const string ExplorerRoot = @"Software\Microsoft\Windows\CurrentVersion\Explorer";
     public const string ExplorerCabinetState = @"Software\Microsoft\Windows\CurrentVersion\Explorer\CabinetState";
     public const string Personalize = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     public const string Accessibility = @"Control Panel\Accessibility";
@@ -50,7 +51,9 @@ public static class SettingsCatalog
         new("explorer-transparency", "Explorer", "Transparency effects", "Enable or disable Windows transparency effects across supported shell and app surfaces.", Personalize, "EnableTransparency",
             [new("On", 1), new("Off", 0)], 1, true),
         new("explorer-scrollbars", "Explorer", "Scrollbars", "Keep scrollbars visible in Windows and classic Win32 app surfaces.", Accessibility, "DynamicScrollbars",
-            [new("Always show", 1), new("Auto-hide", 0)], 0, true)
+            [new("Always show", 1), new("Auto-hide", 0)], 0, true),
+        new("taskbar-tray-icons", "Taskbar", "Notification area icons", "Choose whether Windows keeps notification-area icons visible or collapses them behind the tray overflow.", ExplorerRoot, "EnableAutoTray",
+            [new("Show all icons", 0), new("Collapse inactive icons", 1)], 1, true)
     ];
 
     public static SettingDefinition ById(string id) => All.Single(setting => setting.Id == id);
