@@ -2619,6 +2619,7 @@ public partial class MainWindow : Window
             case (uint)'V': SystemFlyoutService.OpenClipboardHistory(); break;
             case (uint)'W': SystemFlyoutService.OpenWidgets(); break;
             case (uint)'Z': SystemFlyoutService.OpenSnapLayouts(); break;
+            case 0x13: SystemFlyoutService.OpenAboutSettings(); break;
             case 0x20: SystemFlyoutService.OpenInputMethodSwitcher(); break;
             case 0x09: SystemFlyoutService.OpenTaskView(); break;
         }

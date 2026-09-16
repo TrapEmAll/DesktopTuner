@@ -1336,7 +1336,7 @@ foreach (var (key, surfaceName) in new[]
 {
     ((uint)'A', "Quick Settings"), ((uint)'F', "Feedback Hub"), ((uint)'G', "Game Bar"), ((uint)'I', "Settings"), ((uint)'K', "Connect"), ((uint)'N', "Notification Center"),
     ((uint)'H', "Voice typing"), ((uint)'P', "Project"), ((uint)'Q', "Windows Search"), ((uint)'S', "Windows Search"),
-    ((uint)'L', "Lock workstation"), ((uint)'U', "Accessibility settings"), ((uint)'V', "Clipboard history"), ((uint)'W', "Widgets"), ((uint)'Z', "Snap layouts"),
+    ((uint)'L', "Lock workstation"), ((uint)'U', "Accessibility settings"), ((uint)'V', "Clipboard history"), ((uint)'W', "Widgets"), ((uint)'Z', "Snap layouts"), (0x13u, "About settings"),
     (0x09u, "Task View"), (0x20u, "keyboard layout picker")
 })
 {

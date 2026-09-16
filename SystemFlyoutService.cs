@@ -232,6 +232,8 @@ public static class SystemFlyoutService
 
     public static bool OpenSettings() => OpenShellUri("ms-settings:", "Settings");
 
+    public static bool OpenAboutSettings() => OpenShellUri("ms-settings:about", "About settings");
+
     public static bool OpenTaskbarSettings() => OpenShellUri(TaskbarSettingsUri, "taskbar settings");
 
     public static bool OpenAccountSettings() => OpenShellUri("ms-settings:yourinfo", "account settings");
