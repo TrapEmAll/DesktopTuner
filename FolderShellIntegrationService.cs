@@ -11,6 +11,7 @@ public static class FolderShellIntegrationService
     private const uint SHCNE_ASSOCCHANGED = 0x08000000;
     private const uint SHCNF_IDLIST = 0x0000;
     public const string OpenFolderArgument = "--open-folder";
+    public const string OpenFileLocationArgument = "--open-file-location";
     public const string OpenShellLocationArgument = "--open-shell-location";
     private const string DirectoryVerbPath = @"Software\Classes\Directory\shell\DesktopTuner.OpenWith";
     private const string DirectoryBackgroundVerbPath = @"Software\Classes\Directory\Background\shell\DesktopTuner.OpenWith";
@@ -62,6 +63,28 @@ public static class FolderShellIntegrationService
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
         if (shellPathToken is not ("%1" or "%V")) throw new ArgumentOutOfRangeException(nameof(shellPathToken));
         return $"\"{Path.GetFullPath(executablePath)}\" {OpenFolderArgument} \"{shellPathToken}\"";
+    }
+
+    public static bool TryReadFileLocationInvocation(IReadOnlyList<string> arguments, out string filePath)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        filePath = string.Empty;
+        for (var index = 0; index < arguments.Count - 1; index++)
+        {
+            if (!string.Equals(arguments[index], OpenFileLocationArgument, StringComparison.OrdinalIgnoreCase)) continue;
+            var candidate = Environment.ExpandEnvironmentVariables(arguments[index + 1]);
+            if (!Path.IsPathFullyQualified(candidate) || !File.Exists(candidate)) return false;
+            filePath = Path.GetFullPath(candidate);
+            return true;
+        }
+        return false;
+    }
+
+    public static string BuildFileLocationCommand(string executablePath, string shellPathToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
+        if (shellPathToken is not ("%1" or "%V")) throw new ArgumentOutOfRangeException(nameof(shellPathToken));
+        return $"\"{Path.GetFullPath(executablePath)}\" {OpenFileLocationArgument} \"{shellPathToken}\"";
     }
 
     public static bool TryReadShellLocationInvocation(IReadOnlyList<string> arguments, out string shellLocation)

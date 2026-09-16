@@ -44,6 +44,7 @@ public partial class App : Application
         }
 
         var hasFolderShellInvocation = FolderShellIntegrationService.TryReadInvocation(e.Args, out var folderShellPath);
+        var hasFileLocationInvocation = FolderShellIntegrationService.TryReadFileLocationInvocation(e.Args, out var fileLocationPath);
         var hasShellLocationInvocation = FolderShellIntegrationService.TryReadShellLocationInvocation(e.Args, out var shellLocation);
         var shellHostArgument = ShellHostLaunchPolicy.IsShellHostInvocation(e.Args);
         var shellHostWorkerArgument = ShellHostLaunchPolicy.IsShellHostWorkerInvocation(e.Args);
@@ -66,6 +67,11 @@ public partial class App : Application
             Shutdown();
             return;
         }
+        if (hasFileLocationInvocation && DesktopTuner.MainWindow.TryOpenFileLocationInExistingInstance(fileLocationPath))
+        {
+            Shutdown();
+            return;
+        }
 
         var shellHostSupervisorActive = ShellHostLaunchPolicy.ShouldRunShellHostSupervisor(e.Args, customShellPolicyTargetsApp);
         if (shellHostSupervisorActive)
@@ -78,6 +84,8 @@ public partial class App : Application
                     DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(folderShellPath, ShellHostLaunchPolicy.PendingInvocationForwardTimeout);
                 else if (hasShellLocationInvocation)
                     DesktopTuner.MainWindow.TryOpenShellLocationInExistingInstance(shellLocation, ShellHostLaunchPolicy.PendingInvocationForwardTimeout);
+                else if (hasFileLocationInvocation)
+                    DesktopTuner.MainWindow.TryOpenFileLocationInExistingInstance(fileLocationPath, ShellHostLaunchPolicy.PendingInvocationForwardTimeout);
                 _instanceMutex.Dispose();
                 _instanceMutex = null;
                 Shutdown();
@@ -95,7 +103,8 @@ public partial class App : Application
             }
             RunCustomShellSupervisor(
                 hasFolderShellInvocation ? folderShellPath : null,
-                hasShellLocationInvocation ? shellLocation : null);
+                hasShellLocationInvocation ? shellLocation : null,
+                hasFileLocationInvocation ? fileLocationPath : null);
             return;
         }
 
@@ -160,6 +169,8 @@ public partial class App : Application
                 ? DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(folderShellPath)
                 : hasShellLocationInvocation
                     ? DesktopTuner.MainWindow.TryOpenShellLocationInExistingInstance(shellLocation)
+                    : hasFileLocationInvocation
+                        ? DesktopTuner.MainWindow.TryOpenFileLocationInExistingInstance(fileLocationPath)
                 : !startInBackground && DesktopTuner.MainWindow.TryActivateExistingInstance(showSettings: true);
             if (!activated && !startInBackground)
                 MessageBox.Show("Desktop Tuner is already running, but the requested window could not be reached.", "Desktop Tuner", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -178,6 +189,7 @@ public partial class App : Application
         window.Show();
         if (hasFolderShellInvocation) window.OpenFolderFromShell(folderShellPath);
         else if (hasShellLocationInvocation) window.OpenShellLocationFromShell(shellLocation);
+        else if (hasFileLocationInvocation) window.OpenFileLocationFromShell(fileLocationPath);
     }
 
     private async void WatchTaskbarOwnerAsync(int ownerProcessId, string snapshotPath)
@@ -186,7 +198,7 @@ public partial class App : Application
         finally { Shutdown(); }
     }
 
-    private async void RunCustomShellSupervisor(string? pendingFolderPath, string? pendingShellLocation)
+    private async void RunCustomShellSupervisor(string? pendingFolderPath, string? pendingShellLocation, string? pendingFilePath)
     {
         var executablePath = Environment.ProcessPath;
         if (string.IsNullOrWhiteSpace(executablePath))
@@ -229,7 +241,7 @@ public partial class App : Application
                     if (shellHost is null) throw new InvalidOperationException("Windows did not start the Desktop Tuner shell host.");
                     if (await WaitForShellHostReadyAsync(shellHost, readinessSignal))
                     {
-                        ForwardPendingShellInvocation(ref pendingFolderPath, ref pendingShellLocation);
+                        ForwardPendingShellInvocation(ref pendingFolderPath, ref pendingShellLocation, ref pendingFilePath);
                         if (await WaitForShellHostExitOrHeartbeatTimeoutAsync(shellHost, heartbeatSignal))
                         {
                             exitCode = shellHost.ExitCode;
@@ -298,7 +310,7 @@ public partial class App : Application
         }
     }
 
-    private static void ForwardPendingShellInvocation(ref string? pendingFolderPath, ref string? pendingShellLocation)
+    private static void ForwardPendingShellInvocation(ref string? pendingFolderPath, ref string? pendingShellLocation, ref string? pendingFilePath)
     {
         var pending = new ShellHostPendingInvocationQueue();
         if (pendingFolderPath is not null)
@@ -311,15 +323,22 @@ public partial class App : Application
             pending.EnqueueShellLocation(pendingShellLocation);
             pendingShellLocation = null;
         }
+        if (pendingFilePath is not null)
+        {
+            pending.EnqueueFileLocation(pendingFilePath);
+            pendingFilePath = null;
+        }
 
         foreach (var invocation in pending.Drain())
         {
-            var forwarded = invocation.IsShellLocation
+            var forwarded = invocation.IsFileLocation
+                ? DesktopTuner.MainWindow.TryOpenFileLocationInExistingInstance(invocation.Value, ShellHostLaunchPolicy.PendingInvocationForwardTimeout)
+                : invocation.IsShellLocation
                 ? DesktopTuner.MainWindow.TryOpenShellLocationInExistingInstance(invocation.Value, ShellHostLaunchPolicy.PendingInvocationForwardTimeout)
                 : DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(invocation.Value, ShellHostLaunchPolicy.PendingInvocationForwardTimeout);
             if (!forwarded)
             {
-                var kind = invocation.IsShellLocation ? "Shell location" : "folder";
+                var kind = invocation.IsFileLocation ? "file location" : invocation.IsShellLocation ? "Shell location" : "folder";
                 Trace.TraceWarning($"The shell host became ready, but the pending {kind} launch could not be forwarded.");
             }
         }

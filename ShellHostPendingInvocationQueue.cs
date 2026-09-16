@@ -1,6 +1,6 @@
 namespace DesktopTuner;
 
-public readonly record struct ShellHostPendingInvocation(string Value, bool IsShellLocation);
+public readonly record struct ShellHostPendingInvocation(string Value, bool IsShellLocation, bool IsFileLocation = false);
 
 public sealed class ShellHostPendingInvocationQueue
 {
@@ -12,6 +12,12 @@ public sealed class ShellHostPendingInvocationQueue
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
         _pending.Enqueue(new ShellHostPendingInvocation(folderPath, IsShellLocation: false));
+    }
+
+    public void EnqueueFileLocation(string filePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        _pending.Enqueue(new ShellHostPendingInvocation(filePath, IsShellLocation: false, IsFileLocation: true));
     }
 
     public void EnqueueShellLocation(string shellLocation)

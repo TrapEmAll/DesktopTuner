@@ -42,7 +42,7 @@ namespace
         return true;
     }
 
-    bool GetFolderPath(IShellItemArray* items, std::wstring& folderPath)
+    bool GetItemPath(IShellItemArray* items, std::wstring& itemPath)
     {
         if (items == nullptr) return false;
         DWORD count = 0;
@@ -60,13 +60,8 @@ namespace
 
             std::wstring candidate(displayName);
             CoTaskMemFree(displayName);
-            const DWORD attributes = GetFileAttributesW(candidate.c_str());
-            if (attributes == INVALID_FILE_ATTRIBUTES) continue;
-            if ((attributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
-            {
-                if (!PathRemoveFileSpecW(candidate.data())) continue;
-            }
-            folderPath = std::move(candidate);
+            if (GetFileAttributesW(candidate.c_str()) == INVALID_FILE_ATTRIBUTES) continue;
+            itemPath = std::move(candidate);
             return true;
         }
         return false;
@@ -74,13 +69,17 @@ namespace
 
     HRESULT OpenFolderInDesktopTuner(IShellItemArray* items)
     {
-        std::wstring folderPath;
-        if (!GetFolderPath(items, folderPath)) return HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
+        std::wstring itemPath;
+        if (!GetItemPath(items, itemPath)) return HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
+        const DWORD attributes = GetFileAttributesW(itemPath.c_str());
+        if (attributes == INVALID_FILE_ATTRIBUTES) return HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
+        const bool isFile = (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
 
         std::wstring installDirectory;
         if (!GetInstallDirectory(installDirectory)) return HRESULT_FROM_WIN32(GetLastError());
         const std::wstring executable = installDirectory + L"\\DesktopTuner.exe";
-        const std::wstring command = QuoteWindowsCommandLineArgument(executable) + L" --open-folder " + QuoteWindowsCommandLineArgument(folderPath);
+        const std::wstring argument = isFile ? L"--open-file-location" : L"--open-folder";
+        const std::wstring command = QuoteWindowsCommandLineArgument(executable) + L" " + argument + L" " + QuoteWindowsCommandLineArgument(itemPath);
         std::wstring mutableCommand = command;
 
         STARTUPINFOW startup{};

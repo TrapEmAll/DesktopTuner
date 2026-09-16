@@ -879,6 +879,9 @@ var shellFolderPath = Path.GetFullPath(Environment.CurrentDirectory);
 CheckTrue(FolderShellIntegrationService.TryReadInvocation(["--OPEN-FOLDER", shellFolderPath], out var parsedShellFolder), "recognize case-insensitive folder context-menu launch arguments");
 Check(shellFolderPath, parsedShellFolder, "normalize the folder passed by a context-menu command");
 Check(false, FolderShellIntegrationService.TryReadInvocation(["--open-folder", "relative\\folder"], out _), "reject a relative folder context-menu target");
+CheckTrue(FolderShellIntegrationService.TryReadFileLocationInvocation(["--OPEN-FILE-LOCATION", Environment.ProcessPath!], out var parsedFileLocation), "recognize file location context-menu launch arguments");
+Check(Path.GetFullPath(Environment.ProcessPath!), parsedFileLocation, "normalize the file passed by a context-menu command");
+Check(false, FolderShellIntegrationService.TryReadFileLocationInvocation(["--open-file-location", shellFolderPath], out _), "reject a directory as a file location context-menu target");
 var shellNamespace = "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}";
 CheckTrue(FolderShellIntegrationService.TryReadShellLocationInvocation(["--OPEN-SHELL-LOCATION", shellNamespace], out var parsedShellNamespace), "recognize namespace context-menu launch arguments");
 Check(shellNamespace, parsedShellNamespace, "preserve the shell namespace parsing name");
@@ -886,6 +889,8 @@ CheckTrue(FolderShellIntegrationService.TryReadShellLocationInvocation(["--open-
 Check(shellFolderPath, parsedFolderFromVirtualVerb, "normalize filesystem folders passed through the virtual-folder shell verb");
 Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe")}\" --open-folder \"%1\"", FolderShellIntegrationService.BuildCommand(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe", "%1"), "quote executable and selected-folder arguments in the directory context command");
 Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe")}\" --open-folder \"%V\"", FolderShellIntegrationService.BuildCommand(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe", "%V"), "quote the current-folder argument for empty-space context menus");
+Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe")}\" --open-file-location \"%1\"", FolderShellIntegrationService.BuildFileLocationCommand(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe", "%1"), "quote selected-file arguments in the modern Explorer context command");
+Throws<ArgumentOutOfRangeException>(() => FolderShellIntegrationService.BuildFileLocationCommand(Environment.ProcessPath!, "%*"), "reject unrecognized file location substitutions");
 Throws<ArgumentOutOfRangeException>(() => FolderShellIntegrationService.BuildCommand(Environment.ProcessPath!, "%*"), "reject unrecognized shell path substitutions");
 Check($"\"{Path.GetFullPath(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe")}\" --open-shell-location \"%1\"", FolderShellIntegrationService.BuildShellLocationCommand(@"C:\\Program Files\\Desktop Tuner\\DesktopTuner.exe", "%1"), "quote executable and namespace arguments in the virtual-folder context command");
 Throws<ArgumentOutOfRangeException>(() => FolderShellIntegrationService.BuildShellLocationCommand(Environment.ProcessPath!, "%*"), "reject unrecognized namespace path substitutions");
@@ -1363,10 +1368,11 @@ Throws<ArgumentOutOfRangeException>(() => ShellHostPowerMenuCatalog.SystemComman
 var pendingShellInvocations = new ShellHostPendingInvocationQueue();
 pendingShellInvocations.EnqueueFolder("C:\\Users\\Example");
 pendingShellInvocations.EnqueueShellLocation("::{20D04FE0-3AEA-1069-A2D8-08002B30309D}");
+pendingShellInvocations.EnqueueFileLocation("C:\\Users\\Example\\report.docx");
 var drainedShellInvocations = pendingShellInvocations.Drain();
 Check(0, pendingShellInvocations.Count, "drain all pending shell-host startup invocations");
-Check("C:\\Users\\Example|False|::{20D04FE0-3AEA-1069-A2D8-08002B30309D}|True",
-    string.Join('|', drainedShellInvocations.Select(invocation => $"{invocation.Value}|{invocation.IsShellLocation}")),
+Check("C:\\Users\\Example|False|False|::{20D04FE0-3AEA-1069-A2D8-08002B30309D}|True|False|C:\\Users\\Example\\report.docx|False|True",
+    string.Join('|', drainedShellInvocations.Select(invocation => $"{invocation.Value}|{invocation.IsShellLocation}|{invocation.IsFileLocation}")),
     "preserve ordered filesystem and virtual shell-host startup invocations");
 Check("C:\\Program Files\\Example App\\tool.exe|--safe|two words",
     string.Join('|', RunCommandService.ParseCommandLine("\"C:\\Program Files\\Example App\\tool.exe\" --safe \"two words\"")), "parse quoted executable paths and arguments for the Run dialog");

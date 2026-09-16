@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private const int WM_COPYDATA = 0x004A;
     private const long WM_COPYDATA_OPEN_FOLDER = 0x44544E52;
     private const long WM_COPYDATA_OPEN_SHELL_LOCATION = 0x44544E53;
+    private const long WM_COPYDATA_OPEN_FILE_LOCATION = 0x44544E54;
     private const uint SMTO_ABORTIFHUNG = 0x0002;
     private const uint MOD_ALT = 0x0001;
     private const uint MOD_CONTROL = 0x0002;
@@ -1136,6 +1137,12 @@ public partial class MainWindow : Window
             handled = true;
             return new IntPtr(1);
         }
+        if (message == WM_COPYDATA && TryReadOpenFileLocationCopyData(lParam, out var filePath))
+        {
+            _ = Dispatcher.BeginInvoke(new Action(() => OpenFileLocationFromShell(filePath)));
+            handled = true;
+            return new IntPtr(1);
+        }
         if (message == WM_DWMCOLORIZATIONCOLORCHANGED)
             DesktopTheme.Apply(_currentValues["explorer-app-mode"] == 0);
         if (message == WM_APP_ACTIVATE_SETTINGS)
@@ -1261,6 +1268,37 @@ public partial class MainWindow : Window
         finally { Marshal.FreeHGlobal(payload); }
     }
 
+    public static bool TryOpenFileLocationInExistingInstance(string filePath, TimeSpan? timeout = null)
+    {
+        if (!Path.IsPathFullyQualified(filePath) || !File.Exists(filePath)) return false;
+        var payload = Marshal.StringToHGlobalUni(filePath);
+        try
+        {
+            var copyData = new CopyDataStruct
+            {
+                Data = new IntPtr(WM_COPYDATA_OPEN_FILE_LOCATION),
+                ByteCount = checked((filePath.Length + 1) * sizeof(char)),
+                DataPointer = payload
+            };
+            var deadline = Stopwatch.StartNew();
+            var forwardingTimeout = timeout ?? TimeSpan.FromSeconds(1);
+            while (deadline.Elapsed < forwardingTimeout)
+            {
+                var window = FindWindow(null, "Desktop Tuner");
+                if (window == IntPtr.Zero) { Thread.Sleep(50); continue; }
+                if (SendCopyData(window, WM_COPYDATA, IntPtr.Zero, ref copyData, SMTO_ABORTIFHUNG, 500, out var result) != IntPtr.Zero)
+                {
+                    if (result != IntPtr.Zero) return true;
+                    Thread.Sleep(50);
+                    continue;
+                }
+                return false;
+            }
+            return false;
+        }
+        finally { Marshal.FreeHGlobal(payload); }
+    }
+
     private static bool TryReadOpenFolderCopyData(IntPtr dataPointer, out string folderPath)
     {
         folderPath = string.Empty;
@@ -1289,6 +1327,20 @@ public partial class MainWindow : Window
         return FolderShellIntegrationService.IsShellLocationInvocationTarget(shellLocation);
     }
 
+    private static bool TryReadOpenFileLocationCopyData(IntPtr dataPointer, out string filePath)
+    {
+        filePath = string.Empty;
+        if (dataPointer == IntPtr.Zero) return false;
+        var data = Marshal.PtrToStructure<CopyDataStruct>(dataPointer);
+        if (data.Data.ToInt64() != WM_COPYDATA_OPEN_FILE_LOCATION || data.DataPointer == IntPtr.Zero || data.ByteCount is <= 0 or > 65536)
+            return false;
+        var value = Marshal.PtrToStringUni(data.DataPointer, data.ByteCount / sizeof(char));
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        var terminator = value.IndexOf('\0');
+        filePath = terminator >= 0 ? value[..terminator] : value;
+        return Path.IsPathFullyQualified(filePath) && File.Exists(filePath);
+    }
+
     public void OpenFolderFromShell(string folderPath)
     {
         if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
@@ -1297,6 +1349,18 @@ public partial class MainWindow : Window
             return;
         }
         OpenExplorer(Path.GetFullPath(folderPath));
+    }
+
+    public void OpenFileLocationFromShell(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        {
+            MessageBox.Show(this, "That file is no longer available.", "Could not open file location", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var fullPath = Path.GetFullPath(filePath);
+        var folder = Path.GetDirectoryName(fullPath);
+        if (!string.IsNullOrWhiteSpace(folder)) OpenExplorer(folder, fullPath);
     }
 
     public void OpenShellLocationFromShell(string shellLocation)
