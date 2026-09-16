@@ -8,6 +8,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Interop;
 using Microsoft.VisualBasic;
 
 namespace DesktopTuner;
@@ -40,6 +41,7 @@ public partial class StartMenuWindow : Window
     public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<AppEntry, bool>? pinTaskbarItem = null)
     {
         InitializeComponent();
+        SourceInitialized += Window_SourceInitialized;
         _identity = StartMenuIdentityService.ReadCurrentUser();
         ProfileInitials.Text = _identity.Initials;
         if (_identity.PicturePath is { } picturePath)
@@ -72,6 +74,13 @@ public partial class StartMenuWindow : Window
         _controlPanelApplets = ControlPanelAppletCatalog.Normalize(controlPanelApplets);
         _recentAppCount = Math.Clamp(recentAppCount, 0, StartRecentAppsStore.MaximumEntries);
         SetStyle(style);
+    }
+
+    private void Window_SourceInitialized(object? sender, EventArgs e)
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        SystemBackdropService.TryApplySmallRoundedCorners(handle);
+        SystemBackdropService.TryApplyMica(this);
     }
 
     public void SetStartPlaces(StartMenuPlacePreferences preferences) => _startPlaces = StartMenuPlaceCatalog.Normalize(preferences);
