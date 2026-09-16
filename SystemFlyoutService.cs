@@ -196,7 +196,11 @@ public static class SystemFlyoutService
 
     public static bool OpenNotificationCenter() => SendWindowsShortcut(VK_N, NotificationCenterSequence, "notification center");
 
+    public static bool OpenNotificationCenter(nint owner) => SendWindowsShortcutForOwner(owner, VK_N, NotificationCenterSequence, "notification center");
+
     public static bool OpenQuickSettings() => SendWindowsShortcut(VK_A, QuickSettingsSequence, "Quick Settings");
+
+    public static bool OpenQuickSettings(nint owner) => SendWindowsShortcutForOwner(owner, VK_A, QuickSettingsSequence, "Quick Settings");
 
     public static bool OpenEmojiPanel() => SendWindowsShortcut(VK_OEM_PERIOD, EmojiPanelSequence, "emoji panel");
 
@@ -244,6 +248,8 @@ public static class SystemFlyoutService
     public static bool OpenOnScreenKeyboard() => SendModifiedShortcut(OnScreenKeyboardSequence, "On-Screen Keyboard");
 
     public static bool OpenWidgets() => SendWindowsShortcut(VK_W, WidgetsSequence, "Widgets board");
+
+    public static bool OpenWidgets(nint owner) => SendWindowsShortcutForOwner(owner, VK_W, WidgetsSequence, "Widgets board");
 
     public static bool OpenRunDialog() => SendWindowsShortcut(VK_R, RunDialogSequence, "Run dialog");
 
@@ -329,6 +335,17 @@ public static class SystemFlyoutService
         return false;
     }
 
+    private static bool SendWindowsShortcutForOwner(nint owner, ushort shortcutKey, IReadOnlyList<KeyboardKeyEvent> sequence, string featureName)
+    {
+        if (owner == 0 || !SetForegroundWindow(owner))
+        {
+            Trace.TraceWarning($"Could not focus the taskbar owner before opening the Windows {featureName}; using the current foreground window.");
+            return SendWindowsShortcut(shortcutKey, sequence, featureName);
+        }
+
+        return SendWindowsShortcut(shortcutKey, sequence, featureName);
+    }
+
     private static bool SendModifiedShortcut(IReadOnlyList<KeyboardKeyEvent> sequence, string featureName)
     {
         if (IsKeyDown(VK_LWIN) || IsKeyDown(VK_RWIN) || IsKeyDown(VK_CONTROL)) return false;
@@ -354,6 +371,10 @@ public static class SystemFlyoutService
 
     [DllImport("user32.dll")]
     private static extern nint GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(nint window);
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(nint windowHandle, out uint processId);

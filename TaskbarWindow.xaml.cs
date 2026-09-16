@@ -2579,7 +2579,7 @@ public partial class TaskbarWindow : Window
         }
     }
 
-    private void Clock_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenNotificationCenter();
+    private void Clock_Click(object sender, RoutedEventArgs e) => OpenDisplayFlyout(SystemFlyoutService.OpenNotificationCenter);
 
     private void DateTimeSettings_Click(object sender, RoutedEventArgs e)
     {
@@ -2593,7 +2593,7 @@ public partial class TaskbarWindow : Window
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open notification settings", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
-    private void Weather_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWidgets();
+    private void Weather_Click(object sender, RoutedEventArgs e) => OpenDisplayFlyout(SystemFlyoutService.OpenWidgets);
 
     private async void WeatherRefresh_Click(object sender, RoutedEventArgs e) => await UpdateWeatherAsync();
 
@@ -2634,11 +2634,17 @@ public partial class TaskbarWindow : Window
         else SystemFlyoutService.FocusNotificationArea();
     }
 
-    private void QuickSettings_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenQuickSettings();
+    private void QuickSettings_Click(object sender, RoutedEventArgs e) => OpenDisplayFlyout(SystemFlyoutService.OpenQuickSettings);
 
     private void Emoji_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenEmojiPanel();
 
-    private void Widgets_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWidgets();
+    private void Widgets_Click(object sender, RoutedEventArgs e) => OpenDisplayFlyout(SystemFlyoutService.OpenWidgets);
+
+    private void OpenDisplayFlyout(Func<nint, bool> open)
+    {
+        var owner = _nativeReady ? new WindowInteropHelper(this).Handle : 0;
+        open(owner);
+    }
 
     private void UpdateWeatherVisibility()
     {
