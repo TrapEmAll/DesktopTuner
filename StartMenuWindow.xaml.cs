@@ -1184,9 +1184,16 @@ public partial class StartMenuWindow : Window
             return;
         }
 
+        var icons = await Task.Run(() => entries.ToDictionary(
+            entry => entry.FullPath,
+            entry => DesktopShellNamespaceCatalog.IsShellNamespaceLocation(entry.FullPath)
+                ? TaskbarIconService.LoadNamespaceIcon(entry.FullPath)
+                : TaskbarIconService.LoadIcon(entry.FullPath),
+            StringComparer.OrdinalIgnoreCase));
+        if (!menuItem.IsSubmenuOpen) return;
         foreach (var entry in entries)
         {
-            var item = new MenuItem { Header = entry.Name, Tag = entry };
+            var item = new MenuItem { Header = entry.Name, Tag = entry, Icon = icons.GetValueOrDefault(entry.FullPath) };
             item.Click += StartPlaceEntry_Click;
             if (StartMenuPlaceCatalog.CanExpand(entry))
                 item.SubmenuOpened += NestedPlaceFlyout_Opened;
