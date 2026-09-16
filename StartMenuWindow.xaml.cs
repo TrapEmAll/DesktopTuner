@@ -561,6 +561,20 @@ public partial class StartMenuWindow : Window
         var pinStartItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Pin to Start"));
         var pinTaskbarItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Pin to taskbar"));
         var runAsAdministratorItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Run as administrator"));
+        var hasRecentFileTarget = _recentFilesStore.TryResolveTargetPath(app.ShortcutPath, out var recentFileTarget)
+            && File.Exists(recentFileTarget);
+        var openWithItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open with…"));
+        var printItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Print"));
+        if (openWithItem is not null)
+        {
+            openWithItem.Visibility = hasRecentFileTarget ? Visibility.Visible : Visibility.Collapsed;
+            openWithItem.IsEnabled = hasRecentFileTarget;
+        }
+        if (printItem is not null)
+        {
+            printItem.Visibility = hasRecentFileTarget ? Visibility.Visible : Visibility.Collapsed;
+            printItem.IsEnabled = hasRecentFileTarget;
+        }
         if (pinStartItem is not null)
             pinStartItem.IsEnabled = StartPinCatalog.IsSupported(app)
                 && !_pinnedApps.Any(pin => string.Equals(pin.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase));
@@ -595,6 +609,34 @@ public partial class StartMenuWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, $"Windows could not run {app.Name} as administrator.\n\n{ex.Message}", "Could not elevate app", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void OpenWithRecentItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AppEntry app } || !_recentFilesStore.TryResolveTargetPath(app.ShortcutPath, out var targetPath) || !File.Exists(targetPath)) return;
+        try
+        {
+            var owner = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.OpenWithShellItemAsync(owner, targetPath);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Windows could not open the Open with dialog.\n\n{ex.Message}", "Could not open the Open with dialog", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void PrintRecentItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AppEntry app } || !_recentFilesStore.TryResolveTargetPath(app.ShortcutPath, out var targetPath) || !File.Exists(targetPath)) return;
+        try
+        {
+            var owner = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            await NativeShellContextMenuService.PrintShellItemAsync(owner, targetPath);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Windows could not print the selected file.\n\n{ex.Message}", "Could not print the selected file", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

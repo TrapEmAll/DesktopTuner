@@ -255,6 +255,8 @@
                                         <Button.ContextMenu>
                                             <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}" Opened="RecentStartContextMenu_Opened">
                                                 <MenuItem Header="Open file location" Tag="{Binding}" Click="OpenFileLocation_Click" />
+                                                <MenuItem Header="Open with…" Tag="{Binding}" Visibility="Collapsed" Click="OpenWithRecentItem_Click" />
+                                                <MenuItem Header="Print" Tag="{Binding}" Visibility="Collapsed" Click="PrintRecentItem_Click" />
                                                 <MenuItem Header="Pin to Start" Tag="{Binding}" Click="PinStartApp_Click" />
                                                 <MenuItem Header="Pin to taskbar" Tag="{Binding}" Click="PinTaskbarItem_Click" />
                                                 <MenuItem Header="Run as administrator" Tag="{Binding}" Click="RunAsAdministrator_Click" />
