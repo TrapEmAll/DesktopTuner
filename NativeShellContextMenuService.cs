@@ -124,6 +124,90 @@ public static class NativeShellContextMenuService
 
     internal static uint ReadClipboardSequenceNumber() => GetClipboardSequenceNumber();
 
+    internal static IReadOnlyList<string> ReadShellDropParsingNames(System.Windows.IDataObject data)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        try
+        {
+            const string shellIdListFormat = "Shell IDList Array";
+            if (!data.GetDataPresent(shellIdListFormat, autoConvert: false)) return [];
+            var payload = data.GetData(shellIdListFormat, autoConvert: false) switch
+            {
+                byte[] bytes => bytes,
+                Stream stream => ReadStreamBytes(stream),
+                _ => []
+            };
+            return ReadShellDropParsingNames(payload);
+        }
+        catch (Exception ex) when (ex is IOException or ArgumentException or InvalidOperationException or COMException)
+        {
+            Trace.TraceWarning($"Could not read Shell drag data: {ex.Message}");
+            return [];
+        }
+    }
+
+    private static byte[] ReadStreamBytes(Stream stream)
+    {
+        using var copy = new MemoryStream();
+        stream.CopyTo(copy);
+        return copy.ToArray();
+    }
+
+    private static IReadOnlyList<string> ReadShellDropParsingNames(byte[] payload)
+    {
+        if (payload.Length == 0 || !ShellClipboardPolicy.TryReadShellIdListArray(payload, out var parentOffset, out var itemOffsets)) return [];
+        var parentLength = GetPidlLength(payload, parentOffset);
+        if (parentLength == 0) return [];
+        var parentPidl = Marshal.AllocCoTaskMem(parentLength);
+        try
+        {
+            Marshal.Copy(payload, parentOffset, parentPidl, parentLength);
+            var parsingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var itemOffset in itemOffsets)
+            {
+                var itemLength = GetPidlLength(payload, itemOffset);
+                if (itemLength == 0) continue;
+                var childPidl = Marshal.AllocCoTaskMem(itemLength);
+                try
+                {
+                    Marshal.Copy(payload, itemOffset, childPidl, itemLength);
+                    var absolutePidl = ILCombine(parentPidl, childPidl);
+                    if (absolutePidl == nint.Zero) continue;
+                    try
+                    {
+                        if (SHGetNameFromIDList(absolutePidl, DesktopAbsoluteParsing, out var namePointer) >= 0 && namePointer != nint.Zero)
+                        {
+                            try
+                            {
+                                var parsingName = Marshal.PtrToStringUni(namePointer);
+                                if (!string.IsNullOrWhiteSpace(parsingName)) parsingNames.Add(parsingName);
+                            }
+                            finally { Marshal.FreeCoTaskMem(namePointer); }
+                        }
+                    }
+                    finally { Marshal.FreeCoTaskMem(absolutePidl); }
+                }
+                finally { Marshal.FreeCoTaskMem(childPidl); }
+            }
+            return parsingNames.ToArray();
+        }
+        finally { Marshal.FreeCoTaskMem(parentPidl); }
+    }
+
+    private static int GetPidlLength(byte[] payload, int offset)
+    {
+        if (offset < 0 || offset >= payload.Length) return 0;
+        var cursor = offset;
+        while (cursor <= payload.Length - sizeof(ushort))
+        {
+            var itemSize = BitConverter.ToUInt16(payload, cursor);
+            if (itemSize == 0) return cursor + sizeof(ushort) - offset;
+            if (itemSize < sizeof(ushort) || itemSize > payload.Length - cursor) return 0;
+            cursor += itemSize;
+        }
+        return 0;
+    }
+
     internal static IReadOnlyList<string> ReadCutItemParsingNamesFromClipboard()
     {
         if (!OpenClipboard(nint.Zero)) return [];

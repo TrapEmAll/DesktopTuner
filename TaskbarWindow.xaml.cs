@@ -662,7 +662,9 @@ public partial class TaskbarWindow : Window
 
     private void Window_DragOver(object sender, DragEventArgs e)
     {
-        var canPin = GetDroppableItems(e.Data).Any();
+        var canPin = GetDroppableItems(e.Data).Any()
+            || NativeShellContextMenuService.ReadShellDropParsingNames(e.Data)
+                .Any(TaskbarPinCatalog.IsSupportedShellNamespaceTarget);
         e.Effects = canPin ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
         if (_preferences.TaskbarLayout == TaskbarStyle.DockLike)
@@ -684,7 +686,10 @@ public partial class TaskbarWindow : Window
         ResetDropHighlight();
         var currentPins = _preferences.PinnedApps ?? [];
         var pins = TaskbarPinCatalog.AddDroppedFiles(currentPins, GetDroppableItems(e.Data), Directory.Exists);
-        if (pins.Count == currentPins.Count) return;
+        foreach (var parsingName in NativeShellContextMenuService.ReadShellDropParsingNames(e.Data)
+                     .Where(TaskbarPinCatalog.IsSupportedShellNamespaceTarget))
+            pins = TaskbarPinCatalog.AddShellNamespace(pins, DesktopShellNamespaceCatalog.GetFriendlyName(parsingName), parsingName);
+        if (pins.SequenceEqual(currentPins)) return;
 
         _preferences = _preferences with { PinnedApps = pins };
         _persistPreferences(_preferences);
