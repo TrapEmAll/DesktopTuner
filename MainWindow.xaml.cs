@@ -2286,6 +2286,33 @@ public partial class MainWindow : Window
         if (!string.IsNullOrWhiteSpace(selectPath)) _explorerWindow.SelectPathInCurrentFolder(selectPath);
     }
 
+    private void OpenExplorerFromWindowsShortcut()
+    {
+        if (_explorerWindow is not { IsVisible: true })
+        {
+            OpenExplorer();
+            return;
+        }
+
+        var window = new ExplorerWindow(
+            showHiddenItems: _currentValues["explorer-hidden"] == 1,
+            hideFileExtensions: _currentValues["explorer-extensions"] == 1,
+            startInThisPc: _currentValues["explorer-launch"] == 1,
+            showRecentItems: _currentValues["start-recent"] == 1,
+            quickAccessStore: _explorerQuickAccessStore,
+            folderViewStore: new ExplorerFolderViewStore(),
+            sessionStore: new ExplorerSessionStore(),
+            restoreSavedSession: false,
+            saveSession: false,
+            pinTaskbarItem: TryPinTaskbarItem,
+            isTaskbarItemPinned: path => _pinnedApps.Any(pin => string.Equals(pin.ExecutablePath, path, StringComparison.OrdinalIgnoreCase)),
+            pinStartItem: TryPinStartItem,
+            isStartItemPinned: path => _pinnedStartApps.Any(pin => string.Equals(pin.ShortcutPath, path, StringComparison.OrdinalIgnoreCase)),
+            openShellLocation: OpenShellLocationFromShell)
+        { Owner = this };
+        window.Show();
+    }
+
     private bool TryPinTaskbarItem(string path)
     {
         var currentPins = _pinnedApps;
@@ -2498,7 +2525,7 @@ public partial class MainWindow : Window
             _windowsKeyHook = null;
         }
         var hook = new WindowsKeyStartHook(ShowStartMenu, CanActivateTaskbarPinShortcut, ActivateTaskbarPinShortcut, CanFocusTaskbar, FocusTaskbar,
-            replaceBareWindowsKey: ShellHostLaunchPolicy.ShouldReplaceWindowsKey(_shellHostMode, _replaceWindowsKey), canOpenExplorer: () => _replaceExplorerShortcut, openExplorer: () => OpenExplorer(),
+            replaceBareWindowsKey: ShellHostLaunchPolicy.ShouldReplaceWindowsKey(_shellHostMode, _replaceWindowsKey), canOpenExplorer: () => _replaceExplorerShortcut, openExplorer: OpenExplorerFromWindowsShortcut,
             replaceControlEscape: _shellHostMode || _shellOverlayMode,
             canToggleDesktop: () => ShellHostLaunchPolicy.ShouldManageReplacementDesktop(_shellHostMode, _shellOverlayMode) && _taskbarWindows.Any(window => window.IsVisible), toggleDesktop: ToggleShowDesktop,
             canFocusTaskbarSystem: CanFocusTaskbarSystemArea, focusTaskbarSystem: FocusTaskbarSystemArea,
