@@ -1201,6 +1201,8 @@ public partial class StartMenuWindow : Window
             var place = placesById[placeId];
             var item = new MenuItem { Header = place.Label, Tag = place.Id };
             item.Click += SystemPlace_Click;
+            if (TryResolveNativeStartShellTarget(placeId) is { } nativeTarget)
+                item.ContextMenu = CreateNativeStartShellContextMenu(nativeTarget);
             if (dropdownIds.Contains(placeId)) item.SubmenuOpened += PlaceFlyout_Opened;
             if (placeId == "control-panel") item.SubmenuOpened += ControlPanelFlyout_Opened;
             menu.Items.Add(item);
@@ -1236,6 +1238,8 @@ public partial class StartMenuWindow : Window
             if (!visibleApplets.Contains(appletId) || !availableApplets.TryGetValue(appletId, out var applet)) continue;
             var item = new MenuItem { Header = applet.Label, Tag = applet.Id };
             item.Click += ControlPanelApplet_Click;
+            if (TryGetControlPanelAppletTarget(applet) is { } nativeTarget)
+                item.ContextMenu = CreateNativeStartShellContextMenu(nativeTarget);
             menuItem.Items.Add(item);
             appletCount++;
         }
@@ -1295,15 +1299,45 @@ public partial class StartMenuWindow : Window
                     : new Image { Source = icon, Style = (Style)FindResource("StartFlyoutIcon") }
             };
             item.Click += StartPlaceEntry_Click;
-            var nativeContextMenu = new ContextMenu();
-            var nativeMenuItem = new MenuItem { Header = "Show more options", Tag = entry.FullPath };
-            nativeMenuItem.Click += ShowNativeStartShellContextMenu_Click;
-            nativeContextMenu.Items.Add(nativeMenuItem);
-            item.ContextMenu = nativeContextMenu;
+            item.ContextMenu = CreateNativeStartShellContextMenu(entry.FullPath);
             if (StartMenuPlaceCatalog.CanExpand(entry))
                 item.SubmenuOpened += NestedPlaceFlyout_Opened;
             menuItem.Items.Add(item);
         }
+    }
+
+    private static string? TryResolveNativeStartShellTarget(string placeId)
+    {
+        try
+        {
+            var target = StartMenuPlaceCatalog.ResolveTarget(placeId);
+            return DesktopShellNamespaceCatalog.IsShellNamespaceLocation(target)
+                || File.Exists(target)
+                || Directory.Exists(target)
+                ? target
+                : null;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return null;
+        }
+    }
+
+    private static string? TryGetControlPanelAppletTarget(ControlPanelApplet applet)
+    {
+        var target = applet.Arguments.FirstOrDefault(argument => argument.EndsWith(".cpl", StringComparison.OrdinalIgnoreCase));
+        if (target is null) return null;
+        var path = Path.Combine(Environment.SystemDirectory, Path.GetFileName(target));
+        return File.Exists(path) ? path : null;
+    }
+
+    private ContextMenu CreateNativeStartShellContextMenu(string target)
+    {
+        var nativeContextMenu = new ContextMenu();
+        var nativeMenuItem = new MenuItem { Header = "Show more options", Tag = target };
+        nativeMenuItem.Click += ShowNativeStartShellContextMenu_Click;
+        nativeContextMenu.Items.Add(nativeMenuItem);
+        return nativeContextMenu;
     }
 
     private void StartPlaceEntry_Click(object sender, RoutedEventArgs e)
