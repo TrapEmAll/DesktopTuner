@@ -186,7 +186,7 @@ public sealed class WindowsKeyGesture
                 _suppressedShortcutKeys.Add(key);
                 return WindowsKeyAction.OpenCopilot;
             }
-            if (key == 0xBE && !controlPressed && !altPressed && !shiftPressed && canOpenEmojiPanel?.Invoke() == true)
+            if (key is 0xBA or 0xBE && !controlPressed && !altPressed && !shiftPressed && canOpenEmojiPanel?.Invoke() == true)
             {
                 _taskbarShortcutConsumed = true;
                 _suppressedShortcutKeys.Add(key);
