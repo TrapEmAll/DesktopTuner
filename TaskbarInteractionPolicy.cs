@@ -5,7 +5,8 @@ namespace DesktopTuner;
 public static class TaskbarInteractionPolicy
 {
     public static bool ShouldShowContextMenu(Key key, ModifierKeys modifiers) =>
-        key == Key.F10 && modifiers == ModifierKeys.Shift;
+        (key == Key.F10 && modifiers == ModifierKeys.Shift) ||
+        (key == Key.Apps && modifiers == ModifierKeys.None);
 
     public static bool ShouldShowSystemMenu(MouseButton changedButton, ModifierKeys modifiers) =>
         changedButton == MouseButton.Right && modifiers == ModifierKeys.Shift;
