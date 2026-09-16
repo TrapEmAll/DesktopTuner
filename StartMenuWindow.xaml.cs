@@ -1199,7 +1199,17 @@ public partial class StartMenuWindow : Window
             if (!visibleIds.Contains(placeId)) continue;
             if (hasSeparatedSections && index == firstAdditional && menu.Items.Count > 0) menu.Items.Add(new Separator());
             var place = placesById[placeId];
-            var item = new MenuItem { Header = place.Label, Tag = place.Id };
+            var iconTarget = TryResolveStartPlaceIconTarget(placeId);
+            var icon = iconTarget is null ? null
+                : DesktopShellNamespaceCatalog.IsShellNamespaceLocation(iconTarget)
+                    ? TaskbarIconService.LoadNamespaceIcon(iconTarget)
+                    : TaskbarIconService.LoadIcon(iconTarget);
+            var item = new MenuItem
+            {
+                Header = place.Label,
+                Tag = place.Id,
+                Icon = icon is null ? null : new Image { Source = icon, Width = 18, Height = 18 }
+            };
             item.Click += SystemPlace_Click;
             if (TryResolveNativeStartShellTarget(placeId) is { } nativeTarget)
                 item.ContextMenu = CreateNativeStartShellContextMenu(nativeTarget);
@@ -1308,6 +1318,25 @@ public partial class StartMenuWindow : Window
 
     private static string? TryResolveNativeStartShellTarget(string placeId)
     {
+        try
+        {
+            var target = StartMenuPlaceCatalog.ResolveTarget(placeId);
+            return DesktopShellNamespaceCatalog.IsShellNamespaceLocation(target)
+                || File.Exists(target)
+                || Directory.Exists(target)
+                ? target
+                : null;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return null;
+        }
+    }
+
+    private static string? TryResolveStartPlaceIconTarget(string placeId)
+    {
+        if (string.Equals(placeId, "control-panel", StringComparison.OrdinalIgnoreCase))
+            return "shell:ControlPanelFolder";
         try
         {
             var target = StartMenuPlaceCatalog.ResolveTarget(placeId);

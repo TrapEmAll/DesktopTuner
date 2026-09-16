@@ -1581,6 +1581,7 @@ public partial class TaskbarWindow : Window
         }
 
         var openFolderItem = new MenuItem { Header = "Open in File Explorer", Tag = path };
+        openFolderItem.ContextMenu = CreateNativeTaskbarFolderContextMenu(path);
         openFolderItem.Click += OpenFolderMenuEntry_Click;
         menu.Items.Add(openFolderItem);
         menu.Items.Add(new Separator());
