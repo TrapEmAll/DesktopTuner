@@ -95,6 +95,7 @@ public partial class MainWindow : Window
     private bool _replaceNativeTaskbar;
     private bool _startWithWindows;
     private bool _folderShellIntegrationEnabled;
+    private bool _classicContextMenus;
     private readonly bool _startInBackground;
     private readonly bool _shellHostMode;
     private readonly bool _shellOverlayMode;
@@ -154,6 +155,12 @@ public partial class MainWindow : Window
         _taskbarShowWindowsFromAllVirtualDesktops = desktopPreferences.TaskbarShowWindowsFromAllVirtualDesktops;
         _replaceNativeTaskbar = desktopPreferences.ReplaceNativeTaskbar;
         _folderShellIntegrationEnabled = desktopPreferences.FolderShellIntegrationEnabled;
+        _classicContextMenus = desktopPreferences.ClassicContextMenus;
+        if (_classicContextMenus)
+        {
+            try { ClassicContextMenuService.SetEnabled(true); }
+            catch (Exception ex) { Trace.TraceWarning($"Could not restore classic context-menu integration: {ex.Message}"); }
+        }
         _nativeTaskbarWatchTimer.Tick += (_, _) => MaintainNativeTaskbars();
         _startWithWindows = desktopPreferences.StartWithWindows;
         foreach (var setting in SettingsCatalog.All)
@@ -429,6 +436,11 @@ public partial class MainWindow : Window
             folderShellIntegration.Unchecked += (_, _) => SetFolderShellIntegration(folderShellIntegration, false);
             PageContent.Children.Add(folderShellIntegration);
             PageContent.Children.Add(InfoCard("Folder and Shell location integration", "Adds per-user commands for filesystem folders, virtual Shell locations, drives, and empty-folder backgrounds. Locations open in Desktop Tuner's companion Explorer or namespace browser. During supervised shell replacement, Desktop Tuner temporarily owns the relevant per-user default handlers and restores them when the shell exits. Windows 11 may place these commands under Show more options."));
+            var classicContextMenus = new CheckBox { Content = "Use classic context menus in Windows", IsChecked = _classicContextMenus, Margin = new Thickness(0, 0, 0, 12), FontSize = 13 };
+            classicContextMenus.Checked += (_, _) => SetClassicContextMenus(classicContextMenus, true);
+            classicContextMenus.Unchecked += (_, _) => SetClassicContextMenus(classicContextMenus, false);
+            PageContent.Children.Add(classicContextMenus);
+            PageContent.Children.Add(InfoCard("Classic context menus", "Restores Windows' classic context-menu surface through a per-user Shell registration. Restart Windows Explorer or sign out and back in for every native Explorer window to reflect the change."));
             PageContent.Children.Add(InfoCard("Classic browsing tools", "The companion Explorer includes a command strip, quick access locations, current-folder search, and a bottom details pane. Double-click folders to browse or files to open them with their default app."));
         }
         if (section == "Taskbar")
@@ -1736,7 +1748,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarLabelVisibility != TaskbarLabelVisibility.Never, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather, _taskbarLocked, _taskbarLabelVisibility, _taskbarSearchStyle, _startMenuIconSize, _startOpenAllApps);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarLabelVisibility != TaskbarLabelVisibility.Never, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather, _taskbarLocked, _taskbarLabelVisibility, _taskbarSearchStyle, _startMenuIconSize, _startOpenAllApps, _classicContextMenus);
 
     private DesktopPreferences CreateTaskbarRuntimePreferences(DesktopPreferences? preferences = null)
     {
@@ -1945,6 +1957,7 @@ public partial class MainWindow : Window
             _taskbarSearchStyle = preferences.TaskbarSearchStyle;
             _startWithWindows = preferences.StartWithWindows;
             _replaceNativeTaskbar = preferences.ReplaceNativeTaskbar;
+            _classicContextMenus = preferences.ClassicContextMenus;
             if ((displayModeChanged || replacementModeChanged) && _taskbarWindows.Any(window => window.IsVisible))
             {
                 CloseTaskbars();
@@ -2004,6 +2017,27 @@ public partial class MainWindow : Window
             catch (Exception rollbackError) { ex = new AggregateException("The folder context menu could not be restored after saving failed.", ex, rollbackError); }
             checkBox.IsChecked = _folderShellIntegrationEnabled;
             MessageBox.Show(this, ex.Message, "Could not change folder context menus", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void SetClassicContextMenus(CheckBox checkBox, bool enabled)
+    {
+        if (_classicContextMenus == enabled) return;
+        try
+        {
+            ClassicContextMenuService.SetEnabled(enabled);
+            _preferences.Save(CreateDesktopPreferences() with { ClassicContextMenus = enabled });
+            _classicContextMenus = enabled;
+            SetStatus(enabled
+                ? "Classic Windows context menus are enabled. Restart Explorer to apply them everywhere."
+                : "Classic Windows context menus are disabled. Restart Explorer to apply the change.");
+        }
+        catch (Exception ex)
+        {
+            try { ClassicContextMenuService.SetEnabled(_classicContextMenus); }
+            catch (Exception rollbackError) { ex = new AggregateException("The classic context-menu registration could not be restored after saving failed.", ex, rollbackError); }
+            checkBox.IsChecked = _classicContextMenus;
+            MessageBox.Show(this, ex.Message, "Could not change classic context menus", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
