@@ -39,6 +39,9 @@
             <Setter Property="Padding" Value="{DynamicResource TouchMenuItemPadding}" />
             <Setter Property="MinHeight" Value="{DynamicResource TouchMenuItemMinimumHeight}" />
         </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="local:AcrylicComboBoxBehavior.IsEnabled" Value="True" />
+        </Style>
         <Style TargetType="ToolTip">
             <Setter Property="Background" Value="{DynamicResource DesktopSurfaceBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource DesktopPrimaryTextBrush}" />
