@@ -296,6 +296,7 @@
                                         <Button.ContextMenu>
                                             <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}" Opened="RecentStartContextMenu_Opened">
                                                 <MenuItem Header="Open file location" Tag="{Binding}" Click="OpenFileLocation_Click" />
+                                                <MenuItem Header="Show more options" Tag="{Binding}" Visibility="Collapsed" Click="ShowNativeStartShellContextMenu_Click" />
                                                 <MenuItem Header="Open with…" Tag="{Binding}" Visibility="Collapsed" Click="OpenWithRecentItem_Click" />
                                                 <MenuItem Header="Print" Tag="{Binding}" Visibility="Collapsed" Click="PrintRecentItem_Click" />
                                                 <MenuItem Header="Pin to Start" Tag="{Binding}" Click="PinStartApp_Click" />
@@ -348,10 +349,11 @@
                         <DataTemplate>
                             <Grid>
                                 <Grid.ContextMenu>
-                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" Opened="StartApplicationContextMenu_Opened">
                                         <MenuItem Header="Pin to Start" Tag="{Binding Application}" Click="PinStartApp_Click" />
                                         <MenuItem Header="Pin to taskbar" Tag="{Binding Application}" IsEnabled="{Binding Application.CanPinToTaskbar}" Click="PinTaskbarItem_Click" />
                                         <MenuItem Header="Open file location" Tag="{Binding Application}" IsEnabled="{Binding Application.CanOpenFileLocation}" Click="OpenFileLocation_Click" />
+                                        <MenuItem Header="Show more options" Tag="{Binding Application}" Visibility="Collapsed" Click="ShowNativeStartShellContextMenu_Click" />
                                         <MenuItem Header="Run as administrator" Tag="{Binding Application}" IsEnabled="{Binding Application.CanRunElevated}" Click="RunAsAdministrator_Click" />
                                     </ContextMenu>
                                 </Grid.ContextMenu>
@@ -390,11 +392,12 @@
                         <HierarchicalDataTemplate DataType="{x:Type local:StartMenuNode}" ItemsSource="{Binding Children}">
                             <StackPanel Orientation="Horizontal">
                                 <StackPanel.ContextMenu>
-                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" Opened="StartApplicationContextMenu_Opened">
                                         <MenuItem Header="Pin to Start" Tag="{Binding Application}" IsEnabled="{Binding CanPinApplication}" Click="PinStartApp_Click" />
                                         <MenuItem Header="Pin to taskbar" Tag="{Binding Application}" IsEnabled="{Binding CanPinApplicationToTaskbar}" Click="PinTaskbarItem_Click" />
                                         <Separator />
                                         <MenuItem Header="Open file location" Tag="{Binding Application}" IsEnabled="{Binding CanOpenApplicationFileLocation}" Click="OpenFileLocation_Click" />
+                                        <MenuItem Header="Show more options" Tag="{Binding Application}" Visibility="Collapsed" Click="ShowNativeStartShellContextMenu_Click" />
                                         <Separator />
                                         <MenuItem Header="Run as administrator" Tag="{Binding Application}" IsEnabled="{Binding CanRunApplicationAsAdministrator}" Click="RunAsAdministrator_Click" />
                                     </ContextMenu>

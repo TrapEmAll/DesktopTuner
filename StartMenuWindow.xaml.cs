@@ -633,6 +633,28 @@ public partial class StartMenuWindow : Window
             pinTaskbarItem.IsEnabled = _pinTaskbarItem is not null && app.CanPinToTaskbar;
         if (runAsAdministratorItem is not null)
             runAsAdministratorItem.IsEnabled = !_recentFilesStore.IsRecentShortcut(app.ShortcutPath) && app.CanRunElevated;
+        ConfigureNativeShellMenu(menu, app);
+    }
+
+    private void StartApplicationContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu menu) return;
+        var app = menu.DataContext switch
+        {
+            StartMenuAppListItem item => item.Application,
+            StartMenuNode node => node.Application,
+            _ => null
+        };
+        if (app is not null) ConfigureNativeShellMenu(menu, app);
+    }
+
+    private static void ConfigureNativeShellMenu(ContextMenu menu, AppEntry app)
+    {
+        var item = menu.Items.OfType<MenuItem>().FirstOrDefault(candidate => Equals(candidate.Header, "Show more options"));
+        if (item is null) return;
+        item.Tag = app;
+        var available = app.IsShellNamespace || File.Exists(app.ShortcutPath) || Directory.Exists(app.ShortcutPath);
+        item.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void ClearRecentStartApps_Click(object sender, RoutedEventArgs e)
@@ -943,6 +965,23 @@ public partial class StartMenuWindow : Window
     }
 
     private async void ShowNativePinnedShellContextMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: AppEntry app }) return;
+        try
+        {
+            var owner = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            if (app.IsShellNamespace)
+                await NativeShellContextMenuService.ShowForShellItemAsync(owner, app.ShortcutPath);
+            else
+                await NativeShellContextMenuService.ShowForItemsAsync(owner, [app.ShortcutPath]);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception)
+        {
+            MessageBox.Show(this, $"Windows could not show the native menu for {app.Name}.\n\n{ex.Message}", "Could not open Shell menu", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void ShowNativeStartShellContextMenu_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: AppEntry app }) return;
         try
