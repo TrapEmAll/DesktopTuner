@@ -497,6 +497,7 @@ public partial class MainWindow : Window
             spacingSelector.Items.Add(new ComboBoxItem { Content = "Compact", Tag = TaskbarButtonSpacing.Compact });
             spacingSelector.Items.Add(new ComboBoxItem { Content = "Standard", Tag = TaskbarButtonSpacing.Standard });
             spacingSelector.Items.Add(new ComboBoxItem { Content = "Relaxed", Tag = TaskbarButtonSpacing.Relaxed });
+            spacingSelector.Items.Add(new ComboBoxItem { Content = "Wide", Tag = TaskbarButtonSpacing.Wide });
             spacingSelector.SelectedIndex = (int)_taskbarButtonSpacing;
             spacingSelector.SelectionChanged += (_, _) =>
             {

@@ -11,7 +11,13 @@ public enum TaskbarGroupingMode { Always, WhenFull, Never }
 public enum TaskbarWindowDisplayMode { AllTaskbars, TaskbarOnWhichWindowIsOpen, PrimaryAndTaskbarOnWhichWindowIsOpen }
 public enum TaskbarButtonAlignment { Left, Center }
 public enum TaskbarIconSize { Small, Standard, Large }
-public enum TaskbarButtonSpacing { Compact, Standard, Relaxed }
+public enum TaskbarButtonSpacing
+{
+    Compact = 0,
+    Standard = 1,
+    Relaxed = 2,
+    Wide = 3
+}
 public enum TaskbarLabelVisibility { Always, WhenFull, Never }
 public enum TaskbarButtonEffect { Accent, Aura, DynamicAura }
 public enum TaskbarVisualStyle { Windows11, Windows10, Windows7 }

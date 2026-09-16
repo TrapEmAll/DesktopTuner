@@ -9,6 +9,7 @@ public static class TaskbarButtonSpacingPolicy
         TaskbarButtonSpacing.Compact => 1,
         TaskbarButtonSpacing.Standard => 2,
         TaskbarButtonSpacing.Relaxed => 4,
+        TaskbarButtonSpacing.Wide => 6,
         _ => throw new ArgumentOutOfRangeException(nameof(spacing))
     };
 
