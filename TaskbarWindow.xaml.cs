@@ -43,7 +43,7 @@ public partial class TaskbarWindow : Window
     private readonly Action<string>? _executePowerUserCommand;
     private readonly Func<string, bool>? _openDirectoryInCompanionExplorer;
     private readonly Func<string, bool>? _openShellLocationInCompanionExplorer;
-    private readonly Action<string>? _openFileLocationInCompanionExplorer;
+    private readonly Func<string, bool>? _openFileLocationInCompanionExplorer;
     private readonly Func<string, bool>? _pinStartItem;
     private readonly bool _shellHostMode;
     private DesktopPreferences _preferences = new(TaskbarEdge.Bottom);
@@ -80,7 +80,7 @@ public partial class TaskbarWindow : Window
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Func<string, bool>? openDirectoryInCompanionExplorer = null, Action<string>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? pinStartItem = null, bool shellHostMode = false, Action<TaskbarDisplay, string>? searchStartMenu = null)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Func<string, bool>? openDirectoryInCompanionExplorer = null, Func<string, bool>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? pinStartItem = null, bool shellHostMode = false, Action<TaskbarDisplay, string>? searchStartMenu = null)
     {
         InitializeComponent();
         _isDark = TaskbarTheme.ReadSystemDarkMode();
@@ -1251,9 +1251,8 @@ public partial class TaskbarWindow : Window
         if (sender is not MenuItem { Tag: TaskbarWindowGroup group } || TaskbarWindowGrouping.GetLaunchPath(group) is not { } path) return;
         try
         {
-            if (_openFileLocationInCompanionExplorer is not null)
+            if (_openFileLocationInCompanionExplorer?.Invoke(path) == true)
             {
-                _openFileLocationInCompanionExplorer(path);
                 return;
             }
 
@@ -1384,9 +1383,8 @@ public partial class TaskbarWindow : Window
         if (sender is not MenuItem { Tag: TaskbarJumpListDestination destination } || !File.Exists(destination.ParsingName)) return;
         try
         {
-            if (_openFileLocationInCompanionExplorer is not null)
+            if (_openFileLocationInCompanionExplorer?.Invoke(destination.ParsingName) == true)
             {
-                _openFileLocationInCompanionExplorer(destination.ParsingName);
                 return;
             }
             Process.Start(AppCatalogService.BuildFileLocationLaunchInfo(new AppEntry(destination.Name, destination.ParsingName)));
@@ -1468,9 +1466,8 @@ public partial class TaskbarWindow : Window
         if (sender is not MenuItem { Tag: PinnedTaskbarApp { CanOpenLocation: true } app }) return;
         try
         {
-            if (_openFileLocationInCompanionExplorer is not null)
+            if (_openFileLocationInCompanionExplorer?.Invoke(app.ExecutablePath) == true)
             {
-                _openFileLocationInCompanionExplorer(app.ExecutablePath);
                 return;
             }
             System.Diagnostics.Process.Start(TaskbarPinCatalog.BuildLocationLaunchInfo(app));

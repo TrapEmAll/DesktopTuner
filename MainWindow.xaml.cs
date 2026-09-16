@@ -1563,7 +1563,7 @@ public partial class MainWindow : Window
             focusSystemArea: _shellHostMode ? FocusTaskbarSystemArea : null,
             executePowerUserCommand: ShellHostLaunchPolicy.ShouldProvidePowerUserMenu(_shellHostMode, _shellOverlayMode) ? ExecuteShellHostPowerUserCommand : null,
             openDirectoryInCompanionExplorer: _shellHostMode ? TryOpenDirectoryInCompanionExplorer : null,
-            openFileLocationInCompanionExplorer: _shellHostMode ? OpenPinnedFileLocationInCompanionExplorer : null,
+            openFileLocationInCompanionExplorer: _shellHostMode ? TryOpenFileLocationInCompanionExplorer : null,
             openShellLocationInCompanionExplorer: _shellHostMode ? TryOpenLocationInCompanionExplorer : null,
             pinStartItem: TryPinStartItem,
             shellHostMode: _shellHostMode,
@@ -1578,19 +1578,6 @@ public partial class MainWindow : Window
         _taskbarWindows.Add(taskbar);
         taskbar.Show();
         return taskbar;
-    }
-
-    private void OpenPinnedFileLocationInCompanionExplorer(string path)
-    {
-        if (Directory.Exists(path))
-        {
-            OpenExplorer(path);
-            return;
-        }
-
-        var folder = Path.GetDirectoryName(path);
-        if (!string.IsNullOrWhiteSpace(folder) && File.Exists(path) && Directory.Exists(folder))
-            OpenExplorer(folder, path);
     }
 
     private void TaskbarWindow_ContentRendered(object? sender, EventArgs e)
@@ -2384,8 +2371,16 @@ public partial class MainWindow : Window
         if (!_shellHostMode || !File.Exists(path)) return false;
         var folder = Path.GetDirectoryName(path);
         if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return false;
-        OpenExplorer(folder, Path.GetFullPath(path));
-        return true;
+        try
+        {
+            OpenExplorer(folder, Path.GetFullPath(path));
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
+        {
+            System.Diagnostics.Trace.TraceWarning($"Could not open companion Explorer file location '{path}': {ex.Message}");
+            return false;
+        }
     }
 
     private bool TryOpenDirectoryInCompanionExplorer(string path)
