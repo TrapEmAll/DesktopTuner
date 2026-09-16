@@ -483,6 +483,14 @@ public partial class StartMenuWindow : Window
             Close();
             e.Handled = true;
         }
+        else if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control
+            && Keyboard.FocusedElement is Button { Tag: AppEntry app }
+            && (app.IsDirectory || app.IsShellNamespace)
+            && _openFolderInNewWindow?.Invoke(app.ShortcutPath) == true)
+        {
+            Close();
+            e.Handled = true;
+        }
         else if (e.Key == Key.Enter)
         {
             if (!_catalogLoaded)
