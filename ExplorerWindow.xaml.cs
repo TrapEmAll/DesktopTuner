@@ -1278,7 +1278,13 @@ public partial class ExplorerWindow : Window
 
             foreach (var directory in result.Directories)
             {
-                var item = new MenuItem { Header = directory.Name, Tag = directory.Path };
+                var icon = TaskbarIconService.LoadIcon(directory.Path);
+                var item = new MenuItem
+                {
+                    Header = directory.Name,
+                    Tag = directory.Path,
+                    Icon = icon is null ? null : new Image { Source = icon, Width = 16, Height = 16, Stretch = System.Windows.Media.Stretch.Uniform }
+                };
                 item.Click += BreadcrumbFolder_Click;
                 menu.Items.Add(item);
             }
