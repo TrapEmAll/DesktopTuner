@@ -2304,7 +2304,7 @@ public partial class TaskbarWindow : Window
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open Network settings", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
-    private void InputMethod_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenInputMethodSwitcher();
+    private void InputMethod_Click(object sender, RoutedEventArgs e) => OpenDisplayFlyout(SystemFlyoutService.OpenInputMethodSwitcher);
 
     private void UpdateInputMethodStatus()
     {
@@ -2599,7 +2599,7 @@ public partial class TaskbarWindow : Window
 
     private void WeatherSettings_Click(object sender, RoutedEventArgs e) => _showSettings();
 
-    private void Search_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWindowsSearch();
+    private void Search_Click(object sender, RoutedEventArgs e) => OpenDisplayFlyout(SystemFlyoutService.OpenWindowsSearch);
 
     private void SearchBox_KeyDown(object sender, KeyEventArgs e)
     {
@@ -2613,7 +2613,7 @@ public partial class TaskbarWindow : Window
         switch (TaskbarSearchPolicy.ResolveEnterAction(SearchBox.Text))
         {
             case TaskbarSearchAction.OpenWindowsSearch:
-                SystemFlyoutService.OpenWindowsSearch();
+                OpenDisplayFlyout(SystemFlyoutService.OpenWindowsSearch);
                 break;
             case TaskbarSearchAction.SearchStartMenu:
                 _searchStartMenu?.Invoke(Display, SearchBox.Text.Trim());
@@ -2624,7 +2624,7 @@ public partial class TaskbarWindow : Window
         e.Handled = true;
     }
 
-    private void TaskView_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenTaskView();
+    private void TaskView_Click(object sender, RoutedEventArgs e) => OpenDisplayFlyout(SystemFlyoutService.OpenTaskView);
 
     private void ShowDesktop_Click(object sender, RoutedEventArgs e) => _showDesktop();
 
@@ -2636,7 +2636,7 @@ public partial class TaskbarWindow : Window
 
     private void QuickSettings_Click(object sender, RoutedEventArgs e) => OpenDisplayFlyout(SystemFlyoutService.OpenQuickSettings);
 
-    private void Emoji_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenEmojiPanel();
+    private void Emoji_Click(object sender, RoutedEventArgs e) => OpenDisplayFlyout(SystemFlyoutService.OpenEmojiPanel);
 
     private void Widgets_Click(object sender, RoutedEventArgs e) => OpenDisplayFlyout(SystemFlyoutService.OpenWidgets);
 

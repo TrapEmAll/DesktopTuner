@@ -204,9 +204,13 @@ public static class SystemFlyoutService
 
     public static bool OpenEmojiPanel() => SendWindowsShortcut(VK_OEM_PERIOD, EmojiPanelSequence, "emoji panel");
 
+    public static bool OpenEmojiPanel(nint owner) => SendWindowsShortcutForOwner(owner, VK_OEM_PERIOD, EmojiPanelSequence, "emoji panel");
+
     public static bool FocusNotificationArea() => SendWindowsShortcut(VK_B, NotificationAreaSequence, "notification area");
 
     public static bool OpenInputMethodSwitcher() => SendWindowsShortcut(VK_SPACE, InputMethodSequence, "keyboard layout picker");
+
+    public static bool OpenInputMethodSwitcher(nint owner) => SendWindowsShortcutForOwner(owner, VK_SPACE, InputMethodSequence, "keyboard layout picker");
 
     public static bool OpenLanguageSettings() => OpenShellUri(LanguageSettingsUri, "Language & region settings");
 
@@ -255,6 +259,8 @@ public static class SystemFlyoutService
 
     public static bool OpenWindowsSearch() => SendWindowsShortcut(VK_S, WindowsSearchSequence, "Windows Search");
 
+    public static bool OpenWindowsSearch(nint owner) => SendWindowsShortcutForOwner(owner, VK_S, WindowsSearchSequence, "Windows Search");
+
     public static bool OpenWindowsSearchFromQuestionMark() => SendWindowsShortcut(VK_Q, WindowsSearchQuestionSequence, "Windows Search");
 
     public static bool OpenClipboardHistory() => SendWindowsShortcut(VK_V, ClipboardHistorySequence, "Clipboard history");
@@ -264,6 +270,8 @@ public static class SystemFlyoutService
     public static bool OpenSnapLayouts() => SendWindowsShortcut(VK_Z, SnapLayoutsSequence, "Snap layouts");
 
     public static bool OpenTaskView() => SendWindowsShortcut(VK_TAB, TaskViewSequence, "Task View");
+
+    public static bool OpenTaskView(nint owner) => SendWindowsShortcutForOwner(owner, VK_TAB, TaskViewSequence, "Task View");
 
     public static bool OpenConnectPanel() => SendWindowsShortcut(VK_K, ConnectSequence, "Connect panel");
 
