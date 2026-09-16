@@ -1421,7 +1421,7 @@ public partial class MainWindow : Window
         }
             _startMenuWindow = new StartMenuWindow(_startMenuStyle, _pinnedStartApps, SavePinnedStartApps,
             startPlaces: _startMenuPlaces, recentAppCount: _startRecentAppCount, controlPanelApplets: _controlPanelApplets, iconSize: _startMenuIconSize,
-            openShellLocation: _shellHostMode ? TryOpenLocationInCompanionExplorer : null,
+            openShellLocation: TryOpenStartShellLocation,
             openFileLocation: _shellHostMode ? TryOpenFileLocationInCompanionExplorer : null,
             pinTaskbarItem: app => TryPinTaskbarItem(app));
         _startMenuDisplay = display;
@@ -2350,6 +2350,14 @@ public partial class MainWindow : Window
             return true;
         }
         OpenExplorer(Path.GetFullPath(location));
+        return true;
+    }
+
+    private bool TryOpenStartShellLocation(string location)
+    {
+        if (_shellHostMode) return TryOpenLocationInCompanionExplorer(location);
+        if (!string.Equals(location, "shell:ControlPanelFolder", StringComparison.OrdinalIgnoreCase)) return false;
+        OpenShellNamespaceBrowser(location);
         return true;
     }
 
