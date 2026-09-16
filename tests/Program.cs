@@ -488,6 +488,9 @@ Check(true, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(true, false), "r
 Check(true, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(false, true), "honor opt-in Win+E routing outside shell replacement mode");
 Check(false, ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(false, false), "preserve native Win+E behavior when companion Explorer routing is disabled");
 Check(true, ShellHostLaunchPolicy.ShouldReplaceWindowsKey(true, false), "route the bare Windows key to the companion Start menu in shell replacement mode");
+Check(true, StartMenuOpenModePolicy.ShouldShowOverview(string.Empty, false), "show the Start overview by default");
+Check(false, StartMenuOpenModePolicy.ShouldShowOverview(string.Empty, true), "open Start directly to All apps when configured");
+Check(false, StartMenuOpenModePolicy.ShouldShowOverview("query", false), "hide the Start overview while searching");
 Check(true, ShellHostLaunchPolicy.ShouldReplaceWindowsKey(false, true), "honor opt-in bare Windows-key routing outside shell replacement mode");
 Check(false, ShellHostLaunchPolicy.ShouldReplaceWindowsKey(false, false), "preserve native bare Windows-key behavior outside shell replacement mode");
 Check("Exit shell replacement and start Explorer", ShellHostLaunchPolicy.GetExitLabel(true), "label shell-host exit as Explorer recovery");
@@ -2542,7 +2545,7 @@ Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentRe
     var savedWeather = new TaskbarWeatherSettings(true, "Seattle, Washington", "Seattle, Washington, United States", 47.6062, -122.3321);
     var expectedPreferences = new DesktopPreferences(TaskbarEdge.Left, TaskbarSize.Large, true,
         [new PinnedTaskbarApp("Projects", @"C:\Users\test\Projects", true)], true, StartMenuStyle.Classic, false, TaskbarStyle.Floating,
-        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons, CenterStartMenu: true, TaskbarWindowDisplayMode: TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, TaskbarShowWindowsFromAllVirtualDesktops: true, ControlPanelApplets: savedControlPanelApplets, TaskbarWeather: savedWeather, StartMenuIconSize: StartMenuIconSize.Large);
+        PinnedStartApps: [new AppEntry("Editor", @"C:\Apps\Editor.lnk", TileSize: StartTileSize.Wide, GroupName: "Dev")], ReplaceNativeTaskbar: true, TaskbarDynamicTransparency: true, TaskbarButtonEffect: TaskbarButtonEffect.DynamicAura, StartMenuPlaces: savedStartPlaces, StartRecentAppCount: 8, TaskbarSystemButtons: savedTaskbarButtons, CenterStartMenu: true, TaskbarWindowDisplayMode: TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, TaskbarShowWindowsFromAllVirtualDesktops: true, ControlPanelApplets: savedControlPanelApplets, TaskbarWeather: savedWeather, StartMenuIconSize: StartMenuIconSize.Large, StartOpenAllApps: true);
     preferencesStore.Save(expectedPreferences);
     var loadedPreferences = preferencesStore.Load();
     Check(expectedPreferences.TaskbarEdge, loadedPreferences.TaskbarEdge, "persist taskbar edge");
@@ -2550,6 +2553,7 @@ Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentRe
     Check(expectedPreferences.StartMenuStyle, loadedPreferences.StartMenuStyle, "persist Start menu style");
     Check(StartMenuIconSize.Large, loadedPreferences.StartMenuIconSize, "persist Start menu icon size");
     Check(true, loadedPreferences.CenterStartMenu, "persist centered Start menu preference");
+    Check(true, loadedPreferences.StartOpenAllApps, "persist opening Start directly to All apps");
     Check(savedWeather, loadedPreferences.TaskbarWeather, "persist opt-in weather location and coordinates");
     Check(TaskbarWindowDisplayMode.PrimaryAndTaskbarOnWhichWindowIsOpen, loadedPreferences.TaskbarWindowDisplayMode, "persist the taskbar app display mode");
     Check(true, loadedPreferences.TaskbarShowWindowsFromAllVirtualDesktops, "persist showing app windows from all virtual desktops");

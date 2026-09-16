@@ -85,6 +85,7 @@ public partial class MainWindow : Window
     private bool _replaceExplorerShortcut;
     private StartMenuStyle _startMenuStyle = StartMenuStyle.Modern;
     private StartMenuIconSize _startMenuIconSize = StartMenuIconSize.Standard;
+    private bool _startOpenAllApps;
     private int _startRecentAppCount = 4;
     private bool _centerStartMenu;
     private bool _taskbarOnAllDisplays = true;
@@ -145,6 +146,7 @@ public partial class MainWindow : Window
         _replaceExplorerShortcut = ShellHostLaunchPolicy.ShouldReplaceExplorerShortcut(shellHostMode, desktopPreferences.ReplaceExplorerShortcut);
         _startMenuStyle = desktopPreferences.StartMenuStyle;
         _startRecentAppCount = desktopPreferences.StartRecentAppCount;
+        _startOpenAllApps = desktopPreferences.StartOpenAllApps;
         _centerStartMenu = desktopPreferences.CenterStartMenu;
         _taskbarOnAllDisplays = desktopPreferences.TaskbarOnAllDisplays;
         _taskbarWindowDisplayMode = desktopPreferences.TaskbarWindowDisplayMode;
@@ -295,6 +297,10 @@ public partial class MainWindow : Window
             };
             iconSizeRow.Children.Add(iconSizeSelector);
             PageContent.Children.Add(iconSizeRow);
+            var openAllApps = new CheckBox { Content = "Open Start directly to All apps", IsChecked = _startOpenAllApps, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
+            openAllApps.Checked += (_, _) => SetStartOpenAllApps(true);
+            openAllApps.Unchecked += (_, _) => SetStartOpenAllApps(false);
+            PageContent.Children.Add(openAllApps);
             var centerStartMenu = new CheckBox { Content = "Center the Start menu along the taskbar edge", IsChecked = _centerStartMenu, Margin = new Thickness(0, 0, 0, 16), FontSize = 13 };
             centerStartMenu.Checked += (_, _) => SetStartMenuCentered(true);
             centerStartMenu.Unchecked += (_, _) => SetStartMenuCentered(false);
@@ -1422,6 +1428,7 @@ public partial class MainWindow : Window
         }
             _startMenuWindow = new StartMenuWindow(_startMenuStyle, _pinnedStartApps, SavePinnedStartApps,
             startPlaces: _startMenuPlaces, recentAppCount: _startRecentAppCount, controlPanelApplets: _controlPanelApplets, iconSize: _startMenuIconSize,
+            openAllApps: _startOpenAllApps,
             openShellLocation: TryOpenStartShellLocation,
             openFileLocation: _shellHostMode ? TryOpenFileLocationInCompanionExplorer : null,
             pinTaskbarItem: app => TryPinTaskbarItem(app),
@@ -1735,7 +1742,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarLabelVisibility != TaskbarLabelVisibility.Never, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather, _taskbarLocked, _taskbarLabelVisibility, _taskbarSearchStyle, _startMenuIconSize);
+    private DesktopPreferences CreateDesktopPreferences() => new(_taskbarEdge, _taskbarSize, _taskbarAutoHide, _pinnedApps.ToList(), _replaceWindowsKeyPreference, _startMenuStyle, _taskbarOnAllDisplays, _taskbarLayout, _taskbarGrouping, _taskbarButtonAlignment, _taskbarLabelVisibility != TaskbarLabelVisibility.Never, _taskbarIconSize, _taskbarButtonSpacing, _startWithWindows, _taskbarAutoHideWhenMaximized, _taskbarTransparency, _pinnedStartApps.ToList(), _replaceNativeTaskbar, _taskbarDynamicTransparency, _taskbarButtonEffect, _startMenuPlaces, _startRecentAppCount, _taskbarSystemButtons, _centerStartMenu, _taskbarWindowDisplayMode, _folderShellIntegrationEnabled, _taskbarShowWindowsFromAllVirtualDesktops, _replaceExplorerShortcut, _taskbarVisualStyle, _controlPanelApplets, _taskbarWeather, _taskbarLocked, _taskbarLabelVisibility, _taskbarSearchStyle, _startMenuIconSize, _startOpenAllApps);
 
     private DesktopPreferences CreateTaskbarRuntimePreferences(DesktopPreferences? preferences = null)
     {
@@ -1789,6 +1796,13 @@ public partial class MainWindow : Window
         _centerStartMenu = centered;
         SaveDesktopPreferences();
         PositionStartMenuWindow();
+    }
+
+    private void SetStartOpenAllApps(bool openAllApps)
+    {
+        _startOpenAllApps = openAllApps;
+        SaveDesktopPreferences();
+        _startMenuWindow?.SetOpenAllApps(openAllApps);
     }
 
     private void SetTaskbarSystemButton(TaskbarSystemButton button, bool isVisible)
@@ -1917,6 +1931,7 @@ public partial class MainWindow : Window
             _startMenuStyle = preferences.StartMenuStyle;
             _startMenuIconSize = preferences.StartMenuIconSize;
             _startRecentAppCount = preferences.StartRecentAppCount;
+            _startOpenAllApps = preferences.StartOpenAllApps;
             _centerStartMenu = preferences.CenterStartMenu;
             _taskbarOnAllDisplays = preferences.TaskbarOnAllDisplays;
             _taskbarWindowDisplayMode = preferences.TaskbarWindowDisplayMode;
@@ -1948,6 +1963,7 @@ public partial class MainWindow : Window
             _startMenuWindow?.SetStyle(_startMenuStyle);
             _startMenuWindow?.SetIconSize(_startMenuIconSize);
             _startMenuWindow?.SetRecentAppCount(_startRecentAppCount);
+            _startMenuWindow?.SetOpenAllApps(_startOpenAllApps);
             _startMenuWindow?.SetStartPlaces(_startMenuPlaces);
             _startMenuWindow?.SetControlPanelApplets(_controlPanelApplets);
             SetStatus("Desktop preferences saved.");

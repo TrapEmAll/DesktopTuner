@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using Microsoft.VisualBasic;
 
 namespace DesktopTuner;
@@ -31,6 +32,7 @@ public partial class StartMenuWindow : Window
     private IReadOnlyList<AppEntry> _pinnedApps = [];
     private StartMenuStyle _style = StartMenuStyle.Modern;
     private int _recentAppCount;
+    private bool _openAllApps;
     private bool _catalogLoaded;
     private string? _catalogLoadError;
     private string? _pinnedStartDragCandidate;
@@ -48,7 +50,7 @@ public partial class StartMenuWindow : Window
         private set => SetValue(IconSizeProperty, value);
     }
 
-    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, StartMenuIconSize iconSize = StartMenuIconSize.Standard, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<AppEntry, bool>? pinTaskbarItem = null, Action? exitShellHost = null)
+    public StartMenuWindow(StartMenuStyle style, IEnumerable<AppEntry>? pinnedApps = null, Func<IReadOnlyList<AppEntry>, bool>? savePinnedApps = null, StartRecentAppsStore? recentAppsStore = null, StartMenuPlacePreferences? startPlaces = null, int recentAppCount = 4, ControlPanelAppletPreferences? controlPanelApplets = null, StartMenuIconSize iconSize = StartMenuIconSize.Standard, bool openAllApps = false, Func<string, bool>? openShellLocation = null, Func<string, bool>? openFileLocation = null, Func<AppEntry, bool>? pinTaskbarItem = null, Action? exitShellHost = null)
     {
         InitializeComponent();
         SourceInitialized += Window_SourceInitialized;
@@ -84,6 +86,7 @@ public partial class StartMenuWindow : Window
         _startPlaces = StartMenuPlaceCatalog.Normalize(startPlaces);
         _controlPanelApplets = ControlPanelAppletCatalog.Normalize(controlPanelApplets);
         _recentAppCount = Math.Clamp(recentAppCount, 0, StartRecentAppsStore.MaximumEntries);
+        _openAllApps = openAllApps;
         SetIconSize(iconSize);
         SetStyle(style);
     }
@@ -106,6 +109,12 @@ public partial class StartMenuWindow : Window
     }
 
     public void SetIconSize(StartMenuIconSize size) => IconSize = Enum.IsDefined(size) ? size : StartMenuIconSize.Standard;
+
+    public void SetOpenAllApps(bool openAllApps)
+    {
+        _openAllApps = openAllApps;
+        if (IsLoaded) RefreshApps();
+    }
 
     public void FocusSearch(string query)
     {
@@ -349,8 +358,21 @@ public partial class StartMenuWindow : Window
         finally
         {
             _catalogLoaded = true;
-            if (IsLoaded) RefreshApps();
+            if (IsLoaded)
+            {
+                RefreshApps();
+                if (_openAllApps)
+                {
+                    _ = Dispatcher.BeginInvoke(new Action(FocusAllApps), DispatcherPriority.Input);
+                }
+            }
         }
+    }
+
+    private void FocusAllApps()
+    {
+        var target = AppTree.Visibility == Visibility.Visible ? (UIElement)AppTree : AppList;
+        target.Focus();
     }
 
     private Task<IReadOnlyList<AppEntry>> LoadAppCatalogOnStaThreadAsync()
@@ -391,11 +413,12 @@ public partial class StartMenuWindow : Window
         {
             PinnedStartItems.ItemsSource = _pinnedApps;
         }
-        var showPinnedPanel = query.Length == 0;
+        var showOverview = StartMenuOpenModePolicy.ShouldShowOverview(query, _openAllApps);
+        var showPinnedPanel = showOverview;
         PinnedStartPanel.Visibility = showPinnedPanel ? Visibility.Visible : Visibility.Collapsed;
         PinnedStartEmptyHint.Visibility = showPinnedPanel && _pinnedApps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         PinnedStartScrollViewer.Visibility = _pinnedApps.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        RecentStartPanel.Visibility = query.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        RecentStartPanel.Visibility = showOverview ? Visibility.Visible : Visibility.Collapsed;
         if (!_catalogLoaded)
         {
             RecentStartPanel.Visibility = Visibility.Collapsed;
