@@ -813,6 +813,9 @@ CheckTrue(!TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.WhenFu
 CheckTrue(!TaskbarLabelVisibilityPolicy.ShouldShow(TaskbarLabelVisibility.Never, 1, 4), "hide taskbar labels in never mode");
 CheckTrue(TaskbarOverflowPolicy.ShouldShow(402, 400), "show a taskbar overflow command when app buttons exceed the viewport");
 CheckTrue(!TaskbarOverflowPolicy.ShouldShow(400, 400), "hide taskbar overflow when buttons fit exactly");
+CheckTrue(TaskbarOverflowPolicy.IsFullyVisible(0, 0, 40, 40, 400, 40), "treat a taskbar button inside the viewport as visible");
+CheckTrue(!TaskbarOverflowPolicy.IsFullyVisible(370, 0, 40, 40, 400, 40), "treat a taskbar button clipped at the viewport edge as overflow");
+CheckTrue(!TaskbarOverflowPolicy.IsFullyVisible(0, 0, 40, 40, double.NaN, 40), "reject indeterminate overflow geometry");
 var overflowPin = new PinnedTaskbarApp("Editor", @"C:\Apps\editor.exe");
 CheckTrue(TaskbarOverflowPolicy.IsPinnedAppActive(overflowPin, [
     new RunningWindow((nint)11, "Editor document", "Editor", @"C:\Apps\editor.exe", false) { IsForeground = true }

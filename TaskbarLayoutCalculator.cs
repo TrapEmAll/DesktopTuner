@@ -134,6 +134,16 @@ public static class TaskbarOverflowPolicy
         return extent > Math.Max(0, viewport) + 1;
     }
 
+    public static bool IsFullyVisible(double left, double top, double width, double height, double viewportWidth, double viewportHeight)
+    {
+        if (double.IsNaN(left) || double.IsNaN(top) || double.IsNaN(width) || double.IsNaN(height) || double.IsNaN(viewportWidth) || double.IsNaN(viewportHeight) ||
+            double.IsInfinity(left) || double.IsInfinity(top) || double.IsInfinity(width) || double.IsInfinity(height) || double.IsInfinity(viewportWidth) || double.IsInfinity(viewportHeight))
+            return false;
+        if (width <= 0 || height <= 0 || viewportWidth <= 0 || viewportHeight <= 0) return false;
+        const double epsilon = 0.5;
+        return left >= -epsilon && top >= -epsilon && left + width <= viewportWidth + epsilon && top + height <= viewportHeight + epsilon;
+    }
+
     public static bool IsPinnedAppActive(PinnedTaskbarApp app, IEnumerable<RunningWindow> windows)
     {
         ArgumentNullException.ThrowIfNull(app);

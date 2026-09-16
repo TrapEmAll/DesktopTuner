@@ -1823,8 +1823,7 @@ public partial class TaskbarWindow : Window
         try
         {
             var bounds = button.TransformToAncestor(WindowScroller).TransformBounds(new Rect(0, 0, button.ActualWidth, button.ActualHeight));
-            var viewport = new Rect(0, 0, WindowScroller.ViewportWidth, WindowScroller.ViewportHeight);
-            return viewport.Contains(bounds.TopLeft) && viewport.Contains(bounds.BottomRight);
+            return TaskbarOverflowPolicy.IsFullyVisible(bounds.Left, bounds.Top, bounds.Width, bounds.Height, WindowScroller.ViewportWidth, WindowScroller.ViewportHeight);
         }
         catch (InvalidOperationException)
         {
