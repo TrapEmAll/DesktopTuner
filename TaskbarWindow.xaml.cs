@@ -1116,12 +1116,43 @@ public partial class TaskbarWindow : Window
         PopulateWindowActions(menu, group.Windows, group.ApplicationName);
     }
 
-    private void WindowGroupContextMenu_Opened(object sender, RoutedEventArgs e)
+    private void TaskbarShellContextMenu_Opened(object sender, RoutedEventArgs e)
     {
-        if (sender is not ContextMenu menu || menu.DataContext is not TaskbarWindowGroup group) return;
-        if (menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Snap group")) is { } snapItem)
+        if (sender is not ContextMenu menu) return;
+        if (menu.DataContext is TaskbarWindowGroup group
+            && menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Snap group")) is { } snapItem)
+        {
             snapItem.Visibility = _snapGroups.Any(snap => snap.Windows.Any(window => group.Windows.Any(member => member.Handle == window.Handle)))
                 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        var nativeMenu = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Show more options"));
+        if (nativeMenu is null) return;
+        var parsingName = menu.DataContext switch
+        {
+            PinnedTaskbarApp app when app.IsShellNamespace || File.Exists(app.ExecutablePath) || Directory.Exists(app.ExecutablePath) => app.ExecutablePath,
+            TaskbarWindowGroup windowGroup when TaskbarWindowGrouping.GetLaunchPath(windowGroup) is { } path => path,
+            _ => null
+        };
+        nativeMenu.Tag = parsingName is null ? menu.DataContext : parsingName;
+        nativeMenu.Visibility = parsingName is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private async void ShowNativeTaskbarShellContextMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string parsingName }) return;
+        try
+        {
+            var owner = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            if (DesktopShellNamespaceCatalog.IsShellNamespaceLocation(parsingName))
+                await NativeShellContextMenuService.ShowForShellItemAsync(owner, parsingName);
+            else
+                await NativeShellContextMenuService.ShowForItemsAsync(owner, [parsingName]);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or Win32Exception)
+        {
+            MessageBox.Show(this, $"Windows could not show the native menu.\n\n{ex.Message}", "Could not open Shell menu", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void SnapGroupMenu_SubmenuOpened(object sender, RoutedEventArgs e)

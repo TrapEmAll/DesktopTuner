@@ -166,7 +166,7 @@
                                     </TextBlock>
                                 </StackPanel>
                                 <Button.ContextMenu>
-                                    <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}" Opened="WindowGroupContextMenu_Opened">
+                                    <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}" Opened="TaskbarShellContextMenu_Opened">
                                         <MenuItem Header="Browse folder contents" Tag="{Binding}" IsEnabled="{Binding IsDirectory}" SubmenuOpened="PinnedFolderMenu_SubmenuOpened">
                                             <MenuItem Header="Loading..." IsEnabled="False" />
                                         </MenuItem>
@@ -186,6 +186,7 @@
                                         <MenuItem Header="Start new instance" Tag="{Binding}" Click="LaunchPinnedInstance_Click" />
                                         <MenuItem Header="End task" Tag="{Binding}" IsEnabled="{Binding PlacementTarget.DataContext.IsRunning, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Click="EndPinnedTask_Click" />
                                         <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenLocation}" Click="OpenPinnedLocation_Click" />
+                                        <MenuItem Header="Show more options" Tag="{Binding}" Visibility="Collapsed" Click="ShowNativeTaskbarShellContextMenu_Click" />
                                         <MenuItem Header="Pin to Start" Tag="{Binding}" IsEnabled="{Binding CanPinToStart}" Click="PinTaskbarAppToStart_Click" />
                                         <MenuItem Header="Start new elevated instance" Tag="{Binding}" IsEnabled="{Binding CanRunElevated}" Click="RunPinnedAsAdministrator_Click" />
                                         <Separator />
@@ -232,7 +233,7 @@
                                     </TextBlock>
                                 </StackPanel>
                                 <Button.ContextMenu>
-                                    <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                    <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}" Opened="TaskbarShellContextMenu_Opened">
                                         <MenuItem Header="Show windows" Tag="{Binding}" SubmenuOpened="WindowGroupMenu_SubmenuOpened">
                                             <MenuItem Header="Loading..." IsEnabled="False" />
                                         </MenuItem>
@@ -244,6 +245,7 @@
                                         <MenuItem Header="Close window(s)" Tag="{Binding}" Click="CloseWindows_Click" />
                                         <MenuItem Header="End task" Tag="{Binding}" IsEnabled="{Binding CanEndTask}" Click="EndTask_Click" />
                                         <MenuItem Header="Open file location" Tag="{Binding}" IsEnabled="{Binding CanOpenLocation}" Click="OpenWindowGroupLocation_Click" />
+                                        <MenuItem Header="Show more options" Tag="{Binding}" Visibility="Collapsed" Click="ShowNativeTaskbarShellContextMenu_Click" />
                                         <MenuItem Header="Start new instance" Tag="{Binding}" IsEnabled="{Binding CanLaunchNewInstance}" Click="LaunchWindowGroupInstance_Click" />
                                         <MenuItem Header="Recent items" Tag="{Binding}" CommandParameter="{x:Static local:TaskbarJumpListCategory.Recent}" SubmenuOpened="JumpListMenu_SubmenuOpened">
                                             <MenuItem Header="Loading..." IsEnabled="False" />
