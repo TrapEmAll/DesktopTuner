@@ -1562,7 +1562,7 @@ public partial class MainWindow : Window
             showDesktop: ShellHostLaunchPolicy.ShouldManageReplacementDesktop(_shellHostMode, _shellOverlayMode) ? ToggleShowDesktop : null,
             focusSystemArea: _shellHostMode ? FocusTaskbarSystemArea : null,
             executePowerUserCommand: ShellHostLaunchPolicy.ShouldProvidePowerUserMenu(_shellHostMode, _shellOverlayMode) ? ExecuteShellHostPowerUserCommand : null,
-            openDirectoryInCompanionExplorer: _shellHostMode ? path => OpenExplorer(path) : null,
+            openDirectoryInCompanionExplorer: _shellHostMode ? TryOpenDirectoryInCompanionExplorer : null,
             openFileLocationInCompanionExplorer: _shellHostMode ? OpenPinnedFileLocationInCompanionExplorer : null,
             openShellLocationInCompanionExplorer: _shellHostMode ? TryOpenLocationInCompanionExplorer : null,
             pinStartItem: TryPinStartItem,
@@ -2386,6 +2386,21 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return false;
         OpenExplorer(folder, Path.GetFullPath(path));
         return true;
+    }
+
+    private bool TryOpenDirectoryInCompanionExplorer(string path)
+    {
+        if (!_shellHostMode || !Directory.Exists(path)) return false;
+        try
+        {
+            OpenExplorer(Path.GetFullPath(path));
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
+        {
+            System.Diagnostics.Trace.TraceWarning($"Could not open companion Explorer directory '{path}': {ex.Message}");
+            return false;
+        }
     }
 
     private void OpenShellNamespaceBrowser(string location)

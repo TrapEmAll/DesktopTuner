@@ -41,7 +41,7 @@ public partial class TaskbarWindow : Window
     private readonly Action _showDesktop;
     private readonly Action? _focusSystemArea;
     private readonly Action<string>? _executePowerUserCommand;
-    private readonly Action<string>? _openDirectoryInCompanionExplorer;
+    private readonly Func<string, bool>? _openDirectoryInCompanionExplorer;
     private readonly Func<string, bool>? _openShellLocationInCompanionExplorer;
     private readonly Action<string>? _openFileLocationInCompanionExplorer;
     private readonly Func<string, bool>? _pinStartItem;
@@ -80,7 +80,7 @@ public partial class TaskbarWindow : Window
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Action<string>? openDirectoryInCompanionExplorer = null, Action<string>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? pinStartItem = null, bool shellHostMode = false, Action<TaskbarDisplay, string>? searchStartMenu = null)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Func<string, bool>? openDirectoryInCompanionExplorer = null, Action<string>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? pinStartItem = null, bool shellHostMode = false, Action<TaskbarDisplay, string>? searchStartMenu = null)
     {
         InitializeComponent();
         _isDark = TaskbarTheme.ReadSystemDarkMode();
@@ -1338,9 +1338,10 @@ public partial class TaskbarWindow : Window
                 return;
             }
 
-            if (Directory.Exists(destination.ParsingName) && _openDirectoryInCompanionExplorer is not null)
+            if (Directory.Exists(destination.ParsingName)
+                && ShellHostLaunchPolicy.ShouldRoutePinnedDirectoryToCompanionExplorer(_shellHostMode, isDirectory: true)
+                && _openDirectoryInCompanionExplorer?.Invoke(destination.ParsingName) == true)
             {
-                _openDirectoryInCompanionExplorer(destination.ParsingName);
                 return;
             }
 
@@ -2025,9 +2026,9 @@ public partial class TaskbarWindow : Window
             catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not run pinned app as administrator", MessageBoxButton.OK, MessageBoxImage.Error); }
             return;
         }
-        if (isDirectory && _openDirectoryInCompanionExplorer is not null)
+        if (ShellHostLaunchPolicy.ShouldRoutePinnedDirectoryToCompanionExplorer(_shellHostMode, isDirectory)
+            && _openDirectoryInCompanionExplorer?.Invoke(app.ExecutablePath) == true)
         {
-            _openDirectoryInCompanionExplorer(app.ExecutablePath);
             return;
         }
         if (!app.IsPackagedApp && (isDirectory ? !Directory.Exists(app.ExecutablePath) : !File.Exists(app.ExecutablePath)))
