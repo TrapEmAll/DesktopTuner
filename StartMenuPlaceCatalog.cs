@@ -28,6 +28,7 @@ public static class StartMenuPlaceCatalog
         new("computer", "This PC"),
         new("recycle-bin", "Recycle Bin"),
         new("control-panel", "Control Panel"),
+        new("default-programs", "Default Programs"),
         new("recent", "Recent items"),
         new("run", "Run...")
     ];
@@ -72,6 +73,7 @@ public static class StartMenuPlaceCatalog
         "devices-printers" => "shell:PrintersFolder",
         "recycle-bin" => "shell:RecycleBinFolder",
         "control-panel" => "control.exe",
+        "default-programs" => "ms-settings:defaultapps",
         "network" => "shell:NetworkPlacesFolder",
         "music" => Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
         "pictures" => Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
