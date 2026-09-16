@@ -1052,6 +1052,12 @@ public partial class TaskbarWindow : Window
     private void WindowButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not Button { Tag: TaskbarWindowGroup group }) return;
+        if (TaskbarInteractionPolicy.ShouldShowProperties(e.ChangedButton, Keyboard.Modifiers))
+        {
+            ShowTaskbarProperties(group);
+            e.Handled = true;
+            return;
+        }
         var launchInfo = TaskbarWindowGrouping.GetLaunchInfo(group);
         if (TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(e.ChangedButton, launchInfo is not null, Keyboard.Modifiers))
         {
@@ -1998,6 +2004,12 @@ public partial class TaskbarWindow : Window
     private void PinnedButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not Button { Tag: PinnedTaskbarApp app }) return;
+        if (TaskbarInteractionPolicy.ShouldShowProperties(e.ChangedButton, Keyboard.Modifiers))
+        {
+            ShowTaskbarProperties(app);
+            e.Handled = true;
+            return;
+        }
         if (TaskbarInteractionPolicy.ShouldLaunchPinnedElevated(e.ChangedButton, Keyboard.Modifiers))
         {
             LaunchPinnedApp(app, runAsAdministrator: true);
@@ -2007,6 +2019,24 @@ public partial class TaskbarWindow : Window
         if (!TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(e.ChangedButton, Keyboard.Modifiers)) return;
         LaunchPinnedApp(app);
         e.Handled = true;
+    }
+
+    private void ShowTaskbarProperties(PinnedTaskbarApp app)
+    {
+        if (app.IsShellNamespace || string.IsNullOrWhiteSpace(app.ExecutablePath)) return;
+        var path = Path.GetFullPath(app.ExecutablePath);
+        var entry = new ExplorerEntry(Path.GetFileName(path), path, Directory.Exists(path), false, null, DateTime.MinValue);
+        if (ExplorerPropertiesService.ShowProperties(entry, new WindowInteropHelper(this).Handle)) return;
+        MessageBox.Show(this, "Windows could not open properties for this taskbar item.", "Could not open properties", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private void ShowTaskbarProperties(TaskbarWindowGroup group)
+    {
+        var path = TaskbarWindowGrouping.GetLaunchPath(group);
+        if (string.IsNullOrWhiteSpace(path)) return;
+        var entry = new ExplorerEntry(Path.GetFileName(path), path, false, false, null, DateTime.MinValue);
+        if (ExplorerPropertiesService.ShowProperties(entry, new WindowInteropHelper(this).Handle)) return;
+        MessageBox.Show(this, "Windows could not open properties for this taskbar item.", "Could not open properties", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void LaunchPinnedInstance_Click(object sender, RoutedEventArgs e)
