@@ -948,7 +948,7 @@ public partial class StartMenuWindow : Window
         var openFolderItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open folder"));
         var browseFolderItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Browse folder contents"));
         var openFileLocationItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open file location"));
-        if (openFolderItem is not null) openFolderItem.Visibility = app.IsDirectory ? Visibility.Visible : Visibility.Collapsed;
+        if (openFolderItem is not null) openFolderItem.Visibility = app.IsDirectory || app.IsShellNamespace ? Visibility.Visible : Visibility.Collapsed;
         if (browseFolderItem is not null)
         {
             browseFolderItem.Visibility = app.IsDirectory || app.IsShellNamespace ? Visibility.Visible : Visibility.Collapsed;
@@ -973,7 +973,7 @@ public partial class StartMenuWindow : Window
 
     private void OpenPinnedFolder_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem { Tag: AppEntry { IsDirectory: true } app }) LaunchEntry(app);
+        if (sender is MenuItem { Tag: AppEntry app } && (app.IsDirectory || app.IsShellNamespace)) LaunchEntry(app);
     }
 
     private async void PinnedStartFolderMenu_Opened(object sender, RoutedEventArgs e)
