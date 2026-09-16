@@ -478,7 +478,11 @@ public partial class StartMenuWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape)
+        if (StartMenuKeyboardPolicy.ShouldShowContextMenu(e.Key, Keyboard.Modifiers))
+        {
+            if (TryOpenFocusedContextMenu()) e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
         {
             Close();
             e.Handled = true;
@@ -515,6 +519,25 @@ public partial class StartMenuWindow : Window
             AppList.SelectedIndex = Math.Max(AppList.SelectedIndex, 0);
             e.Handled = true;
         }
+    }
+
+    private bool TryOpenFocusedContextMenu()
+    {
+        if (Keyboard.FocusedElement is not DependencyObject focused) return false;
+        for (var current = focused; current is not null; current = current switch
+        {
+            Visual or System.Windows.Media.Media3D.Visual3D => VisualTreeHelper.GetParent(current),
+            _ => LogicalTreeHelper.GetParent(current)
+        })
+        {
+            if (current is FrameworkElement { ContextMenu: { } menu } target)
+            {
+                menu.PlacementTarget = target;
+                menu.IsOpen = true;
+                return true;
+            }
+        }
+        return false;
     }
 
     private void AppList_MouseDoubleClick(object sender, MouseButtonEventArgs e) => LaunchSelected();
