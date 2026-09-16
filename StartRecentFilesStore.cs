@@ -1,4 +1,7 @@
 using System.IO;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using Microsoft.CSharp.RuntimeBinder;
 
 namespace DesktopTuner;
 
@@ -28,7 +31,7 @@ public sealed class StartRecentFilesStore
                 .OrderByDescending(info => info.LastWriteTimeUtc)
                 .ThenBy(info => info.Name, StringComparer.CurrentCultureIgnoreCase)
                 .Take(Math.Clamp(maximumEntries, 0, MaximumEntries))
-                .Select(info => new AppEntry(Path.GetFileNameWithoutExtension(info.Name), info.FullName))
+                .Select(info => new AppEntry(GetDisplayName(info), info.FullName))
                 .ToList();
         }
         catch (IOException) { return []; }
@@ -59,5 +62,44 @@ public sealed class StartRecentFilesStore
             return fullPath.StartsWith(recentRoot, StringComparison.OrdinalIgnoreCase);
         }
         catch (ArgumentException) { return false; }
+    }
+
+    private static string GetDisplayName(FileInfo shortcut)
+    {
+        var fallback = Path.GetFileNameWithoutExtension(shortcut.Name);
+        object? shellObject = null;
+        object? shortcutObject = null;
+        try
+        {
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shellType is null) return fallback;
+            shellObject = Activator.CreateInstance(shellType);
+            if (shellObject is null) return fallback;
+            dynamic shell = shellObject;
+            shortcutObject = shell.CreateShortcut(shortcut.FullName);
+            if (shortcutObject is null) return fallback;
+            dynamic recentShortcut = shortcutObject;
+            var targetPath = (string)recentShortcut.TargetPath;
+            return string.IsNullOrWhiteSpace(targetPath)
+                ? fallback
+                : Path.GetFileName(targetPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) is { Length: > 0 } targetName
+                    ? targetName
+                    : fallback;
+        }
+        catch (Exception ex) when (ex is COMException or RuntimeBinderException or IOException or UnauthorizedAccessException or ArgumentException or InvalidCastException or NotSupportedException)
+        {
+            Trace.TraceWarning($"Could not resolve recent shortcut '{shortcut.FullName}': {ex.Message}");
+            return fallback;
+        }
+        finally
+        {
+            ReleaseComObject(shortcutObject);
+            ReleaseComObject(shellObject);
+        }
+    }
+
+    private static void ReleaseComObject(object? value)
+    {
+        if (value is not null && Marshal.IsComObject(value)) Marshal.ReleaseComObject(value);
     }
 }

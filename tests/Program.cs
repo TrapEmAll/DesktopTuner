@@ -1005,9 +1005,33 @@ try
     recentFiles = new StartRecentFilesStore(recentFilesDirectory).ReadRecentFiles();
     Check(1, recentFiles.Count, "read recent document shortcuts from the Windows Recent Items folder");
     Check("Quarterly report", recentFiles[0].Name, "derive recent document names from shortcut filenames");
+    var recentTarget = Path.Combine(recentFilesDirectory, "Annual budget.xlsx");
+    File.WriteAllText(recentTarget, "placeholder");
+    var validRecentShortcut = Path.Combine(recentFilesDirectory, "Annual budget.lnk");
+    object? recentShellObject = null;
+    object? recentShortcutObject = null;
+    try
+    {
+        var shellType = Type.GetTypeFromProgID("WScript.Shell") ?? throw new InvalidOperationException("Windows Script Host is unavailable for recent shortcut tests.");
+        recentShellObject = Activator.CreateInstance(shellType) ?? throw new InvalidOperationException("Could not create the Windows Script Host automation object.");
+        dynamic recentShell = recentShellObject;
+        recentShortcutObject = recentShell.CreateShortcut(validRecentShortcut);
+        dynamic shortcut = recentShortcutObject;
+        shortcut.TargetPath = recentTarget;
+        shortcut.Save();
+    }
+    finally
+    {
+        if (recentShortcutObject is not null && System.Runtime.InteropServices.Marshal.IsComObject(recentShortcutObject)) System.Runtime.InteropServices.Marshal.ReleaseComObject(recentShortcutObject);
+        if (recentShellObject is not null && System.Runtime.InteropServices.Marshal.IsComObject(recentShellObject)) System.Runtime.InteropServices.Marshal.ReleaseComObject(recentShellObject);
+    }
+    File.SetLastWriteTimeUtc(validRecentShortcut, DateTime.UtcNow.AddSeconds(1));
+    recentFiles = new StartRecentFilesStore(recentFilesDirectory).ReadRecentFiles();
+    Check("Annual budget.xlsx", recentFiles[0].Name, "resolve valid recent shortcuts to their target document names");
     Check(1, new StartRecentFilesStore(recentFilesDirectory).ReadRecentFiles(maximumEntries: 1).Count, "bound recent document results to the requested count");
     Check(true, new StartRecentFilesStore(recentFilesDirectory).IsRecentShortcut(recentDocument), "recognize shortcuts inside the Recent Items folder");
     CheckTrue(new StartRecentFilesStore(recentFilesDirectory).TryRemove(recentDocument), "remove an individual recent document shortcut");
+    CheckTrue(new StartRecentFilesStore(recentFilesDirectory).TryRemove(validRecentShortcut), "remove a resolved recent document shortcut");
     Check(0, new StartRecentFilesStore(recentFilesDirectory).ReadRecentFiles().Count, "omit a removed recent document shortcut");
     Check("Quarterly report", string.Join(',', AppCatalogService.Search(
         [new AppEntry("Quarterly report", recentDocument), new AppEntry("Editor", @"C:\Apps\Editor.lnk")], "quarterly")
