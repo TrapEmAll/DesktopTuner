@@ -38,8 +38,8 @@
         </com:Extension>
         <desktop4:Extension Category="windows.fileExplorerContextMenus">
           <desktop4:FileExplorerContextMenus>
-            <desktop5:ItemType Type="Directory">
-              <desktop5:Verb Id="DesktopTunerOpenFolder" Clsid="8F2F0C1A-9E63-4D10-A2E5-6F1CC9756438" />
+            <desktop5:ItemType Type="*">
+              <desktop5:Verb Id="DesktopTunerOpenItemLocation" Clsid="8F2F0C1A-9E63-4D10-A2E5-6F1CC9756438" />
             </desktop5:ItemType>
             <desktop5:ItemType Type="Directory\Background">
               <desktop5:Verb Id="DesktopTunerOpenFolderBackground" Clsid="8F2F0C1A-9E63-4D10-A2E5-6F1CC9756438" />
