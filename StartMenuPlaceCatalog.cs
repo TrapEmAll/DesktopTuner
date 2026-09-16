@@ -30,6 +30,7 @@ public static class StartMenuPlaceCatalog
         new("control-panel", "Control Panel"),
         new("default-programs", "Default Programs"),
         new("network-connections", "Network Connections"),
+        new("troubleshooting", "Troubleshooting"),
         new("recent", "Recent items"),
         new("run", "Run...")
     ];
@@ -76,6 +77,7 @@ public static class StartMenuPlaceCatalog
         "control-panel" => "control.exe",
         "default-programs" => "ms-settings:defaultapps",
         "network-connections" => "ncpa.cpl",
+        "troubleshooting" => "ms-settings:troubleshoot",
         "network" => "shell:NetworkPlacesFolder",
         "music" => Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
         "pictures" => Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
