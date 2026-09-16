@@ -2273,7 +2273,8 @@ public partial class MainWindow : Window
             pinTaskbarItem: TryPinTaskbarItem,
             isTaskbarItemPinned: path => _pinnedApps.Any(pin => string.Equals(pin.ExecutablePath, path, StringComparison.OrdinalIgnoreCase)),
             pinStartItem: TryPinStartItem,
-            isStartItemPinned: path => _pinnedStartApps.Any(pin => string.Equals(pin.ShortcutPath, path, StringComparison.OrdinalIgnoreCase)))
+            isStartItemPinned: path => _pinnedStartApps.Any(pin => string.Equals(pin.ShortcutPath, path, StringComparison.OrdinalIgnoreCase)),
+            openShellLocation: OpenShellLocationFromShell)
         { Owner = this };
         _explorerWindow.Closed += (_, _) => _explorerWindow = null;
         _explorerWindow.Show();

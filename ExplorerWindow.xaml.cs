@@ -81,13 +81,14 @@ public partial class ExplorerWindow : Window
     private double _detailsPaneHeight = 160;
     private bool _openFoldersInNewTab;
     private bool _commandRibbonVisible = true;
+    private readonly Action<string>? _openShellLocation;
 
     private void Window_SourceInitialized(object? sender, EventArgs e)
     {
         SystemBackdropService.TryApplyMica(this);
     }
 
-    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null, ExplorerFolderViewStore? folderViewStore = null, ExplorerSessionStore? sessionStore = null, bool restoreSavedSession = true, bool saveSession = true, bool? openFoldersInNewTab = null, Func<string, bool>? pinTaskbarItem = null, Func<string, bool>? isTaskbarItemPinned = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? isStartItemPinned = null)
+    public ExplorerWindow(string? initialPath = null, bool showHiddenItems = false, bool hideFileExtensions = true, bool startInThisPc = false, bool showRecentItems = true, ExplorerQuickAccessStore? quickAccessStore = null, ExplorerFolderViewStore? folderViewStore = null, ExplorerSessionStore? sessionStore = null, bool restoreSavedSession = true, bool saveSession = true, bool? openFoldersInNewTab = null, Func<string, bool>? pinTaskbarItem = null, Func<string, bool>? isTaskbarItemPinned = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? isStartItemPinned = null, Action<string>? openShellLocation = null)
     {
         InitializeComponent();
         Loaded += (_, _) => _hasCompletedInitialLayout = true;
@@ -103,6 +104,7 @@ public partial class ExplorerWindow : Window
         _isTaskbarItemPinned = isTaskbarItemPinned;
         _pinStartItem = pinStartItem;
         _isStartItemPinned = isStartItemPinned;
+        _openShellLocation = openShellLocation;
         RefreshQuickAccessPins();
         var savedSession = restoreSavedSession ? _sessionStore.Load() : null;
         _openFoldersInNewTab = openFoldersInNewTab ?? savedSession?.OpenFoldersInNewTab ?? false;
@@ -1406,7 +1408,10 @@ public partial class ExplorerWindow : Window
             return;
         }
         if (sender is not Button { Tag: string path }) return;
-        Navigate(new ExplorerLocation(path));
+        if (DesktopShellNamespaceCatalog.IsShellNamespaceLocation(path) && _openShellLocation is not null)
+            _openShellLocation(path);
+        else
+            Navigate(new ExplorerLocation(path));
     }
 
     private void QuickAccessPin_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

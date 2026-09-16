@@ -2202,6 +2202,7 @@ Check(ShellNamespaceBrowserKeyboardAction.Delete, ShellNamespaceBrowserKeyboardP
         new ExplorerQuickAccessPin("", "shell:MyComputerFolder")
     ]);
     Check("This PC", shellQuickAccessPins.Single().Name, "preserve virtual Shell locations in quick access pins");
+    CheckTrue(DesktopShellNamespaceCatalog.IsShellNamespaceLocation(shellQuickAccessPins.Single().Path), "identify virtual Shell quick access targets for routed navigation");
     var maximumQuickAccessPins = ExplorerQuickAccessCatalog.Normalize(Enumerable.Range(0, ExplorerQuickAccessCatalog.MaximumPins + 1)
         .Select(index => new ExplorerQuickAccessPin($"Folder {index}", $"C:\\Pinned\\Folder {index}")));
     Check(ExplorerQuickAccessCatalog.MaximumPins, maximumQuickAccessPins.Count, "bound imported quick access pins");
