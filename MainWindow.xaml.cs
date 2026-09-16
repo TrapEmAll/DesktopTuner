@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     private const uint MOD_NOREPEAT = 0x4000;
     private readonly ProfileStore _profileStore = new();
     private readonly DesktopPreferencesStore _preferences = new();
+    private readonly ExplorerQuickAccessStore _explorerQuickAccessStore = new();
     private readonly RegistrySettingsService _settings;
     private readonly Dictionary<string, ComboBox> _controls = [];
     private readonly Dictionary<string, int> _currentValues = [];
@@ -2418,7 +2419,9 @@ public partial class MainWindow : Window
             pinTaskbarItem: TryPinTaskbarItemFromShell,
             isTaskbarItemPinned: IsTaskbarItemPinnedFromShell,
             pinStartItem: TryPinStartItemFromShell,
-            isStartItemPinned: IsStartItemPinnedFromShell) { Owner = this };
+            isStartItemPinned: IsStartItemPinnedFromShell,
+            pinQuickAccessItem: _explorerQuickAccessStore.Add,
+            isQuickAccessItemPinned: path => _explorerQuickAccessStore.Load().Any(pin => string.Equals(pin.Path, path, StringComparison.OrdinalIgnoreCase))) { Owner = this };
         _shellNamespaceBrowserWindow.Closed += (_, _) => _shellNamespaceBrowserWindow = null;
         _shellNamespaceBrowserWindow.Show();
     }

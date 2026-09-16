@@ -38,8 +38,10 @@ public partial class ShellNamespaceBrowserWindow : Window
     private readonly Func<string, bool>? _isTaskbarItemPinned;
     private readonly Func<string, bool>? _pinStartItem;
     private readonly Func<string, bool>? _isStartItemPinned;
+    private readonly Func<string, bool>? _pinQuickAccessItem;
+    private readonly Func<string, bool>? _isQuickAccessItemPinned;
 
-    public ShellNamespaceBrowserWindow(string location, Func<string, bool>? pinTaskbarItem = null, Func<string, bool>? isTaskbarItemPinned = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? isStartItemPinned = null)
+    public ShellNamespaceBrowserWindow(string location, Func<string, bool>? pinTaskbarItem = null, Func<string, bool>? isTaskbarItemPinned = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? isStartItemPinned = null, Func<string, bool>? pinQuickAccessItem = null, Func<string, bool>? isQuickAccessItemPinned = null)
     {
         if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(location) && !Directory.Exists(location))
             throw new ArgumentException("The location is not a Windows Shell namespace or an existing folder.", nameof(location));
@@ -48,6 +50,8 @@ public partial class ShellNamespaceBrowserWindow : Window
         _isTaskbarItemPinned = isTaskbarItemPinned;
         _pinStartItem = pinStartItem;
         _isStartItemPinned = isStartItemPinned;
+        _pinQuickAccessItem = pinQuickAccessItem;
+        _isQuickAccessItemPinned = isQuickAccessItemPinned;
         InitializeComponent();
         _changeRefreshTimer.Tick += ChangeRefreshTimer_Tick;
         ApplyViewMode(_viewMode);
@@ -512,6 +516,7 @@ public partial class ShellNamespaceBrowserWindow : Window
         RenameMenuItem.IsEnabled = false;
         PinStartMenuItem.Visibility = Visibility.Collapsed;
         PinTaskbarMenuItem.Visibility = Visibility.Collapsed;
+        PinQuickAccessMenuItem.Visibility = Visibility.Collapsed;
         if (ItemsList.SelectedItems.Count == 1 && ItemsList.SelectedItem is DesktopShellNamespaceEntry entry)
         {
             OpenWithMenuItem.Visibility = ShellOpenWithPolicy.CanOpenWith(true, entry.IsFolder, true)
@@ -528,6 +533,9 @@ public partial class ShellNamespaceBrowserWindow : Window
             PinStartMenuItem.IsEnabled = canPinStart && _isStartItemPinned?.Invoke(entry.ParsingName) != true;
             PinTaskbarMenuItem.Visibility = canPinTaskbar ? Visibility.Visible : Visibility.Collapsed;
             PinTaskbarMenuItem.IsEnabled = canPinTaskbar && _isTaskbarItemPinned?.Invoke(entry.ParsingName) != true;
+            var canPinQuickAccess = entry.IsFolder && _pinQuickAccessItem is not null;
+            PinQuickAccessMenuItem.Visibility = canPinQuickAccess ? Visibility.Visible : Visibility.Collapsed;
+            PinQuickAccessMenuItem.IsEnabled = canPinQuickAccess && _isQuickAccessItemPinned?.Invoke(entry.ParsingName) != true;
             RenameMenuItem.IsEnabled = await CanRenameAsync(entry);
         }
         ShowMoreOptionsMenuItem.Header = hasSelection ? "Show more options" : "Show folder options";
@@ -601,6 +609,12 @@ public partial class ShellNamespaceBrowserWindow : Window
     {
         if (_pinTaskbarItem is null || ItemsList.SelectedItems.Count != 1 || ItemsList.SelectedItem is not DesktopShellNamespaceEntry entry) return;
         if (_pinTaskbarItem(entry.ParsingName)) StatusText.Text = $"Pinned {entry.Name} to the taskbar.";
+    }
+
+    private void PinQuickAccess_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pinQuickAccessItem is null || ItemsList.SelectedItems.Count != 1 || ItemsList.SelectedItem is not DesktopShellNamespaceEntry entry || !entry.IsFolder) return;
+        if (_pinQuickAccessItem(entry.ParsingName)) StatusText.Text = $"Pinned {entry.Name} to quick access.";
     }
 
     private async void Copy_Click(object sender, RoutedEventArgs e) => await CopySelectedItemsAsync(cut: false);

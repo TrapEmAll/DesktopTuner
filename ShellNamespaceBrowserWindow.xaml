@@ -117,6 +117,7 @@
                     <MenuItem x:Name="RenameMenuItem" Header="Rename" IsEnabled="False" Click="Rename_Click" />
                     <MenuItem x:Name="PinStartMenuItem" Header="Pin to Start" Visibility="Collapsed" Click="PinStart_Click" />
                     <MenuItem x:Name="PinTaskbarMenuItem" Header="Pin to taskbar" Visibility="Collapsed" Click="PinTaskbar_Click" />
+                    <MenuItem x:Name="PinQuickAccessMenuItem" Header="Pin to quick access" Visibility="Collapsed" Click="PinQuickAccess_Click" />
                     <MenuItem x:Name="ShowMoreOptionsMenuItem" Header="Show more options" Click="ShowMoreOptions_Click" />
                 </ContextMenu>
             </ListView.ContextMenu>
