@@ -1977,7 +1977,7 @@ public partial class ExplorerWindow : Window
         CopyPathButton.IsEnabled = canTransferSelection;
         NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin && !_isSearchView;
         PasteButton.IsEnabled = !ActiveTab.Location.IsDriveList && !ActiveTab.Location.IsHome && !ActiveTab.Location.IsRecycleBin && ClipboardHasFileDrop();
-        ClassicNewFolderMenuItem.IsEnabled = NewFolderButton.IsEnabled;
+        ClassicNewMenuItem.IsEnabled = NewFolderButton.IsEnabled;
         ClassicOpenMenuItem.IsEnabled = OpenSelectedButton.IsEnabled;
         ClassicRenameMenuItem.IsEnabled = RenameButton.IsEnabled;
         ClassicDeleteMenuItem.IsEnabled = DeleteButton.IsEnabled;
@@ -2287,8 +2287,7 @@ public partial class ExplorerWindow : Window
         if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open")) is { } openItem)
             openItem.IsEnabled = hasSingleSelection;
         NewFolderButton.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin && !_isSearchView;
-        if (EntriesList.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "New folder")) is { } newFolderItem)
-            newFolderItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin && !_isSearchView;
+        EntriesNewMenuItem.IsEnabled = !_location.IsDriveList && !_location.IsHome && !_location.IsRecycleBin && !_isSearchView;
     }
 
     private bool CanShowNativeShellContextMenu(IReadOnlyList<ExplorerEntry> selection)
@@ -2329,7 +2328,41 @@ public partial class ExplorerWindow : Window
         }
     }
 
+    private void NewMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menu) return;
+        menu.Items.Clear();
+        var folder = new MenuItem { Header = "Folder", InputGestureText = "Ctrl+Shift+N" };
+        folder.Click += NewFolder_Click;
+        menu.Items.Add(folder);
+        foreach (var item in ShellNewItemCatalog.Read())
+        {
+            var entry = new MenuItem { Header = item.Label, Tag = item };
+            entry.Click += NewShellItem_Click;
+            menu.Items.Add(entry);
+        }
+    }
+
     private void NewFolder_Click(object sender, RoutedEventArgs e) => CreateFolder();
+
+    private async void NewShellItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: ShellNewItem item } || _location.Path is not { } folder ||
+            _location.IsDriveList || _location.IsHome || _location.IsRecycleBin || _isSearchView) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            if (await NativeShellContextMenuService.CreateShellNewItemAsync(owner, folder, item))
+            {
+                SetStatus($"Created a new {item.Label.ToLowerInvariant()}.");
+                RefreshCurrentView();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowFileOperationError("Could not create the new item", ex);
+        }
+    }
     private void PinTaskbar_Click(object sender, RoutedEventArgs e)
     {
         if (_pinTaskbarItem is null || EntriesList.SelectedItems.Count != 1 || EntriesList.SelectedItem is not ExplorerEntry entry)
