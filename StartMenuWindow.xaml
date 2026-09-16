@@ -354,7 +354,7 @@
                                         <MenuItem Header="Run as administrator" Tag="{Binding Application}" IsEnabled="{Binding Application.CanRunElevated}" Click="RunAsAdministrator_Click" />
                                     </ContextMenu>
                                 </Grid.ContextMenu>
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                 <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="{Binding AlphabetMarker}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource DesktopAccentTextBrush}" Margin="0,0,0,4">
                                     <TextBlock.Style>
@@ -373,7 +373,7 @@
                                                 <Style.Triggers><DataTrigger Binding="{Binding Application.Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                                             </Style>
                                         </Border.Style>
-                                        <TextBlock Text="{Binding Application.Name}" MaxWidth="27" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource DesktopAccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Application.Name}" MaxWidth="35" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource DesktopAccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
                                 </Grid>
                                 <StackPanel Grid.Row="1" Grid.Column="1" VerticalAlignment="Center">
