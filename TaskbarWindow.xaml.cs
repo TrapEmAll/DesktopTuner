@@ -1096,6 +1096,58 @@ public partial class TaskbarWindow : Window
         RunningWindowService.Activate(window);
     }
 
+    private void WindowActionsMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menu || menu.Tag is not TaskbarWindowGroup group) return;
+
+        menu.Items.Clear();
+        foreach (var window in group.Windows)
+        {
+            var windowMenu = new MenuItem
+            {
+                Header = string.IsNullOrWhiteSpace(window.Title) ? group.ApplicationName : window.Title,
+                Tag = window,
+            };
+            windowMenu.Items.Add(CreateWindowActionItem("Activate", window, WindowGroupWindow_Click));
+            windowMenu.Items.Add(CreateWindowActionItem("Restore", window, RestoreWindow_Click, TaskbarWindowGrouping.CanRestore(window)));
+            windowMenu.Items.Add(CreateWindowActionItem("Minimize", window, MinimizeWindow_Click, !window.IsMinimized));
+            windowMenu.Items.Add(CreateWindowActionItem("Maximize", window, MaximizeWindow_Click, TaskbarWindowGrouping.CanMaximize(window)));
+            windowMenu.Items.Add(new Separator());
+            windowMenu.Items.Add(CreateWindowActionItem("Close", window, CloseWindow_Click));
+            menu.Items.Add(windowMenu);
+        }
+
+        if (menu.Items.Count == 0)
+            menu.Items.Add(new MenuItem { Header = "No windows available", IsEnabled = false });
+    }
+
+    private static MenuItem CreateWindowActionItem(string header, RunningWindow window, RoutedEventHandler click, bool enabled = true)
+    {
+        var item = new MenuItem { Header = header, Tag = window, IsEnabled = enabled };
+        item.Click += click;
+        return item;
+    }
+
+    private void RestoreWindow_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: RunningWindow window }) RunningWindowService.Restore(window);
+    }
+
+    private void MinimizeWindow_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: RunningWindow window }) RunningWindowService.Minimize(window);
+    }
+
+    private void MaximizeWindow_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: RunningWindow window }) RunningWindowService.Maximize(window);
+    }
+
+    private void CloseWindow_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: RunningWindow window }) RunningWindowService.Close(window);
+    }
+
     private void CloseWindows_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem item) return;

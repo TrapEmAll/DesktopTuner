@@ -761,6 +761,12 @@ Check("Editor (2)", alwaysGroupedWindows[0].Label, "show the app name and window
 CheckTrue(alwaysGroupedWindows[0].IsActive, "mark an app group active when one of its windows is foreground");
 Check("Document one" + Environment.NewLine + "Document two", alwaysGroupedWindows[0].ToolTip, "list window titles in a grouped button tooltip");
 Check((nint)1, TaskbarWindowGrouping.SelectCloseTarget(alwaysGroupedWindows[0])!.Handle, "middle-click closes the foreground window in a taskbar group");
+var minimizedWindow = new RunningWindow((nint)304, "Minimized", "Editor", @"C:\Apps\editor.exe", true);
+var maximizedWindow = minimizedWindow with { Handle = (nint)305, IsMinimized = false, IsMaximized = true };
+CheckTrue(TaskbarWindowGrouping.CanRestore(minimizedWindow), "offer restore for minimized taskbar windows");
+CheckTrue(TaskbarWindowGrouping.CanRestore(maximizedWindow), "offer restore for maximized taskbar windows");
+CheckTrue(TaskbarWindowGrouping.CanMaximize(minimizedWindow), "offer maximize for non-maximized taskbar windows");
+CheckTrue(!TaskbarWindowGrouping.CanMaximize(maximizedWindow), "disable maximize for already maximized taskbar windows");
 var inactiveWindowGroup = new TaskbarWindowGroup("Editor", "Editor", [runningWindows[1]]);
 Check((nint)2, TaskbarWindowGrouping.SelectCloseTarget(inactiveWindowGroup)!.Handle, "middle-click closes the only window when no group member is foreground");
 CheckTrue(TaskbarWindowGrouping.SelectCloseTarget(new TaskbarWindowGroup("Empty", "Empty", [])) is null, "ignore middle-click when a taskbar group has no live windows");

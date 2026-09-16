@@ -15,6 +15,18 @@ public sealed record TaskbarWindowGroup(string Label, string ApplicationName, IR
 
 public static class TaskbarWindowGrouping
 {
+    public static bool CanRestore(RunningWindow window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        return window.IsMinimized || window.IsMaximized;
+    }
+
+    public static bool CanMaximize(RunningWindow window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        return !window.IsMaximized;
+    }
+
     public static string? GetLaunchPath(TaskbarWindowGroup group)
     {
         ArgumentNullException.ThrowIfNull(group);

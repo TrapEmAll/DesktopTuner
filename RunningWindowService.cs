@@ -22,6 +22,7 @@ public sealed class RunningWindowService
 {
     private const int GW_OWNER = 4;
     private const int SW_RESTORE = 9;
+    private const int SW_MAXIMIZE = 3;
     private const int SW_MINIMIZE = 6;
     private const uint WM_CLOSE = 0x0010;
     private static readonly SharedSnapshotCache<RunningWindow> SnapshotCache = new(TimeSpan.FromMilliseconds(200));
@@ -98,6 +99,10 @@ public sealed class RunningWindowService
     }
 
     public static void Minimize(RunningWindow window) => ShowWindow(window.Handle, SW_MINIMIZE);
+
+    public static void Restore(RunningWindow window) => ShowWindow(window.Handle, SW_RESTORE);
+
+    public static void Maximize(RunningWindow window) => ShowWindow(window.Handle, SW_MAXIMIZE);
 
     public static void Close(RunningWindow window)
     {
