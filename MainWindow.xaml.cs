@@ -2313,6 +2313,52 @@ public partial class MainWindow : Window
         window.Show();
     }
 
+    internal bool TryOpenFolderInNewWindowFromShell(string location)
+    {
+        try
+        {
+            if (DesktopShellNamespaceCatalog.IsShellNamespaceLocation(location))
+            {
+                var browser = new ShellNamespaceBrowserWindow(location,
+                    pinTaskbarItem: TryPinTaskbarItemFromShell,
+                    isTaskbarItemPinned: IsTaskbarItemPinnedFromShell,
+                    pinStartItem: TryPinStartItemFromShell,
+                    isStartItemPinned: IsStartItemPinnedFromShell,
+                    pinQuickAccessItem: _explorerQuickAccessStore.Add,
+                    isQuickAccessItemPinned: path => _explorerQuickAccessStore.Load().Any(pin => string.Equals(pin.Path, path, StringComparison.OrdinalIgnoreCase)))
+                { Owner = this };
+                browser.Show();
+                return true;
+            }
+
+            if (!Directory.Exists(location)) return false;
+            var window = new ExplorerWindow(
+                initialPath: Path.GetFullPath(location),
+                showHiddenItems: _currentValues["explorer-hidden"] == 1,
+                hideFileExtensions: _currentValues["explorer-extensions"] == 1,
+                startInThisPc: false,
+                showRecentItems: _currentValues["start-recent"] == 1,
+                quickAccessStore: _explorerQuickAccessStore,
+                folderViewStore: new ExplorerFolderViewStore(),
+                sessionStore: new ExplorerSessionStore(),
+                restoreSavedSession: false,
+                saveSession: false,
+                pinTaskbarItem: TryPinTaskbarItem,
+                isTaskbarItemPinned: path => _pinnedApps.Any(pin => string.Equals(pin.ExecutablePath, path, StringComparison.OrdinalIgnoreCase)),
+                pinStartItem: TryPinStartItem,
+                isStartItemPinned: path => _pinnedStartApps.Any(pin => string.Equals(pin.ShortcutPath, path, StringComparison.OrdinalIgnoreCase)),
+                openShellLocation: OpenShellLocationFromShell)
+            { Owner = this };
+            window.Show();
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or InvalidOperationException or System.Security.SecurityException)
+        {
+            Trace.TraceWarning($"Could not open a companion shell window for '{location}': {ex.Message}");
+            return false;
+        }
+    }
+
     private bool TryPinTaskbarItem(string path)
     {
         var currentPins = _pinnedApps;

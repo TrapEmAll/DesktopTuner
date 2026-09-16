@@ -24,6 +24,9 @@ public static class DesktopHostKeyboardPolicy
         return key == Key.Enter && modifiers == ModifierKeys.Alt && hasSelection && !isEditingName;
     }
 
+    public static bool ShouldOpenInNewWindow(Key key, ModifierKeys modifiers, bool hasSelection, bool isEditingName = false) =>
+        key == Key.Enter && modifiers == ModifierKeys.Control && hasSelection && !isEditingName;
+
     public static bool ShouldDeleteSelection(Key key, ModifierKeys modifiers, bool hasSelection, bool isEditingName = false) =>
         key == Key.Delete && (modifiers is ModifierKeys.None or ModifierKeys.Shift) && hasSelection && !isEditingName;
 

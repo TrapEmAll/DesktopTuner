@@ -154,7 +154,8 @@ public partial class App : Application
                 pinStartItem: shellControls is null ? null : new Func<string, bool>(shellControls.TryPinStartItemFromShell),
                 isStartItemPinned: shellControls is null ? null : new Func<string, bool>(shellControls.IsStartItemPinnedFromShell),
                 pinQuickAccessItem: shellControls is null ? null : new Func<string, bool>(shellControls.TryPinQuickAccessItemFromShell),
-                isQuickAccessItemPinned: shellControls is null ? null : new Func<string, bool>(shellControls.IsQuickAccessItemPinnedFromShell));
+                isQuickAccessItemPinned: shellControls is null ? null : new Func<string, bool>(shellControls.IsQuickAccessItemPinnedFromShell),
+                openFolderInNewWindow: shellControls is null ? null : new Func<string, bool>(shellControls.TryOpenFolderInNewWindowFromShell));
             MainWindow = desktopHost;
             desktopHost.Show();
             shellControls?.Show();

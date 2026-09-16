@@ -198,6 +198,12 @@ Check(false, DesktopHostKeyboardPolicy.ShouldShowProperties(Key.Enter, ModifierK
     "leave Alt+Enter unhandled when the replacement desktop selection is empty");
 Check(false, DesktopHostKeyboardPolicy.ShouldShowProperties(Key.Enter, ModifierKeys.Alt, hasSelection: true, isEditingName: true),
     "preserve Alt+Enter while editing a replacement desktop item name");
+Check(true, DesktopHostKeyboardPolicy.ShouldOpenInNewWindow(Key.Enter, ModifierKeys.Control, hasSelection: true),
+    "open selected replacement desktop folders in a new window with Ctrl+Enter");
+Check(false, DesktopHostKeyboardPolicy.ShouldOpenInNewWindow(Key.Enter, ModifierKeys.Control, hasSelection: false),
+    "leave Ctrl+Enter unhandled when the replacement desktop selection is empty");
+Check(false, DesktopHostKeyboardPolicy.ShouldOpenInNewWindow(Key.Enter, ModifierKeys.Control, hasSelection: true, isEditingName: true),
+    "preserve Ctrl+Enter while editing a replacement desktop item name");
 Check(true, DesktopHostKeyboardPolicy.ShouldDeleteSelection(Key.Delete, ModifierKeys.None, hasSelection: true),
     "delete selected replacement desktop items with the Delete key");
 Check(true, DesktopHostKeyboardPolicy.ShouldDeleteSelection(Key.Delete, ModifierKeys.Shift, hasSelection: true),

@@ -30,6 +30,7 @@ public partial class DesktopHostWindow : Window
     private readonly Func<string, bool>? _isStartItemPinned;
     private readonly Func<string, bool>? _pinQuickAccessItem;
     private readonly Func<string, bool>? _isQuickAccessItemPinned;
+    private readonly Func<string, bool>? _openFolderInNewWindow;
     private readonly ObservableCollection<DesktopHostItem> _desktopItems = [];
     private readonly List<FileSystemWatcher> _desktopWatchers = [];
     private readonly HashSet<string> _cutParsingNames = new(StringComparer.OrdinalIgnoreCase);
@@ -56,7 +57,7 @@ public partial class DesktopHostWindow : Window
     private HashSet<string> _marqueeSelectionBefore = new(StringComparer.OrdinalIgnoreCase);
     private string? _marqueeAnchorBefore;
 
-    public DesktopHostWindow(bool routeFoldersToCompanionExplorer = false, Func<string, bool>? pinTaskbarItem = null, Func<string, bool>? isTaskbarItemPinned = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? isStartItemPinned = null, Func<string, bool>? pinQuickAccessItem = null, Func<string, bool>? isQuickAccessItemPinned = null)
+    public DesktopHostWindow(bool routeFoldersToCompanionExplorer = false, Func<string, bool>? pinTaskbarItem = null, Func<string, bool>? isTaskbarItemPinned = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? isStartItemPinned = null, Func<string, bool>? pinQuickAccessItem = null, Func<string, bool>? isQuickAccessItemPinned = null, Func<string, bool>? openFolderInNewWindow = null)
     {
         _routeFoldersToCompanionExplorer = routeFoldersToCompanionExplorer;
         _pinTaskbarItem = pinTaskbarItem;
@@ -65,6 +66,7 @@ public partial class DesktopHostWindow : Window
         _isStartItemPinned = isStartItemPinned;
         _pinQuickAccessItem = pinQuickAccessItem;
         _isQuickAccessItemPinned = isQuickAccessItemPinned;
+        _openFolderInNewWindow = openFolderInNewWindow;
         InitializeComponent();
         Resources["DesktopHostTextShadow"] = new DropShadowEffect { Color = System.Windows.Media.Colors.Black, BlurRadius = 3, ShadowDepth = 1, Opacity = 0.9 };
         _refreshTimer.Tick += OnRefreshTimerTick;
@@ -452,6 +454,13 @@ public partial class DesktopHostWindow : Window
             }
             e.Handled = true;
         }
+        else if (DesktopHostKeyboardPolicy.ShouldOpenInNewWindow(e.Key, Keyboard.Modifiers, selectedItems.Length > 0, e.OriginalSource is TextBox))
+        {
+            var opened = false;
+            foreach (var entry in selectedItems.Where(item => item.IsDirectory))
+                opened |= _openFolderInNewWindow?.Invoke(entry.FullPath) == true;
+            e.Handled = opened;
+        }
         else if (e.Key == Key.Enter && e.OriginalSource is not TextBox)
         {
             DesktopHostItem? focusedOpenItem = null;
@@ -604,6 +613,12 @@ public partial class DesktopHostWindow : Window
     {
         if (sender is MenuItem { DataContext: DesktopHostItem entry })
             OpenSelectedDesktopItems(entry);
+    }
+
+    private void OnOpenItemInNewWindowClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { DataContext: DesktopHostItem { IsDirectory: true } entry })
+            _openFolderInNewWindow?.Invoke(entry.FullPath);
     }
 
     private async void OpenSelectedDesktopItems(DesktopHostItem? fallback = null)
@@ -811,6 +826,12 @@ public partial class DesktopHostWindow : Window
             openItem.IsEnabled = DesktopHostOpenPolicy.SelectItems(_desktopItems).Count > 0;
         var selectedItems = _desktopItems.Where(candidate => candidate.IsSelected).ToArray();
         var selected = selectedItems.Length == 1 ? selectedItems[0] : null;
+        if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "OpenNewWindowDesktopItemMenuItem") is { } openNewWindowItem)
+        {
+            var canOpen = selected is { IsDirectory: true } && _openFolderInNewWindow is not null;
+            openNewWindowItem.Visibility = canOpen ? Visibility.Visible : Visibility.Collapsed;
+            openNewWindowItem.IsEnabled = canOpen;
+        }
         if (contextMenu.Items.OfType<MenuItem>().FirstOrDefault(menuItem => menuItem.Name == "OpenWithDesktopItemMenuItem") is { } openWithItem)
         {
             openWithItem.Visibility = selected is not null && ShellOpenWithPolicy.CanOpenWith(true, selected.IsDirectory, selected.CanShowNativeContextMenu)
@@ -968,6 +989,13 @@ public partial class DesktopHostWindow : Window
 
     private void OnItemMouseDown(object sender, MouseButtonEventArgs e)
     {
+        if (e.ChangedButton == MouseButton.Middle)
+        {
+            if (sender is Button { DataContext: DesktopHostItem { IsDirectory: true } entry })
+                e.Handled = _openFolderInNewWindow?.Invoke(entry.FullPath) == true;
+            return;
+        }
+        if (e.ChangedButton != MouseButton.Left) return;
         _dragCandidate = (sender as Button)?.DataContext as DesktopHostItem;
         _dragStart = e.GetPosition(this);
         if (_dragCandidate is not { } item) return;
