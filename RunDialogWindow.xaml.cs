@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 
 namespace DesktopTuner;
 
@@ -16,6 +17,13 @@ public partial class RunDialogWindow : Window
         InitializeComponent();
         _runCommand = runCommand;
         _historyStore = historyStore ?? new RunCommandHistoryStore();
+    }
+
+    private void Window_SourceInitialized(object? sender, EventArgs e)
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        SystemBackdropService.TryApplySmallRoundedCorners(handle);
+        SystemBackdropService.TryApplyMica(this);
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)

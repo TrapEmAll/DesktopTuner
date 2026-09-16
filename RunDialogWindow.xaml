@@ -4,7 +4,7 @@
         Title="Run" Width="520" Height="250" MinWidth="460" MinHeight="240"
         WindowStartupLocation="CenterScreen" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
         Background="{DynamicResource DesktopSurfaceAltBrush}" Foreground="{DynamicResource DesktopPrimaryTextBrush}"
-        FontFamily="Segoe UI Variable Text, Segoe UI" Loaded="Window_Loaded" PreviewKeyDown="Window_PreviewKeyDown">
+        FontFamily="Segoe UI Variable Text, Segoe UI" SourceInitialized="Window_SourceInitialized" Loaded="Window_Loaded" PreviewKeyDown="Window_PreviewKeyDown">
     <Grid Margin="22">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
