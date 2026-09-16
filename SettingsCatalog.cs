@@ -17,6 +17,7 @@ public static class SettingsCatalog
 {
     public const string ExplorerAdvanced = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
     public const string ExplorerRoot = @"Software\Microsoft\Windows\CurrentVersion\Explorer";
+    public const string Search = @"Software\Microsoft\Windows\CurrentVersion\Search";
     public const string ExplorerCabinetState = @"Software\Microsoft\Windows\CurrentVersion\Explorer\CabinetState";
     public const string Personalize = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     public const string Accessibility = @"Control Panel\Accessibility";
@@ -64,8 +65,8 @@ public static class SettingsCatalog
             [new("Show", 1), new("Hide", 0)], 1, true),
         new("taskbar-widgets", "Taskbar", "Widgets button", "Choose whether Windows shows the Widgets button on the taskbar.", ExplorerAdvanced, "TaskbarDa",
             [new("Show", 1), new("Hide", 0)], 1, true),
-        new("taskbar-search-mode", "Taskbar", "Search presentation", "Choose whether Windows hides taskbar search, shows an icon, or reserves a search box.", ExplorerAdvanced, "SearchboxTaskbarMode",
-            [new("Hide", 0), new("Icon", 1), new("Search box", 2)], 1, true)
+        new("taskbar-search-mode", "Taskbar", "Search presentation", "Choose whether Windows hides taskbar search, shows an icon or label, or reserves a search box.", Search, "SearchboxTaskbarMode",
+            [new("Hide", 0), new("Icon", 1), new("Icon and label", 2), new("Search box", 3)], 3, true)
     ];
 
     public static SettingDefinition ById(string id) => All.Single(setting => setting.Id == id);

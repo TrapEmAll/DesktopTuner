@@ -1870,11 +1870,12 @@ Check(SettingsCatalog.ExplorerAdvanced, taskbarWidgetsSetting.RegistryPath, "use
 Check("TaskbarDa", taskbarWidgetsSetting.ValueName, "target the Windows Widgets button preference");
 Check(1, taskbarWidgetsSetting.Choices.Single(choice => choice.Label == "Show").Value, "map the visible Widgets button to the Windows registry value");
 Check(0, taskbarWidgetsSetting.Choices.Single(choice => choice.Label == "Hide").Value, "map the hidden Widgets button to the Windows registry value");
-Check(SettingsCatalog.ExplorerAdvanced, taskbarSearchModeSetting.RegistryPath, "use Explorer advanced settings for taskbar search presentation");
+Check(SettingsCatalog.Search, taskbarSearchModeSetting.RegistryPath, "use the Windows Search registry location for taskbar search presentation");
 Check("SearchboxTaskbarMode", taskbarSearchModeSetting.ValueName, "target the Windows taskbar search presentation preference");
 Check(0, taskbarSearchModeSetting.Choices.Single(choice => choice.Label == "Hide").Value, "map hidden taskbar search to the Windows registry value");
 Check(1, taskbarSearchModeSetting.Choices.Single(choice => choice.Label == "Icon").Value, "map icon taskbar search to the Windows registry value");
-Check(2, taskbarSearchModeSetting.Choices.Single(choice => choice.Label == "Search box").Value, "map taskbar search box to the Windows registry value");
+Check(2, taskbarSearchModeSetting.Choices.Single(choice => choice.Label == "Icon and label").Value, "map icon and label taskbar search to the Windows registry value");
+Check(3, taskbarSearchModeSetting.Choices.Single(choice => choice.Label == "Search box").Value, "map taskbar search box to the Windows registry value");
 Check((int)TaskbarButtonAlignment.Left, alignmentSetting.Choices.Single(choice => choice.Label == "Left").Value, "map left taskbar alignment to the overlay setting");
 Check((int)TaskbarButtonAlignment.Center, alignmentSetting.Choices.Single(choice => choice.Label == "Center").Value, "map centered taskbar alignment to the overlay setting");
 var temporaryPreferencesDirectory = Path.Combine(Path.GetTempPath(), $"DesktopTuner.Tests-{Guid.NewGuid():N}");
