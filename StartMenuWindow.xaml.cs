@@ -648,11 +648,14 @@ public partial class StartMenuWindow : Window
         if (app is not null) ConfigureNativeShellMenu(menu, app);
     }
 
-    private static void ConfigureNativeShellMenu(ContextMenu menu, AppEntry app)
+    private void ConfigureNativeShellMenu(ContextMenu menu, AppEntry app)
     {
         var item = menu.Items.OfType<MenuItem>().FirstOrDefault(candidate => Equals(candidate.Header, "Show more options"));
         if (item is null) return;
-        var target = GetNativeShellTarget(app);
+        var target = _recentFilesStore.TryResolveTargetPath(app.ShortcutPath, out var recentTarget)
+            && File.Exists(recentTarget)
+            ? recentTarget
+            : GetNativeShellTarget(app);
         item.Tag = target;
         item.Visibility = target is null ? Visibility.Collapsed : Visibility.Visible;
     }
