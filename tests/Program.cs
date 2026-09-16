@@ -1731,6 +1731,10 @@ Check("ABCD", SystemFlyoutService.FormatKeyboardLayoutLabel("ABCD"), "keep an un
 Check<string?>(null, SystemFlyoutService.FormatKeyboardLayoutLabel(null), "leave the keyboard layout label empty when Windows provides no layout");
 Check("IME on", SystemFlyoutService.FormatInputMethodStatus(0x1), "identify an active IME conversion mode");
 Check("IME off", SystemFlyoutService.FormatInputMethodStatus(0), "identify an inactive IME conversion mode");
+Check(TaskbarSearchAction.OpenWindowsSearch, TaskbarSearchPolicy.ResolveEnterAction(""), "open Windows Search when the replacement taskbar search box is empty");
+Check(TaskbarSearchAction.SearchStartMenu, TaskbarSearchPolicy.ResolveEnterAction("control panel"), "send non-empty replacement taskbar searches to the companion Start search");
+Check(true, TaskbarSearchPolicy.ShouldClearOnEscape("query"), "clear a replacement taskbar search query with Escape");
+Check(false, TaskbarSearchPolicy.ShouldClearOnEscape(""), "leave an empty replacement taskbar search query available for native handling");
 CheckTrue(SystemFlyoutService.GetOnScreenKeyboardSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),

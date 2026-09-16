@@ -2368,8 +2368,24 @@ public partial class TaskbarWindow : Window
 
     private void SearchBox_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Enter || string.IsNullOrWhiteSpace(SearchBox.Text)) return;
-        _searchStartMenu?.Invoke(Display, SearchBox.Text.Trim());
+        if (e.Key == Key.Escape && TaskbarSearchPolicy.ShouldClearOnEscape(SearchBox.Text))
+        {
+            SearchBox.Clear();
+            e.Handled = true;
+            return;
+        }
+        if (e.Key != Key.Enter) return;
+        switch (TaskbarSearchPolicy.ResolveEnterAction(SearchBox.Text))
+        {
+            case TaskbarSearchAction.OpenWindowsSearch:
+                SystemFlyoutService.OpenWindowsSearch();
+                break;
+            case TaskbarSearchAction.SearchStartMenu:
+                _searchStartMenu?.Invoke(Display, SearchBox.Text.Trim());
+                break;
+            default:
+                return;
+        }
         e.Handled = true;
     }
 
