@@ -10,6 +10,7 @@ public readonly record struct KeyboardKeyEvent(ushort VirtualKey, bool KeyUp);
 public static class SystemFlyoutService
 {
     public const string NetworkSettingsUri = "ms-settings:network-wifi";
+    public const string TaskbarSettingsUri = "ms-settings:taskbar";
     public const string SnippingToolUri = "ms-screenclip:";
     private const ushort VK_LWIN = 0x5B;
     private const ushort VK_RWIN = 0x5C;
@@ -230,6 +231,8 @@ public static class SystemFlyoutService
     public static bool OpenWindowsTip() => SendWindowsShortcut(VK_J, WindowsTipSequence, "Windows tip");
 
     public static bool OpenSettings() => OpenShellUri("ms-settings:", "Settings");
+
+    public static bool OpenTaskbarSettings() => OpenShellUri(TaskbarSettingsUri, "taskbar settings");
 
     public static bool OpenAccountSettings() => OpenShellUri("ms-settings:yourinfo", "account settings");
 

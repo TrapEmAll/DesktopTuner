@@ -1354,9 +1354,10 @@ shellRunDialogShortcutGesture.KeyDown(0x5b);
 Check(WindowsKeyAction.OpenRunDialog, shellRunDialogShortcutGesture.KeyDown((uint)'R', canOpenRunDialog: () => true), "route Win+R to the companion Run dialog when Explorer is absent");
 Check(WindowsKeyAction.Suppress, shellRunDialogShortcutGesture.KeyUp((uint)'R'), "suppress Win+R release after opening the companion Run dialog");
 Check(WindowsKeyAction.Suppress, shellRunDialogShortcutGesture.KeyUp(0x5b), "avoid opening Start after opening the companion Run dialog");
-Check("apps,power-options,event-viewer,system,device-manager,network-connections,disk-management,computer-management,terminal,task-manager,settings",
+Check("apps,power-options,event-viewer,system,device-manager,network-connections,disk-management,computer-management,terminal,task-manager,taskbar-settings,settings",
     string.Join(',', ShellHostPowerMenuCatalog.SystemCommands.Select(command => command.Id)), "provide the standard shell-host Power User system commands");
 Check("ms-settings:appsfeatures", ShellHostPowerMenuCatalog.SystemCommand("apps").Target, "open Installed apps from the Power User menu");
+Check(SystemFlyoutService.TaskbarSettingsUri, ShellHostPowerMenuCatalog.SystemCommand("taskbar-settings").Target, "open Taskbar settings from the Power User menu");
 Throws<ArgumentOutOfRangeException>(() => ShellHostPowerMenuCatalog.SystemCommand("missing"), "reject unknown Power User menu commands");
 Check("C:\\Program Files\\Example App\\tool.exe|--safe|two words",
     string.Join('|', RunCommandService.ParseCommandLine("\"C:\\Program Files\\Example App\\tool.exe\" --safe \"two words\"")), "parse quoted executable paths and arguments for the Run dialog");

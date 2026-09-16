@@ -1935,6 +1935,12 @@ public partial class TaskbarWindow : Window
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open Settings", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
+    private void TaskbarSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (!SystemFlyoutService.OpenTaskbarSettings())
+            MessageBox.Show(this, "Windows could not open taskbar settings.", "Could not open Taskbar settings", MessageBoxButton.OK, MessageBoxImage.Error);
+    }
+
     private void SoundSettings_Click(object sender, RoutedEventArgs e)
     {
         try { Process.Start(new ProcessStartInfo("ms-settings:sound") { UseShellExecute = true }); }
