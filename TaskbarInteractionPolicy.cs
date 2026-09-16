@@ -4,6 +4,9 @@ namespace DesktopTuner;
 
 public static class TaskbarInteractionPolicy
 {
+    public static bool ShouldShowProperties(Key key, ModifierKeys modifiers) =>
+        key == Key.Enter && modifiers == ModifierKeys.Alt;
+
     public static bool ShouldShowProperties(MouseButton changedButton, ModifierKeys modifiers) =>
         changedButton == MouseButton.Left && modifiers == ModifierKeys.Alt;
 

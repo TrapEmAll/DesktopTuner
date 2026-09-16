@@ -2224,6 +2224,16 @@ public partial class TaskbarWindow : Window
             return;
         }
 
+        if (TaskbarInteractionPolicy.ShouldShowProperties(e.Key, Keyboard.Modifiers))
+        {
+            if (GetFocusableTaskbarButtons().FirstOrDefault(button => button.IsKeyboardFocused)?.Tag is PinnedTaskbarApp app)
+                ShowTaskbarProperties(app);
+            else if (GetFocusableTaskbarButtons().FirstOrDefault(button => button.IsKeyboardFocused)?.Tag is TaskbarWindowGroup group)
+                ShowTaskbarProperties(group);
+            e.Handled = true;
+            return;
+        }
+
         var isVertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         var forwardKey = isVertical ? Key.Down : Key.Right;
         var backwardKey = isVertical ? Key.Up : Key.Left;
