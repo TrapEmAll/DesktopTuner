@@ -18,8 +18,7 @@ public static class NativeWindowSystemMenuService
             point.X, point.Y, ownerWindow, 0);
         if (command == 0) return true;
 
-        PostMessage(targetWindow, WM_SYSCOMMAND, (nint)command, 0);
-        return true;
+        return PostMessage(targetWindow, WM_SYSCOMMAND, (nint)command, 0);
     }
 
     [DllImport("user32.dll")]
