@@ -2020,6 +2020,17 @@ public partial class MainWindow : Window
         };
         restore.Click += RestoreCustomShell_Click;
         actions.Children.Add(restore);
+
+        var startNow = new Button
+        {
+            Content = "Start shell replacement now",
+            Style = (Style)FindResource("SecondaryButton"),
+            IsEnabled = !_shellHostMode && executablePath is not null,
+            Margin = new Thickness(0, 0, 10, 0)
+        };
+        startNow.Click += StartCustomShellNow_Click;
+        actions.Children.Add(startNow);
+
         if (_shellHostMode)
         {
             var exitShellHost = new Button
@@ -2156,6 +2167,33 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or System.Security.SecurityException)
         {
             MessageBox.Show(this, ex.Message, "Could not configure Desktop Tuner as the shell", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void StartCustomShellNow_Click(object sender, RoutedEventArgs e)
+    {
+        var answer = MessageBox.Show(this,
+            "Start Desktop Tuner's supervised shell replacement for this session? The normal Desktop Tuner window will close, and Windows Explorer will be started automatically if the replacement cannot become ready or stops responding. Keep Ctrl+Alt+Delete recovery available. Continue?",
+            "Start shell replacement now", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (answer != MessageBoxResult.Yes) return;
+
+        try
+        {
+            var executablePath = Environment.ProcessPath
+                ?? throw new InvalidOperationException("Windows could not determine the Desktop Tuner process path.");
+            var startInfo = new ProcessStartInfo(executablePath)
+            {
+                UseShellExecute = false,
+                WorkingDirectory = AppContext.BaseDirectory
+            };
+            startInfo.ArgumentList.Add("--shell-host");
+            _ = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Windows did not start the shell replacement supervisor.");
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            MessageBox.Show(this, ex.Message, "Could not start shell replacement", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
