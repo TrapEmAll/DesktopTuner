@@ -1329,6 +1329,7 @@ public partial class StartMenuWindow : Window
                 Icon = icon is null ? null : new Image { Source = icon, Width = 18, Height = 18 }
             };
             item.Click += SystemPlace_Click;
+            item.PreviewKeyDown += StartPlaceMenuItem_PreviewKeyDown;
             if (TryResolveNativeStartShellTarget(placeId) is { } nativeTarget)
                 item.ContextMenu = CreateNativeStartShellContextMenu(nativeTarget,
                     DesktopShellNamespaceCatalog.IsShellNamespaceLocation(nativeTarget) || Directory.Exists(nativeTarget));
@@ -1428,6 +1429,7 @@ public partial class StartMenuWindow : Window
                     : new Image { Source = icon, Style = (Style)FindResource("StartFlyoutIcon") }
             };
             item.Click += StartPlaceEntry_Click;
+            item.PreviewKeyDown += StartPlaceMenuItem_PreviewKeyDown;
             item.ContextMenu = CreateNativeStartShellContextMenu(entry.FullPath, entry.IsDirectory);
             if (StartMenuPlaceCatalog.CanExpand(entry))
                 item.SubmenuOpened += NestedPlaceFlyout_Opened;
@@ -1501,6 +1503,24 @@ public partial class StartMenuWindow : Window
     {
         if (_openFolderInNewWindow is not null && sender is MenuItem { Tag: string target } && _openFolderInNewWindow(target))
             Close();
+    }
+
+    private void StartPlaceMenuItem_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.Control || sender is not MenuItem menuItem)
+            return;
+
+        var target = menuItem.Tag switch
+        {
+            StartMenuPlaceEntry { IsDirectory: true } entry => entry.FullPath,
+            string placeId => TryResolveNativeStartShellTarget(placeId),
+            _ => null
+        };
+        if (target is null || (!Directory.Exists(target) && !DesktopShellNamespaceCatalog.IsShellNamespaceLocation(target))
+            || _openFolderInNewWindow?.Invoke(target) != true) return;
+
+        Close();
+        e.Handled = true;
     }
 
     private void StartPlaceEntry_Click(object sender, RoutedEventArgs e)
