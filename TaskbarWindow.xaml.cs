@@ -1065,6 +1065,37 @@ public partial class TaskbarWindow : Window
         else if (item.Tag is RunningWindow window) RunningWindowService.Minimize(window);
     }
 
+    private void WindowGroupMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menu || menu.Tag is not TaskbarWindowGroup group) return;
+
+        menu.Items.Clear();
+        foreach (var window in group.Windows)
+        {
+            var title = string.IsNullOrWhiteSpace(window.Title) ? group.ApplicationName : window.Title;
+            var item = new MenuItem
+            {
+                Header = title,
+                Tag = window,
+                IsCheckable = true,
+                IsChecked = window.IsForeground,
+                ToolTip = window.ExecutablePath,
+            };
+            item.Click += WindowGroupWindow_Click;
+            menu.Items.Add(item);
+        }
+
+        if (menu.Items.Count == 0)
+            menu.Items.Add(new MenuItem { Header = "No windows available", IsEnabled = false });
+    }
+
+    private void WindowGroupWindow_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: RunningWindow window }) return;
+        _previewWindow?.Close();
+        RunningWindowService.Activate(window);
+    }
+
     private void CloseWindows_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem item) return;
