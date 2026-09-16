@@ -44,7 +44,18 @@ public static class ControlPanelAppletCatalog
         new("ease-of-access", "Ease of Access Center", ["access.cpl"]),
         new("mobility-center", "Mobility Center", ["/name", "Microsoft.MobilityCenter"]),
         new("recovery", "Recovery", ["/name", "Microsoft.Recovery"]),
-        new("work-folders", "Work Folders", ["/name", "Microsoft.WorkFolders"])
+        new("work-folders", "Work Folders", ["/name", "Microsoft.WorkFolders"]),
+        new("default-programs", "Default Programs", ["/name", "Microsoft.DefaultPrograms"]),
+        new("remote-apps", "RemoteApp and Desktop Connections", ["/name", "Microsoft.RemoteAppAndDesktopConnections"]),
+        new("indexing-options", "Indexing Options", ["/name", "Microsoft.IndexingOptions"]),
+        new("autoplay", "AutoPlay", ["/name", "Microsoft.AutoPlay"]),
+        new("sync-center", "Sync Center", ["/name", "Microsoft.SyncCenter"]),
+        new("color-management", "Color Management", ["/name", "Microsoft.ColorManagement"]),
+        new("backup-restore", "Backup and Restore (Windows 7)", ["/name", "Microsoft.BackupAndRestore"]),
+        new("windows-tools", "Windows Tools", ["/name", "Microsoft.AdministrativeTools"]),
+        new("troubleshooting", "Troubleshooting", ["/name", "Microsoft.Troubleshooting"]),
+        new("file-history", "File History", ["/name", "Microsoft.FileHistory"]),
+        new("storage-spaces", "Storage Spaces", ["/name", "Microsoft.StorageSpaces"])
     ];
 
     public static IReadOnlyList<ControlPanelApplet> GetAvailableApplets(
