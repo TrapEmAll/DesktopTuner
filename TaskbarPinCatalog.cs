@@ -106,15 +106,22 @@ public static class TaskbarPinCatalog
     {
         var pins = current.ToList();
         if (string.IsNullOrWhiteSpace(targetPath) || string.IsNullOrWhiteSpace(name) ||
-            !Path.IsPathFullyQualified(destinationPath) || !Directory.Exists(destinationPath)) return pins;
+            !IsSupportedJumpListDestination(destinationPath)) return pins;
         var index = pins.FindIndex(app => string.Equals(app.ExecutablePath, targetPath, StringComparison.OrdinalIgnoreCase));
         if (index < 0 || pins[index].IsDirectory || pins[index].IsShellNamespace) return pins;
         var destinations = TaskbarJumpListPolicy.NormalizeDestinations(pins[index].PinnedDestinations ?? []).ToList();
         if (destinations.Any(item => string.Equals(item.ParsingName, destinationPath, StringComparison.OrdinalIgnoreCase))) return pins;
-        destinations.Add(new TaskbarJumpListDestination(name.Trim(), Path.GetFullPath(destinationPath)));
+        var parsingName = IsSupportedShellNamespaceTarget(destinationPath)
+            ? destinationPath.Trim()
+            : Path.GetFullPath(destinationPath);
+        destinations.Add(new TaskbarJumpListDestination(name.Trim(), parsingName));
         pins[index] = pins[index] with { PinnedDestinations = TaskbarJumpListPolicy.NormalizeDestinations(destinations).ToList() };
         return pins;
     }
+
+    private static bool IsSupportedJumpListDestination(string destinationPath) =>
+        IsSupportedShellNamespaceTarget(destinationPath) ||
+        Path.IsPathFullyQualified(destinationPath) && Directory.Exists(destinationPath);
 
     public static List<PinnedTaskbarApp> Add(IEnumerable<PinnedTaskbarApp> current, string name, string itemPath, bool isDirectory = false)
     {

@@ -742,7 +742,7 @@ public partial class TaskbarWindow : Window
 
         if (sender is Button { Tag: PinnedTaskbarApp destinationApp } destinationButton &&
             Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && !destinationApp.IsDirectory &&
-            !destinationApp.IsShellNamespace && GetDroppedFolders(e.Data).Count() == 1)
+            !destinationApp.IsShellNamespace && GetDroppedJumpListDestinations(e.Data).Count() == 1)
         {
             destinationButton.Background = TaskbarTheme.GetBrush("TaskbarPressedBrush");
             e.Effects = DragDropEffects.Copy;
@@ -789,12 +789,14 @@ public partial class TaskbarWindow : Window
 
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && !app.IsDirectory && !app.IsShellNamespace)
         {
-            var folder = GetDroppedFolders(e.Data).SingleOrDefault();
-            if (folder is not null)
+            var destination = GetDroppedJumpListDestinations(e.Data).SingleOrDefault();
+            if (destination is not null)
             {
-                var name = Path.GetFileName(Path.TrimEndingDirectorySeparator(folder));
-                if (string.IsNullOrWhiteSpace(name)) name = folder;
-                var pins = TaskbarPinCatalog.AddJumpListDestination(_preferences.PinnedApps ?? [], app.ExecutablePath, name, folder);
+                var name = DesktopShellNamespaceCatalog.IsShellNamespaceLocation(destination)
+                    ? DesktopShellNamespaceCatalog.GetFriendlyName(destination)
+                    : Path.GetFileName(Path.TrimEndingDirectorySeparator(destination));
+                if (string.IsNullOrWhiteSpace(name)) name = destination;
+                var pins = TaskbarPinCatalog.AddJumpListDestination(_preferences.PinnedApps ?? [], app.ExecutablePath, name, destination);
                 var before = _preferences.PinnedApps ?? [];
                 if (pins.Select(pin => pin.PinnedDestinations?.Count ?? 0).SequenceEqual(before.Select(pin => pin.PinnedDestinations?.Count ?? 0))) return;
                 _preferences = _preferences with { PinnedApps = pins };
@@ -985,6 +987,11 @@ public partial class TaskbarWindow : Window
         if (!data.GetDataPresent(DataFormats.FileDrop) || data.GetData(DataFormats.FileDrop) is not string[] paths) return [];
         return paths.Where(path => Path.IsPathFullyQualified(path) && Directory.Exists(path));
     }
+
+    private static IEnumerable<string> GetDroppedJumpListDestinations(IDataObject data) =>
+        GetDroppedFolders(data).Concat(
+            NativeShellContextMenuService.ReadShellDropParsingNames(data)
+                .Where(TaskbarPinCatalog.IsSupportedShellNamespaceTarget));
 
     private void AutoHideTimer_Tick()
     {

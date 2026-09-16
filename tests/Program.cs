@@ -835,6 +835,8 @@ Check(true, shellPin.CanPinToStart, "allow supported Shell namespace taskbar pin
 var pinnedDestinationPins = TaskbarPinCatalog.AddJumpListDestination([editorPin], editorPin.ExecutablePath, "DesktopTuner", Environment.CurrentDirectory);
 Check("DesktopTuner", pinnedDestinationPins.Single().PinnedDestinations!.Single().Name, "add a folder to an app's pinned Jump List destinations");
 Check(1, TaskbarPinCatalog.AddJumpListDestination(pinnedDestinationPins, editorPin.ExecutablePath, "DesktopTuner", Environment.CurrentDirectory).Single().PinnedDestinations!.Count, "avoid duplicate pinned Jump List destinations");
+var shellDestinationPins = TaskbarPinCatalog.AddJumpListDestination([editorPin], editorPin.ExecutablePath, "This PC", "shell:MyComputerFolder");
+Check("shell:MyComputerFolder", shellDestinationPins.Single().PinnedDestinations!.Single().ParsingName, "add a virtual Shell location to an app's pinned Jump List destinations");
 Check("explorer.exe", TaskbarPinCatalog.BuildLaunchInfo(shellPin).FileName, "launch Shell namespace taskbar pins through Explorer");
 Check("shell:MyComputerFolder", TaskbarPinCatalog.BuildLaunchInfo(shellPin).ArgumentList.Single(), "preserve the Shell parsing name when launching a taskbar pin");
 var shellPins = TaskbarPinCatalog.AddShellNamespace([], "This PC", "shell:MyComputerFolder");
