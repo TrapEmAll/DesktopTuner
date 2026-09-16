@@ -1729,6 +1729,8 @@ Check("ms-settings:regionlanguage", SystemFlyoutService.LanguageSettingsUri, "ke
 Check("EN", SystemFlyoutService.FormatKeyboardLayoutLabel("00000409"), "show the active keyboard layout's language code");
 Check("ABCD", SystemFlyoutService.FormatKeyboardLayoutLabel("ABCD"), "keep an unknown keyboard layout identifier readable");
 Check<string?>(null, SystemFlyoutService.FormatKeyboardLayoutLabel(null), "leave the keyboard layout label empty when Windows provides no layout");
+Check("IME on", SystemFlyoutService.FormatInputMethodStatus(0x1), "identify an active IME conversion mode");
+Check("IME off", SystemFlyoutService.FormatInputMethodStatus(0), "identify an inactive IME conversion mode");
 CheckTrue(SystemFlyoutService.GetOnScreenKeyboardSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),

@@ -214,6 +214,23 @@ public static class SystemFlyoutService
         return FormatKeyboardLayoutLabel(layout == 0 ? null : $"{layout.ToInt64():X8}");
     }
 
+    public static string? ReadInputMethodStatus()
+    {
+        var foreground = GetForegroundWindow();
+        if (foreground == 0) return null;
+        var inputContext = ImmGetContext(foreground);
+        if (inputContext == 0) return null;
+        try
+        {
+            return ImmGetConversionStatus(inputContext, out var conversionMode, out _)
+                ? FormatInputMethodStatus(conversionMode)
+                : null;
+        }
+        finally { ImmReleaseContext(foreground, inputContext); }
+    }
+
+    public static string FormatInputMethodStatus(uint conversionMode) => (conversionMode & 0x1) != 0 ? "IME on" : "IME off";
+
     public static string? FormatKeyboardLayoutLabel(string? layoutName)
     {
         if (string.IsNullOrWhiteSpace(layoutName)) return null;
@@ -343,6 +360,17 @@ public static class SystemFlyoutService
 
     [DllImport("user32.dll")]
     private static extern nint GetKeyboardLayout(uint threadId);
+
+    [DllImport("imm32.dll")]
+    private static extern nint ImmGetContext(nint windowHandle);
+
+    [DllImport("imm32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ImmGetConversionStatus(nint inputContext, out uint conversionMode, out uint sentenceMode);
+
+    [DllImport("imm32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ImmReleaseContext(nint windowHandle, nint inputContext);
 
     private static Input Keyboard(ushort key, bool keyUp) => new()
     {

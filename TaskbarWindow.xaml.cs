@@ -2078,10 +2078,12 @@ public partial class TaskbarWindow : Window
     private void UpdateInputMethodStatus()
     {
         var label = SystemFlyoutService.ReadKeyboardLayoutLabel();
+        var imeStatus = SystemFlyoutService.ReadInputMethodStatus();
         InputMethodLabel.Text = label ?? string.Empty;
-        InputMethodButton.ToolTip = label is null
+        var status = string.Join(" · ", new[] { label, imeStatus }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        InputMethodButton.ToolTip = string.IsNullOrWhiteSpace(status)
             ? "Choose a keyboard layout or input method (Win+Space)"
-            : $"{label} · Choose a keyboard layout or input method (Win+Space)";
+            : $"{status} · Choose a keyboard layout or input method (Win+Space)";
     }
 
     private void InputMethodContextMenu_Opened(object sender, RoutedEventArgs e)
@@ -2091,6 +2093,8 @@ public partial class TaskbarWindow : Window
         var picker = new MenuItem { Header = "Choose a keyboard layout or input method" };
         picker.Click += InputMethod_Click;
         menu.Items.Add(picker);
+        if (SystemFlyoutService.ReadInputMethodStatus() is { } imeStatus)
+            menu.Items.Add(new MenuItem { Header = imeStatus, IsEnabled = false });
         menu.Items.Add(new Separator());
         var settings = new MenuItem { Header = "Language & region settings" };
         settings.Click += LanguageSettings_Click;
