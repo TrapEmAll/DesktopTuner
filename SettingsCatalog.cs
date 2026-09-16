@@ -63,7 +63,9 @@ public static class SettingsCatalog
         new("taskbar-task-view", "Taskbar", "Task View button", "Choose whether Windows shows the Task View button on the taskbar.", ExplorerAdvanced, "TaskbarMn",
             [new("Show", 1), new("Hide", 0)], 1, true),
         new("taskbar-widgets", "Taskbar", "Widgets button", "Choose whether Windows shows the Widgets button on the taskbar.", ExplorerAdvanced, "TaskbarDa",
-            [new("Show", 1), new("Hide", 0)], 1, true)
+            [new("Show", 1), new("Hide", 0)], 1, true),
+        new("taskbar-search-mode", "Taskbar", "Search presentation", "Choose whether Windows hides taskbar search, shows an icon, or reserves a search box.", ExplorerAdvanced, "SearchboxTaskbarMode",
+            [new("Hide", 0), new("Icon", 1), new("Search box", 2)], 1, true)
     ];
 
     public static SettingDefinition ById(string id) => All.Single(setting => setting.Id == id);
