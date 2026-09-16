@@ -1725,6 +1725,7 @@ CheckTrue(SystemFlyoutService.GetInputMethodSequence().SequenceEqual(
     new KeyboardKeyEvent(0x20, true),
     new KeyboardKeyEvent(0x5B, true)
 ]), "send the native Windows+Space keyboard-layout picker shortcut in balanced key order");
+Check("ms-settings:regionlanguage", SystemFlyoutService.LanguageSettingsUri, "keep the replacement keyboard-layout settings link on Windows' Language & region page");
 CheckTrue(SystemFlyoutService.GetOnScreenKeyboardSequence().SequenceEqual(
 [
     new KeyboardKeyEvent(0x5B, false),

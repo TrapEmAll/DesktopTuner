@@ -279,7 +279,14 @@
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>
-                <Button x:Name="InputMethodButton" Style="{StaticResource TaskButton}" Click="InputMethod_Click" Width="38" Height="38" ToolTip="Choose a keyboard layout or input method (Win+Space)" AutomationProperties.Name="Keyboard layout"><TextBlock Text="&#xE774;" FontFamily="{DynamicResource TaskbarSystemIconFontFamily}" FontSize="18" /></Button>
+                <Button x:Name="InputMethodButton" Style="{StaticResource TaskButton}" Click="InputMethod_Click" Width="38" Height="38" ToolTip="Choose a keyboard layout or input method (Win+Space)" AutomationProperties.Name="Keyboard layout">
+                    <TextBlock Text="&#xE774;" FontFamily="{DynamicResource TaskbarSystemIconFontFamily}" FontSize="18" />
+                    <Button.ContextMenu>
+                        <ContextMenu Opened="InputMethodContextMenu_Opened">
+                            <MenuItem Header="Language &amp; region settings" Click="LanguageSettings_Click" />
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
                 <Button x:Name="OnScreenKeyboardButton" Style="{StaticResource TaskButton}" Click="OnScreenKeyboard_Click" Width="38" Height="38" Padding="8,4" ToolTip="Open the Windows On-Screen Keyboard (Win+Ctrl+O)" AutomationProperties.Name="On-Screen Keyboard"><TextBlock Text="&#xE765;" FontFamily="{DynamicResource TaskbarSystemIconFontFamily}" FontSize="18" /></Button>
                 <Button x:Name="EmojiButton" Style="{StaticResource TaskButton}" Click="Emoji_Click" Width="38" Height="38" Padding="8,4" ToolTip="Open the Windows emoji panel (Win+.)" AutomationProperties.Name="Emoji panel"><TextBlock Text="&#xE76E;" FontFamily="{DynamicResource TaskbarSystemIconFontFamily}" FontSize="18" /></Button>
                 <Button x:Name="VolumeButton" Style="{StaticResource TaskButton}" Click="SoundSettings_Click" PreviewMouseDown="VolumeButton_PreviewMouseDown" PreviewMouseWheel="VolumeButton_PreviewMouseWheel" Width="38" Height="38" Padding="8,4" ToolTip="Scroll to adjust volume, middle-click to mute, right-click to choose an output device, click for Sound settings" AutomationProperties.Name="Volume">

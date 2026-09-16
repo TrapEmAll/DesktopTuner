@@ -10,6 +10,7 @@ public readonly record struct KeyboardKeyEvent(ushort VirtualKey, bool KeyUp);
 public static class SystemFlyoutService
 {
     public const string NetworkSettingsUri = "ms-settings:network-wifi";
+    public const string LanguageSettingsUri = "ms-settings:regionlanguage";
     public const string TaskbarSettingsUri = "ms-settings:taskbar";
     public const string SnippingToolUri = "ms-screenclip:";
     private const ushort VK_LWIN = 0x5B;
@@ -201,6 +202,8 @@ public static class SystemFlyoutService
     public static bool FocusNotificationArea() => SendWindowsShortcut(VK_B, NotificationAreaSequence, "notification area");
 
     public static bool OpenInputMethodSwitcher() => SendWindowsShortcut(VK_SPACE, InputMethodSequence, "keyboard layout picker");
+
+    public static bool OpenLanguageSettings() => OpenShellUri(LanguageSettingsUri, "Language & region settings");
 
     public static bool OpenOnScreenKeyboard() => SendModifiedShortcut(OnScreenKeyboardSequence, "On-Screen Keyboard");
 

@@ -2073,6 +2073,25 @@ public partial class TaskbarWindow : Window
 
     private void InputMethod_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenInputMethodSwitcher();
 
+    private void InputMethodContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu menu) return;
+        menu.Items.Clear();
+        var picker = new MenuItem { Header = "Choose a keyboard layout or input method" };
+        picker.Click += InputMethod_Click;
+        menu.Items.Add(picker);
+        menu.Items.Add(new Separator());
+        var settings = new MenuItem { Header = "Language & region settings" };
+        settings.Click += LanguageSettings_Click;
+        menu.Items.Add(settings);
+    }
+
+    private void LanguageSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (!SystemFlyoutService.OpenLanguageSettings())
+            MessageBox.Show(this, "Windows could not open Language & region settings.", "Could not open language settings", MessageBoxButton.OK, MessageBoxImage.Error);
+    }
+
     private void OnScreenKeyboard_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenOnScreenKeyboard();
 
     private void AudioOutputContextMenu_Opened(object sender, RoutedEventArgs e)
