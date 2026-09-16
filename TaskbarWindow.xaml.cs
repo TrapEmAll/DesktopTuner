@@ -1941,6 +1941,16 @@ public partial class TaskbarWindow : Window
             MessageBox.Show(this, "Windows could not open taskbar settings.", "Could not open Taskbar settings", MessageBoxButton.OK, MessageBoxImage.Error);
     }
 
+    private void RestartExplorer_Click(object sender, RoutedEventArgs e)
+    {
+        var choice = MessageBox.Show(this,
+            "Restart Windows Explorer? Open Explorer windows and the native taskbar will close and start again.",
+            "Restart Windows Explorer", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+        if (choice != MessageBoxResult.Yes) return;
+        if (!ExplorerRestartService.TryRestart(out var error))
+            MessageBox.Show(this, error ?? "Windows could not restart Explorer.", "Could not restart Windows Explorer", MessageBoxButton.OK, MessageBoxImage.Error);
+    }
+
     private void SoundSettings_Click(object sender, RoutedEventArgs e)
     {
         try { Process.Start(new ProcessStartInfo("ms-settings:sound") { UseShellExecute = true }); }

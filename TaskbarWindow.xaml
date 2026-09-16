@@ -12,6 +12,7 @@
             <MenuItem Header="Open Windows Settings" Click="Settings_Click" />
             <MenuItem Header="Taskbar settings" Click="TaskbarSettings_Click" />
             <MenuItem Header="Task Manager" Click="TaskManager_Click" />
+            <MenuItem Header="Restart Windows Explorer" Click="RestartExplorer_Click" />
             <MenuItem Header="Show the desktop" Click="ShowDesktopMenuItem_Click" />
             <MenuItem Header="Desktop Tuner taskbar settings" Click="ShowSettings_Click" />
             <MenuItem x:Name="LockTaskbarMenuItem" Header="Lock the taskbar" IsCheckable="True" Click="LockTaskbarMenuItem_Click" />

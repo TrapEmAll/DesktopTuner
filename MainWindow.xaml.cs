@@ -2571,6 +2571,13 @@ public partial class MainWindow : Window
                         "Exit shell replacement", MessageBoxButton.YesNo, MessageBoxImage.Question);
                     if (answer == MessageBoxResult.Yes) Application.Current?.Shutdown();
                     return;
+                case "restart-explorer":
+                    var restartExplorerAnswer = MessageBox.Show(this,
+                        "Restart Windows Explorer? Open Explorer windows and the native taskbar will close and start again.",
+                        "Restart Windows Explorer", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+                    if (restartExplorerAnswer == MessageBoxResult.Yes && !ExplorerRestartService.TryRestart(out var restartExplorerError))
+                        MessageBox.Show(this, restartExplorerError ?? "Windows could not restart Explorer.", "Could not restart Windows Explorer", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
                 default:
                     AppCatalogService.OpenLocation(ShellHostPowerMenuCatalog.SystemCommand(commandId).Target!);
                     return;

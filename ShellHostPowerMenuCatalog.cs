@@ -16,6 +16,7 @@ public static class ShellHostPowerMenuCatalog
         new("computer-management", "Computer Management", "compmgmt.msc"),
         new("terminal", "Terminal", "wt.exe"),
         new("task-manager", "Task Manager", "taskmgr.exe"),
+        new("restart-explorer", "Restart Windows Explorer"),
         new("taskbar-settings", "Taskbar settings", SystemFlyoutService.TaskbarSettingsUri),
         new("settings", "Settings", "ms-settings:")
     ];
