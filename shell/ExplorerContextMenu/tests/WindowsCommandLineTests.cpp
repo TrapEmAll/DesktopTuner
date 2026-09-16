@@ -14,6 +14,8 @@ int wmain()
         L"C:\\",
         L"C:\\Users\\Sample User\\",
         L"C:\\Users\\Sample User\\Documents",
+        L"--open-shell-location",
+        L"::{20D04FE0-3AEA-1069-A2D8-08002B30309D}",
         L"path with \\\"embedded quotes\\\" and spaces",
         L""
     };
