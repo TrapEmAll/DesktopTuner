@@ -1687,6 +1687,7 @@ public partial class TaskbarWindow : Window
             var endTask = new MenuItem { Header = "End task", Tag = app };
             endTask.Click += EndPinnedTask_Click;
             menu.Items.Add(endTask);
+            menu.Items.Add(CreateNativeTaskbarShellMenuItem(app));
             menu.Items.Add(new Separator());
             var unpin = new MenuItem { Header = "Unpin from taskbar", Tag = app };
             unpin.Click += Unpin_Click;
@@ -1722,6 +1723,7 @@ public partial class TaskbarWindow : Window
             var openLocation = new MenuItem { Header = "Open file location", Tag = group, IsEnabled = group.CanOpenLocation };
             openLocation.Click += OpenWindowGroupLocation_Click;
             menu.Items.Add(openLocation);
+            menu.Items.Add(CreateNativeTaskbarShellMenuItem(group));
             var pin = new MenuItem { Header = "Pin app to taskbar", Tag = group };
             pin.Click += Pin_Click;
             menu.Items.Add(pin);
@@ -1733,6 +1735,20 @@ public partial class TaskbarWindow : Window
             menu.Items.Add(elevated);
         }
         return menu;
+    }
+
+    private MenuItem CreateNativeTaskbarShellMenuItem(object tag)
+    {
+        var parsingName = tag switch
+        {
+            PinnedTaskbarApp app when app.IsShellNamespace || File.Exists(app.ExecutablePath) || Directory.Exists(app.ExecutablePath) => app.ExecutablePath,
+            TaskbarWindowGroup group when TaskbarWindowGrouping.GetLaunchPath(group) is { } path => path,
+            _ => null
+        };
+        var item = new MenuItem { Header = "Show more options", Tag = parsingName };
+        item.Visibility = parsingName is null ? Visibility.Collapsed : Visibility.Visible;
+        item.Click += ShowNativeTaskbarShellContextMenu_Click;
+        return item;
     }
 
     private MenuItem CreateOverflowJumpListMenu(string header, object tag, TaskbarJumpListCategory category)
