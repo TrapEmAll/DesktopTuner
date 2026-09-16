@@ -42,7 +42,7 @@ namespace
         return true;
     }
 
-    bool GetItemPath(IShellItemArray* items, std::wstring& itemPath)
+    bool GetItemParsingName(IShellItemArray* items, SIGDN nameKind, std::wstring& itemName)
     {
         if (items == nullptr) return false;
         DWORD count = 0;
@@ -54,32 +54,43 @@ namespace
             if (FAILED(items->GetItemAt(index, &item)) || item == nullptr) continue;
 
             PWSTR displayName = nullptr;
-            const HRESULT displayResult = item->GetDisplayName(SIGDN_FILESYSPATH, &displayName);
+            const HRESULT displayResult = item->GetDisplayName(nameKind, &displayName);
             item->Release();
             if (FAILED(displayResult) || displayName == nullptr) continue;
 
-            std::wstring candidate(displayName);
+            itemName.assign(displayName);
             CoTaskMemFree(displayName);
-            if (GetFileAttributesW(candidate.c_str()) == INVALID_FILE_ATTRIBUTES) continue;
-            itemPath = std::move(candidate);
             return true;
         }
         return false;
     }
 
+    bool GetItemPath(IShellItemArray* items, std::wstring& itemPath)
+    {
+        std::wstring candidate;
+        if (!GetItemParsingName(items, SIGDN_FILESYSPATH, candidate)) return false;
+        if (GetFileAttributesW(candidate.c_str()) == INVALID_FILE_ATTRIBUTES) return false;
+        itemPath = std::move(candidate);
+        return true;
+    }
+
     HRESULT OpenFolderInDesktopTuner(IShellItemArray* items)
     {
         std::wstring itemPath;
-        if (!GetItemPath(items, itemPath)) return HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
-        const DWORD attributes = GetFileAttributesW(itemPath.c_str());
-        if (attributes == INVALID_FILE_ATTRIBUTES) return HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
-        const bool isFile = (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+        const bool isFileSystemItem = GetItemPath(items, itemPath);
+        std::wstring itemName;
+        if (!isFileSystemItem && !GetItemParsingName(items, SIGDN_DESKTOPABSOLUTEPARSING, itemName))
+            return HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
+
+        const DWORD attributes = isFileSystemItem ? GetFileAttributesW(itemPath.c_str()) : FILE_ATTRIBUTE_DIRECTORY;
+        if (isFileSystemItem && attributes == INVALID_FILE_ATTRIBUTES) return HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
+        const bool isFile = isFileSystemItem && (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
 
         std::wstring installDirectory;
         if (!GetInstallDirectory(installDirectory)) return HRESULT_FROM_WIN32(GetLastError());
         const std::wstring executable = installDirectory + L"\\DesktopTuner.exe";
-        const std::wstring argument = isFile ? L"--open-file-location" : L"--open-folder";
-        const std::wstring command = QuoteWindowsCommandLineArgument(executable) + L" " + argument + L" " + QuoteWindowsCommandLineArgument(itemPath);
+        const std::wstring argument = isFile ? L"--open-file-location" : isFileSystemItem ? L"--open-folder" : L"--open-shell-location";
+        const std::wstring command = QuoteWindowsCommandLineArgument(executable) + L" " + argument + L" " + QuoteWindowsCommandLineArgument(isFileSystemItem ? itemPath : itemName);
         std::wstring mutableCommand = command;
 
         STARTUPINFOW startup{};
@@ -97,7 +108,9 @@ namespace
     bool HasFileSystemItem(IShellItemArray* items)
     {
         std::wstring path;
-        return GetItemPath(items, path);
+        if (GetItemPath(items, path)) return true;
+        std::wstring parsingName;
+        return GetItemParsingName(items, SIGDN_DESKTOPABSOLUTEPARSING, parsingName);
     }
 
     class ExplorerCommand final : public IExplorerCommand
