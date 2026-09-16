@@ -97,4 +97,6 @@ public static class ShellHostLaunchPolicy
         shellHostMode ? "Restart shell replacement" : "Restart Desktop Tuner";
 
     public static bool ShouldAllowTaskbarClose(bool shellHostMode) => !shellHostMode;
+
+    public static bool ShouldShowRestartExplorerCommand(bool shellHostMode) => !shellHostMode;
 }

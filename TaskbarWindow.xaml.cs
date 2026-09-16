@@ -106,6 +106,9 @@ public partial class TaskbarWindow : Window
         CloseBarButton.Visibility = shellHostMode ? Visibility.Collapsed : Visibility.Visible;
         QuitMenuItem.Header = ShellHostLaunchPolicy.GetExitLabel(shellHostMode);
         RestartShellMenuItem.Visibility = shellHostMode ? Visibility.Visible : Visibility.Collapsed;
+        RestartExplorerMenuItem.Visibility = ShellHostLaunchPolicy.ShouldShowRestartExplorerCommand(shellHostMode)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         _refreshTimer.Tick += (_, _) => RefreshWindows();
         _batteryRefreshTimer.Tick += (_, _) => UpdateBatteryStatus();
         _microphoneRefreshTimer.Tick += (_, _) => UpdateMicrophoneStatus();

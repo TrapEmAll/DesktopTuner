@@ -499,6 +499,8 @@ Check("Restart shell replacement", ShellHostLaunchPolicy.GetRestartLabel(true), 
 Check(1, ShellHostLaunchPolicy.RequestedRestartExitCode, "use the supervisor retry code for a requested shell restart");
 Check(false, ShellHostLaunchPolicy.ShouldAllowTaskbarClose(true), "keep replacement taskbars available throughout shell-host mode");
 Check(true, ShellHostLaunchPolicy.ShouldAllowTaskbarClose(false), "allow taskbar closing outside shell-host mode");
+Check(false, ShellHostLaunchPolicy.ShouldShowRestartExplorerCommand(true), "hide the Explorer restart command while Explorer is absent in shell-host mode");
+Check(true, ShellHostLaunchPolicy.ShouldShowRestartExplorerCommand(false), "keep the Explorer restart command in normal taskbar modes");
 Check(true, ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(true), "keep desktop folder navigation inside the replacement shell");
 Check(false, ShellHostLaunchPolicy.ShouldRouteDesktopFoldersToCompanionExplorer(false), "preserve normal desktop-host folder activation outside replacement shell mode");
 Check(true, ShellHostLaunchPolicy.ShouldRouteStartMenuLocationToCompanionExplorer(true, true, false), "route filesystem-backed Start places through companion Explorer in replacement mode");
