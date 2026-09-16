@@ -18,6 +18,7 @@ public static class StartMenuPlaceCatalog
         new("pictures", "Pictures"),
         new("videos", "Videos"),
         new("libraries", "Libraries"),
+        new("favorites", "Favorites"),
         new("devices-printers", "Devices and Printers"),
         new("network", "Network")
     ];
@@ -74,6 +75,7 @@ public static class StartMenuPlaceCatalog
         "downloads" => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
         "computer" => "shell:MyComputerFolder",
         "libraries" => "shell:Libraries",
+        "favorites" => "shell:Favorites",
         "devices-printers" => "shell:PrintersFolder",
         "recycle-bin" => "shell:RecycleBinFolder",
         "control-panel" => "control.exe",
