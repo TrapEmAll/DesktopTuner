@@ -74,10 +74,10 @@ public static class CustomShellPolicy
         (string.IsNullOrWhiteSpace(currentShellCommand) || TargetsExecutable(currentShellCommand, executablePath));
 
     public static bool ShouldRestartHost(int exitCode, int restartsUsed) =>
-        exitCode != 0 && restartsUsed < MaximumHostRestarts;
+        exitCode == ShellHostLaunchPolicy.RequestedRestartExitCode || exitCode != 0 && restartsUsed < MaximumHostRestarts;
 
     public static bool ShouldDisablePolicyAfterHostFailure(int exitCode, int restartsUsed) =>
-        exitCode != 0 && !ShouldRestartHost(exitCode, restartsUsed);
+        exitCode != 0 && exitCode != ShellHostLaunchPolicy.RequestedRestartExitCode && !ShouldRestartHost(exitCode, restartsUsed);
 
     public static bool ShouldRestartHostAfterStartupTimeout(int restartsUsed) =>
         restartsUsed < MaximumHostRestarts;

@@ -443,6 +443,7 @@ Check(@"""C:\Program Files\Desktop Tuner\DesktopTuner.exe"" --shell-host", Shell
 Check(true, CustomShellPolicy.ShouldRestartHost(-1, 0), "retry the custom shell once after a failed process exit");
 Check(false, CustomShellPolicy.ShouldRestartHost(0, 0), "return to Explorer after a normal custom-shell exit");
 Check(false, CustomShellPolicy.ShouldRestartHost(-1, CustomShellPolicy.MaximumHostRestarts), "stop retrying and recover to Explorer after the restart limit");
+Check(true, CustomShellPolicy.ShouldRestartHost(ShellHostLaunchPolicy.RequestedRestartExitCode, CustomShellPolicy.MaximumHostRestarts), "honor a manual shell restart after automatic retries are exhausted");
 Check(TimeSpan.FromSeconds(60), CustomShellPolicy.HostStartupReadinessTimeout, "bound alternate-shell startup while waiting for the desktop readiness handshake");
 Check(TimeSpan.FromSeconds(10), CustomShellPolicy.HostHeartbeatInterval, "check custom-shell UI health on a bounded interval");
 Check(TimeSpan.FromSeconds(45), CustomShellPolicy.HostHeartbeatTimeout, "detect a custom-shell UI hang after missed dispatcher heartbeats");
@@ -453,6 +454,7 @@ Check(false, CustomShellPolicy.ShouldRestartHostAfterStartupTimeout(CustomShellP
 Check(false, CustomShellPolicy.ShouldDisablePolicyAfterHostFailure(-1, 0), "keep the custom-shell policy during its one recovery retry");
 Check(true, CustomShellPolicy.ShouldDisablePolicyAfterHostFailure(-1, CustomShellPolicy.MaximumHostRestarts), "disable the failing per-user custom-shell policy after recovery retries are exhausted");
 Check(false, CustomShellPolicy.ShouldDisablePolicyAfterHostFailure(0, CustomShellPolicy.MaximumHostRestarts), "preserve the custom-shell policy after a normal user exit");
+Check(false, CustomShellPolicy.ShouldDisablePolicyAfterHostFailure(ShellHostLaunchPolicy.RequestedRestartExitCode, CustomShellPolicy.MaximumHostRestarts), "preserve the custom-shell policy during a manual shell restart");
 Check(@"""C:\Program Files\Desktop Tuner\DesktopTuner.exe""", CustomShellPolicy.FormatExecutableCommand(@"C:\Program Files\Desktop Tuner\DesktopTuner.exe"), "quote custom-shell executable paths so spaces are handled by Winlogon");
 CheckTrue(ShellHostLaunchPolicy.IsShellOverlayInvocation(["--SHELL-OVERLAY"]), "recognize all-edition shell overlay mode without depending on argument casing");
 Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(true, false), "start the companion taskbar in shell-host mode regardless of sign-in preferences");
@@ -496,7 +498,7 @@ Check(false, ShellHostLaunchPolicy.ShouldReplaceWindowsKey(false, false), "prese
 Check("Exit shell replacement and start Explorer", ShellHostLaunchPolicy.GetExitLabel(true), "label shell-host exit as Explorer recovery");
 Check("Exit Desktop Tuner", ShellHostLaunchPolicy.GetExitLabel(false), "keep the normal app exit label");
 Check("Restart shell replacement", ShellHostLaunchPolicy.GetRestartLabel(true), "label the bounded shell-host restart command");
-Check(1, ShellHostLaunchPolicy.RequestedRestartExitCode, "use the supervisor retry code for a requested shell restart");
+Check(0xD7A, ShellHostLaunchPolicy.RequestedRestartExitCode, "use a distinct supervisor retry code for a requested shell restart");
 Check(false, ShellHostLaunchPolicy.ShouldAllowTaskbarClose(true), "keep replacement taskbars available throughout shell-host mode");
 Check(true, ShellHostLaunchPolicy.ShouldAllowTaskbarClose(false), "allow taskbar closing outside shell-host mode");
 Check(false, ShellHostLaunchPolicy.ShouldShowRestartExplorerCommand(true), "hide the Explorer restart command while Explorer is absent in shell-host mode");
