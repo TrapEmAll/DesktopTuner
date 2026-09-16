@@ -1616,6 +1616,7 @@ public partial class TaskbarWindow : Window
         var openFolderItem = new MenuItem { Header = "Open in File Explorer", Tag = path };
         openFolderItem.ContextMenu = CreateNativeTaskbarFolderContextMenu(path);
         openFolderItem.Click += OpenFolderMenuEntry_Click;
+        openFolderItem.PreviewMouseDown += TaskbarFolderMenuItem_PreviewMouseDown;
         menu.Items.Add(openFolderItem);
         menu.Items.Add(new Separator());
         try
@@ -1641,6 +1642,7 @@ public partial class TaskbarWindow : Window
                     Icon = icon is null ? null : new Image { Source = icon, Width = 18, Height = 18 }
                 };
                 item.ContextMenu = CreateNativeTaskbarFolderContextMenu(entry.FullPath, entry.IsDirectory);
+                if (entry.IsDirectory) item.PreviewMouseDown += TaskbarFolderMenuItem_PreviewMouseDown;
                 if (entry.IsDirectory && !entry.IsReparsePoint && depth < 2)
                 {
                     item.Uid = (depth + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -1711,6 +1713,13 @@ public partial class TaskbarWindow : Window
     {
         if (_openFolderInNewWindow is not null && sender is MenuItem { Tag: string path })
             _openFolderInNewWindow(path);
+    }
+
+    private void TaskbarFolderMenuItem_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle || _openFolderInNewWindow is null
+            || sender is not MenuItem { Tag: string path }) return;
+        if (_openFolderInNewWindow(path)) e.Handled = true;
     }
 
     private void OpenFolderMenuEntry_Click(object sender, RoutedEventArgs e)
