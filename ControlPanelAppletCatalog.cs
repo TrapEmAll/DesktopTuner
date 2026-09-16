@@ -41,7 +41,10 @@ public static class ControlPanelAppletCatalog
         new("internet-options", "Internet Options", ["inetcpl.cpl"]),
         new("credential-manager", "Credential Manager", ["/name", "Microsoft.CredentialManager"]),
         new("security-maintenance", "Security and Maintenance", ["wscui.cpl"]),
-        new("ease-of-access", "Ease of Access Center", ["access.cpl"])
+        new("ease-of-access", "Ease of Access Center", ["access.cpl"]),
+        new("mobility-center", "Mobility Center", ["/name", "Microsoft.MobilityCenter"]),
+        new("recovery", "Recovery", ["/name", "Microsoft.Recovery"]),
+        new("work-folders", "Work Folders", ["/name", "Microsoft.WorkFolders"])
     ];
 
     public static IReadOnlyList<ControlPanelApplet> GetAvailableApplets(
