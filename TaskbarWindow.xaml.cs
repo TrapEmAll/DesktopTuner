@@ -1520,8 +1520,47 @@ public partial class TaskbarWindow : Window
             : TaskbarIconService.LoadIcon(iconPath ?? string.Empty);
         if (icon is not null)
             item.Icon = new Image { Source = icon, Width = 18, Height = 18 };
+        item.ContextMenu = CreateOverflowContextMenu(tag);
         item.Click += OverflowItem_Click;
         return item;
+    }
+
+    private ContextMenu CreateOverflowContextMenu(object tag)
+    {
+        var menu = new ContextMenu();
+        if (tag is PinnedTaskbarApp app)
+        {
+            var runningWindows = new MenuItem { Header = "Running windows", Tag = app };
+            runningWindows.SubmenuOpened += PinnedRunningWindowsMenu_SubmenuOpened;
+            menu.Items.Add(runningWindows);
+            menu.Items.Add(new Separator());
+            var launch = new MenuItem { Header = "Start new instance", Tag = app };
+            launch.Click += LaunchPinnedInstance_Click;
+            menu.Items.Add(launch);
+            var endTask = new MenuItem { Header = "End task", Tag = app };
+            endTask.Click += EndPinnedTask_Click;
+            menu.Items.Add(endTask);
+        }
+        else if (tag is TaskbarWindowGroup group)
+        {
+            var showWindows = new MenuItem { Header = "Show windows", Tag = group };
+            showWindows.SubmenuOpened += WindowGroupMenu_SubmenuOpened;
+            menu.Items.Add(showWindows);
+            var actions = new MenuItem { Header = "Window actions", Tag = group };
+            actions.SubmenuOpened += WindowActionsMenu_SubmenuOpened;
+            menu.Items.Add(actions);
+            menu.Items.Add(new Separator());
+            var minimize = new MenuItem { Header = "Minimize window(s)", Tag = group };
+            minimize.Click += Minimize_Click;
+            menu.Items.Add(minimize);
+            var close = new MenuItem { Header = "Close window(s)", Tag = group };
+            close.Click += CloseWindows_Click;
+            menu.Items.Add(close);
+            var endTask = new MenuItem { Header = "End task", Tag = group, IsEnabled = group.CanEndTask };
+            endTask.Click += EndTask_Click;
+            menu.Items.Add(endTask);
+        }
+        return menu;
     }
 
     private void OverflowItem_Click(object sender, RoutedEventArgs e)
