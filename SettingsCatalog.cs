@@ -18,6 +18,7 @@ public static class SettingsCatalog
     public const string ExplorerAdvanced = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
     public const string ExplorerCabinetState = @"Software\Microsoft\Windows\CurrentVersion\Explorer\CabinetState";
     public const string Personalize = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
+    public const string Accessibility = @"Control Panel\Accessibility";
 
     public static IReadOnlyList<SettingDefinition> All { get; } =
     [
@@ -47,7 +48,9 @@ public static class SettingsCatalog
         new("explorer-system-mode", "Explorer", "System color mode", "Set light or dark colors for Windows shell surfaces such as the taskbar and Start menu.", Personalize, "SystemUsesLightTheme",
             [new("Light", 1), new("Dark", 0)], 1, true),
         new("explorer-transparency", "Explorer", "Transparency effects", "Enable or disable Windows transparency effects across supported shell and app surfaces.", Personalize, "EnableTransparency",
-            [new("On", 1), new("Off", 0)], 1, true)
+            [new("On", 1), new("Off", 0)], 1, true),
+        new("explorer-scrollbars", "Explorer", "Scrollbars", "Keep scrollbars visible in Windows and classic Win32 app surfaces.", Accessibility, "DynamicScrollbars",
+            [new("Always show", 1), new("Auto-hide", 0)], 0, true)
     ];
 
     public static SettingDefinition ById(string id) => All.Single(setting => setting.Id == id);

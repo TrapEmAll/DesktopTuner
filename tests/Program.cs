@@ -1802,6 +1802,7 @@ Throws<ArgumentOutOfRangeException>(() => TaskbarLayoutCalculator.Calculate(0, 1
 var appModeSetting = SettingsCatalog.ById("explorer-app-mode");
 var systemModeSetting = SettingsCatalog.ById("explorer-system-mode");
 var transparencySetting = SettingsCatalog.ById("explorer-transparency");
+var scrollbarSetting = SettingsCatalog.ById("explorer-scrollbars");
 var fullPathSetting = SettingsCatalog.ById("explorer-full-path");
 var separateExplorerProcessesSetting = SettingsCatalog.ById("explorer-separate-process");
 var alignmentSetting = SettingsCatalog.ById("taskbar-alignment");
@@ -1827,6 +1828,8 @@ Check(3, windows7TaskbarBackground.GradientStops.Count, "draw the Windows 7 Aero
 Check((byte)77, windows7TaskbarBackground.GradientStops[0].Color.A, "apply taskbar transparency consistently to the Windows 7 Aero gradient");
 Check((byte)77, ((SolidColorBrush)TaskbarTheme.CreateBackground(dark: false, 70)).Color.A, "apply the selected transparency to the light taskbar surface");
 Check("EnableTransparency", transparencySetting.ValueName, "target Windows transparency setting");
+Check(SettingsCatalog.Accessibility, scrollbarSetting.RegistryPath, "use the Windows accessibility registry location for scrollbar visibility");
+Check("DynamicScrollbars", scrollbarSetting.ValueName, "target the Windows always-show-scrollbars preference");
 Check(SettingsCatalog.ExplorerCabinetState, fullPathSetting.RegistryPath, "use Windows Explorer's cabinet-state registry location");
 Check("FullPath", fullPathSetting.ValueName, "target the documented full-path title-bar preference");
 Check(1, fullPathSetting.Choices.Single(choice => choice.Label == "Show full path").Value, "map full-path title bars to the Explorer option");
@@ -1834,6 +1837,7 @@ Check("SeparateProcess", separateExplorerProcessesSetting.ValueName, "target sep
 Check(1, separateExplorerProcessesSetting.Choices.Single(choice => choice.Label == "Enabled").Value, "map process isolation to the Explorer option");
 Check(0, appModeSetting.Choices.Single(choice => choice.Label == "Dark").Value, "map dark app mode to the Windows registry value");
 Check(1, transparencySetting.Choices.Single(choice => choice.Label == "On").Value, "map enabled transparency to the Windows registry value");
+Check(1, scrollbarSetting.Choices.Single(choice => choice.Label == "Always show").Value, "map always-visible scrollbars to the Windows registry value");
 Check((int)TaskbarButtonAlignment.Left, alignmentSetting.Choices.Single(choice => choice.Label == "Left").Value, "map left taskbar alignment to the overlay setting");
 Check((int)TaskbarButtonAlignment.Center, alignmentSetting.Choices.Single(choice => choice.Label == "Center").Value, "map centered taskbar alignment to the overlay setting");
 var temporaryPreferencesDirectory = Path.Combine(Path.GetTempPath(), $"DesktopTuner.Tests-{Guid.NewGuid():N}");
