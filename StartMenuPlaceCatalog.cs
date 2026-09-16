@@ -21,7 +21,9 @@ public static class StartMenuPlaceCatalog
 
     public static IReadOnlyList<StartMenuPlace> AdditionalPlaces { get; } =
     [
+        new("user-profile", "User profile"),
         new("computer", "This PC"),
+        new("devices-printers", "Devices and Printers"),
         new("recycle-bin", "Recycle Bin"),
         new("control-panel", "Control Panel"),
         new("network", "Network"),
@@ -61,9 +63,11 @@ public static class StartMenuPlaceCatalog
 
     public static string ResolveTarget(string id) => id switch
     {
+        "user-profile" => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         "documents" => Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
         "downloads" => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
         "computer" => "shell:MyComputerFolder",
+        "devices-printers" => "shell:PrintersFolder",
         "recycle-bin" => "shell:RecycleBinFolder",
         "control-panel" => "control.exe",
         "network" => "shell:NetworkPlacesFolder",
