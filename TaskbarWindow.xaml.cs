@@ -2248,6 +2248,18 @@ public partial class TaskbarWindow : Window
             return;
         }
 
+        if (TaskbarInteractionPolicy.ShouldShowContextMenu(e.Key, Keyboard.Modifiers))
+        {
+            var focusedButton = GetFocusableTaskbarButtons().FirstOrDefault(button => button.IsKeyboardFocused);
+            if (focusedButton?.ContextMenu is { } contextMenu)
+            {
+                contextMenu.PlacementTarget = focusedButton;
+                contextMenu.IsOpen = true;
+                e.Handled = true;
+            }
+            return;
+        }
+
         var isVertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
         var forwardKey = isVertical ? Key.Down : Key.Right;
         var backwardKey = isVertical ? Key.Up : Key.Left;
