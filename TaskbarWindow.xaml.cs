@@ -44,6 +44,7 @@ public partial class TaskbarWindow : Window
     private readonly Func<string, bool>? _openDirectoryInCompanionExplorer;
     private readonly Func<string, bool>? _openShellLocationInCompanionExplorer;
     private readonly Func<string, bool>? _openFileLocationInCompanionExplorer;
+    private readonly Func<string, bool>? _openFolderInNewWindow;
     private readonly Func<string, bool>? _pinStartItem;
     private readonly Func<string, bool>? _pinQuickAccessItem;
     private readonly Func<string, bool>? _isQuickAccessItemPinned;
@@ -82,7 +83,7 @@ public partial class TaskbarWindow : Window
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Func<string, bool>? openDirectoryInCompanionExplorer = null, Func<string, bool>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? pinQuickAccessItem = null, Func<string, bool>? isQuickAccessItemPinned = null, bool shellHostMode = false, Action<TaskbarDisplay, string>? searchStartMenu = null)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Func<string, bool>? openDirectoryInCompanionExplorer = null, Func<string, bool>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? openFolderInNewWindow = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? pinQuickAccessItem = null, Func<string, bool>? isQuickAccessItemPinned = null, bool shellHostMode = false, Action<TaskbarDisplay, string>? searchStartMenu = null)
     {
         InitializeComponent();
         _isDark = TaskbarTheme.ReadSystemDarkMode();
@@ -102,6 +103,7 @@ public partial class TaskbarWindow : Window
         _openDirectoryInCompanionExplorer = openDirectoryInCompanionExplorer;
         _openShellLocationInCompanionExplorer = openShellLocationInCompanionExplorer;
         _openFileLocationInCompanionExplorer = openFileLocationInCompanionExplorer;
+        _openFolderInNewWindow = openFolderInNewWindow;
         _pinStartItem = pinStartItem;
         _pinQuickAccessItem = pinQuickAccessItem;
         _isQuickAccessItemPinned = isQuickAccessItemPinned;
@@ -1638,7 +1640,7 @@ public partial class TaskbarWindow : Window
                     Tag = entry.FullPath,
                     Icon = icon is null ? null : new Image { Source = icon, Width = 18, Height = 18 }
                 };
-                item.ContextMenu = CreateNativeTaskbarFolderContextMenu(entry.FullPath);
+                item.ContextMenu = CreateNativeTaskbarFolderContextMenu(entry.FullPath, entry.IsDirectory);
                 if (entry.IsDirectory && !entry.IsReparsePoint && depth < 2)
                 {
                     item.Uid = (depth + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -1671,7 +1673,7 @@ public partial class TaskbarWindow : Window
             .ToArray();
     }
 
-    private ContextMenu CreateNativeTaskbarFolderContextMenu(string path)
+    private ContextMenu CreateNativeTaskbarFolderContextMenu(string path, bool isFolder = true)
     {
         var context = new ContextMenu();
         var canPinQuickAccess = DesktopShellNamespaceCatalog.IsShellNamespaceLocation(path) || Directory.Exists(path);
@@ -1684,6 +1686,15 @@ public partial class TaskbarWindow : Window
         };
         quickAccessMenu.Click += PinFolderToQuickAccess_Click;
         context.Items.Add(quickAccessMenu);
+        var openNewWindowMenu = new MenuItem
+        {
+            Header = "Open in new window",
+            Tag = path,
+            Visibility = isFolder && _openFolderInNewWindow is not null ? Visibility.Visible : Visibility.Collapsed,
+            IsEnabled = isFolder && _openFolderInNewWindow is not null
+        };
+        openNewWindowMenu.Click += OpenFolderInNewWindow_Click;
+        context.Items.Add(openNewWindowMenu);
         var nativeMenu = new MenuItem { Header = "Show more options", Tag = path };
         nativeMenu.Click += ShowNativeTaskbarShellContextMenu_Click;
         context.Items.Add(nativeMenu);
@@ -1694,6 +1705,12 @@ public partial class TaskbarWindow : Window
     {
         if (_pinQuickAccessItem is not null && sender is MenuItem { Tag: string path })
             _pinQuickAccessItem(path);
+    }
+
+    private void OpenFolderInNewWindow_Click(object sender, RoutedEventArgs e)
+    {
+        if (_openFolderInNewWindow is not null && sender is MenuItem { Tag: string path })
+            _openFolderInNewWindow(path);
     }
 
     private void OpenFolderMenuEntry_Click(object sender, RoutedEventArgs e)

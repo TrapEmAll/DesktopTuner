@@ -1568,6 +1568,7 @@ public partial class MainWindow : Window
             openDirectoryInCompanionExplorer: _shellHostMode ? TryOpenDirectoryInCompanionExplorer : null,
             openFileLocationInCompanionExplorer: _shellHostMode ? TryOpenFileLocationInCompanionExplorer : null,
             openShellLocationInCompanionExplorer: _shellHostMode ? TryOpenLocationInCompanionExplorer : null,
+            openFolderInNewWindow: _shellHostMode ? TryOpenFolderInNewWindowFromShell : null,
             pinStartItem: TryPinStartItem,
             pinQuickAccessItem: TryPinQuickAccessItemFromShell,
             isQuickAccessItemPinned: IsQuickAccessItemPinnedFromShell,
