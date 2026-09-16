@@ -1617,6 +1617,7 @@ public partial class TaskbarWindow : Window
         openFolderItem.ContextMenu = CreateNativeTaskbarFolderContextMenu(path);
         openFolderItem.Click += OpenFolderMenuEntry_Click;
         openFolderItem.PreviewMouseDown += TaskbarFolderMenuItem_PreviewMouseDown;
+        openFolderItem.PreviewKeyDown += TaskbarFolderMenuItem_PreviewKeyDown;
         menu.Items.Add(openFolderItem);
         menu.Items.Add(new Separator());
         try
@@ -1642,7 +1643,11 @@ public partial class TaskbarWindow : Window
                     Icon = icon is null ? null : new Image { Source = icon, Width = 18, Height = 18 }
                 };
                 item.ContextMenu = CreateNativeTaskbarFolderContextMenu(entry.FullPath, entry.IsDirectory);
-                if (entry.IsDirectory) item.PreviewMouseDown += TaskbarFolderMenuItem_PreviewMouseDown;
+                if (entry.IsDirectory)
+                {
+                    item.PreviewMouseDown += TaskbarFolderMenuItem_PreviewMouseDown;
+                    item.PreviewKeyDown += TaskbarFolderMenuItem_PreviewKeyDown;
+                }
                 if (entry.IsDirectory && !entry.IsReparsePoint && depth < 2)
                 {
                     item.Uid = (depth + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -1718,6 +1723,13 @@ public partial class TaskbarWindow : Window
     private void TaskbarFolderMenuItem_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Middle || _openFolderInNewWindow is null
+            || sender is not MenuItem { Tag: string path }) return;
+        if (_openFolderInNewWindow(path)) e.Handled = true;
+    }
+
+    private void TaskbarFolderMenuItem_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.Control || _openFolderInNewWindow is null
             || sender is not MenuItem { Tag: string path }) return;
         if (_openFolderInNewWindow(path)) e.Handled = true;
     }
