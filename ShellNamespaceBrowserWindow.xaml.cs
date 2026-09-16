@@ -334,6 +334,15 @@ public partial class ShellNamespaceBrowserWindow : Window
             OpenItem(entry);
     }
 
+    private void ItemsList_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle) return;
+        if (e.OriginalSource is not DependencyObject source ||
+            ItemsControl.ContainerFromElement(ItemsList, source) is not ListViewItem { Content: DesktopShellNamespaceEntry { IsFolder: true } entry }) return;
+        OpenItemInNewWindow(entry);
+        e.Handled = true;
+    }
+
     private void ItemsList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _dragCandidate = null;
@@ -472,14 +481,36 @@ public partial class ShellNamespaceBrowserWindow : Window
                 continue;
             }
 
-            try
-            {
-                new ShellNamespaceBrowserWindow(entry.ParsingName) { Owner = this }.Show();
-            }
-            catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or System.Security.SecurityException or InvalidOperationException)
-            {
-                MessageBox.Show(this, ex.Message, $"Could not open {entry.Name}", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            OpenItemInNewWindow(entry);
+        }
+    }
+
+    private bool OpenSelectedItemInNewWindow()
+    {
+        var folders = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().Where(entry => entry.IsFolder).ToArray();
+        foreach (var entry in folders)
+            OpenItemInNewWindow(entry);
+        return folders.Length > 0;
+    }
+
+    private void OpenItemInNewWindow(DesktopShellNamespaceEntry entry)
+    {
+        try
+        {
+            var browser = new ShellNamespaceBrowserWindow(
+                entry.ParsingName,
+                pinTaskbarItem: _pinTaskbarItem,
+                isTaskbarItemPinned: _isTaskbarItemPinned,
+                pinStartItem: _pinStartItem,
+                isStartItemPinned: _isStartItemPinned,
+                pinQuickAccessItem: _pinQuickAccessItem,
+                isQuickAccessItemPinned: _isQuickAccessItemPinned)
+            { Owner = this };
+            browser.Show();
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or System.Security.SecurityException or InvalidOperationException)
+        {
+            MessageBox.Show(this, ex.Message, $"Could not open {entry.Name}", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -820,6 +851,10 @@ public partial class ShellNamespaceBrowserWindow : Window
         {
             ItemsList.SelectAll();
             e.Handled = true;
+        }
+        else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.OpenInNewWindow)
+        {
+            e.Handled = OpenSelectedItemInNewWindow();
         }
         else if (keyboardAction == ShellNamespaceBrowserKeyboardAction.ClearSelection)
         {

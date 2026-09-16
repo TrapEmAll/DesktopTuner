@@ -1979,6 +1979,8 @@ try
         CheckTrue(shellSearchResults.Entries.Any(entry => Path.GetFullPath(entry.ParsingName).Equals(nativeMenuNestedMatch, StringComparison.OrdinalIgnoreCase) && !entry.IsFolder), "search recursively through Shell namespace folders");
     }
     Check(ShellNamespaceBrowserKeyboardAction.SelectAll, ShellNamespaceBrowserKeyboardPolicy.Resolve(Key.A, ModifierKeys.Control, itemListFocused: true, hasSelection: false), "select all Shell namespace items with Ctrl+A when the item list is focused");
+    Check(ShellNamespaceBrowserKeyboardAction.OpenInNewWindow, ShellNamespaceBrowserKeyboardPolicy.Resolve(Key.Enter, ModifierKeys.Control, itemListFocused: true, hasSelection: true), "open selected Shell folders in a new browser window with Ctrl+Enter");
+    Check(ShellNamespaceBrowserKeyboardAction.None, ShellNamespaceBrowserKeyboardPolicy.Resolve(Key.Enter, ModifierKeys.Control, itemListFocused: true, hasSelection: false), "leave Ctrl+Enter unhandled without a Shell selection");
     Check(ShellNamespaceBrowserKeyboardAction.None, ShellNamespaceBrowserKeyboardPolicy.Resolve(Key.A, ModifierKeys.Control, itemListFocused: false, hasSelection: false), "preserve Ctrl+A text selection outside the Shell item list");
     Check(ShellNamespaceBrowserKeyboardAction.ClearSelection, ShellNamespaceBrowserKeyboardPolicy.Resolve(Key.Escape, ModifierKeys.None, itemListFocused: true, hasSelection: true), "clear Shell namespace selection with Escape");
     Check(ShellNamespaceBrowserKeyboardAction.None, ShellNamespaceBrowserKeyboardPolicy.Resolve(Key.Escape, ModifierKeys.None, itemListFocused: true, hasSelection: false), "leave Escape available when the Shell item list has no selection");
