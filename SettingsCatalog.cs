@@ -53,7 +53,9 @@ public static class SettingsCatalog
         new("explorer-scrollbars", "Explorer", "Scrollbars", "Keep scrollbars visible in Windows and classic Win32 app surfaces.", Accessibility, "DynamicScrollbars",
             [new("Always show", 1), new("Auto-hide", 0)], 0, true),
         new("taskbar-tray-icons", "Taskbar", "Notification area icons", "Choose whether Windows keeps notification-area icons visible or collapses them behind the tray overflow.", ExplorerRoot, "EnableAutoTray",
-            [new("Show all icons", 0), new("Collapse inactive icons", 1)], 1, true)
+            [new("Show all icons", 0), new("Collapse inactive icons", 1)], 1, true),
+        new("taskbar-size", "Taskbar", "Taskbar size", "Choose the compact, default, or larger Windows taskbar height and button scale.", ExplorerAdvanced, "TaskbarSi",
+            [new("Small", 0), new("Medium", 1), new("Large", 2)], 1, true)
     ];
 
     public static SettingDefinition ById(string id) => All.Single(setting => setting.Id == id);
