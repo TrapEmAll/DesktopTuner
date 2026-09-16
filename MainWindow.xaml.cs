@@ -840,6 +840,20 @@ public partial class MainWindow : Window
             PageContent.Children.Add(appearanceInfo);
             var info = InfoCard("Classic context menu is experimental", "Windows 11 does not offer a supported switch for the classic full menu. This compatibility setting writes a per-user shell registration and may require File Explorer to restart or Windows to sign out.");
             PageContent.Children.Add(info);
+            var restartExplorerCard = Card();
+            restartExplorerCard.Margin = new Thickness(0, 0, 0, 15);
+            var restartExplorerStack = new StackPanel();
+            restartExplorerStack.Children.Add(new TextBlock { Text = "Apply Explorer compatibility changes", FontSize = 16, FontWeight = FontWeights.SemiBold });
+            var restartExplorerDescription = ThemedText("Restart Windows Explorer after applying context-menu or legacy Explorer settings. Open Explorer windows and the native taskbar will close and start again.", "DesktopMutedTextBrush");
+            restartExplorerDescription.FontSize = 12;
+            restartExplorerDescription.TextWrapping = TextWrapping.Wrap;
+            restartExplorerDescription.Margin = new Thickness(0, 6, 0, 12);
+            restartExplorerStack.Children.Add(restartExplorerDescription);
+            var restartExplorerButton = new Button { Content = "Restart Windows Explorer now", Style = (Style)FindResource("SecondaryButton"), HorizontalAlignment = HorizontalAlignment.Left };
+            restartExplorerButton.Click += RestartExplorerFromSettings_Click;
+            restartExplorerStack.Children.Add(restartExplorerButton);
+            restartExplorerCard.Child = restartExplorerStack;
+            PageContent.Children.Add(restartExplorerCard);
             var explorerCompatibilityInfo = InfoCard("Legacy folder options depend on Windows", "Full-path title bars and separate folder processes use per-user Explorer preferences. Current tabbed File Explorer builds may ignore some legacy view settings; changes remain reversible from Profiles & restore.");
             PageContent.Children.Add(explorerCompatibilityInfo);
         }
@@ -990,6 +1004,16 @@ public partial class MainWindow : Window
             MessageBox.Show(this, $"Windows could not apply these settings. Any partial changes were rolled back.\n\n{ex.Message}", "Could not apply settings", MessageBoxButton.OK, MessageBoxImage.Error);
             SetStatus("Apply failed. Check the error details and try again.");
         }
+    }
+
+    private void RestartExplorerFromSettings_Click(object sender, RoutedEventArgs e)
+    {
+        var choice = MessageBox.Show(this,
+            "Restart Windows Explorer? Open Explorer windows and the native taskbar will close and start again.",
+            "Restart Windows Explorer", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+        if (choice != MessageBoxResult.Yes) return;
+        if (!ExplorerRestartService.TryRestart(out var error))
+            MessageBox.Show(this, error ?? "Windows could not restart Explorer.", "Could not restart Windows Explorer", MessageBoxButton.OK, MessageBoxImage.Error);
     }
 
     private void Undo_Click(object sender, RoutedEventArgs e)
