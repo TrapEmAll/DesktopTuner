@@ -457,6 +457,9 @@ Check(@"""C:\Program Files\Desktop Tuner\DesktopTuner.exe""", CustomShellPolicy.
 CheckTrue(ShellHostLaunchPolicy.IsShellOverlayInvocation(["--SHELL-OVERLAY"]), "recognize all-edition shell overlay mode without depending on argument casing");
 Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(true, false), "start the companion taskbar in shell-host mode regardless of sign-in preferences");
 Check(true, ShellHostLaunchPolicy.ShouldStartTaskbar(false, true, false), "start the companion taskbar in shell overlay mode regardless of sign-in preferences");
+Check(true, ShellHostLaunchPolicy.ShouldProvidePowerUserMenu(false, true), "route Win+X to the custom Power User menu in all-edition shell overlay mode");
+Check(true, ShellHostLaunchPolicy.ShouldProvidePowerUserMenu(true, false), "route Win+X to the custom Power User menu when Explorer is absent");
+Check(false, ShellHostLaunchPolicy.ShouldProvidePowerUserMenu(false, false), "preserve the native Power User menu outside replacement modes");
 Check(true, ShellHostLaunchPolicy.ShouldCoverAllDisplays(true, false), "cover every display in shell-host mode regardless of overlay preferences");
 Check(true, ShellHostLaunchPolicy.ShouldCoverAllDisplays(false, false, true), "cover every display in shell overlay mode regardless of display preferences");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, true), "avoid trying to hide an Explorer taskbar when running as the logon shell");

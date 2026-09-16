@@ -1554,7 +1554,7 @@ public partial class MainWindow : Window
         var taskbar = new TaskbarWindow(display, targetDisplay => ShowStartMenu(targetDisplay), () => _startMenuWindow?.IsVisible == true, preferences, _taskbarWindowOrder, SaveDesktopPreferences, CloseTaskbars, ShowSettingsWindow, QuitApplication,
             showDesktop: _shellHostMode ? ToggleShowDesktop : null,
             focusSystemArea: _shellHostMode ? FocusTaskbarSystemArea : null,
-            executePowerUserCommand: _shellHostMode ? ExecuteShellHostPowerUserCommand : null,
+            executePowerUserCommand: ShellHostLaunchPolicy.ShouldProvidePowerUserMenu(_shellHostMode, _shellOverlayMode) ? ExecuteShellHostPowerUserCommand : null,
             openDirectoryInCompanionExplorer: _shellHostMode ? path => OpenExplorer(path) : null,
             openFileLocationInCompanionExplorer: _shellHostMode ? OpenPinnedFileLocationInCompanionExplorer : null,
             openShellLocationInCompanionExplorer: _shellHostMode ? TryOpenLocationInCompanionExplorer : null,
@@ -2553,7 +2553,7 @@ public partial class MainWindow : Window
         taskbar.FocusTaskbarSystemArea(_taskbarFocusReturnWindow);
     }
 
-    private bool CanOpenPowerUserMenu() => _shellHostMode && _taskbarWindows.Any(window => window.IsVisible);
+    private bool CanOpenPowerUserMenu() => ShellHostLaunchPolicy.ShouldProvidePowerUserMenu(_shellHostMode, _shellOverlayMode) && _taskbarWindows.Any(window => window.IsVisible);
 
     private void OpenPowerUserMenu()
     {
