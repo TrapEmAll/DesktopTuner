@@ -114,10 +114,13 @@
                     </Button>
                     <TextBox x:Name="SearchBox" Width="190" Height="36" VerticalContentAlignment="Center" Padding="10,0" Margin="2,0,4,0" KeyDown="SearchBox_KeyDown" ToolTip="Search apps and Windows" AutomationProperties.Name="Taskbar search" />
                     <Button x:Name="SearchButton" Width="38" Height="38" Style="{StaticResource TaskButton}" Click="Search_Click" ToolTip="Open Windows Search (Win+S)" AutomationProperties.Name="Search">
-                        <Grid Width="20" Height="20">
-                            <Ellipse Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="1" Stroke="{DynamicResource TaskbarForegroundBrush}" StrokeThickness="2" />
-                            <Line X1="0" Y1="0" X2="7" Y2="7" Stroke="{DynamicResource TaskbarForegroundBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
-                        </Grid>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Grid Width="20" Height="20">
+                                <Ellipse Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="1" Stroke="{DynamicResource TaskbarForegroundBrush}" StrokeThickness="2" />
+                                <Line X1="0" Y1="0" X2="7" Y2="7" Stroke="{DynamicResource TaskbarForegroundBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1" />
+                            </Grid>
+                            <TextBlock x:Name="SearchButtonLabel" Text="Search" Visibility="Collapsed" VerticalAlignment="Center" Margin="5,0,1,0" />
+                        </StackPanel>
                     </Button>
                 </StackPanel>
             </Border>
