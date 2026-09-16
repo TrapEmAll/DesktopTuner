@@ -1540,6 +1540,10 @@ public partial class TaskbarWindow : Window
             var endTask = new MenuItem { Header = "End task", Tag = app };
             endTask.Click += EndPinnedTask_Click;
             menu.Items.Add(endTask);
+            menu.Items.Add(new Separator());
+            var unpin = new MenuItem { Header = "Unpin from taskbar", Tag = app };
+            unpin.Click += Unpin_Click;
+            menu.Items.Add(unpin);
         }
         else if (tag is TaskbarWindowGroup group)
         {
@@ -1559,6 +1563,19 @@ public partial class TaskbarWindow : Window
             var endTask = new MenuItem { Header = "End task", Tag = group, IsEnabled = group.CanEndTask };
             endTask.Click += EndTask_Click;
             menu.Items.Add(endTask);
+            menu.Items.Add(new Separator());
+            var openLocation = new MenuItem { Header = "Open file location", Tag = group, IsEnabled = group.CanOpenLocation };
+            openLocation.Click += OpenWindowGroupLocation_Click;
+            menu.Items.Add(openLocation);
+            var pin = new MenuItem { Header = "Pin app to taskbar", Tag = group };
+            pin.Click += Pin_Click;
+            menu.Items.Add(pin);
+            var pinStart = new MenuItem { Header = "Pin to Start", Tag = group };
+            pinStart.Click += PinTaskbarAppToStart_Click;
+            menu.Items.Add(pinStart);
+            var elevated = new MenuItem { Header = "Start new elevated instance", Tag = group, IsEnabled = group.CanRunElevated };
+            elevated.Click += RunWindowAsAdministrator_Click;
+            menu.Items.Add(elevated);
         }
         return menu;
     }
