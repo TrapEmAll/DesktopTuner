@@ -442,10 +442,23 @@ public partial class ShellNamespaceBrowserWindow : Window
         }
     }
 
-    private void OpenSelectedItem()
+    private async void OpenSelectedItem()
     {
         var selection = ItemsList.SelectedItems.OfType<DesktopShellNamespaceEntry>().ToArray();
         if (selection.Length == 0) return;
+        if (selection.Length > 1 && selection.All(entry => !entry.IsFolder))
+        {
+            try
+            {
+                var owner = new WindowInteropHelper(this).Handle;
+                if (await NativeShellContextMenuService.OpenShellItemsAsync(owner, selection.Select(entry => entry.ParsingName)))
+                    return;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception)
+            {
+                StatusText.Text = $"Could not open the selected Shell items together: {ex.Message}";
+            }
+        }
         foreach (var entry in selection)
         {
             var action = ShellNamespaceOpenPolicy.Resolve(entry.IsFolder, selection.Length);
