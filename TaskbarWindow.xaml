@@ -141,7 +141,7 @@
                 <ItemsControl x:Name="PinnedItems" VerticalAlignment="Center" ItemsPanel="{StaticResource HorizontalWindowPanel}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Style="{StaticResource TaskButton}" Margin="{Binding ButtonMargin}" Tag="{Binding Target}" Click="PinnedButton_Click" ToolTip="{Binding ToolTip}" MouseMove="TaskbarAppButton_MouseMove" MouseLeave="TaskbarAppButton_MouseLeave" PreviewMouseWheel="TaskbarButton_PreviewMouseWheel" PreviewMouseDown="PinnedButton_PreviewMouseDown"
+                            <Button Style="{StaticResource TaskButton}" Margin="{Binding ButtonMargin}" Tag="{Binding Target}" Click="PinnedButton_Click" ToolTip="{Binding ToolTip}" MouseMove="TaskbarAppButton_MouseMove" MouseLeave="TaskbarAppButton_MouseLeave" PreviewMouseWheel="TaskbarButton_PreviewMouseWheel" PreviewMouseDown="PinnedButton_PreviewMouseDown" PreviewMouseRightButtonDown="TaskbarButton_PreviewMouseRightButtonDown"
                                     AllowDrop="True" PreviewMouseLeftButtonDown="PinnedButton_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="PinnedButton_PreviewMouseLeftButtonUp" PreviewMouseMove="PinnedButton_PreviewMouseMove"
                                     DragOver="PinnedButton_DragOver" DragLeave="PinnedButton_DragLeave" Drop="PinnedButton_Drop">
                                 <StackPanel Orientation="Horizontal" MaxWidth="190">
@@ -202,7 +202,7 @@
                 <ItemsControl x:Name="WindowItems" VerticalAlignment="Center" ItemsPanel="{StaticResource HorizontalWindowPanel}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Style="{StaticResource TaskButton}" Margin="{Binding ButtonMargin}" Tag="{Binding Target}" Click="WindowButton_Click" PreviewMouseWheel="TaskbarButton_PreviewMouseWheel" PreviewMouseDown="WindowButton_PreviewMouseDown" ToolTip="{Binding ToolTip}" MouseMove="TaskbarAppButton_MouseMove"
+                            <Button Style="{StaticResource TaskButton}" Margin="{Binding ButtonMargin}" Tag="{Binding Target}" Click="WindowButton_Click" PreviewMouseWheel="TaskbarButton_PreviewMouseWheel" PreviewMouseDown="WindowButton_PreviewMouseDown" PreviewMouseRightButtonDown="TaskbarButton_PreviewMouseRightButtonDown" ToolTip="{Binding ToolTip}" MouseMove="TaskbarAppButton_MouseMove"
                                     MouseEnter="WindowButton_MouseEnter" MouseLeave="WindowButton_MouseLeave"
                                     PreviewMouseLeftButtonDown="WindowButton_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="WindowButton_PreviewMouseLeftButtonUp"
                                     PreviewMouseMove="WindowButton_PreviewMouseMove" DragOver="WindowButton_DragOver" DragLeave="WindowButton_DragLeave" Drop="WindowButton_Drop" AllowDrop="True">

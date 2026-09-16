@@ -1074,6 +1074,20 @@ public partial class TaskbarWindow : Window
         e.Handled = true;
     }
 
+    private void TaskbarButton_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!TaskbarInteractionPolicy.ShouldShowSystemMenu(e.ChangedButton, Keyboard.Modifiers)) return;
+        RunningWindow? target = sender switch
+        {
+            Button { Tag: TaskbarWindowGroup group } => TaskbarWindowGrouping.SelectCloseTarget(group),
+            Button { Tag: PinnedTaskbarApp app } => TaskbarWindowGrouping.SelectPinnedRepresentative(app,
+                _windows.Enumerate().Where(window => _preferences.TaskbarShowWindowsFromAllVirtualDesktops || window.IsOnCurrentVirtualDesktop is not false)),
+            _ => null
+        };
+        if (target is null || !NativeWindowSystemMenuService.TryShow(target.Handle, new WindowInteropHelper(this).Handle)) return;
+        e.Handled = true;
+    }
+
     private void TaskbarAppButton_MouseMove(object sender, MouseEventArgs e)
     {
         if (sender is not Button button || button.DataContext is not TaskbarButtonViewModel { DynamicAura: true, AuraBrush: RadialGradientBrush brush } ||

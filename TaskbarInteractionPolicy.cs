@@ -4,6 +4,9 @@ namespace DesktopTuner;
 
 public static class TaskbarInteractionPolicy
 {
+    public static bool ShouldShowSystemMenu(MouseButton changedButton, ModifierKeys modifiers) =>
+        changedButton == MouseButton.Right && modifiers == ModifierKeys.Shift;
+
     public static bool ShouldShowProperties(Key key, ModifierKeys modifiers) =>
         key == Key.Enter && modifiers == ModifierKeys.Alt;
 
