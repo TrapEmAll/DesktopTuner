@@ -4,6 +4,9 @@ namespace DesktopTuner;
 
 public static class TaskbarInteractionPolicy
 {
+    public static bool ShouldLaunchPinnedElevated(MouseButton changedButton, ModifierKeys modifiers) =>
+        changedButton == MouseButton.Left && modifiers == (ModifierKeys.Control | ModifierKeys.Shift);
+
     public static bool ShouldLaunchNewPinnedInstance(MouseButton changedButton, ModifierKeys modifiers = ModifierKeys.None) =>
         changedButton == MouseButton.Middle || IsShiftClick(changedButton, modifiers);
 

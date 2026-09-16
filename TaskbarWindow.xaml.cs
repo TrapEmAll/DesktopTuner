@@ -1997,8 +1997,14 @@ public partial class TaskbarWindow : Window
 
     private void PinnedButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (!TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(e.ChangedButton, Keyboard.Modifiers)
-            || sender is not Button { Tag: PinnedTaskbarApp app }) return;
+        if (sender is not Button { Tag: PinnedTaskbarApp app }) return;
+        if (TaskbarInteractionPolicy.ShouldLaunchPinnedElevated(e.ChangedButton, Keyboard.Modifiers))
+        {
+            LaunchPinnedApp(app, runAsAdministrator: true);
+            e.Handled = true;
+            return;
+        }
+        if (!TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(e.ChangedButton, Keyboard.Modifiers)) return;
         LaunchPinnedApp(app);
         e.Handled = true;
     }

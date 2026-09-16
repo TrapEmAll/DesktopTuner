@@ -1711,6 +1711,8 @@ CheckTrue(SystemFlyoutService.GetQuickSettingsSequence().SequenceEqual(
 ]), "send the native Windows+A Quick Settings shortcut in balanced key order");
 CheckTrue(TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(System.Windows.Input.MouseButton.Middle), "use middle-click to launch a new pinned taskbar instance");
 Check(false, TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(System.Windows.Input.MouseButton.Left), "keep primary click on the existing pinned taskbar activation path");
+CheckTrue(TaskbarInteractionPolicy.ShouldLaunchPinnedElevated(System.Windows.Input.MouseButton.Left, System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift), "use Ctrl+Shift-click to launch a pinned taskbar app elevated");
+Check(false, TaskbarInteractionPolicy.ShouldLaunchPinnedElevated(System.Windows.Input.MouseButton.Left, System.Windows.Input.ModifierKeys.Shift), "keep ordinary Shift-click on the non-elevated new-instance path");
 CheckTrue(TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(System.Windows.Input.MouseButton.Left, System.Windows.Input.ModifierKeys.Shift), "use Shift-click to launch a new pinned taskbar instance");
 Check(false, TaskbarInteractionPolicy.ShouldLaunchNewPinnedInstance(System.Windows.Input.MouseButton.Left, System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift), "keep Ctrl+Shift-click out of the ordinary pinned new-instance gesture");
 CheckTrue(TaskbarInteractionPolicy.ShouldLaunchNewRunningInstance(System.Windows.Input.MouseButton.Middle, true), "launch a new running-app instance on middle-click when its executable is available");
