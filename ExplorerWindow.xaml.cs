@@ -1441,7 +1441,7 @@ public partial class ExplorerWindow : Window
     {
         e.Effects = e.Data.GetDataPresent(QuickAccessPinDragFormat)
             ? DragDropEffects.Move
-            : GetDroppedQuickAccessFolders(e.Data).Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
+            : GetDroppedQuickAccessLocations(e.Data).Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
 
@@ -1455,7 +1455,7 @@ public partial class ExplorerWindow : Window
         if (e.Data.GetDataPresent(QuickAccessPinDragFormat) && e.Data.GetData(QuickAccessPinDragFormat) is string sourcePath)
             ReorderQuickAccessPin(sourcePath, insertionIndex);
         else
-            PinDroppedFolders(GetDroppedQuickAccessFolders(e.Data), insertionIndex);
+            PinDroppedFolders(GetDroppedQuickAccessLocations(e.Data), insertionIndex);
         e.Handled = true;
     }
 
@@ -1463,7 +1463,7 @@ public partial class ExplorerWindow : Window
     {
         e.Effects = e.Data.GetDataPresent(QuickAccessPinDragFormat)
             ? DragDropEffects.Move
-            : GetDroppedQuickAccessFolders(e.Data).Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
+            : GetDroppedQuickAccessLocations(e.Data).Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
 
@@ -1473,20 +1473,24 @@ public partial class ExplorerWindow : Window
             && e.Data.GetData(QuickAccessPinDragFormat) is string sourcePath)
             ReorderQuickAccessPin(sourcePath, QuickAccessPinsPanel.Children.Count);
         else
-            PinDroppedFolders(GetDroppedQuickAccessFolders(e.Data), QuickAccessPinsPanel.Children.Count);
+            PinDroppedFolders(GetDroppedQuickAccessLocations(e.Data), QuickAccessPinsPanel.Children.Count);
         e.Handled = true;
     }
 
-    private static IReadOnlyList<string> GetDroppedQuickAccessFolders(IDataObject data)
+    private static IReadOnlyList<string> GetDroppedQuickAccessLocations(IDataObject data)
     {
-        if (!data.GetDataPresent(DataFormats.FileDrop, autoConvert: false)) return [];
-        IEnumerable<string> paths = data.GetData(DataFormats.FileDrop, autoConvert: false) switch
-        {
-            string[] values => values,
-            StringCollection values => values.Cast<string>(),
-            _ => Array.Empty<string>()
-        };
-        return ExplorerQuickAccessCatalog.GetDroppableFolders(paths, Directory.Exists);
+        IEnumerable<string> paths = data.GetDataPresent(DataFormats.FileDrop, autoConvert: false)
+            ? data.GetData(DataFormats.FileDrop, autoConvert: false) switch
+            {
+                string[] values => values,
+                StringCollection values => values.Cast<string>(),
+                _ => Array.Empty<string>()
+            }
+            : [];
+        var filesystemFolders = ExplorerQuickAccessCatalog.GetDroppableFolders(paths, Directory.Exists);
+        var shellLocations = ExplorerQuickAccessCatalog.GetDroppableShellLocations(
+            NativeShellContextMenuService.ReadShellDropParsingNames(data));
+        return filesystemFolders.Concat(shellLocations).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
     private void PinDroppedFolders(IReadOnlyList<string> paths, int insertionIndex)

@@ -2198,6 +2198,10 @@ Check(ShellNamespaceBrowserKeyboardAction.Delete, ShellNamespaceBrowserKeyboardP
     Check(0, ExplorerQuickAccessCatalog.Normalize([
         new ExplorerQuickAccessPin("relative", "relative-folder")
     ]).Count, "reject relative paths from imported quick access pins");
+    var shellQuickAccessPins = ExplorerQuickAccessCatalog.Normalize([
+        new ExplorerQuickAccessPin("", "shell:MyComputerFolder")
+    ]);
+    Check("This PC", shellQuickAccessPins.Single().Name, "preserve virtual Shell locations in quick access pins");
     var maximumQuickAccessPins = ExplorerQuickAccessCatalog.Normalize(Enumerable.Range(0, ExplorerQuickAccessCatalog.MaximumPins + 1)
         .Select(index => new ExplorerQuickAccessPin($"Folder {index}", $"C:\\Pinned\\Folder {index}")));
     Check(ExplorerQuickAccessCatalog.MaximumPins, maximumQuickAccessPins.Count, "bound imported quick access pins");
@@ -2214,6 +2218,7 @@ Check(ShellNamespaceBrowserKeyboardAction.Delete, ShellNamespaceBrowserKeyboardP
         [@"C:\Folders\Projects", @"C:\Folders\Projects", @"C:\Folders\readme.txt", "relative-folder"],
         path => string.Equals(path, @"C:\Folders\Projects", StringComparison.OrdinalIgnoreCase));
     Check(1, droppableQuickAccessFolders.Count, "accept only distinct absolute folders from drag-and-drop paths");
+    Check("shell:MyComputerFolder", ExplorerQuickAccessCatalog.GetDroppableShellLocations(["shell:MyComputerFolder", "shell:MyComputerFolder", "relative"]).Single(), "accept distinct virtual Shell locations for quick access drops");
     var startPlaceTestDirectory = Path.Combine(temporaryPreferencesDirectory, "StartPlaceFlyout");
     Directory.CreateDirectory(startPlaceTestDirectory);
     Directory.CreateDirectory(Path.Combine(startPlaceTestDirectory, "Folder"));

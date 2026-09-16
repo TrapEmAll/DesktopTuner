@@ -22,8 +22,13 @@ public static class ExplorerQuickAccessCatalog
             string path;
             try
             {
-                if (!System.IO.Path.IsPathFullyQualified(pin.Path)) continue;
-                path = System.IO.Path.GetFullPath(pin.Path);
+                if (DesktopShellNamespaceCatalog.IsShellNamespaceLocation(pin.Path))
+                    path = pin.Path.Trim();
+                else
+                {
+                    if (!System.IO.Path.IsPathFullyQualified(pin.Path)) continue;
+                    path = System.IO.Path.GetFullPath(pin.Path);
+                }
             }
             catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
             {
@@ -41,6 +46,8 @@ public static class ExplorerQuickAccessCatalog
 
     public static string GetDisplayName(string path)
     {
+        if (DesktopShellNamespaceCatalog.IsShellNamespaceLocation(path))
+            return DesktopShellNamespaceCatalog.GetFriendlyName(path);
         var trimmed = path.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
         var name = System.IO.Path.GetFileName(trimmed);
         return string.IsNullOrWhiteSpace(name) ? path : name;
@@ -86,6 +93,16 @@ public static class ExplorerQuickAccessCatalog
 
         return folders;
     }
+
+    public static IReadOnlyList<string> GetDroppableShellLocations(IEnumerable<string>? parsingNames)
+    {
+        if (parsingNames is null) return [];
+        return parsingNames
+            .Where(DesktopShellNamespaceCatalog.IsShellNamespaceLocation)
+            .Select(path => path.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
 }
 
 public sealed class ExplorerQuickAccessStore
@@ -126,8 +143,11 @@ public sealed class ExplorerQuickAccessStore
 
     public bool Add(string directoryPath)
     {
-        if (string.IsNullOrWhiteSpace(directoryPath) || !Directory.Exists(directoryPath)) return false;
-        var fullPath = System.IO.Path.GetFullPath(directoryPath);
+        if (string.IsNullOrWhiteSpace(directoryPath)) return false;
+        var fullPath = DesktopShellNamespaceCatalog.IsShellNamespaceLocation(directoryPath)
+            ? directoryPath.Trim()
+            : Directory.Exists(directoryPath) ? System.IO.Path.GetFullPath(directoryPath) : null;
+        if (fullPath is null) return false;
         var pins = ExplorerQuickAccessCatalog.Normalize(Load());
         if (pins.Count >= ExplorerQuickAccessCatalog.MaximumPins
             || pins.Any(pin => string.Equals(pin.Path, fullPath, StringComparison.OrdinalIgnoreCase))) return false;
