@@ -2359,7 +2359,7 @@ public partial class MainWindow : Window
             OpenExplorer(Path.GetFullPath(location));
             return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or Win32Exception or System.Security.SecurityException)
         {
             System.Diagnostics.Trace.TraceWarning($"Could not open companion Explorer location '{location}': {ex.Message}");
             return false;
@@ -2384,7 +2384,7 @@ public partial class MainWindow : Window
             OpenExplorer(folder, Path.GetFullPath(path));
             return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or Win32Exception or System.Security.SecurityException)
         {
             System.Diagnostics.Trace.TraceWarning($"Could not open companion Explorer file location '{path}': {ex.Message}");
             return false;
@@ -2399,7 +2399,7 @@ public partial class MainWindow : Window
             OpenExplorer(Path.GetFullPath(path));
             return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or Win32Exception or System.Security.SecurityException)
         {
             System.Diagnostics.Trace.TraceWarning($"Could not open companion Explorer directory '{path}': {ex.Message}");
             return false;
