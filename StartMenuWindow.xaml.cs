@@ -1119,10 +1119,10 @@ public partial class StartMenuWindow : Window
         menu.IsOpen = true;
     }
 
-    private void PlaceFlyout_Opened(object sender, RoutedEventArgs e)
+    private async void PlaceFlyout_Opened(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: string placeId } menuItem) return;
-        FillPlaceFlyout(menuItem, StartMenuPlaceCatalog.ResolveTarget(placeId));
+        await FillPlaceFlyoutAsync(menuItem, StartMenuPlaceCatalog.ResolveTarget(placeId));
     }
 
     private void ControlPanelFlyout_Opened(object sender, RoutedEventArgs e)
@@ -1165,16 +1165,19 @@ public partial class StartMenuWindow : Window
         }
     }
 
-    private void NestedPlaceFlyout_Opened(object sender, RoutedEventArgs e)
+    private async void NestedPlaceFlyout_Opened(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: StartMenuPlaceEntry { IsDirectory: true } entry } menuItem) return;
-        FillPlaceFlyout(menuItem, entry.FullPath);
+        await FillPlaceFlyoutAsync(menuItem, entry.FullPath);
     }
 
-    private void FillPlaceFlyout(MenuItem menuItem, string directoryPath)
+    private async Task FillPlaceFlyoutAsync(MenuItem menuItem, string directoryPath)
     {
         menuItem.Items.Clear();
-        var entries = StartMenuPlaceCatalog.ReadChildren(directoryPath);
+        menuItem.Items.Add(new MenuItem { Header = "Loading…", IsEnabled = false });
+        var entries = await StartMenuPlaceCatalog.ReadChildrenAsync(directoryPath);
+        if (!menuItem.IsSubmenuOpen) return;
+        menuItem.Items.Clear();
         if (entries.Count == 0)
         {
             menuItem.Items.Add(new MenuItem { Header = "No items", IsEnabled = false });

@@ -137,6 +137,29 @@ public static class StartMenuPlaceCatalog
             .ToArray();
     }
 
+    public static async Task<IReadOnlyList<StartMenuPlaceEntry>> ReadChildrenAsync(string directoryPath, int maximum = 12)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directoryPath);
+        if (maximum < 0) throw new ArgumentOutOfRangeException(nameof(maximum));
+        if (maximum == 0) return [];
+        if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(directoryPath))
+            return ReadChildren(directoryPath, maximum);
+
+        try
+        {
+            var entries = await DesktopShellNamespaceCatalog.ReadChildrenAsync(directoryPath).ConfigureAwait(true);
+            return entries
+                .Take(maximum)
+                .Select(entry => new StartMenuPlaceEntry(entry.Name, entry.ParsingName, entry.IsFolder, IsReparsePoint: false))
+                .ToArray();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Security.SecurityException)
+        {
+            System.Diagnostics.Trace.TraceWarning($"Could not read Start Shell place '{directoryPath}' asynchronously: {ex.Message}");
+            return [];
+        }
+    }
+
     public static bool CanExpand(StartMenuPlaceEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);

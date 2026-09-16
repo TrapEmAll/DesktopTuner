@@ -1211,6 +1211,7 @@ Check("shell:Libraries", StartMenuPlaceCatalog.ResolveTarget("libraries"), "open
 Check("shell:PrintersFolder", StartMenuPlaceCatalog.ResolveTarget("devices-printers"), "open Devices and Printers from the Start places menu");
 Check(true, StartMenuPlaceCatalog.CanExpand(new StartMenuPlaceEntry("Folder", @"C:\Folder", IsDirectory: true, IsReparsePoint: false)), "allow a normal directory to expose another Start place dropdown level");
 Check(true, StartMenuPlaceCatalog.CanExpand(new StartMenuPlaceEntry("Libraries", "shell:Libraries", IsDirectory: true, IsReparsePoint: false)), "allow a virtual Shell folder to expose another Start place dropdown level");
+Check(0, (await StartMenuPlaceCatalog.ReadChildrenAsync("shell:Libraries", 0)).Count, "bound asynchronous Shell place enumeration before querying the provider");
 Check(false, StartMenuPlaceCatalog.CanExpand(new StartMenuPlaceEntry("File.txt", @"C:\File.txt", IsDirectory: false, IsReparsePoint: false)), "keep files as direct Start place entries without submenus");
 Check(false, StartMenuPlaceCatalog.CanExpand(new StartMenuPlaceEntry("Linked folder", @"C:\Linked folder", IsDirectory: true, IsReparsePoint: true)), "prevent Start place dropdown traversal through linked folders");
 Check("Run...", StartMenuPlaceCatalog.AdditionalPlaces.Single(place => place.Id == "run").Label, "offer the classic Run dialog from the Start places menu");
