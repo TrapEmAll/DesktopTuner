@@ -110,7 +110,7 @@
                     <MenuItem x:Name="CopyPathMenuItem" Header="Copy as path" IsEnabled="False" Click="CopyPath_Click" />
                     <MenuItem x:Name="CutMenuItem" Header="Cut" IsEnabled="False" Click="Cut_Click" />
                     <MenuItem Header="Paste" Click="Paste_Click" />
-                    <MenuItem x:Name="NewFolderMenuItem" Header="New folder" Click="NewFolder_Click" />
+                    <MenuItem x:Name="NewMenuItem" Header="New" SubmenuOpened="NewMenu_SubmenuOpened" />
                     <Separator />
                     <MenuItem x:Name="DeleteMenuItem" Header="Delete" InputGestureText="Del" Click="Delete_Click" />
                     <MenuItem x:Name="PropertiesMenuItem" Header="Properties" Click="Properties_Click" />

@@ -493,7 +493,7 @@ public partial class ShellNamespaceBrowserWindow : Window
         CopyMenuItem.IsEnabled = hasSelection;
         CopyPathMenuItem.IsEnabled = hasSelection;
         CutMenuItem.IsEnabled = hasSelection;
-        NewFolderMenuItem.IsEnabled = true;
+        NewMenuItem.IsEnabled = true;
         DeleteMenuItem.IsEnabled = hasSelection;
         PropertiesMenuItem.IsEnabled = hasSelection;
         RenameMenuItem.IsEnabled = false;
@@ -611,7 +611,41 @@ public partial class ShellNamespaceBrowserWindow : Window
 
     private async void Paste_Click(object sender, RoutedEventArgs e) => await PasteIntoCurrentLocationAsync();
 
+    private void NewMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menu) return;
+        menu.Items.Clear();
+
+        var folder = new MenuItem { Header = "Folder" };
+        folder.Click += NewFolder_Click;
+        menu.Items.Add(folder);
+        foreach (var item in ShellNewItemCatalog.Read())
+        {
+            var entry = new MenuItem { Header = item.Label, Tag = item };
+            entry.Click += NewShellItem_Click;
+            menu.Items.Add(entry);
+        }
+    }
+
     private async void NewFolder_Click(object sender, RoutedEventArgs e) => await CreateFolderAsync();
+
+    private async void NewShellItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: ShellNewItem item }) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            if (await NativeShellContextMenuService.CreateShellNewItemAsync(owner, _location, item))
+            {
+                StatusText.Text = $"Created a new {item.Label.ToLowerInvariant()}.";
+                await RefreshCurrentViewAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Could not create the new item: {ex.Message}";
+        }
+    }
 
     private async Task CreateFolderAsync()
     {
