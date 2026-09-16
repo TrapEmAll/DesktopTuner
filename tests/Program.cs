@@ -1359,6 +1359,14 @@ Check("apps,power-options,event-viewer,system,device-manager,network-connections
 Check("ms-settings:appsfeatures", ShellHostPowerMenuCatalog.SystemCommand("apps").Target, "open Installed apps from the Power User menu");
 Check(SystemFlyoutService.TaskbarSettingsUri, ShellHostPowerMenuCatalog.SystemCommand("taskbar-settings").Target, "open Taskbar settings from the Power User menu");
 Throws<ArgumentOutOfRangeException>(() => ShellHostPowerMenuCatalog.SystemCommand("missing"), "reject unknown Power User menu commands");
+var pendingShellInvocations = new ShellHostPendingInvocationQueue();
+pendingShellInvocations.EnqueueFolder("C:\\Users\\Example");
+pendingShellInvocations.EnqueueShellLocation("::{20D04FE0-3AEA-1069-A2D8-08002B30309D}");
+var drainedShellInvocations = pendingShellInvocations.Drain();
+Check(0, pendingShellInvocations.Count, "drain all pending shell-host startup invocations");
+Check("C:\\Users\\Example|False|::{20D04FE0-3AEA-1069-A2D8-08002B30309D}|True",
+    string.Join('|', drainedShellInvocations.Select(invocation => $"{invocation.Value}|{invocation.IsShellLocation}")),
+    "preserve ordered filesystem and virtual shell-host startup invocations");
 Check("C:\\Program Files\\Example App\\tool.exe|--safe|two words",
     string.Join('|', RunCommandService.ParseCommandLine("\"C:\\Program Files\\Example App\\tool.exe\" --safe \"two words\"")), "parse quoted executable paths and arguments for the Run dialog");
 var runStartInfo = RunCommandService.CreateStartInfo("\"C:\\Program Files\\Example App\\tool.exe\" --safe \"two words\"");

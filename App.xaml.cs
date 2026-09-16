@@ -300,19 +300,28 @@ public partial class App : Application
 
     private static void ForwardPendingShellInvocation(ref string? pendingFolderPath, ref string? pendingShellLocation)
     {
+        var pending = new ShellHostPendingInvocationQueue();
         if (pendingFolderPath is not null)
         {
-            if (DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(
-                pendingFolderPath,
-                ShellHostLaunchPolicy.PendingInvocationForwardTimeout)) pendingFolderPath = null;
-            else Trace.TraceWarning("The shell host became ready, but the pending folder launch could not be forwarded.");
+            pending.EnqueueFolder(pendingFolderPath);
+            pendingFolderPath = null;
         }
-        else if (pendingShellLocation is not null)
+        if (pendingShellLocation is not null)
         {
-            if (DesktopTuner.MainWindow.TryOpenShellLocationInExistingInstance(
-                pendingShellLocation,
-                ShellHostLaunchPolicy.PendingInvocationForwardTimeout)) pendingShellLocation = null;
-            else Trace.TraceWarning("The shell host became ready, but the pending Shell location launch could not be forwarded.");
+            pending.EnqueueShellLocation(pendingShellLocation);
+            pendingShellLocation = null;
+        }
+
+        foreach (var invocation in pending.Drain())
+        {
+            var forwarded = invocation.IsShellLocation
+                ? DesktopTuner.MainWindow.TryOpenShellLocationInExistingInstance(invocation.Value, ShellHostLaunchPolicy.PendingInvocationForwardTimeout)
+                : DesktopTuner.MainWindow.TryOpenFolderInExistingInstance(invocation.Value, ShellHostLaunchPolicy.PendingInvocationForwardTimeout);
+            if (!forwarded)
+            {
+                var kind = invocation.IsShellLocation ? "Shell location" : "folder";
+                Trace.TraceWarning($"The shell host became ready, but the pending {kind} launch could not be forwarded.");
+            }
         }
     }
 
