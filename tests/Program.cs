@@ -1370,6 +1370,8 @@ Check("apps,control-panel,power-options,event-viewer,system,device-manager,netwo
     string.Join(',', ShellHostPowerMenuCatalog.SystemCommands.Select(command => command.Id)), "provide the standard shell-host Power User system commands");
 Check("ms-settings:appsfeatures", ShellHostPowerMenuCatalog.SystemCommand("apps").Target, "open Installed apps from the Power User menu");
 Check("control.exe", ShellHostPowerMenuCatalog.SystemCommand("control-panel").Target, "open Control Panel from the Power User menu");
+CheckTrue(ShellHostPowerMenuCatalog.OpensCompanionShellLocation("CONTROL-PANEL"), "keep Control Panel inside the companion shell browser");
+Check(false, ShellHostPowerMenuCatalog.OpensCompanionShellLocation("settings"), "keep regular Power User targets on their native handlers");
 Check(SystemFlyoutService.TaskbarSettingsUri, ShellHostPowerMenuCatalog.SystemCommand("taskbar-settings").Target, "open Taskbar settings from the Power User menu");
 Check<ShellHostPowerMenuCommand>(new("restart-explorer", "Restart Windows Explorer"), ShellHostPowerMenuCatalog.SystemCommand("restart-explorer"), "keep Explorer restart as a shell-host recovery command");
 Throws<ArgumentOutOfRangeException>(() => ShellHostPowerMenuCatalog.SystemCommand("missing"), "reject unknown Power User menu commands");

@@ -2671,6 +2671,12 @@ public partial class MainWindow : Window
 
         try
         {
+            if (ShellHostPowerMenuCatalog.OpensCompanionShellLocation(commandId))
+            {
+                OpenShellNamespaceBrowser("shell:ControlPanelFolder");
+                return;
+            }
+
             switch (commandId)
             {
                 case "explorer":

@@ -35,4 +35,7 @@ public static class ShellHostPowerMenuCatalog
     public static ShellHostPowerMenuCommand SystemCommand(string id) =>
         SystemCommands.SingleOrDefault(command => string.Equals(command.Id, id, StringComparison.OrdinalIgnoreCase))
         ?? throw new ArgumentOutOfRangeException(nameof(id), id, "Unknown shell-host system command.");
+
+    public static bool OpensCompanionShellLocation(string id) =>
+        string.Equals(id, "control-panel", StringComparison.OrdinalIgnoreCase);
 }
