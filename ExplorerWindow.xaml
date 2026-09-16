@@ -253,7 +253,7 @@
                     <StackPanel Margin="8,6">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="Layout" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource DesktopMutedTextBrush}" />
-                        <ComboBox x:Name="ViewModeSelector" Width="138" Height="32" VerticalContentAlignment="Center" SelectionChanged="ViewModeSelector_SelectionChanged">
+                        <ComboBox x:Name="ViewModeSelector" Width="138" Height="32" VerticalContentAlignment="Center" SelectionChanged="ViewModeSelector_SelectionChanged" local:AcrylicComboBoxBehavior.IsEnabled="True">
                             <ComboBoxItem Content="Details" Tag="Details" />
                             <ComboBoxItem Content="List" Tag="List" />
                             <ComboBoxItem Content="Small icons" Tag="SmallIcons" />
@@ -263,7 +263,7 @@
                         </ComboBox>
                         <Border Width="1" Background="{DynamicResource DesktopDividerBrush}" Margin="12,2,12,2" />
                         <TextBlock Text="Sort by" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource DesktopMutedTextBrush}" />
-                        <ComboBox x:Name="SortBySelector" Width="150" Height="32" VerticalContentAlignment="Center" SelectionChanged="SortBySelector_SelectionChanged">
+                        <ComboBox x:Name="SortBySelector" Width="150" Height="32" VerticalContentAlignment="Center" SelectionChanged="SortBySelector_SelectionChanged" local:AcrylicComboBoxBehavior.IsEnabled="True">
                             <ComboBoxItem Content="Name" Tag="Name" />
                             <ComboBoxItem Content="Date modified" Tag="DateModified" />
                             <ComboBoxItem Content="Type" Tag="Type" />
