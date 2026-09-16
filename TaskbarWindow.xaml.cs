@@ -206,8 +206,9 @@ public partial class TaskbarWindow : Window
         QuickSettingsButton.Visibility = !_nativeTrayExposed && systemButtons.QuickSettings ? Visibility.Visible : Visibility.Collapsed;
         if (integratedBounds is { } trayIntegratedBounds) bounds = trayIntegratedBounds;
         SettingsButton.Visibility = !_nativeTrayExposed && systemButtons.Settings ? Visibility.Visible : Visibility.Collapsed;
-        SearchButton.Visibility = systemButtons.Search ? Visibility.Visible : Visibility.Collapsed;
-        SearchBox.Visibility = systemButtons.Search && _preferences.TaskbarSearchStyle == TaskbarSearchStyle.Box ? Visibility.Visible : Visibility.Collapsed;
+        var searchVisible = systemButtons.Search && _preferences.TaskbarSearchStyle != TaskbarSearchStyle.None;
+        SearchButton.Visibility = searchVisible && _preferences.TaskbarSearchStyle == TaskbarSearchStyle.Button ? Visibility.Visible : Visibility.Collapsed;
+        SearchBox.Visibility = searchVisible && _preferences.TaskbarSearchStyle == TaskbarSearchStyle.Box ? Visibility.Visible : Visibility.Collapsed;
         if (SearchBox.Visibility == Visibility.Visible) SearchButton.Visibility = Visibility.Collapsed;
         NetworkButton.Visibility = !_nativeTrayExposed && systemButtons.Network ? Visibility.Visible : Visibility.Collapsed;
         InputMethodButton.Visibility = !_nativeTrayExposed && systemButtons.InputMethod ? Visibility.Visible : Visibility.Collapsed;

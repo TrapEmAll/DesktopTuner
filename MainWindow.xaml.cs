@@ -508,6 +508,7 @@ public partial class MainWindow : Window
             PageContent.Children.Add(labelsRow);
 
             var searchStyleSelector = new ComboBox { Width = 210, Margin = new Thickness(8, 0, 0, 0) };
+            searchStyleSelector.Items.Add(new ComboBoxItem { Content = "Hidden", Tag = TaskbarSearchStyle.None });
             searchStyleSelector.Items.Add(new ComboBoxItem { Content = "Search button", Tag = TaskbarSearchStyle.Button });
             searchStyleSelector.Items.Add(new ComboBoxItem { Content = "Search box", Tag = TaskbarSearchStyle.Box });
             searchStyleSelector.SelectedItem = searchStyleSelector.Items.Cast<ComboBoxItem>().First(item => item.Tag is TaskbarSearchStyle style && style == _taskbarSearchStyle);

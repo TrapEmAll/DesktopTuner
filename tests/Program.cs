@@ -389,6 +389,7 @@ Check(false, SystemBackdropService.TryApplySmallRoundedCorners(IntPtr.Zero), "le
 Check(false, new DesktopPreferences(TaskbarEdge.Bottom).TaskbarOnAllDisplays, "preserve the primary-display behavior for older preference data");
 Check(false, new DesktopPreferences(TaskbarEdge.Bottom).ReplaceNativeTaskbar, "leave native taskbar replacement disabled by default");
 Check(TaskbarSearchStyle.Button, new DesktopPreferences(TaskbarEdge.Bottom).TaskbarSearchStyle, "default the taskbar search control to a button");
+Check(true, Enum.IsDefined(TaskbarSearchStyle.None), "support hiding the custom taskbar search control");
 Check<TaskbarBatteryStatus?>(null, TaskbarBatteryService.Parse(0, 0x80, 57, 3600), "hide the replacement taskbar battery control when no battery is installed");
 var chargingBattery = TaskbarBatteryService.Parse(1, 0x08, 72, 5400)!;
 Check(new TaskbarBatteryStatus(72, true, true, 5400), chargingBattery, "decode charging and AC state with a valid battery estimate");
@@ -2582,6 +2583,8 @@ preferencesStore.Save(expectedPreferences);
     Check(TaskbarLabelVisibility.WhenFull, preferencesStore.Load().TaskbarLabelVisibility, "persist taskbar labels when-full mode");
     preferencesStore.Save(expectedPreferences with { TaskbarSearchStyle = TaskbarSearchStyle.Box });
     Check(TaskbarSearchStyle.Box, preferencesStore.Load().TaskbarSearchStyle, "persist the taskbar search-box mode");
+    preferencesStore.Save(expectedPreferences with { TaskbarSearchStyle = TaskbarSearchStyle.None });
+    Check(TaskbarSearchStyle.None, preferencesStore.Load().TaskbarSearchStyle, "persist the hidden taskbar search mode");
     Check(new TouchMenuMetrics(new System.Windows.Thickness(10, 7, 10, 7), 32), TouchTargetPolicy.Resolve(hasTouchInput: false), "keep context menus compact for pointer input");
     Check(new TouchMenuMetrics(new System.Windows.Thickness(14, 11, 14, 11), 44), TouchTargetPolicy.Resolve(hasTouchInput: true), "expand context-menu hit targets for touch input");
     preferencesStore.Save(expectedPreferences with { TaskbarButtonSpacing = TaskbarButtonSpacing.Relaxed });
