@@ -1100,12 +1100,27 @@ public partial class TaskbarWindow : Window
     {
         if (sender is not MenuItem menu || menu.Tag is not TaskbarWindowGroup group) return;
 
+        PopulateWindowActions(menu, group.Windows, group.ApplicationName);
+    }
+
+    private void PinnedRunningWindowsMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menu || menu.Tag is not PinnedTaskbarApp app) return;
+
+        var windows = _windowOrder.Synchronize(_windows.Enumerate())
+            .Where(window => TaskbarWindowGrouping.MatchesPinnedApp(app, window))
+            .ToArray();
+        PopulateWindowActions(menu, windows, app.Name);
+    }
+
+    private void PopulateWindowActions(MenuItem menu, IReadOnlyList<RunningWindow> windows, string fallbackApplicationName)
+    {
         menu.Items.Clear();
-        foreach (var window in group.Windows)
+        foreach (var window in windows)
         {
             var windowMenu = new MenuItem
             {
-                Header = string.IsNullOrWhiteSpace(window.Title) ? group.ApplicationName : window.Title,
+                Header = string.IsNullOrWhiteSpace(window.Title) ? fallbackApplicationName : window.Title,
                 Tag = window,
             };
             windowMenu.Items.Add(CreateWindowActionItem("Activate", window, WindowGroupWindow_Click));

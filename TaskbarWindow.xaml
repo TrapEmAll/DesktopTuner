@@ -165,6 +165,9 @@
                                         <MenuItem Header="Pinned destinations" Tag="{Binding}" IsEnabled="{Binding HasPinnedDestinations}" SubmenuOpened="PinnedDestinationsMenu_SubmenuOpened">
                                             <MenuItem Header="Loading..." IsEnabled="False" />
                                         </MenuItem>
+                                        <MenuItem Header="Running windows" Tag="{Binding}" IsEnabled="{Binding IsRunning}" SubmenuOpened="PinnedRunningWindowsMenu_SubmenuOpened">
+                                            <MenuItem Header="Loading..." IsEnabled="False" />
+                                        </MenuItem>
                                         <Separator />
                                         <MenuItem Header="Start new instance" Tag="{Binding}" Click="LaunchPinnedInstance_Click" />
                                         <MenuItem Header="End task" Tag="{Binding}" IsEnabled="{Binding PlacementTarget.DataContext.IsRunning, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Click="EndPinnedTask_Click" />
