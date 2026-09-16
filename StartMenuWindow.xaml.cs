@@ -829,6 +829,7 @@ public partial class StartMenuWindow : Window
         if (!e.Data.GetDataPresent(PinnedStartDragFormat))
         {
             InsertDroppedApps(GetDroppedAppPaths(e.Data), insertionIndex, targetApp.GroupName);
+            InsertDroppedShellNamespaces(GetDroppedShellNamespacePaths(e.Data), insertionIndex, targetApp.GroupName);
             e.Handled = true;
             return;
         }
@@ -873,23 +874,68 @@ public partial class StartMenuWindow : Window
         }
 
         InsertDroppedApps(GetDroppedAppPaths(e.Data), _pinnedApps.Count);
+        InsertDroppedShellNamespaces(GetDroppedShellNamespacePaths(e.Data), _pinnedApps.Count);
         e.Handled = true;
     }
 
     private bool HasDroppedStartEntries(IDataObject data) =>
-        data.GetDataPresent(DataFormats.FileDrop)
-        && data.GetData(DataFormats.FileDrop) is string[] paths
-        && StartPinCatalog.AddDroppedFiles([], paths.Where(path => File.Exists(path) || Directory.Exists(path))).Count > 0;
+        (data.GetDataPresent(DataFormats.FileDrop)
+            && data.GetData(DataFormats.FileDrop) is string[] paths
+            && StartPinCatalog.AddDroppedFiles([], paths.Where(path => File.Exists(path) || Directory.Exists(path))).Count > 0)
+        || GetDroppedShellNamespacePaths(data).Any();
 
     private static IEnumerable<string> GetDroppedAppPaths(IDataObject data) =>
         data.GetDataPresent(DataFormats.FileDrop) && data.GetData(DataFormats.FileDrop) is string[] paths
             ? paths.Where(path => File.Exists(path) || Directory.Exists(path))
             : [];
 
+    private static IEnumerable<string> GetDroppedShellNamespacePaths(IDataObject data) =>
+        NativeShellContextMenuService.ReadShellDropParsingNames(data)
+            .Where(TaskbarPinCatalog.IsSupportedShellNamespaceTarget);
+
     private void InsertDroppedApps(IEnumerable<string> paths, int index, string? groupName = null)
     {
         var droppedApps = StartPinCatalog.AddDroppedFiles([], paths)
             .Select(app => groupName is null ? app : app with { GroupName = StartPinCatalog.NormalizeGroupName(groupName) })
+            .ToList();
+        if (droppedApps.Count == 0) return;
+
+        var updated = _pinnedApps;
+        var insertionIndex = Math.Clamp(index, 0, updated.Count);
+        var reachedPinLimit = false;
+        foreach (var app in droppedApps)
+        {
+            if (updated.Any(pin => string.Equals(pin.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase))) continue;
+            if (updated.Count >= StartPinCatalog.MaximumPins)
+            {
+                reachedPinLimit = true;
+                break;
+            }
+            updated = StartPinCatalog.Pin(updated, app);
+            updated = StartPinCatalog.Reorder(updated, app.ShortcutPath, insertionIndex++);
+        }
+
+        if (updated.Count == _pinnedApps.Count)
+        {
+            if (droppedApps.Any(app => !_pinnedApps.Any(pin => string.Equals(pin.ShortcutPath, app.ShortcutPath, StringComparison.OrdinalIgnoreCase))))
+                ShowStartPinLimitMessage();
+            return;
+        }
+        SavePinnedApps(updated);
+        if (reachedPinLimit) ShowStartPinLimitMessage();
+    }
+
+    private void InsertDroppedShellNamespaces(IEnumerable<string> parsingNames, int index, string? groupName = null)
+    {
+        var droppedApps = parsingNames
+            .Select(parsingName => new AppEntry(
+                DesktopShellNamespaceCatalog.GetFriendlyName(parsingName),
+                parsingName,
+                GroupName: groupName is null ? StartPinCatalog.DefaultGroupName : StartPinCatalog.NormalizeGroupName(groupName),
+                IsDirectory: true,
+                IsShellNamespace: true))
+            .GroupBy(app => app.ShortcutPath, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
             .ToList();
         if (droppedApps.Count == 0) return;
 
@@ -1077,6 +1123,7 @@ public partial class StartMenuWindow : Window
             .DefaultIfEmpty(_pinnedApps.Count)
             .Max();
         InsertDroppedApps(GetDroppedAppPaths(e.Data), insertionIndex, groupName);
+        InsertDroppedShellNamespaces(GetDroppedShellNamespacePaths(e.Data), insertionIndex, groupName);
         e.Handled = true;
     }
 
