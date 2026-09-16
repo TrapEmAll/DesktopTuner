@@ -1424,6 +1424,16 @@ public partial class TaskbarWindow : Window
         context.Items.Add(open);
 
         var isFile = File.Exists(destination.ParsingName);
+        var isFolder = DesktopShellNamespaceCatalog.IsShellNamespaceLocation(destination.ParsingName)
+            || Directory.Exists(destination.ParsingName);
+        if (isFolder && _openFolderInNewWindow is not null)
+        {
+            var openNewWindow = new MenuItem { Header = "Open in new window", Tag = destination.ParsingName };
+            openNewWindow.Click += OpenFolderInNewWindow_Click;
+            context.Items.Add(openNewWindow);
+            item.PreviewMouseDown += JumpListDestination_PreviewMouseDown;
+            item.PreviewKeyDown += JumpListDestination_PreviewKeyDown;
+        }
         var openLocation = new MenuItem { Header = "Open file location", Tag = destination, IsEnabled = isFile };
         openLocation.Click += JumpListDestinationLocation_Click;
         context.Items.Add(openLocation);
@@ -1446,6 +1456,20 @@ public partial class TaskbarWindow : Window
         }
         item.ContextMenu = context;
         return item;
+    }
+
+    private void JumpListDestination_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle || _openFolderInNewWindow is null
+            || sender is not MenuItem { Tag: TaskbarJumpListDestination { ParsingName: string path } }) return;
+        if (_openFolderInNewWindow(path)) e.Handled = true;
+    }
+
+    private void JumpListDestination_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.Control || _openFolderInNewWindow is null
+            || sender is not MenuItem { Tag: TaskbarJumpListDestination { ParsingName: string path } }) return;
+        if (_openFolderInNewWindow(path)) e.Handled = true;
     }
 
     private void JumpListDestinationLocation_Click(object sender, RoutedEventArgs e)
