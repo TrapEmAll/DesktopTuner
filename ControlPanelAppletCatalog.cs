@@ -55,7 +55,9 @@ public static class ControlPanelAppletCatalog
         new("windows-tools", "Windows Tools", ["/name", "Microsoft.AdministrativeTools"]),
         new("troubleshooting", "Troubleshooting", ["/name", "Microsoft.Troubleshooting"]),
         new("file-history", "File History", ["/name", "Microsoft.FileHistory"]),
-        new("storage-spaces", "Storage Spaces", ["/name", "Microsoft.StorageSpaces"])
+        new("storage-spaces", "Storage Spaces", ["/name", "Microsoft.StorageSpaces"]),
+        new("device-manager", "Device Manager", ["/name", "Microsoft.DeviceManager"]),
+        new("taskbar-navigation", "Taskbar and Navigation", ["/name", "Microsoft.Taskbar"])
     ];
 
     public static IReadOnlyList<ControlPanelApplet> GetAvailableApplets(
