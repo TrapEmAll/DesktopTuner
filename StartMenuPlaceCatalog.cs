@@ -32,6 +32,7 @@ public static class StartMenuPlaceCatalog
         new("network-connections", "Network Connections"),
         new("troubleshooting", "Troubleshooting"),
         new("windows-tools", "Windows Tools"),
+        new("help-support", "Help and Support"),
         new("recent", "Recent items"),
         new("run", "Run...")
     ];
@@ -80,6 +81,7 @@ public static class StartMenuPlaceCatalog
         "network-connections" => "ncpa.cpl",
         "troubleshooting" => "ms-settings:troubleshoot",
         "windows-tools" => "shell:Tools",
+        "help-support" => "ms-contact-support:",
         "network" => "shell:NetworkPlacesFolder",
         "music" => Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
         "pictures" => Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
