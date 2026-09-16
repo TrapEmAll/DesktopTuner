@@ -23,6 +23,7 @@ public static class StartMenuPlaceCatalog
     [
         new("user-profile", "User profile"),
         new("computer", "This PC"),
+        new("libraries", "Libraries"),
         new("devices-printers", "Devices and Printers"),
         new("recycle-bin", "Recycle Bin"),
         new("control-panel", "Control Panel"),
@@ -67,6 +68,7 @@ public static class StartMenuPlaceCatalog
         "documents" => Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
         "downloads" => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
         "computer" => "shell:MyComputerFolder",
+        "libraries" => "shell:Libraries",
         "devices-printers" => "shell:PrintersFolder",
         "recycle-bin" => "shell:RecycleBinFolder",
         "control-panel" => "control.exe",
