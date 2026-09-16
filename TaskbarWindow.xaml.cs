@@ -1247,13 +1247,7 @@ public partial class TaskbarWindow : Window
 
         foreach (var destination in destinations)
         {
-            var item = new MenuItem
-            {
-                Header = destination.Name,
-                ToolTip = destination.ParsingName,
-                Tag = destination
-            };
-            item.Click += JumpListDestination_Click;
+            var item = CreateJumpListDestinationItem(destination);
             menu.Items.Add(item);
         }
     }
@@ -1264,8 +1258,7 @@ public partial class TaskbarWindow : Window
         menu.Items.Clear();
         foreach (var destination in app.PinnedDestinations ?? [])
         {
-            var item = new MenuItem { Header = destination.Name, ToolTip = destination.ParsingName, Tag = destination };
-            item.Click += JumpListDestination_Click;
+            var item = CreateJumpListDestinationItem(destination);
             menu.Items.Add(item);
         }
         if (menu.Items.Count > 0)
@@ -1311,6 +1304,76 @@ public partial class TaskbarWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, $"Windows could not open {destination.Name}.\n\n{ex.Message}", "Could not open Jump List item", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private MenuItem CreateJumpListDestinationItem(TaskbarJumpListDestination destination)
+    {
+        var item = new MenuItem { Header = destination.Name, ToolTip = destination.ParsingName, Tag = destination };
+        item.Click += JumpListDestination_Click;
+        var context = new ContextMenu();
+        var open = new MenuItem { Header = "Open", Tag = destination };
+        open.Click += JumpListDestination_Click;
+        context.Items.Add(open);
+
+        var isFile = File.Exists(destination.ParsingName);
+        var openLocation = new MenuItem { Header = "Open file location", Tag = destination, IsEnabled = isFile };
+        openLocation.Click += JumpListDestinationLocation_Click;
+        context.Items.Add(openLocation);
+        if (isFile)
+        {
+            var openWith = new MenuItem { Header = "Open with…", Tag = destination };
+            openWith.Click += JumpListDestinationOpenWith_Click;
+            context.Items.Add(openWith);
+            var print = new MenuItem { Header = "Print", Tag = destination };
+            print.Click += JumpListDestinationPrint_Click;
+            context.Items.Add(print);
+        }
+        item.ContextMenu = context;
+        return item;
+    }
+
+    private void JumpListDestinationLocation_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: TaskbarJumpListDestination destination } || !File.Exists(destination.ParsingName)) return;
+        try
+        {
+            if (_openFileLocationInCompanionExplorer is not null)
+            {
+                _openFileLocationInCompanionExplorer(destination.ParsingName);
+                return;
+            }
+            Process.Start(AppCatalogService.BuildFileLocationLaunchInfo(new AppEntry(destination.Name, destination.ParsingName)));
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or System.Security.SecurityException)
+        {
+            MessageBox.Show(this, $"Windows could not show the location for {destination.Name}.\n\n{ex.Message}", "Could not open file location", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void JumpListDestinationOpenWith_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: TaskbarJumpListDestination destination } || !File.Exists(destination.ParsingName)) return;
+        try
+        {
+            await NativeShellContextMenuService.OpenWithShellItemAsync(new System.Windows.Interop.WindowInteropHelper(this).Handle, destination.ParsingName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Windows could not open the Open with dialog.\n\n{ex.Message}", "Could not open the Open with dialog", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void JumpListDestinationPrint_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: TaskbarJumpListDestination destination } || !File.Exists(destination.ParsingName)) return;
+        try
+        {
+            await NativeShellContextMenuService.PrintShellItemAsync(new System.Windows.Interop.WindowInteropHelper(this).Handle, destination.ParsingName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Windows could not print the selected file.\n\n{ex.Message}", "Could not print the selected file", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
