@@ -1661,6 +1661,12 @@ public partial class TaskbarWindow : Window
             var actions = new MenuItem { Header = "Window actions", Tag = group };
             actions.SubmenuOpened += WindowActionsMenu_SubmenuOpened;
             menu.Items.Add(actions);
+            if (_snapGroups.Any(snap => snap.Windows.Any(window => group.Windows.Any(member => member.Handle == window.Handle))))
+            {
+                var snapGroup = new MenuItem { Header = "Snap group", Tag = group };
+                snapGroup.SubmenuOpened += SnapGroupMenu_SubmenuOpened;
+                menu.Items.Add(snapGroup);
+            }
             menu.Items.Add(CreateOverflowJumpListMenu("Recent items", group, TaskbarJumpListCategory.Recent));
             menu.Items.Add(CreateOverflowJumpListMenu("Frequent items", group, TaskbarJumpListCategory.Frequent));
             menu.Items.Add(new Separator());
