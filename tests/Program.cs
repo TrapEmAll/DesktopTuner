@@ -1362,9 +1362,10 @@ shellRunDialogShortcutGesture.KeyDown(0x5b);
 Check(WindowsKeyAction.OpenRunDialog, shellRunDialogShortcutGesture.KeyDown((uint)'R', canOpenRunDialog: () => true), "route Win+R to the companion Run dialog when Explorer is absent");
 Check(WindowsKeyAction.Suppress, shellRunDialogShortcutGesture.KeyUp((uint)'R'), "suppress Win+R release after opening the companion Run dialog");
 Check(WindowsKeyAction.Suppress, shellRunDialogShortcutGesture.KeyUp(0x5b), "avoid opening Start after opening the companion Run dialog");
-Check("apps,power-options,event-viewer,system,device-manager,network-connections,disk-management,computer-management,terminal,task-manager,restart-explorer,taskbar-settings,settings",
+Check("apps,control-panel,power-options,event-viewer,system,device-manager,network-connections,disk-management,computer-management,terminal,task-manager,restart-explorer,taskbar-settings,settings",
     string.Join(',', ShellHostPowerMenuCatalog.SystemCommands.Select(command => command.Id)), "provide the standard shell-host Power User system commands");
 Check("ms-settings:appsfeatures", ShellHostPowerMenuCatalog.SystemCommand("apps").Target, "open Installed apps from the Power User menu");
+Check("control.exe", ShellHostPowerMenuCatalog.SystemCommand("control-panel").Target, "open Control Panel from the Power User menu");
 Check(SystemFlyoutService.TaskbarSettingsUri, ShellHostPowerMenuCatalog.SystemCommand("taskbar-settings").Target, "open Taskbar settings from the Power User menu");
 Check<ShellHostPowerMenuCommand>(new("restart-explorer", "Restart Windows Explorer"), ShellHostPowerMenuCatalog.SystemCommand("restart-explorer"), "keep Explorer restart as a shell-host recovery command");
 Throws<ArgumentOutOfRangeException>(() => ShellHostPowerMenuCatalog.SystemCommand("missing"), "reject unknown Power User menu commands");

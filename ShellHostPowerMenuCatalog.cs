@@ -7,6 +7,7 @@ public static class ShellHostPowerMenuCatalog
     public static IReadOnlyList<ShellHostPowerMenuCommand> SystemCommands { get; } =
     [
         new("apps", "Installed apps", "ms-settings:appsfeatures"),
+        new("control-panel", "Control Panel", "control.exe"),
         new("power-options", "Power Options", "powercfg.cpl"),
         new("event-viewer", "Event Viewer", "eventvwr.msc"),
         new("system", "System", "ms-settings:about"),
