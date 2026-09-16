@@ -1130,6 +1130,7 @@ public partial class TaskbarWindow : Window
         if (nativeMenu is null) return;
         var parsingName = menu.DataContext switch
         {
+            PinnedTaskbarApp app when app.IsPackagedApp && TaskbarPinCatalog.IsSupportedPackagedTarget(app.ExecutablePath) => $"shell:AppsFolder\\{app.ExecutablePath}",
             PinnedTaskbarApp app when app.IsShellNamespace || File.Exists(app.ExecutablePath) || Directory.Exists(app.ExecutablePath) => app.ExecutablePath,
             TaskbarWindowGroup windowGroup when TaskbarWindowGrouping.GetLaunchPath(windowGroup) is { } path => path,
             _ => null
@@ -1741,6 +1742,7 @@ public partial class TaskbarWindow : Window
     {
         var parsingName = tag switch
         {
+            PinnedTaskbarApp app when app.IsPackagedApp && TaskbarPinCatalog.IsSupportedPackagedTarget(app.ExecutablePath) => $"shell:AppsFolder\\{app.ExecutablePath}",
             PinnedTaskbarApp app when app.IsShellNamespace || File.Exists(app.ExecutablePath) || Directory.Exists(app.ExecutablePath) => app.ExecutablePath,
             TaskbarWindowGroup group when TaskbarWindowGrouping.GetLaunchPath(group) is { } path => path,
             _ => null

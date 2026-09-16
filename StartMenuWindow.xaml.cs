@@ -652,9 +652,17 @@ public partial class StartMenuWindow : Window
     {
         var item = menu.Items.OfType<MenuItem>().FirstOrDefault(candidate => Equals(candidate.Header, "Show more options"));
         if (item is null) return;
-        item.Tag = app;
-        var available = app.IsShellNamespace || File.Exists(app.ShortcutPath) || Directory.Exists(app.ShortcutPath);
-        item.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
+        var target = GetNativeShellTarget(app);
+        item.Tag = target;
+        item.Visibility = target is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private static string? GetNativeShellTarget(AppEntry app)
+    {
+        if (app.IsPackagedApp && TaskbarPinCatalog.IsSupportedPackagedTarget(app.ShortcutPath))
+            return $"shell:AppsFolder\\{app.ShortcutPath}";
+        if (app.IsShellNamespace) return app.ShortcutPath;
+        return File.Exists(app.ShortcutPath) || Directory.Exists(app.ShortcutPath) ? app.ShortcutPath : null;
     }
 
     private void ClearRecentStartApps_Click(object sender, RoutedEventArgs e)
@@ -936,14 +944,9 @@ public partial class StartMenuWindow : Window
         if (sender is not ContextMenu { DataContext: AppEntry app } menu) return;
         var openFolderItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open folder"));
         var openFileLocationItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Open file location"));
-        var nativeContextMenuItem = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Show more options"));
         if (openFolderItem is not null) openFolderItem.Visibility = app.IsDirectory ? Visibility.Visible : Visibility.Collapsed;
         if (openFileLocationItem is not null) openFileLocationItem.Visibility = app.IsDirectory || app.IsShellNamespace ? Visibility.Collapsed : Visibility.Visible;
-        if (nativeContextMenuItem is not null)
-        {
-            var available = app.IsShellNamespace || File.Exists(app.ShortcutPath) || Directory.Exists(app.ShortcutPath);
-            nativeContextMenuItem.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
-        }
+        ConfigureNativeShellMenu(menu, app);
         var tileSizeMenu = menu.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, "Tile size"));
         var tileLayout = _style is StartMenuStyle.Windows8 or StartMenuStyle.Windows10;
         if (tileSizeMenu is not null)
@@ -964,37 +967,20 @@ public partial class StartMenuWindow : Window
         if (sender is MenuItem { Tag: AppEntry { IsDirectory: true } app }) LaunchEntry(app);
     }
 
-    private async void ShowNativePinnedShellContextMenu_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not MenuItem { Tag: AppEntry app }) return;
-        try
-        {
-            var owner = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-            if (app.IsShellNamespace)
-                await NativeShellContextMenuService.ShowForShellItemAsync(owner, app.ShortcutPath);
-            else
-                await NativeShellContextMenuService.ShowForItemsAsync(owner, [app.ShortcutPath]);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception)
-        {
-            MessageBox.Show(this, $"Windows could not show the native menu for {app.Name}.\n\n{ex.Message}", "Could not open Shell menu", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
     private async void ShowNativeStartShellContextMenu_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not MenuItem { Tag: AppEntry app }) return;
+        if (sender is not MenuItem { Tag: string parsingName }) return;
         try
         {
             var owner = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-            if (app.IsShellNamespace)
-                await NativeShellContextMenuService.ShowForShellItemAsync(owner, app.ShortcutPath);
+            if (DesktopShellNamespaceCatalog.IsShellNamespaceLocation(parsingName))
+                await NativeShellContextMenuService.ShowForShellItemAsync(owner, parsingName);
             else
-                await NativeShellContextMenuService.ShowForItemsAsync(owner, [app.ShortcutPath]);
+                await NativeShellContextMenuService.ShowForItemsAsync(owner, [parsingName]);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception)
         {
-            MessageBox.Show(this, $"Windows could not show the native menu for {app.Name}.\n\n{ex.Message}", "Could not open Shell menu", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, $"Windows could not show the native menu.\n\n{ex.Message}", "Could not open Shell menu", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
