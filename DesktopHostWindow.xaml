@@ -99,7 +99,7 @@
             <ContextMenu Opened="OnBackgroundContextMenuOpened">
                 <MenuItem Header="Refresh" Click="OnRefreshClick"/>
                 <MenuItem Header="Paste" InputGestureText="Ctrl+V" Click="OnPasteDesktopItemsClick"/>
-                <MenuItem Header="New folder" Click="OnNewFolderClick"/>
+                <MenuItem x:Name="NewMenuItem" Header="New" SubmenuOpened="OnNewMenuOpened"/>
                 <Separator/>
                 <MenuItem Header="View">
                     <MenuItem x:Name="AutoArrangeMenuItem" Header="Auto arrange icons" IsCheckable="True" Click="OnAutoArrangeClick"/>

@@ -89,6 +89,22 @@ public static class NativeShellContextMenuService
         return CreateShellFolder(owner, absolutePidl);
     }
 
+    public static async Task<bool> CreateShellNewItemAsync(nint owner, string parsingName, ShellNewItem item)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(parsingName);
+        ArgumentNullException.ThrowIfNull(item);
+        var location = DesktopShellNamespaceCatalog.IsShellNamespaceLocation(parsingName)
+            ? parsingName.Trim()
+            : Path.GetFullPath(parsingName);
+        if (!DesktopShellNamespaceCatalog.IsShellNamespaceLocation(location) && !Directory.Exists(location))
+            throw new DirectoryNotFoundException($"The folder no longer exists: {location}");
+        if (!item.UsesNullFile && (item.TemplatePath is null || !File.Exists(item.TemplatePath)))
+            throw new FileNotFoundException("The ShellNew template is no longer available.", item.TemplatePath);
+
+        var absolutePidl = await Task.Run(() => ParseDisplayName(location));
+        return CreateShellNewItem(owner, absolutePidl, item);
+    }
+
     public static async Task<uint> CopyShellItemsToClipboardAsync(nint owner, IEnumerable<string> parsingNames, bool cut)
     {
         var selection = NativeShellContextMenuPolicy.NormalizeShellSelection(parsingNames);
@@ -828,6 +844,9 @@ public static class NativeShellContextMenuService
     }
 
     private static bool CreateShellFolder(nint owner, nint absolutePidl)
+        => CreateShellNewItem(owner, absolutePidl, new ShellNewItem(string.Empty, "folder", null, true), FileAttributeDirectory);
+
+    private static bool CreateShellNewItem(nint owner, nint absolutePidl, ShellNewItem item, uint attributes = 0)
     {
         if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
             return RunOnStaThread(() => CreateShellFolder(owner, absolutePidl));
@@ -850,8 +869,11 @@ public static class NativeShellContextMenuService
                 ?? throw new COMException("Windows could not create the Shell file operation.");
             ThrowForFailure(operation.SetOperationFlags(FileOperationAllowUndo), "Windows could not configure the folder operation.");
             ThrowForFailure(operation.SetOwnerWindow(owner), "Windows could not associate the folder operation with its owner window.");
-            ThrowForFailure(operation.NewItem(destination, FileAttributeDirectory, "New folder", null!, nint.Zero),
-                "The destination Shell folder does not support creating folders.");
+            ThrowForFailure(operation.NewItem(destination, attributes, attributes == FileAttributeDirectory ? "New folder" : item.CreateName(),
+                    item.TemplatePath ?? string.Empty, nint.Zero),
+                attributes == FileAttributeDirectory
+                    ? "The destination Shell folder does not support creating folders."
+                    : "The destination Shell folder does not support creating this item.");
             ThrowForFailure(operation.PerformOperations(), "Windows could not create the new folder.");
             ThrowForFailure(operation.GetAnyOperationsAborted(out var aborted), "Windows could not determine whether the new folder was created.");
             return !aborted;

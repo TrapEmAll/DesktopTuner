@@ -1320,6 +1320,38 @@ public partial class DesktopHostWindow : Window
 
     private void OnRefreshClick(object sender, RoutedEventArgs e) => RefreshDesktop();
 
+    private void OnNewMenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menu) return;
+        menu.Items.Clear();
+
+        var folder = new MenuItem { Header = "Folder" };
+        folder.Click += OnNewFolderClick;
+        menu.Items.Add(folder);
+
+        foreach (var item in ShellNewItemCatalog.Read())
+        {
+            var entry = new MenuItem { Header = item.Label, Tag = item };
+            entry.Click += OnNewShellItemClick;
+            menu.Items.Add(entry);
+        }
+    }
+
+    private async void OnNewShellItemClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: ShellNewItem item }) return;
+        try
+        {
+            var owner = new WindowInteropHelper(this).Handle;
+            if (await NativeShellContextMenuService.CreateShellNewItemAsync(owner, "shell:Desktop", item))
+                RefreshDesktop();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Could not create item", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void OnBackgroundContextMenuOpened(object sender, RoutedEventArgs e)
     {
         var preferences = _layoutStore.ReadPreferences();

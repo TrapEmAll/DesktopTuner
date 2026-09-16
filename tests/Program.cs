@@ -2403,6 +2403,13 @@ var snapRight = new RunningWindow((nint)102, "Browser", "Browser", "C:\\Apps\\Br
 Check(1, TaskbarSnapGroupPolicy.Detect([snapLeft, snapRight]).Count, "detect adjacent same-display windows as a snap group");
 var unrelatedWindow = snapRight with { Handle = (nint)103, Bounds = new TaskbarBounds(1200, 100, 500, 400) };
 Check(0, TaskbarSnapGroupPolicy.Detect([snapLeft, unrelatedWindow]).Count, "leave non-adjacent same-display windows ungrouped");
+var shellNewText = new ShellNewItem(".txt", "Text Document", null, true);
+Check("New Text Document.txt", shellNewText.CreateName(), "name ShellNew documents with their registered extension");
+var shellNewTemplate = new ShellNewItem(".docx", "Word Document", @"C:\Templates\blank.docx", false);
+Check(@"C:\Templates\blank.docx", shellNewTemplate.TemplatePath, "retain a ShellNew template path for native file creation");
+CheckTrue(ShellNewItemCatalog.MaximumItems > 0, "bound the number of ShellNew templates in the replacement desktop menu");
+var shellNewItems = ShellNewItemCatalog.Read();
+CheckTrue(shellNewItems.Count <= ShellNewItemCatalog.MaximumItems && shellNewItems.All(item => item.Extension.StartsWith('.') && !string.IsNullOrWhiteSpace(item.Label)), "read bounded, labeled ShellNew templates for the replacement desktop menu");
 Check(new TaskbarCurrentWeather(21.5, "°F", 2, true), TaskbarWeatherPolicy.ParseCurrentResponse("""{"current":{"temperature_2m":21.5,"weather_code":2,"is_day":1}}""", "fahrenheit"), "parse current weather API conditions and unit");
 Throws<System.IO.InvalidDataException>(() => TaskbarWeatherPolicy.ParseCurrentResponse("{}", "celsius"), "reject weather responses without current conditions");
     var staleTaskbarSnapshot = Path.Combine(temporaryPreferencesDirectory, "taskbar-restore.json");
