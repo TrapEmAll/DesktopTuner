@@ -2364,6 +2364,10 @@ public partial class TaskbarWindow : Window
 
     private void Weather_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWidgets();
 
+    private async void WeatherRefresh_Click(object sender, RoutedEventArgs e) => await UpdateWeatherAsync();
+
+    private void WeatherSettings_Click(object sender, RoutedEventArgs e) => _showSettings();
+
     private void Search_Click(object sender, RoutedEventArgs e) => SystemFlyoutService.OpenWindowsSearch();
 
     private void SearchBox_KeyDown(object sender, KeyEventArgs e)
@@ -2417,7 +2421,7 @@ public partial class TaskbarWindow : Window
             return;
         }
 
-        WeatherButton.ToolTip = $"{weather.LocationName} · Weather data by Open-Meteo";
+        WeatherButton.ToolTip = $"{weather.LocationName} · Weather data by Open-Meteo · Right-click for refresh and settings";
         if (IsLoaded) _weatherRefreshTimer.Start();
     }
 
@@ -2433,7 +2437,7 @@ public partial class TaskbarWindow : Window
             WeatherGlyph.Text = TaskbarWeatherPolicy.GetGlyph(current.WeatherCode, current.IsDay);
             ApplyWeatherAnimation(TaskbarWeatherPolicy.GetAnimation(current.WeatherCode));
             WeatherTemperature.Text = $"{Math.Round(current.Temperature, MidpointRounding.AwayFromZero):0}{current.Unit}";
-            WeatherButton.ToolTip = $"{weatherSettings.LocationName} · {TaskbarWeatherPolicy.GetCondition(current.WeatherCode, current.IsDay)} · Weather data by Open-Meteo";
+            WeatherButton.ToolTip = $"{weatherSettings.LocationName} · {TaskbarWeatherPolicy.GetCondition(current.WeatherCode, current.IsDay)} · Weather data by Open-Meteo · Right-click for refresh and settings";
         }
         catch (OperationCanceledException) when (_weatherCancellation.IsCancellationRequested) { }
         catch (Exception ex)
