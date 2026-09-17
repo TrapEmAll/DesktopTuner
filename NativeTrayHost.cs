@@ -26,11 +26,13 @@ public sealed class NativeTrayHost : HwndHost
     private nint _originalExStyle;
     private NativeRect _originalRect;
 
+    public string WindowClassName { get; set; } = "TrayNotifyWnd";
+
     public bool TryAttach(TaskbarDisplay display)
     {
         ArgumentNullException.ThrowIfNull(display);
         if (_hostHandle == nint.Zero) return false;
-        var candidate = NativeTaskbarTrayService.FindTrayCandidate(display);
+        var candidate = NativeTaskbarTrayService.FindTrayCandidate(display, WindowClassName);
         if (candidate is not { } selected || selected.TrayWindow == nint.Zero || !IsWindow(selected.TrayWindow))
         {
             Detach();

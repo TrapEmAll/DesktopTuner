@@ -359,6 +359,7 @@
                     </Button.ContextMenu>
                 </Button>
                 <local:NativeTrayHost x:Name="NativeTrayHost" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                <local:NativeTrayHost x:Name="NativeClockHost" WindowClassName="TrayClockWClass" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Center" />
                 <Button x:Name="CloseBarButton" Content="×" Style="{StaticResource TaskButton}" Click="CloseBar_Click" FontSize="16" ToolTip="Close this taskbar" />
                 </StackPanel>
             </Border>

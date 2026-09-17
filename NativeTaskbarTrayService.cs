@@ -27,12 +27,12 @@ public static class NativeTaskbarTrayService
 
     }
 
-    public static TrayCandidate? FindTrayCandidate(TaskbarDisplay display)
+    public static TrayCandidate? FindTrayCandidate(TaskbarDisplay display, string? childClass = null)
     {
         ArgumentNullException.ThrowIfNull(display);
         try
         {
-            return SelectBestTrayCandidate(FindTrayCandidates(display), display);
+            return SelectBestTrayCandidate(FindTrayCandidates(display, childClass ?? NotificationAreaClass), display);
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         {
@@ -126,7 +126,7 @@ public static class NativeTaskbarTrayService
             : null;
     }
 
-    private static IReadOnlyList<TrayCandidate> FindTrayCandidates(TaskbarDisplay display)
+    private static IReadOnlyList<TrayCandidate> FindTrayCandidates(TaskbarDisplay display, string childClass)
     {
         var candidates = new List<TrayCandidate>();
         EnumWindows((taskbar, _) =>
@@ -136,7 +136,7 @@ public static class NativeTaskbarTrayService
 
             EnumChildWindows(taskbar, (child, _) =>
             {
-                if (GetClassName(child) != NotificationAreaClass || !IsWindowVisible(child)) return true;
+                if (!string.Equals(GetClassName(child), childClass, StringComparison.Ordinal) || !IsWindowVisible(child)) return true;
                 if (!GetWindowRect(child, out var rect)) return true;
                 var bounds = new TaskbarBounds(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
                 if (ShouldAcceptTrayCandidate(TaskbarDisplayService.Overlaps(bounds, display), MatchesDisplay(taskbar, display)))

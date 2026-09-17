@@ -25,6 +25,7 @@ public partial class TaskbarWindow : Window
     private readonly TaskbarWindowOrder _windowOrder;
     private readonly NativeTaskbarAppBarService _nativeAppBar = new();
     private readonly NativeTrayHost _nativeTrayHost = new();
+    private readonly NativeTrayHost _nativeClockHost = new() { WindowClassName = "TrayClockWClass" };
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
     private readonly DispatcherTimer _batteryRefreshTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly DispatcherTimer _microphoneRefreshTimer = new() { Interval = TimeSpan.FromSeconds(15) };
@@ -68,6 +69,7 @@ public partial class TaskbarWindow : Window
     private bool? _systemBackdropForCurrentStyle;
     private bool _nativeTrayExposed;
     private bool _nativeTrayEmbedded;
+    private bool _nativeClockEmbedded;
     private IReadOnlyList<TaskbarSnapGroup> _snapGroups = [];
     private bool _isDark;
     private bool _keyboardFocusActive;
@@ -246,7 +248,7 @@ public partial class TaskbarWindow : Window
         WidgetsButton.Visibility = systemButtons.Widgets ? Visibility.Visible : Visibility.Collapsed;
         TaskViewButton.Visibility = systemButtons.TaskView ? Visibility.Visible : Visibility.Collapsed;
         ShowDesktopButton.Visibility = systemButtons.ShowDesktop ? Visibility.Visible : Visibility.Collapsed;
-        ClockButton.Visibility = !_nativeTrayExposed && systemButtons.Clock ? Visibility.Visible : Visibility.Collapsed;
+        ClockButton.Visibility = !_nativeTrayExposed && !_nativeClockEmbedded && systemButtons.Clock ? Visibility.Visible : Visibility.Collapsed;
         CloseBarButton.Width = _nativeTrayExposed ? 32 : double.NaN;
         CloseBarButton.Height = _nativeTrayExposed ? 32 : double.NaN;
         CloseBarButton.Padding = _nativeTrayExposed ? new Thickness(0) : new Thickness(12, 7, 12, 7);
@@ -385,8 +387,10 @@ public partial class TaskbarWindow : Window
     {
         if (!_shellHostTrayCompanion || !IsLoaded) return;
         var attached = _nativeTrayHost.TryAttach(Display);
-        if (_nativeTrayEmbedded == attached) return;
+        var clockAttached = _nativeClockHost.TryAttach(Display);
+        if (_nativeTrayEmbedded == attached && _nativeClockEmbedded == clockAttached) return;
         _nativeTrayEmbedded = attached;
+        _nativeClockEmbedded = clockAttached;
         ApplyLayout();
     }
 
