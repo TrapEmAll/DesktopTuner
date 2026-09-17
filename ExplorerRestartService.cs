@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.IO;
 
 namespace DesktopTuner;
 
@@ -20,9 +19,9 @@ public static class ExplorerRestartService
                 }
             }
 
-            return Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = true }) is not null;
+            return ExplorerRecoveryService.TryStartExplorer(out error);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or UnauthorizedAccessException)
         {
             error = ex.Message;
             return false;
