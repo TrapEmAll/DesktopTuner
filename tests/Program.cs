@@ -554,6 +554,9 @@ Check(false, TaskbarAppBarPolicy.CanUseAsReplacement(TaskbarStyle.EdgeToEdge, tr
 CheckTrue(TaskbarAppBarPolicy.ShouldRegisterAutoHide(true, true), "register Windows auto-hide for an enabled replacement appbar");
 Check(false, TaskbarAppBarPolicy.ShouldRegisterAutoHide(false, true), "avoid registering Windows auto-hide for an unregistered overlay taskbar");
 Check(false, TaskbarAppBarPolicy.ShouldRegisterAutoHide(true, false), "release Windows auto-hide when the replacement preference is disabled");
+Check(true, NativeTaskbarAppBarService.ShouldRebindAfterTaskbarCreated(true, 0xC001, 0xC001), "rebind the replacement appbar after Explorer broadcasts TaskbarCreated");
+Check(false, NativeTaskbarAppBarService.ShouldRebindAfterTaskbarCreated(false, 0xC001, 0xC001), "leave overlay taskbars alone when Explorer broadcasts TaskbarCreated");
+Check(false, NativeTaskbarAppBarService.ShouldRebindAfterTaskbarCreated(true, 0xC001, 0), "ignore a failed TaskbarCreated registration");
 var appBarDisplay = new TaskbarDisplay("APPBAR", 0, 0, 1920, 1080, true);
 Check(new TaskbarBounds(0, 1026, 1920, 54), TaskbarAppBarPolicy.ProposeBounds(appBarDisplay, TaskbarEdge.Bottom, new TaskbarBounds(0, 1026, 1920, 54)), "propose the full physical monitor edge for a bottom appbar");
 Check(new TaskbarBounds(0, 0, 176, 1080), TaskbarAppBarPolicy.ProposeBounds(appBarDisplay, TaskbarEdge.Left, new TaskbarBounds(0, 0, 176, 1080)), "propose the full physical monitor edge for a left appbar");

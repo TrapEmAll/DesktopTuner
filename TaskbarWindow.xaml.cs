@@ -18,6 +18,7 @@ namespace DesktopTuner;
 public partial class TaskbarWindow : Window
 {
     private const int DwmColorizationColorChangedMessage = 0x0320;
+    private static readonly uint TaskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
     private const string PinnedAppDragFormat = "DesktopTuner.PinnedTaskbarApp";
     private const string WindowGroupDragFormat = "DesktopTuner.RunningTaskbarGroup";
     private readonly RunningWindowService _windows = new();
@@ -428,6 +429,19 @@ public partial class TaskbarWindow : Window
 
     private nint WindowProc(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
     {
+        if (NativeTaskbarAppBarService.ShouldRebindAfterTaskbarCreated(
+                _replacementWorkAreaEnabled, unchecked((uint)message), TaskbarCreatedMessage))
+        {
+            // Explorer broadcasts this message after rebuilding its taskbar.
+            // AppBar reservations can be discarded during that rebuild even
+            // though the replacement window remains alive, so force a clean
+            // unregister/register cycle before recalculating its bounds.
+            _nativeAppBar.Unregister();
+            ApplyLayout();
+            handled = true;
+            return 0;
+        }
+
         if (_nativeAppBar.IsRegistered && message == 0x0006)
             _nativeAppBar.NotifyActivated();
         else if (_nativeAppBar.IsRegistered && message == 0x0047)
@@ -462,6 +476,9 @@ public partial class TaskbarWindow : Window
         }
         return 0;
     }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint RegisterWindowMessage(string message);
 
     private void SetFullscreenAppVisible(bool visible)
     {
