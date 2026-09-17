@@ -85,3 +85,4 @@ Explorer settings can enable the Windows 11 classic context-menu registration fo
 
 Replacement taskbars listen for Explorer's registered TaskbarCreated broadcast and rebind their AppBar reservation after the shell rebuilds its taskbar. If Windows refuses the renewed reservation, the existing overlay fallback remains in effect.
 AppBar recovery uses six 750-ms attempts after the broadcast, then stops and leaves the bar as an overlay if Explorer or Windows still declines the reservation.
+The supervisor window also reacts to that broadcast immediately: replacement taskbar visibility is reapplied and shell-host tray reconciliation is scheduled without waiting for the normal polling interval.

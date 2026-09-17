@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     private const int WM_HOTKEY = 0x0312;
     private const int WM_DISPLAYCHANGE = 0x007E;
     private const int WM_DWMCOLORIZATIONCOLORCHANGED = 0x0320;
+    private static readonly uint TaskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
     private const int WM_APP_ACTIVATE_SETTINGS = 0x8000 + 0x451;
     private const int WM_COPYDATA = 0x004A;
     private const long WM_COPYDATA_OPEN_FOLDER = 0x44544E52;
@@ -1186,6 +1187,20 @@ public partial class MainWindow : Window
 
     private IntPtr WindowMessageHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if (NativeTaskbarAppBarService.ShouldReconcileAfterTaskbarCreated(
+                _taskbarWindows.Any(window => window.IsVisible), unchecked((uint)message), TaskbarCreatedMessage))
+        {
+            if (ShellHostLaunchPolicy.ShouldHideNativeTaskbar(_shellHostMode, _shellOverlayMode, _replaceNativeTaskbar))
+                MaintainNativeTaskbars();
+            if (_shellHostMode)
+            {
+                _shellHostTrayRefreshTimer.Stop();
+                _shellHostTrayRefreshTimer.Start();
+            }
+            handled = true;
+            return IntPtr.Zero;
+        }
+
         if (message == WM_COPYDATA && TryReadOpenFolderCopyData(lParam, out var folderPath))
         {
             _ = Dispatcher.BeginInvoke(new Action(() => OpenFolderFromShell(folderPath)));
@@ -2951,6 +2966,9 @@ public partial class MainWindow : Window
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint RegisterWindowMessage(string message);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "FindWindowW")]
     private static extern IntPtr FindWindow(string? className, string windowName);

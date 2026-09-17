@@ -560,6 +560,8 @@ Check(false, NativeTaskbarAppBarService.ShouldRebindAfterTaskbarCreated(true, 0x
 Check(true, NativeTaskbarAppBarService.ShouldContinueRecoveryAttempt(true, false, 0, 6), "retry a transient AppBar registration failure after Explorer restarts");
 Check(false, NativeTaskbarAppBarService.ShouldContinueRecoveryAttempt(true, false, 6, 6), "stop AppBar recovery after the bounded retry count");
 Check(false, NativeTaskbarAppBarService.ShouldContinueRecoveryAttempt(true, true, 0, 6), "stop AppBar recovery after registration succeeds");
+Check(true, NativeTaskbarAppBarService.ShouldReconcileAfterTaskbarCreated(true, 0xC001, 0xC001), "refresh shell integration when a visible replacement taskbar receives TaskbarCreated");
+Check(false, NativeTaskbarAppBarService.ShouldReconcileAfterTaskbarCreated(false, 0xC001, 0xC001), "avoid shell refresh work when no replacement taskbar is visible");
 var appBarDisplay = new TaskbarDisplay("APPBAR", 0, 0, 1920, 1080, true);
 Check(new TaskbarBounds(0, 1026, 1920, 54), TaskbarAppBarPolicy.ProposeBounds(appBarDisplay, TaskbarEdge.Bottom, new TaskbarBounds(0, 1026, 1920, 54)), "propose the full physical monitor edge for a bottom appbar");
 Check(new TaskbarBounds(0, 0, 176, 1080), TaskbarAppBarPolicy.ProposeBounds(appBarDisplay, TaskbarEdge.Left, new TaskbarBounds(0, 0, 176, 1080)), "propose the full physical monitor edge for a left appbar");

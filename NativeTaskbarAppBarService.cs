@@ -44,6 +44,9 @@ public sealed class NativeTaskbarAppBarService : IDisposable
     public static bool ShouldContinueRecoveryAttempt(bool replacementWorkAreaEnabled, bool registered, int attempts, int maximumAttempts) =>
         replacementWorkAreaEnabled && !registered && attempts < maximumAttempts;
 
+    public static bool ShouldReconcileAfterTaskbarCreated(bool hasVisibleTaskbars, uint message, uint taskbarCreatedMessage) =>
+        hasVisibleTaskbars && taskbarCreatedMessage != 0 && message == taskbarCreatedMessage;
+
     public bool Register(nint window, TaskbarDisplay display, TaskbarEdge edge)
     {
         if (window == nint.Zero) throw new ArgumentException("A taskbar window handle is required.", nameof(window));
