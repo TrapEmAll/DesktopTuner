@@ -55,7 +55,7 @@ public sealed class NativeTaskbarVisibilityService
 
     public void Restore()
     {
-        RestoreWindows(_originalVisibility.Select(pair => new WindowSnapshot(pair.Key.ToInt64(), pair.Value)));
+        RestoreWindows(_originalVisibility.Select(pair => CreateSnapshot(pair.Key, pair.Value)));
         _originalVisibility.Clear();
         try { File.Delete(SnapshotPath); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -134,21 +134,42 @@ public sealed class NativeTaskbarVisibilityService
         Directory.CreateDirectory(directory);
         var temporaryPath = $"{SnapshotPath}.tmp";
         File.WriteAllText(temporaryPath, JsonSerializer.Serialize(_originalVisibility
-            .Select(pair => new WindowSnapshot(pair.Key.ToInt64(), pair.Value)).ToArray()));
+            .Select(pair => CreateSnapshot(pair.Key, pair.Value)).ToArray()));
         File.Move(temporaryPath, SnapshotPath, overwrite: true);
     }
 
+    private static WindowSnapshot CreateSnapshot(IntPtr window, bool wasVisible) =>
+        new(window.ToInt64(), wasVisible, TaskbarDisplayService.GetDeviceNameForWindow(window));
+
     private static void RestoreWindows(IEnumerable<WindowSnapshot> snapshot)
     {
+        var currentByDevice = EnumerateCurrentTaskbars()
+            .Where(window => TaskbarDisplayService.GetDeviceNameForWindow(window) is not null)
+            .GroupBy(window => TaskbarDisplayService.GetDeviceNameForWindow(window), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key!, group => group.First(), StringComparer.OrdinalIgnoreCase);
         foreach (var entry in snapshot)
         {
             var window = new IntPtr(entry.Handle);
+            if ((!IsWindow(window) || !IsTaskbar(window)) && entry.DeviceName is { Length: > 0 }
+                && currentByDevice.TryGetValue(entry.DeviceName, out var rebuiltWindow))
+                window = rebuiltWindow;
             if (!IsWindow(window) || !IsTaskbar(window)) continue;
             ShowWindow(window, entry.WasVisible ? SwShowNoActivate : SwHide);
         }
     }
 
-    private sealed record WindowSnapshot(long Handle, bool WasVisible);
+    private static IReadOnlyList<IntPtr> EnumerateCurrentTaskbars()
+    {
+        var windows = new List<IntPtr>();
+        EnumWindows((window, _) =>
+        {
+            if (IsTaskbar(window)) windows.Add(window);
+            return true;
+        }, IntPtr.Zero);
+        return windows;
+    }
+
+    private sealed record WindowSnapshot(long Handle, bool WasVisible, string? DeviceName = null);
 
     private static bool IsTaskbar(IntPtr window)
     {
