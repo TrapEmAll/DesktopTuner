@@ -21,6 +21,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        ExplorerTrayCompanionService.RestoreOrphanedCompanions();
         var touchMetrics = TouchTargetPolicy.Resolve(TouchTargetPolicy.HasTouchInput);
         Resources["TouchMenuItemPadding"] = touchMetrics.Padding;
         Resources["TouchMenuItemMinimumHeight"] = touchMetrics.MinimumHeight;
@@ -48,7 +49,9 @@ public partial class App : Application
         var hasShellLocationInvocation = FolderShellIntegrationService.TryReadShellLocationInvocation(e.Args, out var shellLocation);
         var shellHostArgument = ShellHostLaunchPolicy.IsShellHostInvocation(e.Args);
         var shellHostWorkerArgument = ShellHostLaunchPolicy.IsShellHostWorkerInvocation(e.Args);
-        var shellHostTrayCompanionArgument = ShellHostLaunchPolicy.IsShellHostTrayCompanionInvocation(e.Args);
+        var shellHostTrayCompanionArgument =
+            ShellHostLaunchPolicy.IsShellHostTrayCompanionInvocation(e.Args)
+            || ShellHostTrayCompanionPolicy.IsEnabled();
         var customShellPolicyTargetsApp = CustomShellPolicy.TargetsExecutable(CustomShellPolicy.ReadCurrentUserShellCommand(), Environment.ProcessPath);
         if (!shellHostArgument && !shellHostWorkerArgument && !customShellPolicyTargetsApp)
         {

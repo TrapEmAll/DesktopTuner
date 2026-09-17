@@ -1931,6 +1931,7 @@ var systemModeSetting = SettingsCatalog.ById("explorer-system-mode");
 var transparencySetting = SettingsCatalog.ById("explorer-transparency");
 var scrollbarSetting = SettingsCatalog.ById("explorer-scrollbars");
 var trayIconsSetting = SettingsCatalog.ById("taskbar-tray-icons");
+var trayCompanionSetting = SettingsCatalog.ById("taskbar-shell-tray-companion");
 var taskbarSizeSetting = SettingsCatalog.ById("taskbar-size");
 var taskbarClockSecondsSetting = SettingsCatalog.ById("taskbar-clock-seconds");
 var taskbarShowDesktopSetting = SettingsCatalog.ById("taskbar-show-desktop");
@@ -1966,6 +1967,9 @@ Check(SettingsCatalog.Accessibility, scrollbarSetting.RegistryPath, "use the Win
 Check("DynamicScrollbars", scrollbarSetting.ValueName, "target the Windows always-show-scrollbars preference");
 Check(SettingsCatalog.ExplorerRoot, trayIconsSetting.RegistryPath, "use the Windows Explorer registry location for notification-area visibility");
 Check("EnableAutoTray", trayIconsSetting.ValueName, "target the Windows notification-area collapse preference");
+Check(SettingsCatalog.DesktopTuner, trayCompanionSetting.RegistryPath, "store the shell-host tray companion preference in the Desktop Tuner user key");
+Check("ShellHostTrayCompanion", trayCompanionSetting.ValueName, "persist the opt-in Explorer tray companion setting");
+Check(0, trayCompanionSetting.DefaultValue, "keep the Explorer tray companion disabled by default");
 Check(SettingsCatalog.ExplorerCabinetState, fullPathSetting.RegistryPath, "use Windows Explorer's cabinet-state registry location");
 Check("FullPath", fullPathSetting.ValueName, "target the documented full-path title-bar preference");
 Check(1, fullPathSetting.Choices.Single(choice => choice.Label == "Show full path").Value, "map full-path title bars to the Explorer option");

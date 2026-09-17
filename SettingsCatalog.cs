@@ -21,6 +21,7 @@ public static class SettingsCatalog
     public const string ExplorerCabinetState = @"Software\Microsoft\Windows\CurrentVersion\Explorer\CabinetState";
     public const string Personalize = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     public const string Accessibility = @"Control Panel\Accessibility";
+    public const string DesktopTuner = @"Software\DesktopTuner";
 
     public static IReadOnlyList<SettingDefinition> All { get; } =
     [
@@ -55,6 +56,8 @@ public static class SettingsCatalog
             [new("Always show", 1), new("Auto-hide", 0)], 0, true),
         new("taskbar-tray-icons", "Taskbar", "Notification area icons", "Choose whether Windows keeps notification-area icons visible or collapses them behind the tray overflow.", ExplorerRoot, "EnableAutoTray",
             [new("Show all icons", 0), new("Collapse inactive icons", 1)], 1, true),
+        new("taskbar-shell-tray-companion", "Taskbar", "Explorer tray companion in shell replacement", "Keep Explorer's native notification area and third-party tray icons available while Desktop Tuner owns the replacement shell. This starts Explorer as a guarded companion and is off by default.", DesktopTuner, "ShellHostTrayCompanion",
+            [new("Disabled", 0), new("Enabled", 1)], 0, true),
         new("taskbar-size", "Taskbar", "Taskbar size", "Choose the compact, default, or larger Windows taskbar height and button scale.", ExplorerAdvanced, "TaskbarSi",
             [new("Small", 0), new("Medium", 1), new("Large", 2)], 1, true),
         new("taskbar-clock-seconds", "Taskbar", "Clock seconds", "Choose whether the Windows taskbar clock includes seconds.", ExplorerAdvanced, "ShowSecondsInSystemClock",
