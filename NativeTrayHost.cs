@@ -47,7 +47,11 @@ public sealed class NativeTrayHost : HwndHost
         var pixelHeight = Math.Max(1, (int)Math.Round(selected.Bounds.Height));
         Width = pixelWidth / Math.Max(1, display.ScaleX);
         Height = pixelHeight / Math.Max(1, display.ScaleY);
-        SetWindowPos(_trayHandle, nint.Zero, 0, 0, pixelWidth, pixelHeight, SwpNoActivate | SwpNoZOrder | SwpShowWindow);
+        if (!SetWindowPos(_trayHandle, nint.Zero, 0, 0, pixelWidth, pixelHeight, SwpNoActivate | SwpNoZOrder | SwpShowWindow))
+        {
+            Detach();
+            return false;
+        }
         Visibility = System.Windows.Visibility.Visible;
         return true;
     }
@@ -99,6 +103,16 @@ public sealed class NativeTrayHost : HwndHost
     {
         if (!GetWindowRect(tray, out _originalRect)) return false;
         _originalParent = GetParent(tray);
+        if (_originalParent != nint.Zero)
+        {
+            var origin = new NativePoint { X = _originalRect.Left, Y = _originalRect.Top };
+            if (ScreenToClient(_originalParent, ref origin))
+            {
+                var width = _originalRect.Right - _originalRect.Left;
+                var height = _originalRect.Bottom - _originalRect.Top;
+                _originalRect = new NativeRect { Left = origin.X, Top = origin.Y, Right = origin.X + width, Bottom = origin.Y + height };
+            }
+        }
         _originalStyle = GetWindowLongPtr(tray, GwlStyle);
         _originalExStyle = GetWindowLongPtr(tray, GwlExStyle);
         SetLastError(0);
@@ -108,20 +122,36 @@ public sealed class NativeTrayHost : HwndHost
             return false;
         }
 
-        SetWindowLongPtr(tray, GwlStyle, (_originalStyle | WsChild | WsVisible) & ~WsPopup);
-        SetWindowLongPtr(tray, GwlExStyle, _originalExStyle & ~WsExAppWindow);
+        if (!TrySetWindowLongPtr(tray, GwlStyle, (_originalStyle | WsChild | WsVisible) & ~WsPopup)
+            || !TrySetWindowLongPtr(tray, GwlExStyle, _originalExStyle & ~WsExAppWindow))
+        {
+            SetParent(tray, _originalParent);
+            SetWindowLongPtr(tray, GwlStyle, _originalStyle);
+            SetWindowLongPtr(tray, GwlExStyle, _originalExStyle);
+            return false;
+        }
         _trayHandle = tray;
         return true;
     }
 
+    private static bool TrySetWindowLongPtr(nint window, int index, nint value)
+    {
+        SetLastError(0);
+        SetWindowLongPtr(window, index, value);
+        return Marshal.GetLastWin32Error() == 0;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     private struct NativeRect { public int Left; public int Top; public int Right; public int Bottom; }
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint { public int X; public int Y; }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern nint CreateWindowEx(uint exStyle, string className, string? windowName, nint style, int x, int y, int width, int height, nint parent, nint menu, nint instance, nint param);
     [DllImport("user32.dll", SetLastError = true)] private static extern bool DestroyWindow(nint window);
     [DllImport("user32.dll", SetLastError = true)] private static extern nint SetParent(nint child, nint parent);
     [DllImport("user32.dll", SetLastError = true)] private static extern bool GetWindowRect(nint window, out NativeRect rect);
+    [DllImport("user32.dll", SetLastError = true)] private static extern bool ScreenToClient(nint window, ref NativePoint point);
     [DllImport("user32.dll")] private static extern nint GetParent(nint window);
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)] private static extern nint GetWindowLongPtr(nint window, int index);
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)] private static extern nint SetWindowLongPtr(nint window, int index, nint value);
