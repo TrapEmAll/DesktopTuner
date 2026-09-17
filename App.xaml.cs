@@ -136,7 +136,7 @@ public partial class App : Application
             if (_launchExplorerOnShellHostExit)
                 SystemEvents.SessionEnding += OnSystemSessionEnding;
 
-            if (shellOverlayMode || shellHostMode && shellHostTrayCompanionArgument)
+            if (shellOverlayMode || shellHostMode)
             {
                 var recoveredOverlayTaskbars = NativeTaskbarVisibilityService.RestoreOrphanedSnapshots();
                 if (recoveredOverlayTaskbars > 0)
