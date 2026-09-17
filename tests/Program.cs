@@ -557,6 +557,9 @@ Check(false, TaskbarAppBarPolicy.ShouldRegisterAutoHide(true, false), "release W
 Check(true, NativeTaskbarAppBarService.ShouldRebindAfterTaskbarCreated(true, 0xC001, 0xC001), "rebind the replacement appbar after Explorer broadcasts TaskbarCreated");
 Check(false, NativeTaskbarAppBarService.ShouldRebindAfterTaskbarCreated(false, 0xC001, 0xC001), "leave overlay taskbars alone when Explorer broadcasts TaskbarCreated");
 Check(false, NativeTaskbarAppBarService.ShouldRebindAfterTaskbarCreated(true, 0xC001, 0), "ignore a failed TaskbarCreated registration");
+Check(true, NativeTaskbarAppBarService.ShouldContinueRecoveryAttempt(true, false, 0, 6), "retry a transient AppBar registration failure after Explorer restarts");
+Check(false, NativeTaskbarAppBarService.ShouldContinueRecoveryAttempt(true, false, 6, 6), "stop AppBar recovery after the bounded retry count");
+Check(false, NativeTaskbarAppBarService.ShouldContinueRecoveryAttempt(true, true, 0, 6), "stop AppBar recovery after registration succeeds");
 var appBarDisplay = new TaskbarDisplay("APPBAR", 0, 0, 1920, 1080, true);
 Check(new TaskbarBounds(0, 1026, 1920, 54), TaskbarAppBarPolicy.ProposeBounds(appBarDisplay, TaskbarEdge.Bottom, new TaskbarBounds(0, 1026, 1920, 54)), "propose the full physical monitor edge for a bottom appbar");
 Check(new TaskbarBounds(0, 0, 176, 1080), TaskbarAppBarPolicy.ProposeBounds(appBarDisplay, TaskbarEdge.Left, new TaskbarBounds(0, 0, 176, 1080)), "propose the full physical monitor edge for a left appbar");

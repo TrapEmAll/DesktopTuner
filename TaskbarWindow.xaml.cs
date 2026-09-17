@@ -32,6 +32,7 @@ public partial class TaskbarWindow : Window
     private readonly DispatcherTimer _autoHideTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
     private readonly DispatcherTimer _previewOpenTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
     private readonly DispatcherTimer _previewCloseTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
+    private readonly DispatcherTimer _appBarRecoveryTimer = new() { Interval = TimeSpan.FromMilliseconds(750) };
     private readonly Action<TaskbarDisplay> _showStartMenu;
     private readonly Action<TaskbarDisplay, string>? _searchStartMenu;
     private readonly Func<bool> _isStartMenuVisible;
@@ -79,6 +80,8 @@ public partial class TaskbarWindow : Window
     private TaskbarWindowGroup? _pendingPreviewGroup;
     private Button? _pendingPreviewTarget;
     private TaskbarPreviewWindow? _previewWindow;
+    private int _appBarRecoveryAttempts;
+    private const int MaximumAppBarRecoveryAttempts = 6;
 
     public TaskbarDisplay Display { get; private set; }
 
@@ -121,6 +124,7 @@ public partial class TaskbarWindow : Window
         _autoHideTimer.Tick += (_, _) => AutoHideTimer_Tick();
         _previewOpenTimer.Tick += (_, _) => OpenPendingPreview();
         _previewCloseTimer.Tick += (_, _) => ClosePreviewIfPointerOutside();
+        _appBarRecoveryTimer.Tick += (_, _) => RecoverAppBarRegistration();
         SourceInitialized += (_, _) =>
         {
             _nativeReady = true;
@@ -423,6 +427,7 @@ public partial class TaskbarWindow : Window
         _autoHideTimer.Stop();
         _previewOpenTimer.Stop();
         _previewCloseTimer.Stop();
+        _appBarRecoveryTimer.Stop();
         _nativeAppBar.Dispose();
         _previewWindow?.Close();
     }
@@ -438,6 +443,12 @@ public partial class TaskbarWindow : Window
             // unregister/register cycle before recalculating its bounds.
             _nativeAppBar.Unregister();
             ApplyLayout();
+            if (NativeTaskbarAppBarService.ShouldContinueRecoveryAttempt(
+                    _replacementWorkAreaEnabled, _nativeAppBar.IsRegistered, 0, MaximumAppBarRecoveryAttempts))
+            {
+                _appBarRecoveryAttempts = 0;
+                _appBarRecoveryTimer.Start();
+            }
             handled = true;
             return 0;
         }
@@ -475,6 +486,15 @@ public partial class TaskbarWindow : Window
             ApplyLayout();
         }
         return 0;
+    }
+
+    private void RecoverAppBarRegistration()
+    {
+        _appBarRecoveryAttempts++;
+        ApplyLayout();
+        if (!NativeTaskbarAppBarService.ShouldContinueRecoveryAttempt(
+                _replacementWorkAreaEnabled, _nativeAppBar.IsRegistered, _appBarRecoveryAttempts, MaximumAppBarRecoveryAttempts))
+            _appBarRecoveryTimer.Stop();
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
