@@ -94,9 +94,24 @@ public static class NativeTaskbarTrayService
     {
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(display);
-        var selectedBounds = SelectBestTrayBounds(candidates.Select(candidate => candidate.Bounds), display);
-        if (selectedBounds is null) return null;
-        return candidates.FirstOrDefault(candidate => candidate.Bounds == selectedBounds);
+        var candidateArray = candidates.ToArray();
+        var selectedBounds = SelectBestTrayBounds(candidateArray.Select(candidate => candidate.Bounds), display);
+        if (selectedBounds is not null)
+            return candidateArray.FirstOrDefault(candidate => candidate.Bounds == selectedBounds);
+
+        // During a DPI or topology transition, the tray rectangle can remain
+        // in its previous screen coordinates while the taskbar window has
+        // already moved.  Monitor identity is strong enough for focus, but
+        // not for work-area geometry; callers therefore keep their layout
+        // fallback when this path is used.
+        return candidateArray
+            .Where(candidate => ShouldUseMonitorIdentityFallback(
+                TaskbarDisplayService.Overlaps(candidate.Bounds, display),
+                MatchesDisplay(candidate.TaskbarWindow, display)))
+            .OrderByDescending(candidate => candidate.Bounds.Width * candidate.Bounds.Height)
+            .FirstOrDefault() is { TaskbarWindow: not 0 } monitorCandidate
+            ? monitorCandidate
+            : null;
     }
 
     private static IReadOnlyList<TrayCandidate> FindTrayCandidates(TaskbarDisplay display)
@@ -123,6 +138,9 @@ public static class NativeTaskbarTrayService
 
     public static bool ShouldAcceptTrayCandidate(bool geometryOverlaps, bool monitorMatches) =>
         geometryOverlaps || monitorMatches;
+
+    public static bool ShouldUseMonitorIdentityFallback(bool geometryOverlaps, bool monitorMatches) =>
+        !geometryOverlaps && monitorMatches;
 
     private static bool MatchesDisplay(IntPtr taskbarWindow, TaskbarDisplay display)
     {
