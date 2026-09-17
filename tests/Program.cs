@@ -587,6 +587,8 @@ var nativeTrayCandidates = new NativeTaskbarTrayService.TrayCandidate[]
 };
 Check((nint)102, NativeTaskbarTrayService.SelectBestTrayCandidate(nativeTrayCandidates, trayDisplay)?.TaskbarWindow, "focus the taskbar window paired with the best-overlap native tray");
 Check((nint)202, NativeTaskbarTrayService.SelectBestTrayCandidate(nativeTrayCandidates, trayDisplay)?.TrayWindow, "focus the tray child paired with the best-overlap native tray");
+Check(true, NativeTaskbarTrayService.ShouldAcceptTrayCandidate(false, true), "retain a native tray when its taskbar monitor identity matches despite stale geometry");
+Check(false, NativeTaskbarTrayService.ShouldAcceptTrayCandidate(false, false), "reject a native tray that matches neither geometry nor monitor identity");
 Check(true, NativeTaskbarTrayService.ShouldUseInputQueueFocusBridge(10, 20), "allow the guarded Explorer input-queue focus bridge when tray ownership is cross-process");
 Check(false, NativeTaskbarTrayService.ShouldUseInputQueueFocusBridge(10, 10), "avoid attaching input queues when the tray already shares the caller thread");
 Check(false, NativeTaskbarTrayService.ShouldUseInputQueueFocusBridge(0, 20), "avoid attaching input queues when Windows returns no caller thread");

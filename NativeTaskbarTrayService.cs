@@ -112,13 +112,25 @@ public static class NativeTaskbarTrayService
                 if (GetClassName(child) != NotificationAreaClass || !IsWindowVisible(child)) return true;
                 if (!GetWindowRect(child, out var rect)) return true;
                 var bounds = new TaskbarBounds(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
-                if (TaskbarDisplayService.Overlaps(bounds, display))
+                if (ShouldAcceptTrayCandidate(TaskbarDisplayService.Overlaps(bounds, display), MatchesDisplay(taskbar, display)))
                     candidates.Add(new TrayCandidate(bounds, taskbar, child));
                 return true;
             }, IntPtr.Zero);
             return true;
         }, IntPtr.Zero);
         return candidates;
+    }
+
+    public static bool ShouldAcceptTrayCandidate(bool geometryOverlaps, bool monitorMatches) =>
+        geometryOverlaps || monitorMatches;
+
+    private static bool MatchesDisplay(IntPtr taskbarWindow, TaskbarDisplay display)
+    {
+        var monitor = MonitorFromWindow(taskbarWindow, MonitorDefaultToNearest);
+        if (monitor == IntPtr.Zero) return false;
+        var info = new NativeMonitorInfo { Size = (uint)Marshal.SizeOf<NativeMonitorInfo>() };
+        return GetMonitorInfo(monitor, ref info)
+            && string.Equals(info.DeviceName.TrimEnd('\0'), display.DeviceName, StringComparison.OrdinalIgnoreCase);
     }
 
     private static long GetIntersectionArea(TaskbarBounds bounds, TaskbarDisplay display)
@@ -147,6 +159,29 @@ public static class NativeTaskbarTrayService
         public int Bottom;
     }
 
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct NativeMonitorInfo
+    {
+        public NativeMonitorInfo()
+        {
+            Size = 0;
+            Monitor = default;
+            Work = default;
+            Flags = 0;
+            DeviceName = string.Empty;
+        }
+
+        public uint Size;
+        public NativeRect Monitor;
+        public NativeRect Work;
+        public uint Flags;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string DeviceName = string.Empty;
+    }
+
+    private const uint MonitorDefaultToNearest = 2;
+
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr parameter);
@@ -165,6 +200,13 @@ public static class NativeTaskbarTrayService
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsWindowVisible(IntPtr window);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr window, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr monitor, ref NativeMonitorInfo info);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
