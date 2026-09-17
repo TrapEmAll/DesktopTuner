@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using Microsoft.Win32;
 
 namespace DesktopTuner;
@@ -19,5 +20,12 @@ public static class ShellHostTrayCompanionPolicy
         {
             return false;
         }
+    }
+
+    public static void SetEnabled(bool enabled)
+    {
+        using var key = Registry.CurrentUser.CreateSubKey(RegistryPath, writable: true)
+            ?? throw new IOException("Could not open Desktop Tuner settings for the Explorer tray companion.");
+        key.SetValue(ValueName, enabled ? 1 : 0, RegistryValueKind.DWord);
     }
 }

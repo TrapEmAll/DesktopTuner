@@ -2166,6 +2166,22 @@ public partial class MainWindow : Window
         }
         PageContent.Children.Add(actions);
 
+        var trayCompanion = new CheckBox
+        {
+            Content = "Keep Explorer notification icons in shell replacement",
+            IsChecked = ShellHostTrayCompanionPolicy.IsEnabled(),
+            IsEnabled = !_shellHostMode,
+            Margin = new Thickness(0, 0, 0, 8),
+            FontSize = 13
+        };
+        trayCompanion.ToolTip = _shellHostMode
+            ? "This setting applies the next time shell replacement starts."
+            : "Starts a guarded Explorer companion so native tray icons and the Windows clock can be hosted by the replacement taskbar.";
+        trayCompanion.Checked += (_, _) => SetTrayCompanionPreference(trayCompanion, true);
+        trayCompanion.Unchecked += (_, _) => SetTrayCompanionPreference(trayCompanion, false);
+        PageContent.Children.Add(trayCompanion);
+        PageContent.Children.Add(ThemedText("Optional and off by default. Desktop Tuner owns only the Explorer process it starts and falls back to its own system controls if the companion cannot start.", "DesktopMutedTextBrush"));
+
         if (ShellLauncherService.IsSupportedWindowsEdition())
         {
             var shellLauncherConfigured = ShellLauncherService.HasOwnedConfiguration;
@@ -2194,6 +2210,19 @@ public partial class MainWindow : Window
             restoreShellLauncher.Click += RestoreShellLauncher_Click;
             shellLauncherActions.Children.Add(restoreShellLauncher);
             PageContent.Children.Add(shellLauncherActions);
+        }
+    }
+
+    private static void SetTrayCompanionPreference(CheckBox checkBox, bool enabled)
+    {
+        try
+        {
+            ShellHostTrayCompanionPolicy.SetEnabled(enabled);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            checkBox.IsChecked = !enabled;
+            MessageBox.Show(ex.Message, "Could not save Explorer tray companion setting", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
