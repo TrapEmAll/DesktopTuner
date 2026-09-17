@@ -33,7 +33,11 @@ public sealed class ExplorerTrayCompanionService : IDisposable
                 var marker = JsonSerializer.Deserialize<CompanionMarker>(File.ReadAllText(path));
                 if (marker is null || IsProcessRunning(marker.OwnerProcessId, marker.OwnerStartUtc)) continue;
                 using var explorer = Process.GetProcessById(marker.ExplorerProcessId);
-                if (!SameStartTime(explorer, marker.ExplorerStartUtc)) continue;
+                if (!SameStartTime(explorer, marker.ExplorerStartUtc))
+                {
+                    TryDeleteMarker(path);
+                    continue;
+                }
                 if (!explorer.HasExited) explorer.Kill(entireProcessTree: true);
                 explorer.WaitForExit(2000);
                 File.Delete(path);
