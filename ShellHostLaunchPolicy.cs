@@ -3,6 +3,7 @@ namespace DesktopTuner;
 public static class ShellHostLaunchPolicy
 {
     public const string ShellHostWorkerArgument = "--shell-host-worker";
+    public const string ShellHostTrayCompanionArgument = "--shell-host-tray-companion";
     public const int RequestedRestartExitCode = 0xD7A;
     public static TimeSpan PendingInvocationForwardTimeout => CustomShellPolicy.HostStartupReadinessTimeout + TimeSpan.FromSeconds(5);
 
@@ -17,6 +18,12 @@ public static class ShellHostLaunchPolicy
     {
         ArgumentNullException.ThrowIfNull(arguments);
         return arguments.Contains(ShellHostWorkerArgument, StringComparer.OrdinalIgnoreCase);
+    }
+
+    public static bool IsShellHostTrayCompanionInvocation(IEnumerable<string> arguments)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        return arguments.Contains(ShellHostTrayCompanionArgument, StringComparer.OrdinalIgnoreCase);
     }
 
     public static bool ShouldRunShellHostSupervisor(IEnumerable<string> arguments, bool customShellPolicyTargetsApp)
@@ -48,6 +55,9 @@ public static class ShellHostLaunchPolicy
 
     public static bool ShouldHideNativeTaskbar(bool shellHostMode, bool shellOverlayMode, bool replaceNativeTaskbarPreference) =>
         !shellHostMode && !shellOverlayMode && replaceNativeTaskbarPreference;
+
+    public static bool ShouldHideNativeTaskbar(bool shellHostMode, bool shellOverlayMode, bool replaceNativeTaskbarPreference, bool trayCompanionActive) =>
+        !shellOverlayMode && (replaceNativeTaskbarPreference || shellHostMode && trayCompanionActive);
 
     public static bool ShouldUseNativeTrayIntegration(bool shellOverlayMode, bool replaceNativeTaskbarPreference) =>
         ShouldUseNativeTrayIntegration(false, shellOverlayMode, replaceNativeTaskbarPreference);

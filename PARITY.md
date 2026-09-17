@@ -56,3 +56,7 @@ The companion app applies the same rounded transient DWM material to its ComboBo
 | Start and taskbar routing | Implemented in companion shell | Windows-key, Ctrl+Esc, Win+E, Win+T, Win+B, Win+X, taskbar context menus, and companion Start/Explorer routing are implemented. The native Windows Start/taskbar relationship is not replaced. |
 | Explorer shell surface | Implemented in companion shell | Filesystem and virtual Shell navigation, native Shell verbs, context menus, drag/drop, search, tabs, properties, and folder activation routing are implemented. Native Explorer command-bar styling and every provider-specific verb remain unverified. |
 | Native Windows shell services | Preserved or bridged where available | Explorer remains available in overlay mode; native flyouts, taskbar tray, Shell Launcher, Custom User Interface policy, and Explorer recovery are bridged or restored where supported. Exact Windows build behavior still needs live validation. |
+
+### Explorer tray companion
+
+The default shell-host mode remains Explorer-free, but the opt-in --shell-host --shell-host-tray-companion path starts and owns a bounded Explorer companion, hides only its taskbar windows through the existing snapshot/restore service, and integrates its native notification area. This recovers third-party tray icons and native tray interaction while Desktop Tuner owns the replacement desktop and taskbar. The companion is terminated only when Desktop Tuner started it; sign-in and Windows-build behavior still require live validation.

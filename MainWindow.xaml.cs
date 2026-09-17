@@ -54,6 +54,7 @@ public partial class MainWindow : Window
     private readonly ShowDesktopWindowService _showDesktopWindows = new();
     private readonly ForegroundWindowHistory _foregroundWindowHistory;
     private readonly NativeTaskbarVisibilityService _nativeTaskbarVisibility = new();
+    private ExplorerTrayCompanionService? _explorerTrayCompanion;
     private readonly DispatcherTimer _nativeTaskbarWatchTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly DispatcherTimer _shellHostTrayRefreshTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly DispatcherTimer _displayRefreshTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
@@ -99,6 +100,7 @@ public partial class MainWindow : Window
     private bool _classicContextMenus;
     private readonly bool _startInBackground;
     private readonly bool _shellHostMode;
+    private bool _shellHostTrayCompanion;
     private readonly bool _shellOverlayMode;
     private bool _shellHostReadySignaled;
     private bool _shellHostNativeTrayIntegrated;
@@ -107,12 +109,13 @@ public partial class MainWindow : Window
     private bool _closingTaskbars;
     private bool _reconcilingDisplayTopology;
 
-    public MainWindow(bool startInBackground = false, bool shellHostMode = false, bool shellOverlayMode = false)
+    public MainWindow(bool startInBackground = false, bool shellHostMode = false, bool shellOverlayMode = false, bool shellHostTrayCompanion = false)
     {
         InitializeComponent();
         _foregroundWindowHistory = new ForegroundWindowHistory();
         _startInBackground = startInBackground;
         _shellHostMode = shellHostMode;
+        _shellHostTrayCompanion = shellHostMode && shellHostTrayCompanion;
         _shellOverlayMode = shellOverlayMode;
         SourceInitialized += MainWindow_SourceInitialized;
         Closing += MainWindow_Closing;
@@ -1126,6 +1129,17 @@ public partial class MainWindow : Window
         SystemBackdropService.TryApplyMica(this);
         _windowSource = HwndSource.FromHwnd(handle);
         _windowSource.AddHook(WindowMessageHook);
+        if (_shellHostTrayCompanion)
+        {
+            _explorerTrayCompanion = new ExplorerTrayCompanionService();
+            if (!_explorerTrayCompanion.TryStart(out var trayError))
+            {
+                _explorerTrayCompanion.Dispose();
+                _explorerTrayCompanion = null;
+                _shellHostTrayCompanion = false;
+                SetStatus($"Explorer tray companion unavailable: {trayError}");
+            }
+        }
         var unavailableShortcuts = new List<string>();
         if (!RegisterHotKey(handle, StartMenuHotkeyId, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_SPACE))
             unavailableShortcuts.Add("Ctrl+Alt+Space");
@@ -1173,6 +1187,8 @@ public partial class MainWindow : Window
         _windowsKeyHook?.Dispose();
         _windowsKeyHook = null;
         _foregroundWindowHistory.Dispose();
+        _explorerTrayCompanion?.Dispose();
+        _explorerTrayCompanion = null;
     }
 
     private void SystemEvents_UserPreferenceChanged(object? sender, UserPreferenceChangedEventArgs e)
@@ -1190,7 +1206,7 @@ public partial class MainWindow : Window
         if (NativeTaskbarAppBarService.ShouldReconcileAfterTaskbarCreated(
                 _taskbarWindows.Any(window => window.IsVisible), unchecked((uint)message), TaskbarCreatedMessage))
         {
-            if (ShellHostLaunchPolicy.ShouldHideNativeTaskbar(_shellHostMode, _shellOverlayMode, _replaceNativeTaskbar))
+            if (ShellHostLaunchPolicy.ShouldHideNativeTaskbar(_shellHostMode, _shellOverlayMode, _replaceNativeTaskbar, _shellHostTrayCompanion))
                 MaintainNativeTaskbars();
             if (_shellHostMode)
             {
@@ -1547,7 +1563,7 @@ public partial class MainWindow : Window
             var preferences = CreateTaskbarRuntimePreferences();
             if (_shellHostMode) _shellHostTaskbarNativeTrayIntegrated = _shellHostNativeTrayIntegrated;
             var showAllDisplays = ShellHostLaunchPolicy.ShouldCoverAllDisplays(_shellHostMode, _taskbarOnAllDisplays, _shellOverlayMode);
-            var hideNativeTaskbar = ShellHostLaunchPolicy.ShouldHideNativeTaskbar(_shellHostMode, _shellOverlayMode, _replaceNativeTaskbar);
+            var hideNativeTaskbar = ShellHostLaunchPolicy.ShouldHideNativeTaskbar(_shellHostMode, _shellOverlayMode, _replaceNativeTaskbar, _shellHostTrayCompanion);
             foreach (var display in TaskbarDisplayService.Select(showAllDisplays))
                 AddTaskbarWindow(display, preferences);
             if (hideNativeTaskbar)
@@ -1673,7 +1689,7 @@ public partial class MainWindow : Window
                     System.Diagnostics.Trace.TraceWarning($"Windows could not reserve a work area for the shell taskbar on {display.DeviceName}; it will remain an overlay.");
             }
 
-            if (ShellHostLaunchPolicy.ShouldHideNativeTaskbar(_shellHostMode, _shellOverlayMode, _replaceNativeTaskbar))
+            if (ShellHostLaunchPolicy.ShouldHideNativeTaskbar(_shellHostMode, _shellOverlayMode, _replaceNativeTaskbar, _shellHostTrayCompanion))
                 MaintainNativeTaskbars();
             RepositionOpenStartMenu();
         }
@@ -1747,7 +1763,7 @@ public partial class MainWindow : Window
 
     private void MaintainNativeTaskbars()
     {
-        if (!ShellHostLaunchPolicy.ShouldHideNativeTaskbar(_shellHostMode, _shellOverlayMode, _replaceNativeTaskbar) || !_taskbarWindows.Any(window => window.IsVisible))
+        if (!ShellHostLaunchPolicy.ShouldHideNativeTaskbar(_shellHostMode, _shellOverlayMode, _replaceNativeTaskbar, _shellHostTrayCompanion) || !_taskbarWindows.Any(window => window.IsVisible))
         {
             _nativeTaskbarWatchTimer.Stop();
             _nativeTaskbarVisibility.Restore();

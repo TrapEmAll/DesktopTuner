@@ -477,6 +477,9 @@ Check(false, ShellHostLaunchPolicy.ShouldManageReplacementDesktop(false, false),
 Check(true, ShellHostLaunchPolicy.ShouldCoverAllDisplays(true, false), "cover every display in shell-host mode regardless of overlay preferences");
 Check(true, ShellHostLaunchPolicy.ShouldCoverAllDisplays(false, false, true), "cover every display in shell overlay mode regardless of display preferences");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, true), "avoid trying to hide an Explorer taskbar when running as the logon shell");
+Check(true, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, false, false, true), "hide the Explorer taskbar while an opt-in tray companion supplies native notification icons");
+Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, false, false, false), "keep the native taskbar untouched in the default shell-host mode");
+Check(true, ShellHostLaunchPolicy.IsShellHostTrayCompanionInvocation(["--SHELL-HOST-TRAY-COMPANION"]), "recognize the opt-in Explorer tray companion argument");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true, false), "keep Explorer taskbars active behind all-edition shell overlay mode");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true, true), "keep the native notification area active regardless of the saved replacement preference in shell overlay mode");
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, true), "integrate the native notification area in shell overlay mode without changing the saved replacement preference");

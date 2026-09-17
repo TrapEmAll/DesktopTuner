@@ -48,6 +48,7 @@ public partial class App : Application
         var hasShellLocationInvocation = FolderShellIntegrationService.TryReadShellLocationInvocation(e.Args, out var shellLocation);
         var shellHostArgument = ShellHostLaunchPolicy.IsShellHostInvocation(e.Args);
         var shellHostWorkerArgument = ShellHostLaunchPolicy.IsShellHostWorkerInvocation(e.Args);
+        var shellHostTrayCompanionArgument = ShellHostLaunchPolicy.IsShellHostTrayCompanionInvocation(e.Args);
         var customShellPolicyTargetsApp = CustomShellPolicy.TargetsExecutable(CustomShellPolicy.ReadCurrentUserShellCommand(), Environment.ProcessPath);
         if (!shellHostArgument && !shellHostWorkerArgument && !customShellPolicyTargetsApp)
         {
@@ -104,7 +105,8 @@ public partial class App : Application
             RunCustomShellSupervisor(
                 hasFolderShellInvocation ? folderShellPath : null,
                 hasShellLocationInvocation ? shellLocation : null,
-                hasFileLocationInvocation ? fileLocationPath : null);
+                hasFileLocationInvocation ? fileLocationPath : null,
+                shellHostTrayCompanionArgument);
             return;
         }
 
@@ -143,7 +145,8 @@ public partial class App : Application
             {
                 shellControls = new MainWindow(
                     shellHostMode: shellHostMode,
-                    shellOverlayMode: shellOverlayMode)
+                    shellOverlayMode: shellOverlayMode,
+                    shellHostTrayCompanion: shellHostTrayCompanionArgument)
                 { ShowInTaskbar = false };
                 shellControls.Hide();
             }
@@ -201,7 +204,7 @@ public partial class App : Application
         finally { Shutdown(); }
     }
 
-    private async void RunCustomShellSupervisor(string? pendingFolderPath, string? pendingShellLocation, string? pendingFilePath)
+    private async void RunCustomShellSupervisor(string? pendingFolderPath, string? pendingShellLocation, string? pendingFilePath, bool trayCompanion)
     {
         var executablePath = Environment.ProcessPath;
         if (string.IsNullOrWhiteSpace(executablePath))
@@ -240,6 +243,7 @@ public partial class App : Application
                     heartbeatSignal.Reset();
                     var startInfo = new ProcessStartInfo(executablePath) { UseShellExecute = false };
                     startInfo.ArgumentList.Add(ShellHostLaunchPolicy.ShellHostWorkerArgument);
+                    if (trayCompanion) startInfo.ArgumentList.Add(ShellHostLaunchPolicy.ShellHostTrayCompanionArgument);
                     using var shellHost = Process.Start(startInfo);
                     if (shellHost is null) throw new InvalidOperationException("Windows did not start the Desktop Tuner shell host.");
                     if (await WaitForShellHostReadyAsync(shellHost, readinessSignal))
