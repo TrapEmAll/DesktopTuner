@@ -2193,6 +2193,8 @@ public partial class TaskbarWindow : Window
     public void FocusTaskbarSystemArea(nint restoreForegroundWindow = 0)
     {
         if (!_nativeReady) return;
+        if (_nativeTrayEmbedded && _nativeTrayHost.TryFocus()) return;
+        if (_nativeClockEmbedded && _nativeClockHost.TryFocus()) return;
         if (_nativeTrayExposed && NativeTaskbarTrayService.TryFocusTray(Display)) return;
         _autoHideTimer.Stop();
         if (!_keyboardFocusActive)

@@ -19,6 +19,7 @@ public sealed class NativeTrayHost : HwndHost
     private const uint SwpNoActivate = 0x0010;
     private const uint SwpNoZOrder = 0x0004;
     private const uint SwpShowWindow = 0x0040;
+    private const uint GetAncestorRoot = 2;
     private nint _hostHandle;
     private nint _trayHandle;
     private nint _originalParent;
@@ -80,6 +81,25 @@ public sealed class NativeTrayHost : HwndHost
             System.Diagnostics.Trace.TraceWarning($"Could not restore the Explorer notification area parent: {ex.Message}");
         }
         Visibility = System.Windows.Visibility.Collapsed;
+    }
+
+    public bool TryFocus()
+    {
+        if (_trayHandle == nint.Zero || !IsWindow(_trayHandle)) return false;
+        var root = GetAncestor(_hostHandle, GetAncestorRoot);
+        var foregrounded = root != nint.Zero && SetForegroundWindow(root);
+        var focused = SetFocus(_trayHandle) != nint.Zero;
+        if (foregrounded || focused) return true;
+        var targetThread = GetWindowThreadProcessId(_trayHandle, out _);
+        var currentThread = GetCurrentThreadId();
+        if (targetThread == 0 || currentThread == 0 || targetThread == currentThread) return false;
+        if (!AttachThreadInput(currentThread, targetThread, true)) return false;
+        try
+        {
+            if (root != nint.Zero) SetForegroundWindow(root);
+            return SetFocus(_trayHandle) != nint.Zero;
+        }
+        finally { AttachThreadInput(currentThread, targetThread, false); }
     }
 
     protected override HandleRef BuildWindowCore(HandleRef hwndParent)
@@ -159,6 +179,12 @@ public sealed class NativeTrayHost : HwndHost
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)] private static extern nint SetWindowLongPtr(nint window, int index, nint value);
     [DllImport("user32.dll", SetLastError = true)] private static extern bool SetWindowPos(nint window, nint insertAfter, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")] private static extern bool IsWindow(nint window);
+    [DllImport("user32.dll")] private static extern nint GetAncestor(nint window, uint flags);
+    [DllImport("user32.dll")] private static extern nint SetFocus(nint window);
+    [DllImport("user32.dll")] private static extern bool SetForegroundWindow(nint window);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(nint window, out uint processId);
+    [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
+    [DllImport("user32.dll", SetLastError = true)] private static extern bool AttachThreadInput(uint currentThreadId, uint targetThreadId, bool attach);
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] private static extern nint GetModuleHandle(string? moduleName);
     [DllImport("kernel32.dll", SetLastError = true)] private static extern void SetLastError(uint errorCode);
 }
