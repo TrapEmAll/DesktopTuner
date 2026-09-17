@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Text;
 
 namespace DesktopTuner;
 
@@ -15,8 +16,19 @@ public sealed class ExplorerTrayCompanionService : IDisposable
 
     public bool TryRecover(out string? error)
     {
+        try { return TryRecover(TaskbarDisplayService.Enumerate(), out error); }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            error = $"Windows could not enumerate displays for the Explorer tray companion: {ex.Message}";
+            return false;
+        }
+    }
+
+    public bool TryRecover(IReadOnlyList<TaskbarDisplay> displays, out string? error)
+    {
         error = null;
-        if (HasVisibleTaskbar()) return true;
+        ArgumentNullException.ThrowIfNull(displays);
+        if (HasVisibleTaskbars(displays)) return true;
 
         var process = _ownedProcess;
         if (process is null || !process.HasExited) return false;
@@ -33,7 +45,7 @@ public sealed class ExplorerTrayCompanionService : IDisposable
         { Trace.TraceWarning($"Could not release the exited Explorer tray companion: {ex.Message}"); }
         if (_markerPath is { } markerPath) TryDeleteMarker(markerPath);
         _markerPath = null;
-        return TryStart(out error);
+        return TryStart(displays, out error);
     }
 
     public static int RestoreOrphanedCompanions(string? directoryPath = null)
@@ -79,8 +91,19 @@ public sealed class ExplorerTrayCompanionService : IDisposable
 
     public bool TryStart(out string? error)
     {
+        try { return TryStart(TaskbarDisplayService.Enumerate(), out error); }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            error = $"Windows could not enumerate displays for the Explorer tray companion: {ex.Message}";
+            return false;
+        }
+    }
+
+    public bool TryStart(IReadOnlyList<TaskbarDisplay> displays, out string? error)
+    {
         error = null;
-        if (HasVisibleTaskbar()) return true;
+        ArgumentNullException.ThrowIfNull(displays);
+        if (HasVisibleTaskbars(displays)) return true;
 
         try
         {
@@ -96,7 +119,7 @@ public sealed class ExplorerTrayCompanionService : IDisposable
             var stopwatch = Stopwatch.StartNew();
             while (stopwatch.Elapsed < StartupTimeout)
             {
-                if (HasVisibleTaskbar()) return true;
+                if (HasVisibleTaskbars(displays)) return true;
                 if (_ownedProcess.HasExited)
                 {
                     error = "Explorer exited before creating a notification-area taskbar.";
@@ -106,7 +129,7 @@ public sealed class ExplorerTrayCompanionService : IDisposable
             }
 
             error = "Explorer did not create a visible taskbar within the tray-companion startup window.";
-            return HasVisibleTaskbar();
+            return HasVisibleTaskbars(displays);
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or UnauthorizedAccessException or IOException or System.Security.SecurityException)
         {
@@ -178,12 +201,51 @@ public sealed class ExplorerTrayCompanionService : IDisposable
 
     private sealed record CompanionMarker(int OwnerProcessId, DateTime OwnerStartUtc, int ExplorerProcessId, DateTime ExplorerStartUtc);
 
-    private static bool HasVisibleTaskbar() =>
-        IsWindowVisible(FindWindow("Shell_TrayWnd", null)) ||
-        IsWindowVisible(FindWindow("Shell_SecondaryTrayWnd", null));
+    private static bool HasVisibleTaskbars(IReadOnlyList<TaskbarDisplay> displays)
+    {
+        if (displays.Count == 0) return false;
+        var taskbars = new List<TaskbarBounds>();
+        if (!EnumWindows((window, _) =>
+        {
+            if (!IsWindowVisible(window) || !IsTaskbar(window) || !GetWindowRect(window, out var rect)) return true;
+            taskbars.Add(new TaskbarBounds(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top));
+            return true;
+        }, nint.Zero))
+        {
+            Trace.TraceWarning("Could not enumerate Explorer taskbars while checking tray-companion readiness.");
+            return false;
+        }
+        return displays.All(display => taskbars.Any(bounds => TaskbarDisplayService.Overlaps(bounds, display)));
+    }
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "FindWindowW")]
-    private static extern nint FindWindow(string? className, string? windowName);
+    private static bool IsTaskbar(nint window)
+    {
+        var className = new StringBuilder(64);
+        var length = GetClassName(window, className, className.Capacity);
+        return length > 0 && className.ToString() is "Shell_TrayWnd" or "Shell_SecondaryTrayWnd";
+    }
+
+    private delegate bool EnumWindowsProc(nint window, nint parameter);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EnumWindows(EnumWindowsProc callback, nint parameter);
+
+    [DllImport("user32.dll", EntryPoint = "GetClassNameW", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(nint window, StringBuilder className, int maxCount);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(nint window, out NativeRect rect);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
