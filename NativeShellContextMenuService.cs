@@ -1168,8 +1168,29 @@ public static class NativeShellContextMenuService
         // The absolute PIDL continues with a child item where a standalone parent PIDL
         // would contain its two-byte terminator, so compare only the parent components.
         for (var index = 0; index < firstParentLength - sizeof(ushort); index++)
-            if (Marshal.ReadByte(first, index) != Marshal.ReadByte(second, index)) return false;
+            if (Marshal.ReadByte(first, index) != Marshal.ReadByte(second, index))
+                return string.Equals(GetParentDisplayName(first, firstParentLength), GetParentDisplayName(second, secondParentLength), StringComparison.OrdinalIgnoreCase);
         return true;
+    }
+
+    private static string? GetParentDisplayName(nint absolutePidl, int parentLength)
+    {
+        var parent = Marshal.AllocCoTaskMem(parentLength);
+        try
+        {
+            for (var index = 0; index < parentLength; index++)
+                Marshal.WriteByte(parent, index, Marshal.ReadByte(absolutePidl, index));
+            if (SHGetNameFromIDList(parent, DesktopAbsoluteParsing, out var namePointer) < 0 || namePointer == nint.Zero)
+                return null;
+            try { return Marshal.PtrToStringUni(namePointer); }
+            finally { Marshal.FreeCoTaskMem(namePointer); }
+        }
+        catch (Exception ex) when (ex is ArgumentException or COMException or AccessViolationException)
+        {
+            Trace.TraceWarning($"Could not canonicalize Shell parent PIDLs: {ex.Message}");
+            return null;
+        }
+        finally { Marshal.FreeCoTaskMem(parent); }
     }
 
     private static void ThrowForFailure(int hresult, string message)
