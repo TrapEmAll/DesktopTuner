@@ -464,6 +464,8 @@ public partial class TaskbarWindow : Window
             // unregister/register cycle before recalculating its bounds.
             _nativeAppBar.Unregister();
             ApplyLayout();
+            if (_shellHostTrayCompanion)
+                Dispatcher.BeginInvoke(new Action(AttachEmbeddedTray), DispatcherPriority.Background);
             if (NativeTaskbarAppBarService.ShouldContinueRecoveryAttempt(
                     _replacementWorkAreaEnabled, _nativeAppBar.IsRegistered, 0, MaximumAppBarRecoveryAttempts))
             {
