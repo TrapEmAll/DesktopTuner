@@ -36,9 +36,7 @@ public static class NativeTaskbarTrayService
         {
             var candidate = SelectBestTrayCandidate(FindTrayCandidates(display), display);
             if (candidate is not { } selected) return false;
-            var foregrounded = SetForegroundWindow(selected.TaskbarWindow);
-            var focused = SetFocus(selected.TrayWindow) != 0;
-            return foregrounded || focused;
+            return TryFocusWindowPair(selected.TaskbarWindow, selected.TrayWindow);
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         {
@@ -46,6 +44,40 @@ public static class NativeTaskbarTrayService
             return false;
         }
     }
+
+    private static bool TryFocusWindowPair(IntPtr taskbarWindow, IntPtr trayWindow)
+    {
+        var foregrounded = SetForegroundWindow(taskbarWindow);
+        var focused = SetFocus(trayWindow) != 0;
+        if (foregrounded || focused) return true;
+
+        // The notification area is owned by Explorer, so a direct SetFocus can
+        // fail when Desktop Tuner is the foreground process.  Temporarily
+        // joining the input queues is the same compatibility technique used by
+        // shell launchers for Win+B.  The attachment is bounded to this call
+        // and is always detached in finally; if Windows rejects it we keep the
+        // custom tray fallback instead of forcing focus.
+        var targetThread = GetWindowThreadProcessId(taskbarWindow, out _);
+        var currentThread = GetCurrentThreadId();
+        if (!ShouldUseInputQueueFocusBridge(currentThread, targetThread)) return false;
+
+        var attached = AttachThreadInput(currentThread, targetThread, true);
+        if (!attached) return false;
+        try
+        {
+            BringWindowToTop(taskbarWindow);
+            foregrounded = SetForegroundWindow(taskbarWindow);
+            focused = SetFocus(trayWindow) != 0;
+            return foregrounded || focused;
+        }
+        finally
+        {
+            AttachThreadInput(currentThread, targetThread, false);
+        }
+    }
+
+    public static bool ShouldUseInputQueueFocusBridge(uint currentThreadId, uint targetThreadId) =>
+        currentThreadId != 0 && targetThreadId != 0 && currentThreadId != targetThreadId;
 
     public static TaskbarBounds? SelectBestTrayBounds(IEnumerable<TaskbarBounds> candidates, TaskbarDisplay display)
     {
@@ -140,4 +172,18 @@ public static class NativeTaskbarTrayService
 
     [DllImport("user32.dll")]
     private static extern IntPtr SetFocus(IntPtr window);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AttachThreadInput(uint currentThreadId, uint targetThreadId, [MarshalAs(UnmanagedType.Bool)] bool attach);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool BringWindowToTop(IntPtr window);
 }
