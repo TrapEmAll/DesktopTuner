@@ -24,6 +24,7 @@ public partial class TaskbarWindow : Window
     private readonly RunningWindowService _windows = new();
     private readonly TaskbarWindowOrder _windowOrder;
     private readonly NativeTaskbarAppBarService _nativeAppBar = new();
+    private readonly NativeTrayHost _nativeTrayHost = new();
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
     private readonly DispatcherTimer _batteryRefreshTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly DispatcherTimer _microphoneRefreshTimer = new() { Interval = TimeSpan.FromSeconds(15) };
@@ -51,6 +52,7 @@ public partial class TaskbarWindow : Window
     private readonly Func<string, bool>? _pinQuickAccessItem;
     private readonly Func<string, bool>? _isQuickAccessItemPinned;
     private readonly bool _shellHostMode;
+    private readonly bool _shellHostTrayCompanion;
     private DesktopPreferences _preferences = new(TaskbarEdge.Bottom);
     private TaskbarEdge _edge;
     private TaskbarSize _size;
@@ -65,6 +67,7 @@ public partial class TaskbarWindow : Window
     private Visibility? _visibilityBeforeWindowArrange;
     private bool? _systemBackdropForCurrentStyle;
     private bool _nativeTrayExposed;
+    private bool _nativeTrayEmbedded;
     private IReadOnlyList<TaskbarSnapGroup> _snapGroups = [];
     private bool _isDark;
     private bool _keyboardFocusActive;
@@ -85,7 +88,7 @@ public partial class TaskbarWindow : Window
 
     public TaskbarDisplay Display { get; private set; }
 
-    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Func<string, bool>? openDirectoryInCompanionExplorer = null, Func<string, bool>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? openFolderInNewWindow = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? pinQuickAccessItem = null, Func<string, bool>? isQuickAccessItemPinned = null, bool shellHostMode = false, Action<TaskbarDisplay, string>? searchStartMenu = null)
+    public TaskbarWindow(TaskbarDisplay display, Action<TaskbarDisplay> showStartMenu, Func<bool> isStartMenuVisible, DesktopPreferences preferences, TaskbarWindowOrder windowOrder, Action<DesktopPreferences> persistPreferences, Action closeAllTaskbars, Action showSettings, Action quitApplication, Action? showDesktop = null, Action? focusSystemArea = null, Action<string>? executePowerUserCommand = null, Func<string, bool>? openDirectoryInCompanionExplorer = null, Func<string, bool>? openFileLocationInCompanionExplorer = null, Func<string, bool>? openShellLocationInCompanionExplorer = null, Func<string, bool>? openFolderInNewWindow = null, Func<string, bool>? pinStartItem = null, Func<string, bool>? pinQuickAccessItem = null, Func<string, bool>? isQuickAccessItemPinned = null, bool shellHostMode = false, bool shellHostTrayCompanion = false, Action<TaskbarDisplay, string>? searchStartMenu = null)
     {
         InitializeComponent();
         _isDark = TaskbarTheme.ReadSystemDarkMode();
@@ -110,6 +113,7 @@ public partial class TaskbarWindow : Window
         _pinQuickAccessItem = pinQuickAccessItem;
         _isQuickAccessItemPinned = isQuickAccessItemPinned;
         _shellHostMode = shellHostMode;
+        _shellHostTrayCompanion = shellHostMode && shellHostTrayCompanion;
         CloseBarMenuItem.IsEnabled = ShellHostLaunchPolicy.ShouldAllowTaskbarClose(shellHostMode);
         CloseBarButton.Visibility = shellHostMode ? Visibility.Collapsed : Visibility.Visible;
         QuitMenuItem.Header = ShellHostLaunchPolicy.GetExitLabel(shellHostMode);
@@ -133,6 +137,7 @@ public partial class TaskbarWindow : Window
             ApplyLayout();
             Display = TaskbarDisplayService.ReadWindowDpi(Display, this);
             ApplyLayout();
+            Dispatcher.BeginInvoke(new Action(AttachEmbeddedTray), System.Windows.Threading.DispatcherPriority.Loaded);
         };
         SetPreferences(preferences);
     }
@@ -146,6 +151,7 @@ public partial class TaskbarWindow : Window
         _autoHide = _preferences.AutoHide;
         _autoHideWhenMaximized = _preferences.AutoHideWhenMaximized;
         _collapsed = (_autoHide || _autoHideWhenMaximized && _maximizedWindowOnDisplay) && !_isStartMenuVisible() && !IsMouseOver;
+        if (_shellHostTrayCompanion && IsLoaded) AttachEmbeddedTray();
         ApplyLayout();
         UpdateWeatherVisibility();
         if (IsLoaded) RefreshWindows();
@@ -188,7 +194,9 @@ public partial class TaskbarWindow : Window
         var bounds = TaskbarLayoutCalculator.Calculate(Display, layoutPreferences, _collapsed);
         var nativeTrayBounds = NativeTaskbarTrayService.FindTrayBounds(Display);
         var trayBounds = _preferences.ReplaceNativeTaskbar ? null : nativeTrayBounds;
-        var integratedBounds = TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(Display, layoutPreferences, trayBounds, _collapsed);
+        var integratedBounds = _shellHostTrayCompanion
+            ? null
+            : TaskbarTrayIntegrationPolicy.CalculateOverlayBounds(Display, layoutPreferences, trayBounds, _collapsed);
         _nativeTrayExposed = integratedBounds is not null;
         var replacementTaskbar = TaskbarTrayIntegrationPolicy.ShouldUseReplacementWorkArea(
             _shellHostMode, _preferences.ReplaceNativeTaskbar, integratedBounds);
@@ -230,7 +238,7 @@ public partial class TaskbarWindow : Window
         InputMethodButton.Visibility = !_nativeTrayExposed && systemButtons.InputMethod ? Visibility.Visible : Visibility.Collapsed;
         OnScreenKeyboardButton.Visibility = !_nativeTrayExposed && systemButtons.OnScreenKeyboard ? Visibility.Visible : Visibility.Collapsed;
         EmojiButton.Visibility = !_nativeTrayExposed && systemButtons.Emoji ? Visibility.Visible : Visibility.Collapsed;
-        TrayButton.Visibility = !_nativeTrayExposed && systemButtons.Tray ? Visibility.Visible : Visibility.Collapsed;
+        TrayButton.Visibility = !_nativeTrayExposed && !_nativeTrayEmbedded && systemButtons.Tray ? Visibility.Visible : Visibility.Collapsed;
         VolumeButton.Visibility = !_nativeTrayExposed && systemButtons.Volume ? Visibility.Visible : Visibility.Collapsed;
         MicrophoneButton.Visibility = !_nativeTrayExposed && systemButtons.Microphone && _hasMicrophoneDevice ? Visibility.Visible : Visibility.Collapsed;
         if (IsLoaded && systemButtons.Microphone && !_nativeTrayExposed) _microphoneRefreshTimer.Start();
@@ -371,6 +379,15 @@ public partial class TaskbarWindow : Window
             segment.Margin = new Thickness(0);
             segment.Padding = new Thickness(0);
         }
+    }
+
+    private void AttachEmbeddedTray()
+    {
+        if (!_shellHostTrayCompanion || !IsLoaded) return;
+        var attached = _nativeTrayHost.TryAttach(Display);
+        if (_nativeTrayEmbedded == attached) return;
+        _nativeTrayEmbedded = attached;
+        ApplyLayout();
     }
 
     private void UpdateSystemBackdrop()

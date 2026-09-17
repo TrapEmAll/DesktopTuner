@@ -1628,6 +1628,7 @@ public partial class MainWindow : Window
             pinQuickAccessItem: TryPinQuickAccessItemFromShell,
             isQuickAccessItemPinned: IsQuickAccessItemPinnedFromShell,
             shellHostMode: _shellHostMode,
+            shellHostTrayCompanion: _shellHostTrayCompanion,
             searchStartMenu: ShowStartMenuSearch);
         taskbar.ContentRendered += TaskbarWindow_ContentRendered;
         taskbar.Closed += (_, _) =>
@@ -1810,7 +1811,7 @@ public partial class MainWindow : Window
     private DesktopPreferences CreateTaskbarRuntimePreferences(DesktopPreferences? preferences = null)
     {
         preferences ??= CreateDesktopPreferences();
-        var nativeTrayAvailable = _shellHostMode && TaskbarDisplayService.Select(allDisplays: true)
+        var nativeTrayAvailable = _shellHostMode && !_shellHostTrayCompanion && TaskbarDisplayService.Select(allDisplays: true)
             .Any(display => NativeTaskbarTrayService.FindTrayBounds(display) is not null);
         _shellHostNativeTrayIntegrated = ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(
             _shellHostMode, _shellOverlayMode, preferences.ReplaceNativeTaskbar, nativeTrayAvailable);

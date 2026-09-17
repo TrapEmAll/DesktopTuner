@@ -15,10 +15,9 @@ public static class NativeTaskbarTrayService
     public static TaskbarBounds? FindTrayBounds(TaskbarDisplay display)
     {
         ArgumentNullException.ThrowIfNull(display);
-        var candidates = new List<TrayCandidate>();
         try
         {
-            candidates.AddRange(FindTrayCandidates(display));
+            return FindTrayCandidate(display)?.Bounds;
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         {
@@ -26,7 +25,20 @@ public static class NativeTaskbarTrayService
             return null;
         }
 
-        return SelectBestTrayCandidate(candidates, display)?.Bounds;
+    }
+
+    public static TrayCandidate? FindTrayCandidate(TaskbarDisplay display)
+    {
+        ArgumentNullException.ThrowIfNull(display);
+        try
+        {
+            return SelectBestTrayCandidate(FindTrayCandidates(display), display);
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+        {
+            Trace.TraceWarning($"Could not inspect the native Windows notification area: {ex.Message}");
+            return null;
+        }
     }
 
     public static bool TryFocusTray(TaskbarDisplay display)
@@ -34,7 +46,7 @@ public static class NativeTaskbarTrayService
         ArgumentNullException.ThrowIfNull(display);
         try
         {
-            var candidate = SelectBestTrayCandidate(FindTrayCandidates(display), display);
+            var candidate = FindTrayCandidate(display);
             if (candidate is not { } selected) return false;
             return TryFocusWindowPair(selected.TaskbarWindow, selected.TrayWindow);
         }
