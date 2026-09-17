@@ -136,11 +136,11 @@ public partial class App : Application
             if (_launchExplorerOnShellHostExit)
                 SystemEvents.SessionEnding += OnSystemSessionEnding;
 
-            if (shellOverlayMode)
+            if (shellOverlayMode || shellHostMode && shellHostTrayCompanionArgument)
             {
                 var recoveredOverlayTaskbars = NativeTaskbarVisibilityService.RestoreOrphanedSnapshots();
                 if (recoveredOverlayTaskbars > 0)
-                    System.Diagnostics.Trace.TraceWarning($"Recovered {recoveredOverlayTaskbars} orphaned Windows taskbar visibility snapshot(s) before starting shell overlay mode.");
+                    System.Diagnostics.Trace.TraceWarning($"Recovered {recoveredOverlayTaskbars} orphaned Windows taskbar visibility snapshot(s) before starting the shell surface.");
             }
 
             MainWindow? shellControls = null;
