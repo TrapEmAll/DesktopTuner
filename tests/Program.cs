@@ -535,6 +535,9 @@ Check(false, ShellHostLaunchPolicy.ShouldLaunchExplorerOnShellHostExit(false, fa
 Check(true, ShellHostLaunchPolicy.ShouldRestoreExplorerAfterShellHostExit(true, false, 0), "restore Explorer after a successful Shell Launcher exit");
 Check(false, ShellHostLaunchPolicy.ShouldRestoreExplorerAfterShellHostExit(true, true, 0), "avoid launching Explorer while Windows is signing out");
 Check(false, ShellHostLaunchPolicy.ShouldRestoreExplorerAfterShellHostExit(true, false, 1), "let Shell Launcher restart the host after an abnormal exit");
+Check(true, ExplorerRecoveryService.ShouldRetry(1, taskbarReady: false), "retry Explorer recovery when the first launch creates no visible taskbar");
+Check(false, ExplorerRecoveryService.ShouldRetry(2, taskbarReady: false), "stop Explorer recovery after its bounded retry count");
+Check(false, ExplorerRecoveryService.ShouldRetry(1, taskbarReady: true), "stop Explorer recovery once a visible taskbar is ready");
 CheckTrue(NativeTaskbarWatchdog.TryReadInvocation(["--taskbar-watchdog", "123", "snapshot.json"], out var watchdogOwner, out var watchdogSnapshot), "parse taskbar recovery process arguments");
 Check((123, "snapshot.json"), (watchdogOwner, watchdogSnapshot), "recover the watchdog owner and snapshot path");
 CheckTrue(TaskbarSnapshotOwnerPolicy.IsSnapshotOwner(DateTime.UtcNow.AddMinutes(-5), DateTime.UtcNow), "match a live process start to its newer taskbar snapshot");

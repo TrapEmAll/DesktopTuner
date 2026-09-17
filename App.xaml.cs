@@ -399,15 +399,8 @@ public partial class App : Application
             return;
         }
 
-        try
-        {
-            using var explorer = Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = true });
-            if (explorer is null) throw new InvalidOperationException("Windows did not start Explorer for shell recovery.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException or System.Security.SecurityException)
-        {
-            Trace.TraceError($"Could not start Explorer after the Desktop Tuner shell stopped: {ex}");
-        }
+        if (!ExplorerRecoveryService.TryStartExplorer(out var error))
+            Trace.TraceError($"Could not restore Explorer after the Desktop Tuner shell stopped: {error}");
         Shutdown();
     }
 
@@ -430,14 +423,9 @@ public partial class App : Application
         RestoreShellHostDefaultFolderHandler();
         if (ShellHostLaunchPolicy.ShouldRestoreExplorerAfterShellHostExit(_launchExplorerOnShellHostExit, _sessionEnding, e.ApplicationExitCode))
         {
-            try
+            if (!ExplorerRecoveryService.TryStartExplorer(out var error))
             {
-                using var explorer = Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = true })
-                    ?? throw new InvalidOperationException("Windows did not start Explorer for shell recovery.");
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or IOException or UnauthorizedAccessException or System.Security.SecurityException)
-            {
-                Trace.TraceError($"Could not start Explorer when leaving the Shell Launcher session: {ex}");
+                Trace.TraceError($"Could not restore Explorer when leaving the Shell Launcher session: {error}");
                 e.ApplicationExitCode = 1;
             }
         }
