@@ -480,6 +480,10 @@ Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, true), "avoid t
 Check(true, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, false, false, true), "hide the Explorer taskbar while an opt-in tray companion supplies native notification icons");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(true, false, false, false), "keep the native taskbar untouched in the default shell-host mode");
 Check(true, ShellHostLaunchPolicy.IsShellHostTrayCompanionInvocation(["--SHELL-HOST-TRAY-COMPANION"]), "recognize the opt-in Explorer tray companion argument");
+Check(true, ExplorerTrayCompanionRecoveryPolicy.ShouldRestart(false, true, 0), "retry an exited Explorer tray companion once when its taskbar is unavailable");
+Check(false, ExplorerTrayCompanionRecoveryPolicy.ShouldRestart(true, true, 0), "do not restart the Explorer tray companion while a taskbar is visible");
+Check(false, ExplorerTrayCompanionRecoveryPolicy.ShouldRestart(false, false, 0), "do not restart a still-running Explorer tray companion during taskbar rebuilds");
+Check(false, ExplorerTrayCompanionRecoveryPolicy.ShouldRestart(false, true, ExplorerTrayCompanionRecoveryPolicy.MaximumRecoveryAttempts), "bound Explorer tray companion recovery to one restart");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true, false), "keep Explorer taskbars active behind all-edition shell overlay mode");
 Check(false, ShellHostLaunchPolicy.ShouldHideNativeTaskbar(false, true, true), "keep the native notification area active regardless of the saved replacement preference in shell overlay mode");
 Check(true, ShellHostLaunchPolicy.ShouldUseNativeTrayIntegration(true, true), "integrate the native notification area in shell overlay mode without changing the saved replacement preference");

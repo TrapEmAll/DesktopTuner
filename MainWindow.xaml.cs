@@ -1710,9 +1710,23 @@ public partial class MainWindow : Window
 
         try
         {
+            if (_shellHostTrayCompanion && _explorerTrayCompanion is not null && !_explorerTrayCompanion.TryRecover(out var recoveryError))
+            {
+                if (recoveryError is not null)
+                {
+                    _shellHostTrayCompanion = false;
+                    _explorerTrayCompanion.Dispose();
+                    _explorerTrayCompanion = null;
+                    SetStatus($"Explorer tray companion recovery unavailable: {recoveryError}");
+                }
+            }
             var preferences = CreateTaskbarRuntimePreferences();
             var traySignature = GetShellHostTraySignature();
-            if (!TaskbarTrayIntegrationPolicy.ShouldReconcileTraySignature(_shellHostTraySignature, traySignature)) return;
+            if (!TaskbarTrayIntegrationPolicy.ShouldReconcileTraySignature(_shellHostTraySignature, traySignature))
+            {
+                if (_shellHostTrayCompanion) MaintainNativeTaskbars();
+                return;
+            }
             var previouslyIntegrated = _shellHostTaskbarNativeTrayIntegrated;
 
             ApplyTaskbarPreferences(preferences);
@@ -1726,6 +1740,7 @@ public partial class MainWindow : Window
             {
                 System.Diagnostics.Trace.TraceInformation("The Explorer notification-area layout changed on one or more displays; shell-host taskbars reconciled their per-display tray and AppBar state.");
             }
+            if (_shellHostTrayCompanion) MaintainNativeTaskbars();
         }
         catch (Exception ex)
         {

@@ -11,6 +11,30 @@ public sealed class ExplorerTrayCompanionService : IDisposable
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(250);
     private Process? _ownedProcess;
     private string? _markerPath;
+    private int _recoveryAttempts;
+
+    public bool TryRecover(out string? error)
+    {
+        error = null;
+        if (HasVisibleTaskbar()) return true;
+
+        var process = _ownedProcess;
+        if (process is null || !process.HasExited) return false;
+        if (!ExplorerTrayCompanionRecoveryPolicy.ShouldRestart(false, true, _recoveryAttempts))
+        {
+            error = "The Explorer tray companion exited after its bounded recovery attempt.";
+            return false;
+        }
+
+        _recoveryAttempts++;
+        _ownedProcess = null;
+        try { process.Dispose(); }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        { Trace.TraceWarning($"Could not release the exited Explorer tray companion: {ex.Message}"); }
+        if (_markerPath is { } markerPath) TryDeleteMarker(markerPath);
+        _markerPath = null;
+        return TryStart(out error);
+    }
 
     public static int RestoreOrphanedCompanions(string? directoryPath = null)
     {
