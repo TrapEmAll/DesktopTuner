@@ -2170,7 +2170,6 @@ public partial class MainWindow : Window
         {
             Content = "Keep Explorer notification icons in shell replacement",
             IsChecked = ShellHostTrayCompanionPolicy.IsEnabled(),
-            IsEnabled = !_shellHostMode,
             Margin = new Thickness(0, 0, 0, 8),
             FontSize = 13
         };
@@ -2213,11 +2212,14 @@ public partial class MainWindow : Window
         }
     }
 
-    private static void SetTrayCompanionPreference(CheckBox checkBox, bool enabled)
+    private void SetTrayCompanionPreference(CheckBox checkBox, bool enabled)
     {
         try
         {
             ShellHostTrayCompanionPolicy.SetEnabled(enabled);
+            SetStatus(enabled
+                ? "Explorer tray icons will be hosted the next time shell replacement starts."
+                : "Shell replacement will use Desktop Tuner system controls the next time it starts.");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
